@@ -1,0 +1,64 @@
+"use client";
+
+import "leaflet/dist/leaflet.css";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  CircleMarker
+} from "react-leaflet";
+
+export default function MapView({ dashboard }) {
+  const ambulancePosition = [
+    dashboard.ambulance.latitude,
+    dashboard.ambulance.longitude
+  ];
+
+  return (
+    <MapContainer
+      center={ambulancePosition}
+      zoom={14}
+      style={{ height: "600px", width: "100%" }}
+    >
+      <TileLayer
+        attribution="© OpenStreetMap contributors"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+
+      <Marker position={ambulancePosition}>
+        <Popup>
+          {dashboard.ambulance.id}
+          <br />
+          Status: {dashboard.ambulance.status}
+        </Popup>
+      </Marker>
+
+      <Polyline
+        positions={dashboard.plannedRoute}
+        pathOptions={{ color: "blue", weight: 5 }}
+      />
+
+      <Polyline
+        positions={dashboard.actualTrajectory}
+        pathOptions={{ color: "green", weight: 5 }}
+      />
+
+      <CircleMarker
+        center={[
+          dashboard.incident.latitude,
+          dashboard.incident.longitude
+        ]}
+        radius={10}
+        pathOptions={{
+          color: "red",
+          fillColor: "red",
+          fillOpacity: 0.8
+        }}
+      >
+        <Popup>{dashboard.incident.type}</Popup>
+      </CircleMarker>
+    </MapContainer>
+  );
+}

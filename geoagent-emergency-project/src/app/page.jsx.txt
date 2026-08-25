@@ -1,0 +1,37 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import dashboard from "../data/mock-dashboard.json";
+
+const MapView = dynamic(() => import("../components/MapView"), {
+  ssr: false
+});
+
+export default function Home() {
+  return (
+    <main>
+      <h1>GeoAgent Emergency Control Room</h1>
+
+      <div style={{ margin: "20px" }}>
+        <MapView dashboard={dashboard} />
+      </div>
+
+      <section style={{ padding: "20px" }}>
+        <h2>Route Analysis</h2>
+        <p>
+          Status:{" "}
+          {dashboard.analysis.deviationDetected
+            ? "Deviated"
+            : "On route"}
+        </p>
+        <p>Cause: {dashboard.analysis.cause}</p>
+        <p>Delay: +{dashboard.analysis.delayMinutes} minutes</p>
+        <p>New ETA: {dashboard.analysis.newEtaMinutes} minutes</p>
+        <p>
+          Recommendation: {dashboard.analysis.recommendedRoute}
+        </p>
+        <p>{dashboard.analysis.explanation}</p>
+      </section>
+    </main>
+  );
+}

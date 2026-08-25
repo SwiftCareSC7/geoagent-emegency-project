@@ -1,0 +1,34 @@
+{
+  "ambulance": {
+    "id": "AMB-01",
+    "latitude": 12.9751,
+    "longitude": 77.6032,
+    "status": "deviated"
+  },
+  "plannedRoute": [
+    [12.9716, 77.5946],
+    [12.9751, 77.6032],
+    [12.98, 77.61]
+  ],
+  "actualTrajectory": [
+    [12.9716, 77.5946],
+    [12.974, 77.599],
+    [12.976, 77.602]
+  ],
+  "incident": {
+    "id": "INC-100",
+    "type": "Road accident",
+    "latitude": 12.978,
+    "longitude": 77.605,
+    "severity": "high"
+  },
+  "analysis": {
+    "deviationDetected": true,
+    "cause": "Road accident and heavy congestion",
+    "delayMinutes": 6,
+    "newEtaMinutes": 16,
+    "recommendedRoute": "Alternative Route B",
+    "backupAmbulanceRequired": false,
+    "explanation": "The ambulance deviated because an accident affected the planned road."
+  }
+}
