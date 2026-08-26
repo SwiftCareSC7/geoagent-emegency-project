@@ -26,78 +26,61 @@ MongoDB
 
 ---
 
-## 2. What Was Already Built (Parts 1–3)
+## 2. What Was Already Built (Parts 1–4)
 
-- **Part 1 (Foundation)**: Express setup, global error handling, Helmet for security, CORS, MongoDB connection, environment configurations.
+- **Part 1 (Foundation)**: Express setup, global error handling, Helmet for security, CORS, MongoDB connection.
 - **Part 2 (Authentication)**: `User` model, JWT token generation, HTTP-only cookie delivery, auth middleware, and Role-Based Access Control (`CONTROL_ROOM`, `ADMIN`).
 - **Part 3 (Vehicles)**: `Vehicle` module for managing emergency vehicles. Setup of the modular architecture.
+- **Part 4 (Emergencies & Incidents)**: `Emergency` and `Incident` models with GeoJSON locations, `2dsphere` indexes, soft deletions, and vehicle assignment transactions.
 
 ---
 
-## 3. What Part 4 Added
+## 3. What Part 5 Added (GPS & Trajectories)
 
-Part 4 focused on **Emergency and Incident Management**:
-- `Emergency` model to track medical, fire, accident cases.
-- `Incident` model to track road closures, multi-vehicle crashes, weather blocks.
-- **GeoJSON Data**: Both models store their locations as GeoJSON Points.
-- **2dsphere Indexes**: MongoDB indexes for fast spatial queries.
-- **Vehicle Assignment**: A secure assignment workflow.
-- **Role Permissions**: Stricter role separation (`ADMIN` vs `CONTROL_ROOM`).
+Part 5 implements the foundation for tracking emergency vehicles over time.
+- **`Trajectory` Model**: Stores individual GPS ping observations instead of storing a massive array inside the `Vehicle` model. This prevents unbounded MongoDB document growth.
+- **GeoJSON**: GPS location data is validated strictly as `[longitude, latitude]`.
+- **Compound Indexes**: Utilizes highly optimized indexes (`{ vehicle: 1, timestamp: -1 }`) to efficiently fetch the latest and recent trajectories without full collection scans.
+- **Safe Pagination**: Caps query limits to prevent memory crashes.
 
 ---
 
-## 4. File-by-File Explanation
+## 4. File-by-File Explanation (Part 5 Additions)
 
-### Emergencies (`server/modules/emergencies/`)
-- **`emergency.model.js`**: Defines the `Emergency` schema. Includes fields for type, priority, and `callerContact`. Adds the `2dsphere` index and implements a `toSafeObject()` method to strip internal Mongo IDs (`_id`, `__v`). Also defines an `isDeleted` flag for soft deletions.
-- **`emergency.validation.js`**: Contains strict `isValidGeoJSONPoint()` to ensure we receive valid `[longitude, latitude]` arrays. Ensures only valid ENUMs are passed.
-- **`emergency.controller.js`**: Thin handlers that parse HTTP requests and forward them to the service layer.
-- **`emergency.service.js`**: The core logic. Auto-generates `EMG-0001` IDs. Validates the vehicle assignment state. Performs soft deletions.
-- **`emergency.routes.js`**: Maps endpoints. Protects DELETE with `ADMIN`, requires `CONTROL_ROOM` for others.
-
-### Incidents (`server/modules/incidents/`)
-- **`incident.model.js`**: Defines the `Incident` schema for tracking obstacles, traffic, and hazards. Includes `isDeleted` flag.
-- **`incident.validation.js`**: Reuses GeoJSON validation.
-- **`incident.controller.js`** & **`incident.service.js`**: Similar structure to emergencies but tailored for incident fields. Auto-generates `INC-0001` IDs.
-- **`incident.routes.js`**: Maps endpoints with appropriate role guards.
+### Trajectories (`server/modules/trajectories/`)
+- **`trajectory.model.js`**: Defines the `Trajectory` schema. References the `Vehicle` ObjectId. Enforces ranges for `speed` (0-250) and `heading` (0-360). Creates the crucial compound index for performance.
+- **`trajectory.validation.js`**: Reuses GeoJSON validation. Prevents future clock-skews in `timestamp` (no more than 5 minutes ahead). Rejects unreasonable speeds and headings.
+- **`trajectory.service.js`**: The core business logic. 
+  - **Duplicate/Out-of-Order strategy**: Ingestion simply accepts incoming GPS data as-is, relying on the actual `timestamp`. Since queries sort by `timestamp: -1`, out-of-order data automatically rights itself on retrieval. 
+  - Verifies that the vehicle exists and is in a tracking-appropriate status (`DISPATCHED`, `EN_ROUTE`, etc.).
+- **`trajectory.controller.js`**: API handlers returning data safely. Ensures the requested `vehicleId` is attached to responses while hiding internal ObjectIds.
+- **`trajectory.routes.js`**: Exposes POST (ingest), GET latest, GET recent, and GET history. Protected by `CONTROL_ROOM` and `ADMIN` auth.
 
 ---
 
-## 5. Data Flow
+## 5. Trajectory Data Flow
 
-### Create Emergency
+### GPS Ingestion Flow
 ```text
-POST /api/emergencies
+POST /api/trajectories
         ↓
-`authMiddleware.js` verifies JWT
+`authMiddleware` + `roleMiddleware`
         ↓
-`roleMiddleware.js` verifies CONTROL_ROOM/ADMIN
+`trajectory.validation.js` (validates speed, heading, GeoJSON, timestamp skew)
         ↓
-`emergency.validation.js` verifies payload & GeoJSON
+`trajectory.service.js` -> Checks if Vehicle exists and status != OFFLINE/MAINTENANCE
         ↓
-`emergency.controller.js` (createEmergency)
-        ↓
-`emergency.service.js` (Generates ID, attaches User)
-        ↓
-MongoDB saves the document
+MongoDB `Trajectory` Collection (Saves point)
 ```
 
-### Assign Vehicle
+### Latest Location Flow
 ```text
-PATCH /api/emergencies/:id/assign
+GET /api/trajectories/AMB-001/latest
         ↓
-Controller forwards `emergencyId` & `vehicleId`
+Service resolves Vehicle ObjectId
         ↓
-Service starts a MongoDB Session/Transaction
-        ↓
-Find Emergency -> Find Vehicle
-        ↓
-Check if vehicle.status === 'AVAILABLE'
-        ↓
-Update Emergency to 'DISPATCHED'
-Update Vehicle to 'DISPATCHED'
-        ↓
-Commit Transaction & Save to DB
+MongoDB Query: find({ vehicle }).sort({ timestamp: -1 }).limit(1)
+(Executes instantly via compound index)
 ```
 
 ---
@@ -111,6 +94,10 @@ User
  │
  └── reports → Incident
 
+Vehicle
+ │
+ └── (has many) → Trajectory
+
 Emergency
  │
  └── assignedVehicle → Vehicle
@@ -122,24 +109,17 @@ Incident
 
 ---
 
-## 7. GeoJSON Explanation
+## 7. GeoJSON & Coordinate Ordering
 
 Coordinates are stored strictly as `[longitude, latitude]`. This is the standard mandated by the GeoJSON spec and MongoDB. If stored as `[latitude, longitude]`, MongoDB's `2dsphere` indexes will calculate distances incorrectly or fail entirely.
 
-**Why 2dsphere indexes?**
-They allow MongoDB to perform operations on an earth-like sphere, enabling future queries like:
-- "Find the nearest AVAILABLE ambulance to this Emergency"
-- "Are there any Incidents on the current route?"
-
 ---
 
-## 8. Security Walkthrough
+## 8. Security Walkthrough (Part 5 Additions)
 
-- **Soft Deletions**: Deleting an Emergency or Incident sets `isDeleted: true` instead of destroying the document. This preserves historical data for the AI/GeoAgent context without losing operational history. Only `ADMIN` can trigger this.
-- **Mass Assignment Prevention**: The update services (`updateEmergency`, `updateIncident`) use explicit allowlists. Clients cannot inject `status`, `emergencyId`, or `createdBy` unless explicitly permitted.
-- **Input Validation**: Custom validation middleware blocks malformed GeoJSON and invalid Enums before they reach Mongoose.
-- **Contact Privacy**: Caller contacts are not logged out or leaked.
-- **Immutable IDs**: Custom IDs (`EMG-xxxx`) are generated server-side and immutable.
+- **Pagination Bounds**: The Trajectory History endpoint (`GET /api/trajectories/:vehicleId`) hard-caps the `limit` query param to 100, regardless of what the user requests. This prevents malicious "fetch all" requests from OOM-crashing the Node server.
+- **Clock Skew Prevention**: GPS payloads containing timestamps extremely far into the future (e.g. year 2099) are rejected. 
+- **Vehicle Status Gating**: GPS endpoints reject data for vehicles in `OFFLINE` or `MAINTENANCE` status.
 
 ---
 
@@ -148,38 +128,28 @@ They allow MongoDB to perform operations on an earth-like sphere, enabling futur
 To test the APIs using `curl` or Postman:
 
 1. **Login** to get your HTTP-only cookie.
-2. **Create an Emergency**:
+2. **Ingest GPS Point**:
    ```json
-   POST /api/emergencies
+   POST /api/trajectories
    {
-     "type": "MEDICAL",
-     "priority": "CRITICAL",
-     "description": "Heart attack",
+     "vehicleId": "AMB-001",
      "location": {
        "type": "Point",
        "coordinates": [77.5946, 12.9716]
-     }
+     },
+     "speed": 65,
+     "heading": 90,
+     "timestamp": "2026-08-27T10:00:00.000Z",
+     "source": "SIMULATOR"
    }
    ```
-3. **Assign a Vehicle**:
-   ```json
-   PATCH /api/emergencies/EMG-0001/assign
-   {
-     "vehicleId": "AMB-001"
-   }
+3. **Get Latest Point**:
    ```
-4. **Create an Incident**:
-   ```json
-   POST /api/incidents
-   {
-     "type": "ROAD_CLOSURE",
-     "severity": "HIGH",
-     "description": "Fallen tree",
-     "location": {
-       "type": "Point",
-       "coordinates": [77.6100, 12.9800]
-     }
-   }
+   GET /api/trajectories/AMB-001/latest
+   ```
+4. **Get History (Paginated)**:
+   ```
+   GET /api/trajectories/AMB-001?page=1&limit=50
    ```
 
 ---
@@ -187,6 +157,6 @@ To test the APIs using `curl` or Postman:
 ## 10. Future Connection
 
 This module lays the groundwork for the core intelligence of the system. In future steps:
-- **GPS**: The assigned Vehicle will emit live coordinates.
-- **Routing**: Distance from the Vehicle to the Emergency's `location` will be calculated.
-- **GeoAgent**: The AI will query the `Incident` collection using `$near` geospatial queries to warn the driver if an incident (`ROAD_CLOSURE`) lies on their path.
+- **Routing & Geospatial Engine**: Will consume the latest location to compute live ETAs.
+- **Deviation Detection**: Will compare the `recent` trajectory points against the assigned route to detect if the driver has gone off-path.
+- **GeoAgent**: The AI will query `Incident` collections near the latest `Trajectory.location` to proactively warn control rooms of impending delays.
