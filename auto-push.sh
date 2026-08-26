@@ -14,5 +14,5 @@ while true; do
     else
         echo "[$(date)] No changes, skipping..."
     fi
-    sleep 300  # 5 minutes = 300 seconds
+    sleep 60  # 1 minute = 60 seconds
 done
