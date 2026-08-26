@@ -2,6 +2,19 @@
 
 All notable changes to the GeoAgentic Emergency Response System Backend will be documented in this file.
 
+## [Unreleased] - Part 5
+### Added
+- Added Trajectory model for vehicle GPS history
+- Added GPS ingestion API (`POST /api/trajectories`)
+- Added Latest Location API (`GET /api/trajectories/:vehicleId/latest`)
+- Added Trajectory History API with pagination (`GET /api/trajectories/:vehicleId`)
+- Added Recent Trajectory API (`GET /api/trajectories/:vehicleId/recent`)
+- Added strict GeoJSON Point validation, timestamp clock-skew validation, and speed limits
+- Added MongoDB `2dsphere` index for GPS points
+- Added highly-optimized compound index `{ vehicle: 1, timestamp: -1 }`
+- Created `AI_MEMORY.md` to serve as a persistent AI agent memory context
+- Updated `README.md` and `WALKTHROUGH.md` with GPS architecture
+
 ## [Unreleased] - Part 4
 ### Added
 - Added Emergency model

@@ -18,7 +18,7 @@ The GeoAgentic Emergency Response System is a platform designed to monitor emerg
 - **Vehicle Management**        COMPLETED
 - **Emergency Management**      COMPLETED
 - **Incident Management**       COMPLETED
-- **GPS Tracking**              PLANNED
+- **GPS Tracking**              COMPLETED
 - **Routing**                   PLANNED
 - **Traffic Analysis**          PLANNED
 - **GeoAgent AI**               PLANNED
@@ -123,3 +123,20 @@ The GeoAgentic Emergency Response System is a platform designed to monitor emerg
   - **Body**: Allowlist updates
 - `DELETE /:incidentId`
   - **Auth**: ADMIN (Soft-deletes the incident)
+
+### GPS Trajectories (`/api/trajectories`)
+- `POST /`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Body**: `{ vehicleId, location, speed, heading, timestamp, source }`
+  - **Note**: Ingests GeoJSON GPS points. `speed` must be `>= 0` and `<= 250`. `heading` between `0` and `360`. Vehicle must be active.
+- `GET /:vehicleId/latest`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Returns**: The absolute latest GPS point for the given vehicle based on timestamp.
+- `GET /:vehicleId`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Query**: `?page=1&limit=50` (Limit is hard-capped at 100 for safety).
+  - **Returns**: Historical trajectory arrays.
+- `GET /:vehicleId/recent`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Query**: `?limit=20`
+  - **Returns**: Last N trajectory points. Optimized for live map display.

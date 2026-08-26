@@ -9,6 +9,7 @@ import authRoutes from './modules/auth/auth.routes.js';
 import vehicleRoutes from './modules/vehicles/vehicle.routes.js';
 import emergencyRoutes from './modules/emergencies/emergency.routes.js';
 import incidentRoutes from './modules/incidents/incident.routes.js';
+import trajectoryRoutes from './modules/trajectories/trajectory.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -57,6 +58,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/emergencies', emergencyRoutes);
 app.use('/api/incidents', incidentRoutes);
+app.use('/api/trajectories', trajectoryRoutes);
 
 
 // --- Error Handling ---
