@@ -4,3 +4,10 @@
 To https://github.com/iwantcupcake/geoagent-emegency-project.git
    880483a..568cdb5  main -> main
 [Thu Aug 27 00:19:54 IST 2026] Changes detected, committing and pushing...
+[main 680cf92] Auto-commit: 2026-08-27 00:19:54
+ 5 files changed, 540 insertions(+), 335 deletions(-)
+ create mode 100644 server/models/User.js
+ create mode 100644 server/utils/jwt.js
+To https://github.com/iwantcupcake/geoagent-emegency-project.git
+   568cdb5..680cf92  main -> main
+[Thu Aug 27 00:20:57 IST 2026] Changes detected, committing and pushing...
