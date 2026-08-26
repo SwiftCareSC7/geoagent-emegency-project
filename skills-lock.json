@@ -1,17 +1,245 @@
 {
   "version": 1,
   "skills": {
+    "amazon-location-service": {
+      "source": "awslabs/agent-plugins",
+      "sourceType": "github",
+      "skillPath": "plugins/amazon-location-service/skills/amazon-location-service/SKILL.md",
+      "computedHash": "5da3f0d2d4828d2ee8cef0ab487eb1e01bdee0bedf598f01b60debb8cb039467"
+    },
+    "animate": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/animate/SKILL.md",
+      "computedHash": "609e30351bf518b21a8cfe87cd1111554855527075d6563605bafe61963252f7"
+    },
+    "animate-expo": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/animate-expo/SKILL.md",
+      "computedHash": "c9eaf6603b97ca61b05c7561e1045b2f58b6d84cdf8d67565bff23a9ff94ce8a"
+    },
+    "animation-vocabulary": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/animation-vocabulary/SKILL.md",
+      "computedHash": "39319fc9a33c15be08666b3685f58666f042ff36bb902b7814c0834a5ba99df4"
+    },
+    "apple-design": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/apple-design/SKILL.md",
+      "computedHash": "8b94db67cb9edaad5f1501010804caa610131f1d2dfda0a27664b2e858deade3"
+    },
+    "ask-sonner": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/ask-sonner/SKILL.md",
+      "computedHash": "23f724e97247b2003ccc479f3a9b3af8e4191a0e133b94ee6b73f8405349687f"
+    },
+    "cartography-geoviz": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/cartography-geoviz/SKILL.md",
+      "computedHash": "7bbf991dc76f3fb102ada1a7fe2f8183f5d247df156f099abfd46e40d9a09cfe"
+    },
+    "change-detection": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/change-detection/SKILL.md",
+      "computedHash": "9bff94d4024b6c9128413892c834c03faa867c07cecff4431e263dcfbf4deb7e"
+    },
+    "emergency-room-beds": {
+      "source": "nomadamas/k-skill",
+      "sourceType": "github",
+      "skillPath": "emergency-room-beds/SKILL.md",
+      "computedHash": "0a8b6ee4ddbca773319cd12322441149dfe0a86b4c2c513bf2f0c98eda36ce16"
+    },
+    "emil-design-eng": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/emil-design-eng/SKILL.md",
+      "computedHash": "41b0a4dc1a27164fe297845a6c6850a39e9242c42c9be999967fcee9df2c5974"
+    },
+    "find-animation-opportunities": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/find-animation-opportunities/SKILL.md",
+      "computedHash": "8fb8492eb8fbed1313cb430b5831d925d9b8964ca24f3c41a6244cbd1fd98732"
+    },
+    "geo-data-engineering": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/geo-data-engineering/SKILL.md",
+      "computedHash": "e3933244f8c474d0594a9d77645f9ff02e8aab7bd875f6780a0b2df0c8c88d76"
+    },
+    "geoai-orchestrator": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/geoai-orchestrator/SKILL.md",
+      "computedHash": "4598a8b3aa4bfc618ebae9491818b502d668ba9bcd9882d1c85747dfe04a8926"
+    },
+    "geostatistics-interpolation": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/geostatistics-interpolation/SKILL.md",
+      "computedHash": "99c510cad668e0e48eb6241e3ab6e14cc8c177d60765cea138b730c73360ef70"
+    },
+    "highway-traffic-status": {
+      "source": "nomadamas/k-skill",
+      "sourceType": "github",
+      "skillPath": "highway-traffic-status/SKILL.md",
+      "computedHash": "0a399c544d73f5d1ca9834a520400c4e8131952725a9c9cac37726758eca7761"
+    },
+    "improve-animations": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/improve-animations/SKILL.md",
+      "computedHash": "eeb219a407e325b687af88db25771cc3018e3148245604112f5ac6990b6fd79c"
+    },
+    "kakao-map": {
+      "source": "nomadamas/k-skill",
+      "sourceType": "github",
+      "skillPath": "kakao-map/SKILL.md",
+      "computedHash": "e59f8696497cca77a09cb6ea1bda05c0ec360e32fa2c2747cd3bb777613b8ca6"
+    },
+    "korean-transit-route": {
+      "source": "nomadamas/k-skill",
+      "sourceType": "github",
+      "skillPath": "korean-transit-route/SKILL.md",
+      "computedHash": "bc70f2024912b801a45b8af5d3c11f183412880985281daa25c7851a34bfbfea"
+    },
+    "mapbox-data-visualization-patterns": {
+      "source": "mapbox/mapbox-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapbox-data-visualization-patterns/SKILL.md",
+      "computedHash": "e31986d5a0a878211479eb52b0646cd280b7e3c39cd00f4b09e7f658e88b781d"
+    },
     "mapbox-geospatial-operations": {
       "source": "mapbox/mapbox-agent-skills",
       "sourceType": "github",
       "skillPath": "skills/mapbox-geospatial-operations/SKILL.md",
       "computedHash": "9edd54aac79f953cb61b980c15b87e52fbe628d22d43940cc2fd98b825d5c154"
     },
+    "mapbox-mcp-devkit-patterns": {
+      "source": "mapbox/mapbox-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapbox-mcp-devkit-patterns/SKILL.md",
+      "computedHash": "06cb980beb990ed8b92062a40a394f67ce1dcc991f91cea1ef2f5bb973f8e1a9"
+    },
+    "mapbox-mcp-runtime-patterns": {
+      "source": "mapbox/mapbox-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapbox-mcp-runtime-patterns/SKILL.md",
+      "computedHash": "1fd127a79a02894f4353fc109540ad7b6eb5a26730a1cfd6e5dd4e8e0cb2a560"
+    },
+    "mapbox-navigation-patterns": {
+      "source": "mapbox/mapbox-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapbox-navigation-patterns/SKILL.md",
+      "computedHash": "8ba386900481d12705485856057a68396544aa3d820b366be5febcdd4b443724"
+    },
+    "mapbox-search-patterns": {
+      "source": "mapbox/mapbox-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapbox-search-patterns/SKILL.md",
+      "computedHash": "158189eeaefceddfb02e191612e705e9049138b98ffa9c9a9253fcf4c5fe98d1"
+    },
+    "mapbox-style-patterns": {
+      "source": "mapbox/mapbox-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapbox-style-patterns/SKILL.md",
+      "computedHash": "ed8908002221a48262aa2811c9f8ba19bd884c155ba050cb5ea65abd9bc82641"
+    },
+    "mcp-builder": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/mcp-builder/SKILL.md",
+      "computedHash": "826e46adf81e1372282e205c34e1a2ee876e72148007726e4a2512599d2fef7b"
+    },
+    "ml-experiment-standards": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ml-experiment-standards/SKILL.md",
+      "computedHash": "f5e43ada6b0649be91fd32ae68c50c9ce625f724a193df3e73c850dec3338652"
+    },
+    "movement-trajectory": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/movement-trajectory/SKILL.md",
+      "computedHash": "4cdb545dc5b48eaefce1c8871beb7fdc6d47bfa32ffba78a6497112a99b19d4c"
+    },
+    "network-accessibility-analysis": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/network-accessibility-analysis/SKILL.md",
+      "computedHash": "aa3a416484e637d7900aea48984bb248ee6d999f9ac4ea09224ea1a2fb942af8"
+    },
+    "pick-ui-library": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/pick-ui-library/SKILL.md",
+      "computedHash": "f8d4d2cf4677bf54b14f35f62a741add93541bfcb67863315a40164365161b49"
+    },
+    "postgis-spatial-sql": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/postgis-spatial-sql/SKILL.md",
+      "computedHash": "f85dcea7a90608a81639ba0cefbf0cacafe3496742e0175cbff9102a08662bff"
+    },
+    "prototype": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/prototype/SKILL.md",
+      "computedHash": "f246d1f47566481d9207e1aa574bdee5454257d862919a6591283e9af2f57eab"
+    },
+    "remote-sensing-analysis": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/remote-sensing-analysis/SKILL.md",
+      "computedHash": "f430a1ab152c403ad03d28cdb01becc333e212e5aa9422104be4bb291ce9266b"
+    },
+    "review-animations": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/review-animations/SKILL.md",
+      "computedHash": "b9f669af5ae280c19a592a94611520335a81de25c88f225bf60ae4b2d66c8c7c"
+    },
     "routing-traffic-with-route53-and-cloudfront": {
       "source": "aws/agent-toolkit-for-aws",
       "sourceType": "github",
       "skillPath": "skills/specialized-skills/networking-and-content-delivery-skills/routing-traffic-with-route53-and-cloudfront/SKILL.md",
       "computedHash": "b66d1b18cfda2c05279891b7c78f46e952569b6317047f5f99c586beeea2692e"
+    },
+    "skill-creator": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/skill-creator/SKILL.md",
+      "computedHash": "5ea13a6d9f0d4bb694405d79acd00cadec0d21bb138c4dd10fcf3c500cb835c2"
+    },
+    "spatial-statistics": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/spatial-statistics/SKILL.md",
+      "computedHash": "34bb1dbf9b148af80a88072afac3e11502b62f1844c1ade5330dcd094440fa55"
+    },
+    "template-skill": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "template/SKILL.md",
+      "computedHash": "38c88f722b574a922311d334a70c2008a2a5b896f06eaa75516d716e5725b26f"
+    },
+    "terrain-hydrology": {
+      "source": "muend/geoai-skills",
+      "sourceType": "github",
+      "skillPath": "skills/terrain-hydrology/SKILL.md",
+      "computedHash": "0dd4d425fd96ca49e4dce6d64a6def10f99e94d243ee1c437dd15f14a5ef1fd7"
+    },
+    "write-swift": {
+      "source": "emilkowalski/skill",
+      "sourceType": "github",
+      "skillPath": "skills/write-swift/SKILL.md",
+      "computedHash": "ccbb74cac81765fcf2912ceba8d188fddbd75393ecb808aa1a4f6f58d9c2c828"
     }
   }
 }
