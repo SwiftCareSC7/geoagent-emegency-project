@@ -173,3 +173,13 @@ To https://github.com/iwantcupcake/geoagent-emegency-project.git
 To https://github.com/iwantcupcake/geoagent-emegency-project.git
    a098841..1219da6  main -> main
 [Thu Aug 27 00:46:05 IST 2026] Changes detected, committing and pushing...
+[main c55d0c9] Auto-commit: 2026-08-27 00:46:05
+ 8 files changed, 2772 insertions(+)
+ create mode 100644 server/modules/routes/providers/mockRoutingProvider.js
+ create mode 100644 server/modules/routes/route.model.js
+ create mode 100644 server/modules/routes/route.service.js
+ create mode 100644 server/modules/routes/routing.service.js
+ create mode 100644 server/shared/services/geospatial.service.js
+To https://github.com/iwantcupcake/geoagent-emegency-project.git
+   1219da6..c55d0c9  main -> main
+[Thu Aug 27 00:47:07 IST 2026] Changes detected, committing and pushing...
