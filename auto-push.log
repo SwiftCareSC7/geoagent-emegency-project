@@ -100,3 +100,14 @@ To https://github.com/iwantcupcake/geoagent-emegency-project.git
 To https://github.com/iwantcupcake/geoagent-emegency-project.git
    d0be674..90f32a2  main -> main
 [Thu Aug 27 00:34:34 IST 2026] Changes detected, committing and pushing...
+[main e0f3f1a] Auto-commit: 2026-08-27 00:34:35
+ 7 files changed, 672 insertions(+)
+ create mode 100644 server/modules/emergencies/emergency.model.js
+ create mode 100644 server/modules/emergencies/emergency.service.js
+ create mode 100644 server/modules/emergencies/emergency.validation.js
+ create mode 100644 server/modules/incidents/incident.model.js
+ create mode 100644 server/modules/incidents/incident.service.js
+ create mode 100644 server/modules/incidents/incident.validation.js
+To https://github.com/iwantcupcake/geoagent-emegency-project.git
+   90f32a2..e0f3f1a  main -> main
+[Thu Aug 27 00:35:37 IST 2026] Changes detected, committing and pushing...

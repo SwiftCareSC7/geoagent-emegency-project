@@ -1,1 +1,125 @@
-# geoagent-emegency-project
+# GeoAgentic Emergency Response System
+
+The GeoAgentic Emergency Response System is a platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays, recommend alternative routes, and provide AI agent decision support to control room operators.
+
+## Current Technology Stack
+
+- **Runtime**: Node.js
+- **Framework**: Express.js
+- **Database**: MongoDB
+- **ODM**: Mongoose
+- **Security**: bcryptjs, jsonwebtoken, helmet, cors
+- **Environment**: dotenv
+
+## Current Features
+
+- **Backend Foundation**        COMPLETED
+- **Authentication**            COMPLETED
+- **Vehicle Management**        COMPLETED
+- **Emergency Management**      COMPLETED
+- **Incident Management**       COMPLETED
+- **GPS Tracking**              PLANNED
+- **Routing**                   PLANNED
+- **Traffic Analysis**          PLANNED
+- **GeoAgent AI**               PLANNED
+- **Real-Time Communication**   PLANNED
+- **Decision Engine**           PLANNED
+
+## Backend Setup
+
+1. **Install dependencies**:
+   ```bash
+   cd server
+   npm install
+   ```
+
+2. **Environment Variables**:
+   Copy `.env.example` to `.env` and configure:
+   ```env
+   PORT=5000
+   MONGO_URI=your_mongodb_connection_string
+   CLIENT_URL=http://localhost:5173
+   NODE_ENV=development
+   JWT_SECRET=replace_with_a_long_random_secret
+   JWT_EXPIRES_IN=7d
+   ```
+
+3. **Development Server**:
+   ```bash
+   npm run dev
+   ```
+
+4. **Production Start**:
+   ```bash
+   npm start
+   ```
+
+## API Documentation
+
+*Base URL: `http://localhost:5000`*
+
+### Health
+- `GET /api/health` 
+  - **Auth**: None
+  - **Returns**: Server health status
+
+### Authentication (`/api/auth`)
+- `POST /register`
+  - **Auth**: None
+  - **Body**: `{ name, email, password }`
+- `POST /login`
+  - **Auth**: None
+  - **Body**: `{ email, password }`
+  - **Returns**: HTTP-only JWT Cookie
+- `POST /logout`
+  - **Auth**: None
+- `GET /me`
+  - **Auth**: Required
+  - **Returns**: Current authenticated user details
+
+### Vehicles (`/api/vehicles`)
+- `POST /`
+  - **Auth**: ADMIN
+  - **Body**: `{ vehicleId, registrationNumber, type, driverName, capacity }`
+- `GET /`
+  - **Auth**: CONTROL_ROOM, ADMIN
+- `GET /:vehicleId`
+  - **Auth**: CONTROL_ROOM, ADMIN
+- `PATCH /:vehicleId`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Body**: Allowlist updates (`status`, `capacity`, etc.)
+- `DELETE /:vehicleId`
+  - **Auth**: ADMIN
+
+### Emergencies (`/api/emergencies`)
+- `POST /`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Body**: `{ type, priority, callerName, callerContact, description, location, destination }` (Requires valid GeoJSON Points)
+- `GET /`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Query**: `?status=PENDING&priority=CRITICAL`
+- `GET /:emergencyId`
+  - **Auth**: CONTROL_ROOM, ADMIN
+- `PATCH /:emergencyId`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Body**: Allowlist updates (`status`, `priority`, etc.)
+- `PATCH /:emergencyId/assign`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Body**: `{ vehicleId }`
+- `DELETE /:emergencyId`
+  - **Auth**: ADMIN (Soft-deletes the emergency)
+
+### Incidents (`/api/incidents`)
+- `POST /`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Body**: `{ type, severity, description, location }` (Requires valid GeoJSON Point)
+- `GET /`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Query**: `?status=ACTIVE&severity=HIGH`
+- `GET /:incidentId`
+  - **Auth**: CONTROL_ROOM, ADMIN
+- `PATCH /:incidentId`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Body**: Allowlist updates
+- `DELETE /:incidentId`
+  - **Auth**: ADMIN (Soft-deletes the incident)
