@@ -4,9 +4,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import authRoutes from './routes/authRoutes.js';
-import vehicleRoutes from './routes/vehicleRoutes.js';
+import { errorHandler, notFoundHandler } from './shared/middleware/errorHandler.js';
+import authRoutes from './modules/auth/auth.routes.js';
+import vehicleRoutes from './modules/vehicles/vehicle.routes.js';
 
 // Load environment variables
 dotenv.config();

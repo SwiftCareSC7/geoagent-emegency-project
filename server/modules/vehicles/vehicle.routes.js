@@ -5,10 +5,10 @@ import {
   getVehicle,
   updateVehicle,
   deleteVehicle
-} from '../controllers/vehicleController.js';
-import { protect } from '../middleware/authMiddleware.js';
-import { requireRole } from '../middleware/roleMiddleware.js';
-import { validateVehicleCreate, validateVehicleUpdate } from '../middleware/validationMiddleware.js';
+} from './vehicle.controller.js';
+import { protect } from '../auth/auth.middleware.js';
+import { requireRole } from '../../shared/middleware/roleMiddleware.js';
+import { validateVehicleCreate, validateVehicleUpdate } from './vehicle.validation.js';
 
 const router = express.Router();
 

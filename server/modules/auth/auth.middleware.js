@@ -1,4 +1,4 @@
-import { verifyToken } from '../utils/jwt.js';
+import { verifyToken } from './jwt.utils.js';
 import User from './user.model.js';
 
 /**

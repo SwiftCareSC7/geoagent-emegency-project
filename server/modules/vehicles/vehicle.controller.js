@@ -1,4 +1,4 @@
-import * as vehicleService from '../services/vehicleService.js';
+import * as vehicleService from './vehicle.service.js';
 
 /**
  * Handle vehicle creation

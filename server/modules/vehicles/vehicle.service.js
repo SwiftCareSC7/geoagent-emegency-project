@@ -1,4 +1,4 @@
-import Vehicle from '../models/Vehicle.js';
+import Vehicle from './vehicle.model.js';
 
 /**
  * Create a new emergency vehicle
