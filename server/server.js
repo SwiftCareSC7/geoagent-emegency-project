@@ -2,8 +2,10 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import authRoutes from './routes/authRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -30,6 +32,9 @@ app.use(cors(corsOptions));
 // Parse incoming JSON requests safely
 app.use(express.json());
 
+// Parse HTTP-only cookies
+app.use(cookieParser());
+
 
 // --- Routes ---
 
@@ -44,7 +49,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Future routes (Authentication, Vehicles, Emergencies, etc.) will be registered here.
+// Routes
+app.use('/api/auth', authRoutes);
 
 
 // --- Error Handling ---
