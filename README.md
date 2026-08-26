@@ -19,7 +19,7 @@ The GeoAgentic Emergency Response System is a platform designed to monitor emerg
 - **Emergency Management**      COMPLETED
 - **Incident Management**       COMPLETED
 - **GPS Tracking**              COMPLETED
-- **Routing**                   PLANNED
+- **Routing**                   COMPLETED
 - **Traffic Analysis**          PLANNED
 - **GeoAgent AI**               PLANNED
 - **Real-Time Communication**   PLANNED
@@ -39,6 +39,11 @@ The GeoAgentic Emergency Response System is a platform designed to monitor emerg
    PORT=5000
    MONGO_URI=your_mongodb_connection_string
    CLIENT_URL=http://localhost:5173
+   
+   # Routing
+   ROUTING_PROVIDER=mock
+   # GOOGLE_MAPS_API_KEY=your_key
+   # MAPBOX_ACCESS_TOKEN=your_token
    NODE_ENV=development
    JWT_SECRET=replace_with_a_long_random_secret
    JWT_EXPIRES_IN=7d
@@ -140,3 +145,17 @@ The GeoAgentic Emergency Response System is a platform designed to monitor emerg
   - **Auth**: CONTROL_ROOM, ADMIN
   - **Query**: `?limit=20`
   - **Returns**: Last N trajectory points. Optimized for live map display.
+
+### Routing (`/api/routes`)
+- `POST /`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Body**: `{ emergencyId, vehicleId, routeType, origin, destination }`
+  - **Note**: The backend dynamically connects to the `ROUTING_PROVIDER` to generate and persist a GeoJSON `LineString`.
+- `GET /`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Query**: Filters like `?emergencyId=...`
+- `GET /:routeId`
+  - **Auth**: CONTROL_ROOM, ADMIN
+- `GET /api/emergencies/:emergencyId/routes`
+  - **Auth**: CONTROL_ROOM, ADMIN
+  - **Returns**: All routes attached to a specific emergency.

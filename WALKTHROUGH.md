@@ -154,9 +154,54 @@ To test the APIs using `curl` or Postman:
 
 ---
 
-## 10. Future Connection
+## 10. Future Connection (Part 5)
 
 This module lays the groundwork for the core intelligence of the system. In future steps:
 - **Routing & Geospatial Engine**: Will consume the latest location to compute live ETAs.
 - **Deviation Detection**: Will compare the `recent` trajectory points against the assigned route to detect if the driver has gone off-path.
 - **GeoAgent**: The AI will query `Incident` collections near the latest `Trajectory.location` to proactively warn control rooms of impending delays.
+
+---
+
+## 11. What Part 6 Added (Routing & Geospatial Processing)
+
+Part 6 introduces the engine that calculates, stores, and analyzes emergency vehicle routes.
+- **`Route` Model**: A dedicated MongoDB collection to store planned and alternative routes. By separating routes into their own collection rather than embedding them in `Emergency` or `Vehicle`, we allow for multiple historical routes, alternative routes, and independent route querying.
+- **Routing Provider Abstraction**: A decoupled architecture (`routing.service.js`) that allows the backend to switch between routing APIs (Google, Mapbox, OSRM, Mock) based on the `ROUTING_PROVIDER` environment variable without changing core controller logic.
+- **Mock Routing Provider**: A deterministic development provider (`mockRoutingProvider.js`) that generates a curved `LineString` between an origin and destination. This allows frontend/backend development without burning API credits.
+- **Geospatial Service**: A shared utility service (`geospatial.service.js`) powered by `@turf/turf`. It handles complex geographic mathematics (distance between points, nearest point on route, point-to-line distance, and bearing) efficiently in Node.js.
+- **Strict GeoJSON Storage**: Route geometry is stored as a valid GeoJSON `LineString`, enabling future MongoDB `2dsphere` queries (like finding all routes intersecting a new traffic incident).
+
+## 12. File-by-File Explanation (Part 6 Additions)
+
+### Shared Geospatial Services (`server/shared/services/`)
+- **`geospatial.service.js`**: Centralizes all geographic calculations using `@turf/turf`. It provides `validateCoordinates`, `createPoint`, `calculateDistance`, `distanceToRoute`, `nearestPointOnRoute`, `calculateBearing`, and `calculateRouteLength`.
+
+### Routes Module (`server/modules/routes/`)
+- **`route.model.js`**: Defines the `Route` schema containing `LineString` geometry, distance, duration, and relationships to `Emergency` and `Vehicle`. Includes `2dsphere` indexes.
+- **`routing.service.js`**: The abstraction layer. Reads `process.env.ROUTING_PROVIDER` and returns the correct provider instance. It normalizes provider output into a standard `{ geometry, distanceMeters, durationSeconds, provider }` object.
+- **`providers/mockRoutingProvider.js`**: A mock provider returning a predictable curved route.
+- **`route.service.js`**: Core business logic for saving routes to the DB and querying them via pagination.
+- **`route.controller.js`**: HTTP handlers.
+- **`route.routes.js`**: Express router defining endpoints (`POST /`, `GET /`, `GET /:routeId`).
+- **`route.validation.js`**: Validates that clients provide strict GeoJSON `Point` coordinates for the origin and destination when requesting a route.
+
+## 13. API Flow (Route Creation)
+
+```text
+POST /api/routes
+        ↓
+`authMiddleware` (Verifies JWT) + `roleMiddleware` (CONTROL_ROOM, ADMIN)
+        ↓
+`route.validation.js` (Validates origin/destination GeoJSON Points)
+        ↓
+`route.controller.js` -> `route.service.js` (Verifies Vehicle and Emergency exist)
+        ↓
+`routing.service.js` (Selects Provider e.g. MOCK or GOOGLE)
+        ↓
+`mockRoutingProvider.js` (Calculates geometry, distance, duration)
+        ↓
+`route.service.js` (Saves the normalized route to MongoDB)
+        ↓
+Returns standardized Route document to client
+```

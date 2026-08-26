@@ -2,6 +2,20 @@
 
 All notable changes to the GeoAgentic Emergency Response System Backend will be documented in this file.
 
+## [Unreleased] - Part 6
+### Added
+- Added Route model to store emergency vehicle paths
+- Added Routing service abstraction layer (google, mapbox, osrm)
+- Added Mock routing provider for deterministic development routes
+- Added Route creation API (`POST /api/routes`)
+- Added Route retrieval APIs (`GET /api/routes`, `GET /api/routes/:routeId`)
+- Added Emergency route retrieval (`GET /api/emergencies/:emergencyId/routes`)
+- Added GeoJSON LineString support and strict Point validation
+- Added distance and duration calculations via `@turf/turf`
+- Added Geospatial utility service (point-to-route distance, nearest point, bearing)
+- Added `2dsphere` indexes on Route geometries
+- Updated README, WALKTHROUGH, and AI_MEMORY
+
 ## [Unreleased] - Part 5
 ### Added
 - Added Trajectory model for vehicle GPS history

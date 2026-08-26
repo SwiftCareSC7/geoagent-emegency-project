@@ -9,44 +9,42 @@ Current emergency response systems lack intelligent, real-time spatial awareness
 ## Core Requirements
 - Secure backend foundation.
 - Authentication & Role-based Access (ADMIN, CONTROL_ROOM).
-- Entity tracking: Vehicles, Emergencies, and Incidents.
-- High-frequency GPS Trajectory ingestion and querying.
-- Future capabilities: Route engine, deviation detection, GeoAgent decision engine.
+- Entity tracking: Vehicles, Emergencies, Incidents, Trajectories, Routes.
+- Future capabilities: Route deviation detection, Traffic analysis, GeoAgent decision engine.
 
 ## Technology Stack
 - **Node.js** + **Express.js** (Backend)
 - **MongoDB** + **Mongoose** (Database & ODM)
 - **bcryptjs** + **jsonwebtoken** + **helmet** + **cors** (Security)
+- **@turf/turf** (Geospatial utilities)
 
 ## System Architecture
 Modular HTTP API → Business Logic (Services) → NoSQL Document DB with Geospatial (`2dsphere`) indexes.
 
 ## Backend Architecture
 **Feature-Based (Modular) Architecture**:
-Instead of monolithic folders (`controllers/`, `services/`), the app is structured by feature:
+Instead of monolithic folders, the app is structured by feature:
 `server/modules/auth`
 `server/modules/vehicles`
 `server/modules/emergencies`
 `server/modules/incidents`
 `server/modules/trajectories`
-Cross-cutting concerns live in `server/shared/middleware/`.
+`server/modules/routes`
+Cross-cutting concerns and shared utilities live in `server/shared/`.
 
 ## Frontend Architecture
 Not implemented yet.
 
 ## Database Architecture
 MongoDB utilizing References (ObjectId) rather than deep embedding. 
-Geospatial Data is strictly modeled as `GeoJSON Point [longitude, latitude]`.
+Geospatial Data is strictly modeled as `GeoJSON Point` or `GeoJSON LineString`.
 
 ## Authentication Architecture
 - Users: JWT stored in HTTP-only cookies.
 - Vehicles/Devices: Not yet implemented (will be separated from User auth).
 
-## AI Agent Architecture
-Not implemented yet.
-
 ## Current Development Stage
-Part 5 — GPS Tracking + Trajectory Management
+Part 6 — Geospatial Processing + Routing
 
 ## Completed Parts
 Part 1 — Backend Foundation
@@ -54,9 +52,10 @@ Part 2 — Authentication
 Part 3 — Vehicle Management
 Part 4 — Emergency + Incident Management
 Part 5 — GPS Tracking + Trajectory Management
+Part 6 — Geospatial Processing + Routing
 
 ## Current Part
-Part 5 is completed.
+Part 6 is completed.
 
 ## Completed Features
 - Setup Express, Helmet, CORS, Global Error Handling.
@@ -64,6 +63,7 @@ Part 5 is completed.
 - Vehicles: CRUD, Immutable IDs (`AMB-001`).
 - Emergencies & Incidents: CRUD, Soft Deletions, Vehicle Assignment Transaction.
 - Trajectories: Secure GPS Ingestion, Pagination, `2dsphere` & Compound Indexing, Safe Out-of-order handling.
+- Routing: Routing Provider Abstraction, Mock Provider, GeoJSON LineString Routes, `@turf/turf` Geospatial utilities.
 
 ## Current File Structure
 ```
@@ -74,24 +74,26 @@ server/
 │   ├── auth/
 │   ├── emergencies/
 │   ├── incidents/
+│   ├── routes/
+│   │   └── providers/
+│   │       └── mockRoutingProvider.js
 │   ├── trajectories/
 │   └── vehicles/
 ├── shared/
-│   └── middleware/
+│   ├── middleware/
+│   └── services/
+│       └── geospatial.service.js
 ├── .env
 ├── server.js
-AI_MEMORY.md
-CHANGELOG.md
-README.md
-WALKTHROUGH.md
 ```
 
 ## API Inventory
 **Auth**: `POST /api/auth/register`, `/login`, `/logout`, `GET /me`
 **Vehicles**: `GET /api/vehicles`, `/:id`, `POST /`, `PATCH /:id`, `DELETE /:id`
-**Emergencies**: `GET /api/emergencies`, `/:id`, `POST /`, `PATCH /:id`, `PATCH /:id/assign`, `DELETE /:id`
+**Emergencies**: `GET /api/emergencies`, `/:id`, `POST /`, `PATCH /:id`, `PATCH /:id/assign`, `DELETE /:id`, `GET /:id/routes`
 **Incidents**: `GET /api/incidents`, `/:id`, `POST /`, `PATCH /:id`, `DELETE /:id`
 **Trajectories**: `POST /api/trajectories`, `GET /:vehicleId`, `GET /:vehicleId/latest`, `GET /:vehicleId/recent`
+**Routes**: `POST /api/routes`, `GET /api/routes`, `GET /api/routes/:routeId`
 
 ## Database Models
 - `User` (name, email, password, role)
@@ -99,63 +101,64 @@ WALKTHROUGH.md
 - `Emergency` (emergencyId, type, priority, status, location, destination, assignedVehicle, createdBy, isDeleted)
 - `Incident` (incidentId, type, severity, status, location, reportedBy, emergency, isDeleted)
 - `Trajectory` (vehicle, location, speed, heading, timestamp, source, createdAt)
+- `Route` (routeId, emergency, vehicle, origin, destination, geometry, distance, duration, provider, routeType, status, createdBy)
 
 ## Model Relationships
 - User `creates` Emergency.
 - User `reports` Incident.
+- User `creates` Route.
 - Emergency `assignedVehicle` -> Vehicle.
 - Incident optionally references Emergency.
 - Trajectory `vehicle` -> Vehicle.
+- Route `emergency` -> Emergency.
+- Route `vehicle` -> Vehicle.
 
 ## Security Rules
-- Control Room cannot DELETE operational records (Emergencies, Incidents). Only ADMIN can.
+- Control Room cannot DELETE operational records.
 - Deletions are Soft Deletes (`isDeleted: true`).
-- GPS Trajectories reject coordinates outside `-180/180` and `-90/90`.
-- GPS timestamp cannot be > 5 mins in the future.
-- Trajectories only ingested if Vehicle status is appropriate (`DISPATCHED`, `EN_ROUTE`, etc.).
-- Explicit property allowlists are used for PATCH updates to prevent mass assignment.
+- Routes are generated server-side via external routing providers (or Mock); clients cannot supply arbitrary GeoJSON geometry to create routes.
+- Pagination uses hard limits (max 100) to prevent OOM DOS attacks.
+- External routing API keys are strictly server-side (`process.env`) and never exposed to clients.
+- External routing errors yield generic `502 Bad Gateway` responses so provider signatures aren't leaked.
 
 ## Environment Variables
-`PORT`, `MONGO_URI`, `CLIENT_URL`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`.
+`PORT`, `MONGO_URI`, `CLIENT_URL`, `NODE_ENV`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `ROUTING_PROVIDER`, `GOOGLE_MAPS_API_KEY`, `MAPBOX_ACCESS_TOKEN`.
 
-## External APIs
-None integrated yet.
+## Geospatial Architecture
+- GeoJSON structures (`Point`, `LineString`) strictly enforced.
+- Complex geometric math (distance to route, nearest point on route, bearing) is powered by `@turf/turf` in a centralized `geospatial.service.js`.
 
-## AI Agent Skills
-None currently defined in backend logic.
-
-## AI Agent Tools
-None currently defined in backend logic.
+## Routing Architecture
+- **Provider Abstraction**: The `routing.service.js` chooses a provider (Google, Mapbox, OSRM, Mock) based on `ROUTING_PROVIDER` env variable.
+- **Mock Routing**: A deterministic fallback provider returning a curved `LineString` to allow development without API keys.
+- **Route Engine Ownership**: Routes are "owned" by the backend engine; clients ask for a route between points, the backend handles the generation and persistence.
 
 ## Important Architecture Decisions
-1. **Modular Architecture over Layered**: Files grouped by feature (`modules/auth`) for scalability.
-2. **Soft Deletions**: To preserve historical AI context, `Emergency` and `Incident` records are never `remove()`'d.
-3. **Trajectory Separation**: GPS updates are not appended to a `Vehicle.history` array; they go into a dedicated `Trajectory` collection to prevent unbounded document growth.
-4. **Out-of-Order GPS**: We ingest GPS data immediately with actual timestamps. We don't overwrite newer data if it arrives late. Querying relies on `.sort({ timestamp: -1 })`.
+1. **Modular Architecture over Layered**: Files grouped by feature.
+2. **Trajectory Separation**: GPS updates are in a dedicated collection.
+3. **Routing Abstraction**: Decoupled the frontend/DB logic from specific route mapping providers (Google vs Mapbox).
+4. **Turf.js Integration**: Prevented writing custom Haversine formulas in favor of robust, industry-standard NPM package.
 
 ## Important Constraints
 - GeoJSON coordinates must STRICTLY be `[longitude, latitude]`.
 
 ## Known Issues
-- Real Device API-Key authentication is not implemented (currently relies on User JWT for testing).
+- Real Device API-Key authentication is not implemented for trajectory ingestion.
 
 ## Technical Debt
-- Pagination uses `skip` and `limit`, which is acceptable for early stages but may need cursor-based pagination as Trajectory records grow into the millions.
+- Pagination uses `skip` and `limit`.
 
 ## Future Development
-- Device Authentication Layer.
-- Geospatial Processing & Routing integrations.
+- Part 7 — Route Deviation Detection + Traffic + ETA.
 
 ## Next Part
-Part 6 — Geospatial Processing + Routing
+Part 7 — Route Deviation Detection + Traffic + ETA.
 
 ## Do Not Implement Yet
-- Maps, Socket.IO, Live frontend, Route Deviation, GeoAgent, OpenAI/Gemini, automated dispatch.
-
-## Development Notes
-- The `Trajectory` collection uses a compound index `{ vehicle: 1, timestamp: -1 }` to make `/latest` and `/recent` queries instantly resolve without full collection scans.
+- Maps, Socket.IO, Live frontend, Route Deviation Engine, GeoAgent, OpenAI/Gemini, automated dispatch.
 
 ## Changelog Summary
 - **Part 1-3**: Base, Auth, Vehicles.
 - **Part 4**: Emergencies, Incidents, Soft-Deletes.
 - **Part 5**: Trajectory Model, GPS API, GeoJSON validation.
+- **Part 6**: Route Model, Geospatial service, Turf.js, Mock Routing provider.
