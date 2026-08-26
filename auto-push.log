@@ -50,3 +50,9 @@ To https://github.com/iwantcupcake/geoagent-emegency-project.git
 To https://github.com/iwantcupcake/geoagent-emegency-project.git
    6fd82f1..4bfbf85  main -> main
 [Thu Aug 27 00:27:13 IST 2026] Changes detected, committing and pushing...
+[main eecbd55] Auto-commit: 2026-08-27 00:27:13
+ 4 files changed, 112 insertions(+)
+ create mode 100644 server/routes/vehicleRoutes.js
+To https://github.com/iwantcupcake/geoagent-emegency-project.git
+   4bfbf85..eecbd55  main -> main
+[Thu Aug 27 00:28:16 IST 2026] Changes detected, committing and pushing...
