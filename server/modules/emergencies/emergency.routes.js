@@ -10,6 +10,7 @@ import {
 import { protect } from '../auth/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/roleMiddleware.js';
 import { validateEmergencyCreate, validateEmergencyUpdate, validateEmergencyAssign } from './emergency.validation.js';
+import { getEmergencyRoutes } from '../routes/route.controller.js';
 
 const router = express.Router();
 
@@ -36,5 +37,10 @@ router
   .route('/:emergencyId/assign')
   // PATCH: CONTROL_ROOM & ADMIN
   .patch(requireRole('CONTROL_ROOM', 'ADMIN'), validateEmergencyAssign, assignVehicle);
+
+router
+  .route('/:emergencyId/routes')
+  // GET: CONTROL_ROOM & ADMIN
+  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getEmergencyRoutes);
 
 export default router;

@@ -1,43 +1,54 @@
-import { body } from 'express-validator';
 import { validateCoordinates } from '../../shared/services/geospatial.service.js';
 
-export const validateRouteCreation = [
-  body('emergencyId')
-    .notEmpty()
-    .withMessage('Emergency ID is required')
-    .isMongoId()
-    .withMessage('Invalid Emergency ID format'),
-  
-  body('vehicleId')
-    .notEmpty()
-    .withMessage('Vehicle ID is required')
-    .isMongoId()
-    .withMessage('Invalid Vehicle ID format'),
+/**
+ * Validates the creation of a new route
+ */
+export const validateRouteCreate = (req, res, next) => {
+  const { emergencyId, vehicleId, routeType, origin, destination } = req.body;
 
-  body('routeType')
-    .optional()
-    .isIn(['PLANNED', 'ALTERNATIVE'])
-    .withMessage('Invalid routeType'),
+  if (!emergencyId) {
+    const error = new Error('emergencyId is required');
+    error.status = 400;
+    error.isOperational = true;
+    return next(error);
+  }
 
-  body('origin')
-    .notEmpty()
-    .withMessage('Origin is required')
-    .isObject()
-    .withMessage('Origin must be a GeoJSON object')
-    .custom((value) => {
-      if (value.type !== 'Point') throw new Error('Origin must be a GeoJSON Point');
-      if (!validateCoordinates(value.coordinates)) throw new Error('Invalid origin coordinates. Must be [longitude, latitude] within valid ranges');
-      return true;
-    }),
+  if (!vehicleId) {
+    const error = new Error('vehicleId is required');
+    error.status = 400;
+    error.isOperational = true;
+    return next(error);
+  }
 
-  body('destination')
-    .notEmpty()
-    .withMessage('Destination is required')
-    .isObject()
-    .withMessage('Destination must be a GeoJSON object')
-    .custom((value) => {
-      if (value.type !== 'Point') throw new Error('Destination must be a GeoJSON Point');
-      if (!validateCoordinates(value.coordinates)) throw new Error('Invalid destination coordinates. Must be [longitude, latitude] within valid ranges');
-      return true;
-    })
-];
+  if (routeType) {
+    const validTypes = ['PLANNED', 'ALTERNATIVE'];
+    if (!validTypes.includes(routeType)) {
+      const error = new Error('Invalid routeType');
+      error.status = 400;
+      error.isOperational = true;
+      return next(error);
+    }
+  }
+
+  const isValidGeoJSONPoint = (point) => {
+    if (!point || typeof point !== 'object') return false;
+    if (point.type !== 'Point') return false;
+    return validateCoordinates(point.coordinates);
+  };
+
+  if (!isValidGeoJSONPoint(origin)) {
+    const error = new Error('Invalid origin. Must be a valid GeoJSON Point');
+    error.status = 400;
+    error.isOperational = true;
+    return next(error);
+  }
+
+  if (!isValidGeoJSONPoint(destination)) {
+    const error = new Error('Invalid destination. Must be a valid GeoJSON Point');
+    error.status = 400;
+    error.isOperational = true;
+    return next(error);
+  }
+
+  next();
+};
