@@ -1,5 +1,5 @@
 import { verifyToken } from '../utils/jwt.js';
-import User from '../models/User.js';
+import User from './user.model.js';
 
 /**
  * Protect routes by requiring a valid JWT in the HTTP-only cookie

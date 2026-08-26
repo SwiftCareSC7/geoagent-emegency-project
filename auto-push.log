@@ -66,3 +66,20 @@ To https://github.com/iwantcupcake/geoagent-emegency-project.git
 To https://github.com/iwantcupcake/geoagent-emegency-project.git
    498a342..00a6882  main -> main
 [Thu Aug 27 00:30:21 IST 2026] Changes detected, committing and pushing...
+[main 84df853] Auto-commit: 2026-08-27 00:30:21
+ 13 files changed, 5 insertions(+)
+ rename server/{controllers/authController.js => modules/auth/auth.controller.js} (100%)
+ rename server/{middleware/authMiddleware.js => modules/auth/auth.middleware.js} (100%)
+ rename server/{routes/authRoutes.js => modules/auth/auth.routes.js} (100%)
+ rename server/{services/authService.js => modules/auth/auth.service.js} (100%)
+ rename server/{utils/jwt.js => modules/auth/jwt.utils.js} (100%)
+ rename server/{models/User.js => modules/auth/user.model.js} (100%)
+ rename server/{controllers/vehicleController.js => modules/vehicles/vehicle.controller.js} (100%)
+ rename server/{models/Vehicle.js => modules/vehicles/vehicle.model.js} (100%)
+ rename server/{routes/vehicleRoutes.js => modules/vehicles/vehicle.routes.js} (100%)
+ rename server/{services/vehicleService.js => modules/vehicles/vehicle.service.js} (100%)
+ rename server/{ => shared}/middleware/errorHandler.js (100%)
+ rename server/{ => shared}/middleware/roleMiddleware.js (100%)
+To https://github.com/iwantcupcake/geoagent-emegency-project.git
+   00a6882..84df853  main -> main
+[Thu Aug 27 00:31:25 IST 2026] Changes detected, committing and pushing...

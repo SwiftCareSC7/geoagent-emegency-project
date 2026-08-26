@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import User from '../models/User.js';
+import User from './user.model.js';
 
 /**
  * Register a new user securely
