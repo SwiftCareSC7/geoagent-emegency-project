@@ -49,18 +49,4 @@ export const protect = async (req, res, next) => {
   }
 };
 
-/**
- * Role-based authorization middleware (for future use)
- * @param {...String} roles 
- */
-export const requireRole = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      const error = new Error('Forbidden: Insufficient privileges');
-      error.status = 403;
-      error.isOperational = true;
-      return next(error);
-    }
-    next();
-  };
-};
+// requireRole moved to roleMiddleware.js
