@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "mapbox-geospatial-operations": {
+      "source": "mapbox/mapbox-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/mapbox-geospatial-operations/SKILL.md",
+      "computedHash": "9edd54aac79f953cb61b980c15b87e52fbe628d22d43940cc2fd98b825d5c154"
+    },
+    "routing-traffic-with-route53-and-cloudfront": {
+      "source": "aws/agent-toolkit-for-aws",
+      "sourceType": "github",
+      "skillPath": "skills/specialized-skills/networking-and-content-delivery-skills/routing-traffic-with-route53-and-cloudfront/SKILL.md",
+      "computedHash": "b66d1b18cfda2c05279891b7c78f46e952569b6317047f5f99c586beeea2692e"
+    }
+  }
+}
