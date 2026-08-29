@@ -1,6 +1,8 @@
 import http from 'http';
 import express from 'express';
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -100,4 +102,24 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server is running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
+
+// --- Graceful Shutdown ---
+const gracefulShutdown = async (signal) => {
+  console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+  try {
+    server.close(() => {
+      console.log('HTTP server closed.');
+    });
+    await mongoose.connection.close();
+    console.log('MongoDB connection closed.');
+    process.exit(0);
+  } catch (err) {
+    console.error(`Error during graceful shutdown: ${err.message}`);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
 
