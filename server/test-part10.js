@@ -512,16 +512,22 @@ try {
   const admin = await createAdminUser('Operator Fourteen', 'op14@test.local', 'CONTROL_ROOM');
   const token = generateToken(admin._id, admin.role);
 
-  // Mock User.findById so socket auth + REST auth can resolve the same admin
+  // Mock User.findById so both REST middleware and socket auth resolve the same admin.
+  // REST middleware awaits User.findById directly (no .select).
+  // Socket handler awaits User.findById(...).select('-password').
+  // The mock must support both call patterns.
   const originalFindById = User.findById;
-  User.findById = () => ({
-    select: () => Promise.resolve({
+  User.findById = () => {
+    const userObj = {
       _id: admin._id,
       name: admin.name,
       email: admin.email,
       role: admin.role
-    })
-  });
+    };
+    const result = Promise.resolve(userObj);
+    result.select = () => Promise.resolve(userObj);
+    return result;
+  };
 
   // Seed data while User.findById is mocked
   const vehicleDoc = await createVehicle(seededVehicleId(14), { status: 'EN_ROUTE' });
