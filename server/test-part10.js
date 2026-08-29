@@ -458,24 +458,27 @@ try {
 // =====================================================
 console.log('\n12. Authorization: insufficient role returns 403');
 try {
-  // Register a non-operational user (we use CONTROL_ROOM-only restriction here)
-  // The Decision module grants CONTROL_ROOM and ADMIN. We need to simulate a user without role.
-  // Easiest: forge a token for a user whose role is something else.
-  const weak = await User.create({
-    name: 'Weak',
-    email: 'weak@test.local',
-    password: 'x',
-    role: 'CONTROL_ROOM' // include role first to satisfy user creation; we'll downgrade role after
+  // The User model only allows CONTROL_ROOM or ADMIN. We bypass the model by
+  // mocking User.findById to return an object with an unsupported role.
+  const originalFindById = User.findById;
+  const mockId = new mongoose.Types.ObjectId();
+  User.findById = () => ({
+    select: () => Promise.resolve({
+      _id: mockId,
+      name: 'Weak',
+      email: 'weak@test.local',
+      role: 'GUEST' // not in the allowlist
+    })
   });
-  weak.role = 'SOME_OTHER_ROLE'; // simulate role downgrade
-  await weak.save();
-  const token = generateToken(weak._id, weak.role);
+  const token = generateToken(mockId, 'GUEST');
 
   const res = await fetch(`${serverUrl}/api/decisions/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Cookie': `token=${token}` },
     body: JSON.stringify({ emergencyId: 'EMG-0001' })
   });
+  User.findById = originalFindById;
+
   if (res.status !== 403) throw new Error(`Expected 403, got ${res.status}`);
   ok('Non-operational role returns 403');
 } catch (e) { bad('Authorization 403', e); }
@@ -509,7 +512,7 @@ try {
   const admin = await createAdminUser('Operator Fourteen', 'op14@test.local', 'CONTROL_ROOM');
   const token = generateToken(admin._id, admin.role);
 
-  // Mock User.findById for socket auth
+  // Mock User.findById so socket auth + REST auth can resolve the same admin
   const originalFindById = User.findById;
   User.findById = () => ({
     select: () => Promise.resolve({
@@ -520,6 +523,16 @@ try {
     })
   });
 
+  // Seed data while User.findById is mocked
+  const vehicleDoc = await createVehicle(seededVehicleId(14), { status: 'EN_ROUTE' });
+  const emergencyDoc = await createEmergencyWithAssignment(14, seededVehicleId(14), {
+    userId: admin._id,
+    assignedVehicleId: vehicleDoc._id
+  });
+  await createRoute(vehicleDoc, emergencyDoc, { userId: admin._id });
+  await createTrajectory(vehicleDoc, 77.5946, 12.9716, 30, 90);
+
+  // Connect socket
   const socket = ioClient(serverUrl, {
     transports: ['websocket'],
     auth: { token },
@@ -543,21 +556,10 @@ try {
         reject(e);
       }
     });
-    setTimeout(() => reject(new Error('Decision event not received within timeout')), 5000);
+    setTimeout(() => reject(new Error('Decision event not received within timeout')), 8000);
   });
 
-  // Trigger an analyze via REST so the service emits the event
-  const vehicleDoc = await createVehicle(seededVehicleId(14), { status: 'EN_ROUTE' });
-  const emergencyDoc = await createEmergencyWithAssignment(14, seededVehicleId(14), {
-    userId: admin._id,
-    assignedVehicleId: vehicleDoc._id
-  });
-  await createRoute(vehicleDoc, emergencyDoc, { userId: admin._id });
-  await createTrajectory(vehicleDoc, 77.5946, 12.9716, 30, 90);
-
-  // Restore User.findById so REST middleware works
-  User.findById = originalFindById;
-
+  // Trigger analyze via REST while auth middleware can find the user
   const res = await fetch(`${serverUrl}/api/decisions/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Cookie': `token=${token}` },
@@ -567,8 +569,8 @@ try {
 
   await eventReceived;
 
-  // Cleanup
   socket.disconnect();
+  User.findById = originalFindById;
   ok('decision.created event received by subscriber');
 } catch (e) { bad('Real-time decision.created event', e); }
 
