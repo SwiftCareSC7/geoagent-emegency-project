@@ -1,9 +1,25 @@
-import cookie from 'cookie';
 import { verifyToken } from '../auth/jwt.utils.js';
 import User from '../auth/user.model.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import { CLIENT_COMMANDS, REALTIME_ROOMS } from './realtime.constants.js';
+
+/**
+ * Self-contained cookie parser for handshake headers
+ * @param {String} cookieString
+ * @returns {Object} Key-value pair of cookies
+ */
+export const parseCookie = (cookieString) => {
+  if (!cookieString || typeof cookieString !== 'string') return {};
+  return cookieString.split(';').reduce((cookies, item) => {
+    const [name, ...val] = item.trim().split('=');
+    if (name) {
+      cookies[name.trim()] = decodeURIComponent(val.join('='));
+    }
+    return cookies;
+  }, {});
+};
+
 
 /**
  * Socket.IO Handshake Authentication Middleware
@@ -27,9 +43,10 @@ export const socketAuthMiddleware = async (socket, next) => {
 
     // 3. Check HTTP-only cookie in handshake headers
     if (!token && socket.handshake.headers.cookie) {
-      const parsedCookies = cookie.parse(socket.handshake.headers.cookie);
+      const parsedCookies = parseCookie(socket.handshake.headers.cookie);
       token = parsedCookies.token;
     }
+
 
     if (!token) {
       const error = new Error('Authentication error: No token provided');

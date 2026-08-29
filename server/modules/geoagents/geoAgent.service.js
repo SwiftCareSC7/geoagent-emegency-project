@@ -6,6 +6,8 @@ import { geoAgentConstants } from './geoagent.constants.js';
 import { geoAgentToolDeclarations, executeGeoAgentTool } from './geoagent.tools.js';
 import { GEOAGENT_SYSTEM_PROMPT } from './prompts/geoagent.system.js';
 import { validateGeoAgentOutput, sanitizeText } from './geoagent.schemas.js';
+import realtimeService from '../realtime/realtime.service.js';
+
 
 class GeoAgentService {
   /**
