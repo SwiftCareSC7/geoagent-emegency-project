@@ -32,6 +32,29 @@ const TEST_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geoagent-em
 // Lightweight HTTP + Socket.IO server for real-time tests
 const expressModule = await import('express');
 const app = expressModule.default();
+app.use(expressModule.default.json());
+app.use((req, res, next) => {
+  // Parse cookies manually for test
+  if (req.headers.cookie) {
+    req.cookies = {};
+    for (const part of req.headers.cookie.split(';')) {
+      const [k, ...v] = part.trim().split('=');
+      req.cookies[k] = decodeURIComponent(v.join('='));
+    }
+  } else {
+    req.cookies = {};
+  }
+  next();
+});
+
+// Mount auth + decisions + emergency routes
+const authRoutes = (await import('./modules/auth/auth.routes.js')).default;
+const decisionRoutes = (await import('./modules/decisions/decision.routes.js')).default;
+const emergencyRoutes = (await import('./modules/emergencies/emergency.routes.js')).default;
+app.use('/api/auth', authRoutes);
+app.use('/api/decisions', decisionRoutes);
+app.use('/api/emergencies', emergencyRoutes);
+
 const httpServer = http.createServer(app);
 realtimeService.init(httpServer, { clientUrl: 'http://localhost:3000' });
 
