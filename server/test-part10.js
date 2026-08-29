@@ -588,6 +588,20 @@ try {
   const admin = await createAdminUser('Operator Fifteen', 'op15@test.local', 'CONTROL_ROOM');
   const token = generateToken(admin._id, admin.role);
 
+  // Mock User.findById for REST auth (awaited directly + supports .select for completeness)
+  const originalFindById = User.findById;
+  User.findById = () => {
+    const userObj = {
+      _id: admin._id,
+      name: admin.name,
+      email: admin.email,
+      role: admin.role
+    };
+    const result = Promise.resolve(userObj);
+    result.select = () => Promise.resolve(userObj);
+    return result;
+  };
+
   const vehicleDoc = await createVehicle(seededVehicleId(15), { status: 'EN_ROUTE' });
   const emergencyDoc = await createEmergencyWithAssignment(15, seededVehicleId(15), {
     userId: admin._id,
@@ -607,6 +621,8 @@ try {
   if (!Array.isArray(body.data) || body.data.length === 0) throw new Error('Should have at least 1 decision');
   const found = body.data.find((d) => d.decisionId === generated.decisionId);
   if (!found) throw new Error('Generated decision not in list');
+
+  User.findById = originalFindById;
   ok('GET /api/emergencies/:emergencyId/decisions returns paginated decisions');
 } catch (e) { bad('GET decisions for emergency', e); }
 
