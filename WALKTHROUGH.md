@@ -148,13 +148,14 @@ Here is the exact step-by-step lifecycle of an emergency mission from intake to 
 ```bash
 cd server
 
-# Execute full automated test suite (6 suites)
+# Execute full automated test suite (7 suites)
 node test-part7.js
 node test-part8.js
 node test-part9.js
 node test-part10.js
 node test-part11.js
 node test-part12.js
+node test-security.js
 ```
 
 **Results**:
@@ -164,4 +165,6 @@ node test-part12.js
 - `test-part10.js`: 16 passed
 - `test-part11.js`: 4 passed
 - `test-part12.js`: 6 passed
-- **Total**: 49 assertions passed (0 failures, 100% pass rate).
+- `test-security.js`: 23 passed
+- **Total**: 72 assertions passed (0 failures, 100% pass rate across 7 test suites).
+

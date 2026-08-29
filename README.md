@@ -144,20 +144,22 @@ curl http://localhost:5000/api/health
 
 ## 5. Running Automated Test Suites
 
-The test suite validates the complete backend stack across 6 comprehensive suites:
+The test suite validates the complete backend stack across 7 comprehensive suites:
 
 ```bash
 cd server
 
-# Run all 6 test suites
-node test-part7.js   # Deviation, Traffic, ETA, Situation Analysis
-node test-part8.js   # GeoAgent AI Function-Calling & Fallbacks
-node test-part9.js   # Real-Time Socket.IO Handshake & Room Broadcasting
-node test-part10.js  # Authoritative Decision & Dispatch Engine
-node test-part11.js  # Full Backend Integration & Epistemic Breakdown
-node test-part12.js  # Hardening, Security, Status Codes & Query Bounds
+# Run all 7 test suites
+node test-part7.js    # Deviation, Traffic, ETA, Situation Analysis
+node test-part8.js    # GeoAgent AI Function-Calling & Fallbacks
+node test-part9.js    # Real-Time Socket.IO Handshake & Room Broadcasting
+node test-part10.js   # Authoritative Decision & Dispatch Engine
+node test-part11.js   # Full Backend Integration & Epistemic Breakdown
+node test-part12.js   # Hardening, Status Codes & Query Boundaries
+node test-security.js # Dedicated 23-Point Security & Privilege Suite
 ```
-**Audit Result**: 49 / 49 tests passing (100% pass rate).
+**Audit Result**: 72 / 72 assertions passing across 7 test suites (100% pass rate).
+
 
 ---
 
