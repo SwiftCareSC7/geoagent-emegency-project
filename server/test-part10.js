@@ -460,15 +460,15 @@ console.log('\n12. Authorization: insufficient role returns 403');
 try {
   // The User model only allows CONTROL_ROOM or ADMIN. We bypass the model by
   // mocking User.findById to return an object with an unsupported role.
+  // Auth middleware awaits User.findById directly (no .select()), so we return
+  // the user object directly.
   const originalFindById = User.findById;
   const mockId = new mongoose.Types.ObjectId();
-  User.findById = () => ({
-    select: () => Promise.resolve({
-      _id: mockId,
-      name: 'Weak',
-      email: 'weak@test.local',
-      role: 'GUEST' // not in the allowlist
-    })
+  User.findById = () => Promise.resolve({
+    _id: mockId,
+    name: 'Weak',
+    email: 'weak@test.local',
+    role: 'GUEST' // not in the allowlist
   });
   const token = generateToken(mockId, 'GUEST');
 
