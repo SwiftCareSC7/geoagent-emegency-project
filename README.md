@@ -173,7 +173,92 @@ All events are wrapped in a standard versioned envelope:
 
    # Run Part 9 (Real-time Socket.IO, handshake auth, rooms, events)
    node test-part9.js
+
+   # Run Part 10 (Decision & Dispatch Engine)
+   node test-part10.js
    ```
+
+## Decision & Dispatch Engine (Part 10)
+
+The Decision Engine is the **backend authority** for operational decisions. It is intentionally separated from the GeoAgent (advisory) layer.
+
+```text
+Observed Data
+   │
+   ▼
+Deterministic Situation Analysis
+   │
+   ▼
+GeoAgent Advisory Recommendation
+   │
+   ▼
+Decision Engine Rules
+   │
+   ▼
+Operational Decision (PENDING_OPERATOR_ACTION)
+   │
+   ▼
+Human Operator (CONTROL_ROOM / ADMIN) Approves or Rejects
+   │
+   ▼
+Controlled Action Execution
+```
+
+### Decision Types
+`CONTINUE`, `REROUTE`, `CONSIDER_BACKUP`, `ALERT_CONTROL_ROOM`, `NO_ACTION`
+
+### Decision Severity
+`NORMAL`, `WARNING`, `CRITICAL`
+
+### Decision Status State Machine
+```
+PENDING_OPERATOR_ACTION ──> APPROVED ──> EXECUTED
+            │
+            ├──> REJECTED (terminal)
+            └──> CANCELLED (terminal)
+```
+
+### Decision APIs
+- `POST /api/decisions/analyze` — generate decision for an emergency
+- `GET /api/decisions/:decisionId` — retrieve one decision
+- `GET /api/emergencies/:emergencyId/decisions` — paginated history
+- `PATCH /api/decisions/:decisionId/approve` — operator approval
+- `PATCH /api/decisions/:decisionId/reject` — operator rejection
+- `PATCH /api/decisions/:decisionId/execute` — execute approved decision
+
+### AI Recommendation vs Backend Decision
+- GeoAgent produces a **recommendation** (`action`, `confidence`).
+- Decision Engine produces an **operational decision** (`actions`, `severity`, `status`, `reasonCodes`).
+- The two may disagree; in that case the decision carries the `AI_RECOMMENDATION_CONFLICT` reason code and both outputs are returned for auditability.
+- The LLM's confidence is never used as a probability to override deterministic safety rules.
+
+### Decision Persistence
+Decisions are persisted to MongoDB with a compact `inputSnapshot` (no full document duplication) and a SHA-256 `situationHash` for idempotency (30-second reuse window). Audit fields (`approvedBy`, `approvedAt`, `rejectedBy`, `rejectedAt`, `rejectionReason`, `executedAt`, `executionSummary`) capture operator actions.
+
+### Backup Selection
+`Vehicle.find({ status: 'AVAILABLE' })` candidates are filtered by `BACKUP_SEARCH_RADIUS_KM` and ranked by a deterministic per-vehicle ETA. The decision records the recommended candidate but does **not** auto-dispatch.
+
+### Security
+- All decision endpoints require `CONTROL_ROOM` or `ADMIN` role.
+- The request body may contain **only** `emergencyId`. Any attempt to supply operational fields (`eta`, `traffic`, `deviation`, `incidents`, `geoAgentRecommendation`, `severity`, `actions`, etc.) returns HTTP 400.
+- Decision state transitions are explicitly enforced. Invalid transitions return HTTP 409.
+- No credentials, API keys, or private LLM chain-of-thought are persisted.
+
+### Decision Configuration (prototype policy)
+```env
+CRITICAL_ETA_THRESHOLD_MINUTES=15
+MAX_ACCEPTABLE_DELAY_MINUTES=8
+BACKUP_TIME_ADVANTAGE_MINUTES=5
+CRITICAL_DEVIATION_DISTANCE_METERS=250
+BACKUP_SEARCH_RADIUS_KM=10
+MAX_ALTERNATIVE_ROUTES=3
+```
+
+These values are prototype policy, not medically validated.
+
+### Limitations
+- Backup ETA is a deterministic screening estimate; a future iteration should call the routing service for accurate provider-based ETAs.
+- The action executor does not auto-create new `Route` documents for `REROUTE`; it emits a real-time suggestion only.
 
 4. **Start Development Server**:
    ```bash
