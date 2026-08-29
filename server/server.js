@@ -14,6 +14,7 @@ import routeRoutes from './modules/routes/route.routes.js';
 import deviationRoutes from './modules/deviation/deviation.routes.js';
 import trafficRoutes from './modules/traffic/traffic.routes.js';
 import analysisRoutes from './modules/analysis/analysis.routes.js';
+import geoagentRoutes from './modules/geoagents/geoagent.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -67,6 +68,8 @@ app.use('/api/routes', routeRoutes);
 app.use('/api/deviation', deviationRoutes);
 app.use('/api/traffic', trafficRoutes);
 app.use('/api/analysis', analysisRoutes);
+app.use('/api/geoagent', geoagentRoutes);
+
 
 
 // --- Error Handling ---
