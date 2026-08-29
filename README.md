@@ -11,7 +11,7 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 - **ODM**: Mongoose
 - **Security**: bcryptjs, jsonwebtoken, helmet, cors
 - **Geospatial Processing**: @turf/turf
-- **AI**: @google/genai (Gemini SDK)
+- **AI Decision Engine**: @google/genai (Google Gemini SDK)
 - **Environment**: dotenv, cookie-parser
 
 ### Frontend (SwiftCare GeoAgent Prototype)
@@ -38,14 +38,17 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 - **Incident Proximity Correlation** (Distance to vehicle and route, cause evidence tagging)
 - **ETA & Delay Engine** (Deterministic arithmetic, speed blending, zero-speed guards)
 - **Situation Analysis API** (`GET /api/analysis/vehicle/:vehicleId`, `GET /api/routes/:routeId/analysis`)
+- **Production GeoAgent AI Decision Engine** (`POST /api/geoagent/analyze`, `POST /api/geoagent/analyze/vehicle/:vehicleId`)
+- **Controlled GeoAgent AI Tools** (`getVehicleSituation`, `getAlternativeRoutes`, `getNearbyAvailableVehicles`, `getNearbyIncidents`)
+- **AI Schema Validation & Sanitization** (Strict JSON structure, prompt injection defense)
+- **Deterministic AI Fallback Engine** (Safe degradation if Gemini is unreachable or unconfigured)
 - **Frontend Landing Page & Prototype Dashboard** (SwiftCare UI)
-- **GeoAgent AI PoC** (Gemini function-calling script)
 
 ### PLANNED
-- **Full GeoAgent Express API Integration** (`POST /api/geoagent/recommend`)
-- **Frontend ↔ Backend Live Integration** (replacing mock adapter with live API)
 - **Real-Time WebSocket Updates** (Socket.IO for live driver and operator dashboards)
-- **Live Traffic API Providers** (Google Routes / Mapbox Traffic integration)
+- **Decision Engine Execution Layer** (Operational action dispatch and approval workflows)
+- **Frontend ↔ Backend Live Integration** (Replacing mock adapter with live backend API)
+- **Live Traffic API Providers** (Google Routes / Mapbox Traffic live integration)
 - **Control Room Multi-Vehicle Dashboard**
 
 ## Project Structure
@@ -68,12 +71,22 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 │   │   ├── deviation/                # Route deviation detection & classification
 │   │   ├── traffic/                  # Traffic abstraction & mock provider
 │   │   ├── analysis/                 # Situation analysis orchestrator & ETA engine
-│   │   └── geoagents/                # GeoAgent AI PoC (Gemini)
+│   │   └── geoagents/                # Production GeoAgent AI module
+│   │       ├── geoagent.constants.js # Constants, action & cause enums
+│   │       ├── geoagent.schemas.js   # JSON validation & sanitization
+│   │       ├── geoagent.tools.js     # Tool declarations & handlers
+│   │       ├── geoagent.validation.js# Request validators
+│   │       ├── geoagent.controller.js# HTTP controllers
+│   │       ├── geoagent.routes.js    # Express route definitions
+│   │       ├── geoAgent.service.js   # Gemini tool orchestration & fallback
+│   │       └── prompts/
+│   │           └── geoagent.system.js# System prompt & guardrails
 │   ├── shared/
 │   │   ├── middleware/               # errorHandler, roleMiddleware
 │   │   └── services/                 # geospatial.service.js (Turf.js)
 │   ├── server.js                     # Express entry point
-│   ├── test-part7.js                 # Unit & logic verification tests
+│   ├── test-part7.js                 # Part 7 tests
+│   ├── test-part8.js                 # Part 8 tests
 │   └── .env.example
 ├── geoagent-emergency-project/       # Legacy Next.js scaffold (unused)
 ├── AI_MEMORY.md
@@ -121,31 +134,20 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
    INCIDENT_PROXIMITY_RADIUS_METERS=500
 
    # GeoAgent AI
-   # GEMINI_API_KEY=your_gemini_api_key
+   GEMINI_API_KEY=your_gemini_api_key
+   GEMINI_MODEL=gemini-2.5-flash
    ```
 
-3. **Run Unit & Logic Tests**:
+3. **Run Unit & Integration Tests**:
    ```bash
    node test-part7.js
+   node test-part8.js
    ```
 
 4. **Start Development Server**:
    ```bash
    npm run dev
    ```
-
-## Frontend Setup
-
-1. **Install dependencies** (from project root):
-   ```bash
-   npm install
-   ```
-
-2. **Run the development server**:
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:3000](http://localhost:3000) to view the SwiftCare prototype UI.
 
 ---
 
@@ -206,73 +208,59 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 ### Situation Analysis (`/api/analysis`)
 - `GET /vehicle/:vehicleId` — Comprehensive vehicle situation analysis (Deviation + Progress + Traffic + Incidents + ETA + Delay + Evidence)
 
-#### Example Situation Analysis Response:
+### GeoAgent AI Decision Engine (`/api/geoagent`)
+- `POST /analyze` — Trigger AI decision analysis for an emergency:
+  ```json
+  {
+    "emergencyId": "EMG-0001"
+  }
+  ```
+- `POST /analyze/vehicle/:vehicleId` — Trigger AI decision analysis for a vehicle
+
+#### Example GeoAgent AI Response:
 ```json
 {
   "success": true,
-  "message": "Vehicle situation analysis generated",
+  "message": "GeoAgent emergency analysis generated",
   "data": {
+    "status": "ANALYZED",
     "vehicleId": "AMB-001",
-    "routeId": "ROUTE-9A4B3C2D",
     "emergencyId": "EMG-0001",
-    "analyzedAt": "2026-08-29T18:00:00.000Z",
-    "status": {
-      "route": "DEVIATED",
-      "traffic": "HEAVY"
-    },
-    "deviation": {
-      "status": "DEVIATED",
-      "distanceFromRouteMeters": 182.4,
-      "nearestPointOnRoute": {
-        "type": "Point",
-        "coordinates": [77.5950, 12.9720]
-      },
-      "bearingDifferenceDegrees": 74.2,
-      "vehicleBearing": 145.0,
-      "routeBearing": 70.8,
-      "gpsStability": "STABLE",
-      "sustainedDeviation": true,
-      "confidence": "HIGH"
-    },
-    "progress": {
-      "progressPercentage": 42.5,
-      "distanceAlongRouteMeters": 2125.0,
-      "remainingDistanceMeters": 2875.0,
-      "totalRouteDistanceMeters": 5000.0
-    },
-    "traffic": {
-      "level": "HEAVY",
-      "speedKmh": 12.0,
-      "freeFlowSpeedKmh": 45.0,
-      "congestionRatio": 0.73,
-      "source": "MOCK"
+    "assessment": {
+      "routeStatus": "DEVIATED",
+      "likelyCause": "ACCIDENT_INDUCED_CONGESTION",
+      "confidence": 0.92
     },
     "eta": {
       "currentMinutes": 15,
       "originalMinutes": 10,
-      "remainingDistanceMeters": 2875.0,
-      "estimatedSpeedKmh": 12.0,
-      "status": "AVAILABLE"
+      "delayMinutes": 5
     },
-    "delay": {
-      "delayMinutes": 5,
-      "timeSavedMinutes": 0
+    "recommendation": {
+      "action": "REROUTE",
+      "routeId": "ROUTE-0002",
+      "summary": "Reroute via bypass to avoid high severity accident corridor"
     },
-    "incidents": [
-      {
-        "incidentId": "INC-0001",
-        "type": "ACCIDENT",
-        "severity": "HIGH",
-        "distanceFromVehicleMeters": 350.0,
-        "distanceFromRouteMeters": 45.0
-      }
-    ],
-    "evidence": [
-      "ROUTE_DEVIATION",
-      "HEAVY_TRAFFIC",
-      "ACCIDENT_NEAR_ROUTE",
-      "LOW_VEHICLE_SPEED"
-    ]
+    "backup": {
+      "recommended": false,
+      "reason": "Primary ambulance delay is manageable via Route B bypass",
+      "candidateVehicleId": null
+    },
+    "observations": {
+      "observed": [
+        "Ambulance is 182m from planned route",
+        "Traffic is heavy with congestion ratio 0.73",
+        "High-severity accident reported 350m ahead on primary route"
+      ],
+      "inferred": [
+        "Driver deviated to avoid accident-induced queue"
+      ],
+      "unknown": [
+        "Driver audio communication"
+      ]
+    },
+    "reasoning": "The ambulance is currently experiencing heavy congestion due to an accident on the primary corridor. Taking Route B via the bypass saves 5 minutes and avoids the bottleneck.",
+    "analyzedAt": "2026-08-29T18:00:00.000Z"
   }
 }
 ```

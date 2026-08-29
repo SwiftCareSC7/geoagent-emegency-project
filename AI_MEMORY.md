@@ -1,10 +1,10 @@
 # GeoAgentic Emergency Response System — AI Memory
 
 ## Project Purpose
-To monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays and ETA, recommend alternative routes, and provide decision support to emergency control room operators via an AI agent (GeoAgent).
+To monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays and ETA, recommend alternative routes, and provide intelligent decision support to emergency control room operators via an AI agent (GeoAgent).
 
 ## Problem Statement
-Current emergency response systems lack intelligent, real-time spatial awareness. Control rooms struggle to monitor active deviations from optimal routes and don't have automated context (like nearby incidents or traffic) to provide immediate driver assistance.
+Current emergency response systems lack intelligent, real-time spatial awareness. Control rooms struggle to monitor active deviations from optimal routes and don't have automated context (like nearby incidents, live traffic, or candidate backup vehicles) to provide immediate driver assistance.
 
 ## Core Requirements
 - Secure backend foundation.
@@ -15,8 +15,8 @@ Current emergency response systems lack intelligent, real-time spatial awareness
 - Traffic conditions abstraction & mock provider.
 - Incident correlation (proximity to vehicle & route).
 - ETA & Delay calculation (deterministic arithmetic, speed blending, zero-speed guards).
-- Structured vehicle-route situation analysis for future AI decision engine.
-- GeoAgent AI decision engine proof-of-concept (Gemini tool-calling).
+- Structured vehicle-route situation analysis for AI consumption.
+- Production-grade GeoAgent AI decision engine using Google Gemini tool-calling.
 - Frontend prototype UI (SwiftCare GeoAgent) for driver dashboard and landing pages.
 
 ## Technology Stack
@@ -26,7 +26,7 @@ Current emergency response systems lack intelligent, real-time spatial awareness
 - **MongoDB** + **Mongoose** (Database & ODM)
 - **bcryptjs** + **jsonwebtoken** + **helmet** + **cors** (Security)
 - **@turf/turf** (Geospatial processing & calculations)
-- **@google/genai** (Gemini AI SDK for GeoAgent PoC)
+- **@google/genai** (Google Gemini AI SDK for GeoAgent function calling)
 - **dotenv**, **cookie-parser**, **nodemon** (Utilities)
 
 ### Frontend (SwiftCare GeoAgent Prototype)
@@ -75,8 +75,12 @@ Current emergency response systems lack intelligent, real-time spatial awareness
               SITUATION ANALYSIS
                        │
                        ▼
-                  FUTURE AI
                    GEOAGENT
+                  (Gemini LLM)
+                 ┌─────┴─────┐
+                 ▼           ▼
+             Tool Calls   Structured
+             (Backend)  Recommendation
 ```
 
 ## Backend Architecture
@@ -91,126 +95,68 @@ The backend is structured into modular feature domains:
 - `server/modules/deviation`: Route deviation engine, threshold classification, bearing comparison, GPS jitter stability.
 - `server/modules/traffic`: Traffic abstraction layer, congestion ratios, mock traffic provider.
 - `server/modules/analysis`: Situation analysis orchestrator, ETA & delay engine, evidence generator.
-- `server/modules/geoagents`: Standalone Gemini function-calling PoC for rerouting recommendations.
+- `server/modules/geoagents`: Production GeoAgent AI decision engine with Gemini function calling, system prompts, output validation, and fallback mechanisms.
 - `server/shared/`: Shared middleware (`errorHandler`, `roleMiddleware`) and services (`geospatial.service.js`).
 
-## Frontend Architecture
-**Branding**: "SwiftCare GeoAgent" — emergency ambulance routing prototype.
-**Framework**: Next.js App Router with TypeScript (`app/` directory at project root).
-**Styling**: Tailwind CSS v4 with custom CSS variables for SwiftCare brand palette.
-**Data Layer**: `lib/api.ts` adapter pattern (mock ↔ real data toggle).
+## GeoAgent AI Architecture
+- **Role**: AI Decision-Support Layer. The LLM does NOT perform geometric calculations, coordinate validation, or database mutations.
+- **Model**: Configured via `GEMINI_MODEL` (default: `gemini-2.5-flash`) through `@google/genai`.
+- **System Prompt**: Enforces a three-tier epistemic discipline (`OBSERVED`, `INFERRED`, `UNKNOWN`), strict JSON output, and prompt injection defense.
+- **Controlled Tool Calling**:
+  - `getVehicleSituation(vehicleId)`: Calls backend `analysisService`.
+  - `getAlternativeRoutes(originLng, originLat, destLng, destLat)`: Generates structured candidate routes via `routingService`.
+  - `getNearbyAvailableVehicles(longitude, latitude, maxDistanceKm)`: Finds available ambulances with estimated arrival times.
+  - `getNearbyIncidents(longitude, latitude, radiusMeters)`: Queries active incidents.
+- **Output Schema Validation**: `geoagent.schemas.js` validates, sanitizes, and normalizes AI output before returning to clients.
+- **Graceful Fallback**: If `GEMINI_API_KEY` is missing or the model times out, the service returns a deterministic recommendation (`status: "AI_ANALYSIS_UNAVAILABLE"`) with full underlying metrics intact.
 
-## Geospatial Architecture
-- GeoJSON standards (`Point`, `LineString`) strictly enforced. Coordinates strictly `[longitude, latitude]`.
-- Calculations handled deterministically via `@turf/turf`:
-  - `validateCoordinates([lng, lat])`
-  - `createPoint(lng, lat)`
-  - `calculateDistance(point1, point2)` (meters & kilometers)
-  - `distanceToRoute(point, lineString)` (meters)
-  - `nearestPointOnRoute(point, lineString)` (nearest GeoJSON Point + distance)
-  - `calculateBearing(point1, point2)` (0-360 degrees)
-  - `calculateRouteLength(lineString)` (meters & kilometers)
-  - `calculateRouteProgress(point, lineString)` (percentage, distanceAlong, remainingDistance)
-  - `getRouteBearingAtPoint(lineString, point)` (forward route bearing at closest segment)
-
-## Deviation Architecture
-- **Deterministic calculations**:
-  - Distance from route via `distanceToRoute`.
-  - Bearing difference: `|((vehicleHeading - routeBearing + 180) % 360) - 180|`.
-  - GPS noise & jitter reduction: evaluates recent N trajectory points (`GPS_STABILITY_WINDOW`), computing standard deviation of distance to route.
-- **Threshold Classification** (configurable via environment variables):
-  - `ON_ROUTE`: distance < `ROUTE_WARNING_DISTANCE_METERS` (default: 50m)
-  - `WARNING`: distance >= 50m or approaching threshold with high bearing divergence
-  - `DEVIATED`: distance >= `ROUTE_DEVIATION_DISTANCE_METERS` (default: 100m) confirmed by sustained window or bearing
-  - `CRITICAL_DEVIATION`: distance >= `ROUTE_CRITICAL_DISTANCE_METERS` (default: 250m)
-
-## Traffic Architecture
-- **Normalized representation**:
-  - Levels: `FREE`, `LIGHT`, `MODERATE`, `HEAVY`, `SEVERE`, `UNKNOWN`
-  - Metrics: `speedKmh`, `freeFlowSpeedKmh`, `congestionRatio` (`1 - speed/freeFlow`), `source`
-- **Provider abstraction**:
-  - `traffic.service.js` selects provider via `TRAFFIC_PROVIDER` env variable (default: `mock`).
-  - `mockTrafficProvider.js`: deterministic coordinate-seeded traffic generator.
-
-## ETA & Delay Architecture
-- **Speed Blending**: When moving (>10 km/h), blends 40% current speed + 60% traffic speed; otherwise relies on traffic speed.
-- **Safety Guards**: Minimum speed clamped to 5 km/h to prevent division-by-zero or `Infinity`.
-- **Delay Arithmetic**:
-  - `delayMinutes = Math.max(0, currentETAMinutes - originalETAMinutes)`
-  - `timeSavedMinutes = Math.max(0, originalETAMinutes - currentETAMinutes)`
-
-## Incident Correlation Architecture
-- Reuses existing `Incident` collection.
-- Queries active incidents within `INCIDENT_PROXIMITY_RADIUS_METERS` (default: 500m) of either the vehicle position or the planned route LineString.
-- Generates structured evidence tags (`ACCIDENT_NEAR_ROUTE`, `ROAD_CLOSURE_NEAR_ROUTE`, etc.).
-
-## Situation Analysis Architecture
-- Orchestrates Vehicle + Route + Trajectory + Deviation + Traffic + Incidents + ETA + Delay into a single normalized JSON object.
-- Produces structured evidence array for downstream AI consumption without invoking LLM for math.
+## Current Development Status
+- **Part 1  Backend Foundation**               COMPLETED
+- **Part 2  Authentication**                   COMPLETED
+- **Part 3  Vehicle Management**               COMPLETED
+- **Part 4  Emergency + Incident**             COMPLETED
+- **Part 5  GPS + Trajectories**               COMPLETED
+- **Part 6  Geospatial + Routing**             COMPLETED
+- **Part 7  Deviation + Traffic + ETA**        COMPLETED
+- **Part 8  GeoAgent AI Integration**          COMPLETED
+- **Part 9  Real-Time Backend (Socket.IO)**    PLANNED
+- **Part 10 Decision / Dispatch Engine**       PLANNED
+- **Part 11 Full Fullstack Integration**       PLANNED
+- **Part 12 Hardening + Load Testing**         PLANNED
 
 ## Current Development Stage
-Part 7 — Route Deviation Detection + Traffic Abstraction + ETA Engine + Situation Analysis (Completed)
-
-## Completed Parts
-- **Part 1** — Backend Foundation (Express, Helmet, CORS, Error Handling, DB Connection)
-- **Part 2** — Authentication (User model, JWT, HTTP-only cookies, Role middleware)
-- **Part 3** — Vehicle Management (Vehicle model, CRUD, immutable vehicleId)
-- **Part 4** — Emergency + Incident Management (Emergencies, Incidents, 2dsphere indexes, Soft-deletes, Dispatch transaction)
-- **Part 5** — GPS Tracking + Trajectory Management (Trajectory model, GPS ingestion, Compound index, Clock skew validation)
-- **Part 6** — Geospatial Processing + Routing (Route model, Provider abstraction, Turf.js integration, Mock routing)
-- **Part 7** — Route Deviation + Traffic + ETA + Situation Analysis (Deviation engine, Traffic abstraction, ETA & Delay calculation, Incident correlation, Evidence generation)
-
-## Completed Features
-- Setup Express, Helmet, CORS, Global Error Handling.
-- Auth: Register, Login, Logout, JWT Cookies.
-- Vehicles: CRUD, Immutable IDs (`AMB-001`).
-- Emergencies & Incidents: CRUD, Soft Deletions, Vehicle Assignment Transaction.
-- Trajectories: Secure GPS Ingestion, Pagination, `2dsphere` & Compound Indexing, Safe Out-of-order handling.
-- Routing: Routing Provider Abstraction, Mock Provider, GeoJSON LineString Routes, `@turf/turf` Geospatial utilities.
-- Deviation Detection: Deterministic distance & bearing calculations, GPS jitter handling, configurable thresholds.
-- Traffic Abstraction: Provider pattern, normalized traffic status, deterministic mock provider.
-- Incident Proximity Correlation: Multi-point distance checks to vehicle and route geometry.
-- ETA & Delay Engine: Non-zero speed blending, remaining distance calculations, delay and time saved.
-- Situation Analysis API: Comprehensive endpoint returning normalized vehicle route situations.
-- Frontend Prototype: Landing page, Login, Signup, Driver Dashboard UI (mock data).
-- GeoAgent AI PoC: Gemini function-calling PoC for rerouting.
+Part 8 — GeoAgent AI Backend Integration (Completed)
 
 ## Module Inventory
 ```text
 server/
 ├── modules/
 │   ├── auth/                     # User auth (register, login, logout, JWT)
-│   ├── vehicles/                 # Vehicle CRUD
+│   ├── vehicles/                 # Vehicle CRUD & registry
 │   ├── emergencies/              # Emergency CRUD + vehicle assignment
 │   ├── incidents/                # Incident CRUD + soft delete
 │   ├── trajectories/             # GPS ingestion + history
 │   ├── routes/                   # Route generation + provider abstraction
-│   │   └── providers/mockRoutingProvider.js
 │   ├── deviation/                # Route deviation engine & threshold classification
-│   │   ├── deviation.config.js
-│   │   ├── deviation.service.js
-│   │   ├── deviation.controller.js
-│   │   ├── deviation.routes.js
-│   │   └── deviation.validation.js
 │   ├── traffic/                  # Traffic conditions abstraction
-│   │   ├── traffic.config.js
-│   │   ├── traffic.service.js
-│   │   ├── traffic.controller.js
-│   │   ├── traffic.routes.js
-│   │   └── providers/mockTrafficProvider.js
 │   ├── analysis/                 # Situation analysis orchestrator & ETA engine
-│   │   ├── analysis.service.js
-│   │   ├── analysis.controller.js
-│   │   ├── analysis.routes.js
-│   │   └── analysis.validation.js
-│   └── geoagents/                # GeoAgent AI (Gemini function-calling PoC)
-│       ├── geoAgent.service.js
-│       └── geoAgent.tools.js
+│   └── geoagents/                # Production GeoAgent AI module
+│       ├── geoagent.constants.js # Constants, action & cause enums
+│       ├── geoagent.schemas.js   # JSON validation & sanitization
+│       ├── geoagent.tools.js     # Declarations and execution handlers
+│       ├── geoagent.validation.js# Input validation
+│       ├── geoagent.controller.js# HTTP handlers
+│       ├── geoagent.routes.js    # Express route definitions
+│       ├── geoAgent.service.js   # Gemini tool orchestration & fallback
+│       └── prompts/
+│           └── geoagent.system.js# System prompt & injection guardrails
 ├── shared/
 │   ├── middleware/               # errorHandler, roleMiddleware
 │   └── services/
 │       └── geospatial.service.js # Turf.js utilities + progress & bearing
 ├── server.js                     # Express entry point
+├── test-part7.js                 # Part 7 tests
+├── test-part8.js                 # Part 8 tests
 └── .env.example
 ```
 
@@ -224,6 +170,7 @@ server/
 **Deviation**: `GET /api/deviation/vehicle/:vehicleId`
 **Traffic**: `GET /api/traffic/location?lng=...&lat=...`
 **Analysis**: `GET /api/analysis/vehicle/:vehicleId`
+**GeoAgent**: `POST /api/geoagent/analyze`, `POST /api/geoagent/analyze/vehicle/:vehicleId`
 
 ## Database Models
 - `User` (name, email, password, role)
@@ -244,14 +191,12 @@ server/
 - Route `vehicle` -> Vehicle.
 
 ## Security Rules
-- Control Room & Admin authorization required for all operational analysis APIs.
-- Control Room cannot DELETE operational records.
-- Deletions are Soft Deletes (`isDeleted: true`).
-- Routes are generated server-side via external routing providers (or Mock); clients cannot supply arbitrary GeoJSON geometry.
-- Pagination uses hard limits (max 100) to prevent OOM DOS attacks.
-- External API keys (Google Maps, Mapbox, Gemini) are strictly server-side (`process.env`) and never exposed to clients.
-- Generic `502 Bad Gateway` responses mask upstream routing/traffic provider failures.
-- No dynamic database collections for calculations; analysis is computed on-the-fly to prevent stale state storage.
+- All GeoAgent and operational analysis APIs require authentication (`protect`) and `CONTROL_ROOM` or `ADMIN` roles.
+- No direct database queries or arbitrary SQL/Mongoose injection from LLMs.
+- AI tools are read-only; no uncontrolled automated vehicle dispatch or data mutation from AI.
+- Prompt injection protection: External user, caller, and incident description text is explicitly sanitized and labeled as untrusted data in prompts.
+- Output validation: All AI JSON is strictly validated against schemas before being returned.
+- External API keys (`GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`, etc.) are kept strictly in server-side `process.env` and never leaked.
 
 ## Environment Variables
 - `PORT`, `MONGO_URI`, `CLIENT_URL`, `NODE_ENV`
@@ -261,39 +206,53 @@ server/
 - `ROUTE_WARNING_DISTANCE_METERS`, `ROUTE_DEVIATION_DISTANCE_METERS`, `ROUTE_CRITICAL_DISTANCE_METERS`
 - `BEARING_WARNING_DEGREES`, `BEARING_DEVIATION_DEGREES`, `GPS_STABILITY_WINDOW`
 - `INCIDENT_PROXIMITY_RADIUS_METERS`
-- `GEMINI_API_KEY`
+- `GEMINI_API_KEY`, `GEMINI_MODEL`
 
 ## Part-by-Part Development History
 
-### Part 7 — Route Deviation + Traffic + ETA (Current)
+### Part 8 — GeoAgent AI Backend Integration (Current)
+**Purpose**:
+Convert the existing Gemini proof-of-concept into a robust, secure, production-structured backend decision-support service.
+
 **Implemented**:
-- Route deviation analysis with distance-to-route and bearing difference calculations.
-- Configurable deviation threshold classification (`ON_ROUTE`, `WARNING`, `DEVIATED`, `CRITICAL_DEVIATION`).
-- GPS stability and jitter mitigation using trajectory window analysis.
-- Route progress analysis (percentage, distance along route, remaining distance).
-- Traffic conditions abstraction and deterministic mock traffic provider with congestion ratios.
-- Active incident proximity correlation against vehicle location and route geometry.
-- Deterministic ETA and delay calculation with speed blending and zero-speed guards.
-- Structured evidence tag generation for AI consumption.
-- Normalized Situation Analysis endpoints: `GET /api/analysis/vehicle/:vehicleId` and `GET /api/routes/:routeId/analysis`.
-- Standalone deviation API (`GET /api/deviation/vehicle/:vehicleId`) and traffic API (`GET /api/traffic/location`).
+- Complete GeoAgent feature module: `geoagent.constants.js`, `geoagent.schemas.js`, `geoagent.tools.js`, `prompts/geoagent.system.js`, `geoAgent.service.js`, `geoagent.validation.js`, `geoagent.controller.js`, `geoagent.routes.js`.
+- Four controlled AI tools for Gemini function calling (`getVehicleSituation`, `getAlternativeRoutes`, `getNearbyAvailableVehicles`, `getNearbyIncidents`).
+- Robust output validation schema ensuring clean, normalized JSON responses.
+- Prompt injection defense and string sanitization.
+- Safe deterministic fallback mechanism for unconfigured API keys, timeouts, or network failures.
+- Express API endpoints: `POST /api/geoagent/analyze` and `POST /api/geoagent/analyze/vehicle/:vehicleId`.
+- Automated test suite `server/test-part8.js`.
 
 **Architecture Decisions**:
-- Deterministic geospatial calculations via Turf.js — LLM is NOT used for math.
-- Dynamic calculation on request rather than storing redundant calculated state in MongoDB.
-- Provider abstractions for routing and traffic to support pluggable external providers.
-- Configurable thresholds via environment variables with safe fallbacks.
+- The LLM is strictly an interpretation and reasoning layer; all mathematical and spatial metrics are computed deterministically by backend services.
+- Read-only tools prevent hallucinated or unauthorized database mutations.
+- Dynamic calculation on request avoids stale state persistence.
 
-## Known Issues
-- Real Device API-Key authentication is not implemented for trajectory ingestion (devices currently use user session/token).
-- Live Traffic currently uses the deterministic Mock provider; Google Traffic API integration is pending.
-- Frontend prototype currently uses mock data in `lib/mock-data.ts` rather than fetching from the live backend analysis endpoint.
+## Known Limitations
+- Candidate alternative routes currently utilize deterministic curves and mock routing; live external multi-route provider integration will be enhanced in future stages.
+- Backup ambulance distance in `getNearbyAvailableVehicles` currently uses base station estimates rather than live continuous GPS positions of all standby units.
 
 ## Technical Debt
-- MongoDB queries for history use `skip` and `limit` (cursor pagination recommended for large scale).
-- Incident proximity uses Turf distance iteration over active incidents; spatial `$near` / `$geoWithin` query can be optimized for high-volume incident datasets.
+- AI requests currently execute synchronously per HTTP request; background queuing (e.g. BullMQ / Redis) can be considered if AI latency impacts scale.
 
-## Future Development / Next Backend Task
-- **Part 8**: Full GeoAgent AI Integration — wire the Gemini AI decision engine into Express API endpoints (`POST /api/geoagent/recommend`) consuming the structured situation analysis data created in Part 7.
-- Connect frontend dashboard to backend analysis API (`/api/analysis/vehicle/:vehicleId`).
-- Real-time updates via Socket.IO.
+---
+
+## NEXT DEVELOPMENT TASK:
+### Part 9 — Real-Time Backend (Socket.IO & Live Event Streaming)
+
+**Why it comes next**:
+Now that the deterministic intelligence layer (Part 7) and GeoAgent AI decision engine (Part 8) are fully functional, the platform needs a bidirectional real-time communication backbone. Control rooms and active drivers require sub-second push notifications when route deviations occur, traffic changes, or GeoAgent recommendations are generated.
+
+**Dependencies**:
+- `server/modules/trajectories/`: Emits GPS updates on ingestion.
+- `server/modules/deviation/`: Emits deviation alert events when status changes to `DEVIATED` or `CRITICAL_DEVIATION`.
+- `server/modules/geoagents/`: Pushes new AI recommendations to active ambulance channels and control room dashboards.
+
+**Expected Files to Touch**:
+- `server/server.js` (HTTP server wrapper with Socket.IO)
+- `server/modules/realtime/` (New module: socket handlers, room management, event emitters)
+- `server/package.json` (add `socket.io`)
+
+**What it must NOT modify**:
+- Must not alter existing REST API contracts.
+- Must not modify frontend code.
