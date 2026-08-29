@@ -1,0 +1,883 @@
+openapi: 3.0.3
+info:
+  title: GeoAgentic Emergency Response System Backend API
+  description: >
+    Intelligent decision-support and dispatch platform for monitoring emergency vehicles,
+    detecting route deviations, predicting delays, running Gemini AI advisory analysis,
+    and evaluating authoritative operational decisions.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api
+    description: Local Development Server
+
+paths:
+  # --- AUTHENTICATION ---
+  /auth/register:
+    post:
+      summary: Register a new operator/user account
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  example: Jane Doe
+                email:
+                  type: string
+                  format: email
+                  example: operator@geoagent.local
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: SecurePass123!
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  user: { $ref: '#/components/schemas/SafeUser' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /auth/login:
+    post:
+      summary: Authenticate user and issue JWT cookie
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: operator@geoagent.local }
+                password: { type: string, format: password, example: SecurePass123! }
+      responses:
+        '200':
+          description: Successfully authenticated
+          headers:
+            Set-Cookie:
+              schema: { type: string, example: token=jwt_token_here; Path=/; HttpOnly; SameSite=Strict }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/SafeUser' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/logout:
+    post:
+      summary: Invalidate user session & clear cookie
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: Logged out successfully }
+
+  /auth/me:
+    get:
+      summary: Retrieve authenticated user profile
+      tags: [Auth]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  user: { $ref: '#/components/schemas/SafeUser' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # --- VEHICLES ---
+  /vehicles:
+    get:
+      summary: List all active emergency vehicles
+      tags: [Vehicles]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [AVAILABLE, DISPATCHED, EN_ROUTE, AT_SCENE, TRANSPORTING, MAINTENANCE]
+      responses:
+        '200':
+          description: Array of vehicles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Vehicle' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+    post:
+      summary: Register a new vehicle (Admin only)
+      tags: [Vehicles]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicleId, registrationNumber, type, driverName, capacity]
+              properties:
+                vehicleId: { type: string, example: AMB-101 }
+                registrationNumber: { type: string, example: KA-01-EA-1234 }
+                type: { type: string, enum: [AMBULANCE, FIRE_TRUCK, POLICE, RESCUE], default: AMBULANCE }
+                driverName: { type: string, example: John Doe }
+                capacity: { type: integer, minimum: 1, example: 2 }
+      responses:
+        '201':
+          description: Vehicle registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Vehicle' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /vehicles/{vehicleId}:
+    get:
+      summary: Get vehicle by business ID
+      tags: [Vehicles]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: string, example: AMB-101 }
+      responses:
+        '200':
+          description: Vehicle details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Vehicle' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    patch:
+      summary: Update vehicle status or driver
+      tags: [Vehicles]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [AVAILABLE, DISPATCHED, EN_ROUTE, AT_SCENE, TRANSPORTING, MAINTENANCE] }
+                driverName: { type: string }
+                capacity: { type: integer }
+      responses:
+        '200':
+          description: Updated vehicle
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Vehicle' }
+
+    delete:
+      summary: Soft delete vehicle (Admin only)
+      tags: [Vehicles]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Vehicle soft-deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: Vehicle deleted successfully }
+
+  # --- EMERGENCIES ---
+  /emergencies:
+    get:
+      summary: List all active emergencies
+      tags: [Emergencies]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [REPORTED, DISPATCHED, ON_SCENE, RESOLVED, CANCELLED] }
+        - name: priority
+          in: query
+          schema: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+      responses:
+        '200':
+          description: Array of emergencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Emergency' }
+
+    post:
+      summary: Create an emergency call record
+      tags: [Emergencies]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, priority, location]
+              properties:
+                type: { type: string, enum: [ACCIDENT, CARDIAC, FIRE, TRAUMA, RESPIRATORY, OTHER] }
+                priority: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+                description: { type: string }
+                callerName: { type: string }
+                callerContact: { type: string }
+                location: { $ref: '#/components/schemas/GeoJSONPoint' }
+                destination: { $ref: '#/components/schemas/GeoJSONPoint' }
+      responses:
+        '201':
+          description: Emergency created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Emergency' }
+
+  /emergencies/{emergencyId}:
+    get:
+      summary: Get emergency by ID
+      tags: [Emergencies]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: emergencyId
+          in: path
+          required: true
+          schema: { type: string, example: EMG-0001 }
+      responses:
+        '200':
+          description: Emergency details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Emergency' }
+
+    patch:
+      summary: Update emergency status or destination
+      tags: [Emergencies]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: emergencyId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                priority: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+                status: { type: string, enum: [REPORTED, DISPATCHED, ON_SCENE, RESOLVED, CANCELLED] }
+                description: { type: string }
+                destination: { $ref: '#/components/schemas/GeoJSONPoint' }
+      responses:
+        '200':
+          description: Emergency updated
+
+  /emergencies/{emergencyId}/assign:
+    patch:
+      summary: Assign an emergency vehicle to the call
+      tags: [Emergencies]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: emergencyId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicleId]
+              properties:
+                vehicleId: { type: string, example: AMB-101 }
+      responses:
+        '200':
+          description: Vehicle assigned and status updated to DISPATCHED
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Emergency' }
+
+  # --- TRAJECTORIES ---
+  /trajectories:
+    post:
+      summary: Ingest vehicle GPS coordinate telemetry
+      tags: [Trajectories]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicleId, location, speed]
+              properties:
+                vehicleId: { type: string, example: AMB-101 }
+                location: { $ref: '#/components/schemas/GeoJSONPoint' }
+                speed: { type: number, minimum: 0, example: 38.5, description: Speed in km/h }
+                heading: { type: number, minimum: 0, maximum: 360, example: 120.0, description: Bearing in degrees }
+                timestamp: { type: string, format: date-time }
+                source: { type: string, enum: [DEVICE, SIMULATOR, MANUAL], default: DEVICE }
+      responses:
+        '201':
+          description: Trajectory point stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Trajectory' }
+
+  /trajectories/{vehicleId}:
+    get:
+      summary: Paginated trajectory history for a vehicle
+      tags: [Trajectories]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 100 }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1, minimum: 1 }
+      responses:
+        '200':
+          description: Trajectory history list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Trajectory' }
+                  pagination:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+
+  /trajectories/{vehicleId}/latest:
+    get:
+      summary: Get the most recent GPS fix for a vehicle
+      tags: [Trajectories]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Latest trajectory point
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Trajectory' }
+
+  # --- ROUTES ---
+  /routes:
+    post:
+      summary: Generate and persist a planned route
+      tags: [Routes]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emergencyId, vehicleId, origin, destination]
+              properties:
+                emergencyId: { type: string }
+                vehicleId: { type: string }
+                origin: { $ref: '#/components/schemas/GeoJSONPoint' }
+                destination: { $ref: '#/components/schemas/GeoJSONPoint' }
+                routeType: { type: string, enum: [PLANNED, ALTERNATIVE, HISTORICAL], default: PLANNED }
+      responses:
+        '201':
+          description: Route created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Route' }
+
+  /routes/{routeId}/analysis:
+    get:
+      summary: Analyze current vehicle progress and deviation on a route
+      tags: [Routes]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Route progress analysis
+
+  # --- DEVIATION & SITUATION ANALYSIS ---
+  /deviation/vehicle/{vehicleId}:
+    get:
+      summary: Get real-time route deviation status for a vehicle
+      tags: [Deviation]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Deviation assessment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      status: { type: string, enum: [ON_ROUTE, WARNING, DEVIATED, CRITICAL_DEVIATION] }
+                      crossTrackDistanceMeters: { type: number }
+                      bearingDifferenceDegrees: { type: number }
+                      stability: { type: string, enum: [STABLE, UNSTABLE, JITTER] }
+
+  /analysis/vehicle/{vehicleId}:
+    get:
+      summary: Multi-factor situation analysis (deviation, traffic, incidents, ETA)
+      tags: [Analysis]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Comprehensive situation snapshot
+
+  # --- GEOAGENT AI & DECISION ENGINE ---
+  /geoagent/analyze:
+    post:
+      summary: Run advisory GeoAgent AI reasoning on an emergency
+      tags: [GeoAgent]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emergencyId]
+              properties:
+                emergencyId: { type: string }
+      responses:
+        '200':
+          description: GeoAgent AI advisory recommendation
+
+  /decisions/analyze:
+    post:
+      summary: Evaluate deterministic decision rules and generate operational actions
+      tags: [Decisions]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emergencyId]
+              properties:
+                emergencyId: { type: string }
+      responses:
+        '200':
+          description: Authoritative Decision generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data: { $ref: '#/components/schemas/Decision' }
+
+  /decisions/{decisionId}/approve:
+    patch:
+      summary: Operator approves a pending operational decision
+      tags: [Decisions]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Decision status set to APPROVED
+
+  /decisions/{decisionId}/reject:
+    patch:
+      summary: Operator rejects a pending operational decision
+      tags: [Decisions]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rejectionReason]
+              properties:
+                rejectionReason: { type: string }
+      responses:
+        '200':
+          description: Decision status set to REJECTED
+
+  /decisions/{decisionId}/execute:
+    patch:
+      summary: Execute an approved decision action
+      tags: [Decisions]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: decisionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Decision executed and dispatched
+
+  # --- ORCHESTRATION ---
+  /orchestration/emergencies/{emergencyId}/analyze:
+    post:
+      summary: Run full unified end-to-end operational pipeline
+      tags: [Orchestration]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: emergencyId
+          in: path
+          required: true
+          schema: { type: string, example: EMG-0001 }
+      responses:
+        '200':
+          description: Complete normalized operational response with epistemic breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      workflowStatus: { type: string, enum: [COMPLETED, PARTIAL, FAILED] }
+                      emergency: { $ref: '#/components/schemas/Emergency' }
+                      vehicle: { $ref: '#/components/schemas/Vehicle' }
+                      route: { $ref: '#/components/schemas/Route' }
+                      situationAnalysis: { type: object }
+                      geoAgentRecommendation: { type: object }
+                      decision: { $ref: '#/components/schemas/Decision' }
+                      epistemicBreakdown:
+                        type: object
+                        properties:
+                          observed: { type: array, items: { type: string } }
+                          inferred: { type: array, items: { type: string } }
+                          unknown: { type: array, items: { type: string } }
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    GeoJSONPoint:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type: { type: string, enum: [Point], example: Point }
+        coordinates:
+          type: array
+          items: { type: number }
+          minItems: 2
+          maxItems: 2
+          example: [77.5946, 12.9716]
+          description: "[longitude, latitude] in WGS84"
+
+    GeoJSONLineString:
+      type: object
+      required: [type, coordinates]
+      properties:
+        type: { type: string, enum: [LineString], example: LineString }
+        coordinates:
+          type: array
+          items:
+            type: array
+            items: { type: number }
+            minItems: 2
+            maxItems: 2
+          example: [[77.5946, 12.9716], [77.6000, 12.9750]]
+
+    SafeUser:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string, example: Jane Doe }
+        email: { type: string, format: email, example: operator@geoagent.local }
+        role: { type: string, enum: [ADMIN, CONTROL_ROOM, DRIVER, PARAMEDIC] }
+
+    Vehicle:
+      type: object
+      properties:
+        id: { type: string }
+        vehicleId: { type: string, example: AMB-101 }
+        registrationNumber: { type: string, example: KA-01-EA-1234 }
+        type: { type: string, enum: [AMBULANCE, FIRE_TRUCK, POLICE, RESCUE] }
+        status: { type: string, enum: [AVAILABLE, DISPATCHED, EN_ROUTE, AT_SCENE, TRANSPORTING, MAINTENANCE] }
+        capacity: { type: integer, example: 2 }
+        driverName: { type: string, example: John Doe }
+
+    Emergency:
+      type: object
+      properties:
+        id: { type: string }
+        emergencyId: { type: string, example: EMG-0001 }
+        type: { type: string, enum: [ACCIDENT, CARDIAC, FIRE, TRAUMA, RESPIRATORY, OTHER] }
+        priority: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+        status: { type: string, enum: [REPORTED, DISPATCHED, ON_SCENE, RESOLVED, CANCELLED] }
+        location: { $ref: '#/components/schemas/GeoJSONPoint' }
+        destination: { $ref: '#/components/schemas/GeoJSONPoint' }
+        assignedVehicle: { type: string }
+
+    Trajectory:
+      type: object
+      properties:
+        id: { type: string }
+        vehicle: { type: string }
+        location: { $ref: '#/components/schemas/GeoJSONPoint' }
+        speed: { type: number, example: 38.5 }
+        heading: { type: number, example: 120.0 }
+        timestamp: { type: string, format: date-time }
+        source: { type: string, enum: [DEVICE, SIMULATOR, MANUAL] }
+
+    Route:
+      type: object
+      properties:
+        id: { type: string }
+        routeId: { type: string, example: ROUTE-1001 }
+        emergency: { type: string }
+        vehicle: { type: string }
+        origin: { $ref: '#/components/schemas/GeoJSONPoint' }
+        destination: { $ref: '#/components/schemas/GeoJSONPoint' }
+        geometry: { $ref: '#/components/schemas/GeoJSONLineString' }
+        distance: { type: number, example: 5896, description: Distance in meters }
+        duration: { type: number, example: 720, description: Duration in seconds }
+        status: { type: string, enum: [ACTIVE, COMPLETED, ABANDONED] }
+
+    Decision:
+      type: object
+      properties:
+        id: { type: string }
+        decisionId: { type: string, example: DEC-1001 }
+        emergency: { type: string }
+        vehicle: { type: string }
+        primaryAction: { type: string, enum: [MAINTAIN_ROUTE, REROUTE, DISPATCH_BACKUP, ALERT_CONTROL_ROOM, REQUEST_TRAFFIC_OVERRIDE, ESCALATE_TO_SUPERVISOR, STANDBY] }
+        severity: { type: string, enum: [INFO, WARNING, CRITICAL] }
+        status: { type: string, enum: [PENDING_OPERATOR_ACTION, APPROVED, REJECTED, EXECUTED, EXPIRED, AUTO_APPLIED] }
+        reasonCodes: { type: array, items: { type: string } }
+        situationHash: { type: string }
+
+  responses:
+    BadRequest:
+      description: Bad Request (validation failure or tampering)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean, example: false }
+              error: { type: string, example: Validation error message }
+    Unauthorized:
+      description: Authentication required or invalid token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean, example: false }
+              error: { type: string, example: Authentication required }
+    Forbidden:
+      description: Forbidden (insufficient permissions)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean, example: false }
+              error: { type: string, example: Forbidden - Insufficient privileges }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean, example: false }
+              error: { type: string, example: Emergency not found }
+    Conflict:
+      description: Conflict (duplicate unique key)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean, example: false }
+              error: { type: string, example: Email is already registered }
