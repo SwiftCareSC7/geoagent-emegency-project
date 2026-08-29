@@ -6,12 +6,15 @@ import User from './user.model.js';
  */
 export const protect = async (req, res, next) => {
   try {
+    let token = null;
+
     // Read token from cookie or Authorization header
     if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
     } else if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
     }
+
 
     if (!token) {
       const error = new Error('Authentication required');

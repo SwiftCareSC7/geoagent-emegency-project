@@ -105,8 +105,10 @@ export const getTrajectoryHistory = async (vehicleId, page = 1, limit = 50) => {
 
   // Enforce a maximum limit to prevent loading the entire collection into memory
   const maxLimit = 100;
-  const safeLimit = Math.min(parseInt(limit, 10), maxLimit);
-  const safePage = Math.max(parseInt(page, 10), 1);
+  const parsedLimit = parseInt(limit, 10);
+  const safeLimit = isNaN(parsedLimit) || parsedLimit < 1 ? 50 : Math.min(parsedLimit, maxLimit);
+  const parsedPage = parseInt(page, 10);
+  const safePage = isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage;
   const skip = (safePage - 1) * safeLimit;
 
   // Uses compound index { vehicle: 1, timestamp: -1 }
@@ -140,10 +142,12 @@ export const getRecentTrajectories = async (vehicleId, limit = 20) => {
   }
 
   // Enforce a sensible max limit for recent points
-  const safeLimit = Math.min(parseInt(limit, 10), 100);
+  const parsedLimit = parseInt(limit, 10);
+  const safeLimit = isNaN(parsedLimit) || parsedLimit < 1 ? 20 : Math.min(parsedLimit, 100);
 
   // Uses compound index { vehicle: 1, timestamp: -1 }
   return await Trajectory.find({ vehicle: vehicle._id })
     .sort({ timestamp: -1 })
     .limit(safeLimit);
+
 };
