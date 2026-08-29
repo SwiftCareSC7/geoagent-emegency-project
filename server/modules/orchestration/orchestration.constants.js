@@ -1,0 +1,41 @@
+/**
+ * Orchestration Constants, Workflow Stages, and Units
+ */
+
+export const WORKFLOW_STAGES = {
+  INITIALIZING: 'INITIALIZING',
+  VALIDATING: 'VALIDATING',
+  COLLECTING_CONTEXT: 'COLLECTING_CONTEXT',
+  ANALYZING_SPATIAL: 'ANALYZING_SPATIAL',
+  AI_REASONING: 'AI_REASONING',
+  DECISION_EVALUATION: 'DECISION_EVALUATION',
+  COMPLETED: 'COMPLETED',
+  PARTIAL: 'PARTIAL',
+  FAILED: 'FAILED'
+};
+
+export const ORCHESTRATION_EVENTS = {
+  ANALYSIS_STARTED: 'emergency.analysis.started',
+  ANALYSIS_COMPLETED: 'emergency.analysis.completed'
+};
+
+export const DATA_STATUS = {
+  AVAILABLE: 'AVAILABLE',
+  UNAVAILABLE: 'UNAVAILABLE',
+  PARTIAL: 'PARTIAL'
+};
+
+export const STANDARD_UNITS = {
+  DISTANCE: 'meters',
+  SPEED: 'km/h',
+  DURATION: 'seconds',
+  ETA: 'minutes',
+  BEARING: 'degrees'
+};
+
+export default {
+  WORKFLOW_STAGES,
+  ORCHESTRATION_EVENTS,
+  DATA_STATUS,
+  STANDARD_UNITS
+};
