@@ -14,7 +14,11 @@ export const REALTIME_EVENTS = {
   ROUTE_DEVIATION_DETECTED: 'route.deviation.detected',
   TRAFFIC_UPDATED: 'traffic.updated',
   ETA_UPDATED: 'eta.updated',
-  GEOAGENT_ANALYSIS_CREATED: 'geoagent.analysis.created'
+  GEOAGENT_ANALYSIS_CREATED: 'geoagent.analysis.created',
+  DECISION_CREATED: 'decision.created',
+  DECISION_APPROVED: 'decision.approved',
+  DECISION_REJECTED: 'decision.rejected',
+  DECISION_EXECUTED: 'decision.executed'
 };
 
 export const CLIENT_COMMANDS = {

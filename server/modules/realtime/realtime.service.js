@@ -173,6 +173,46 @@ class RealtimeService {
     if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
     this.emitToRooms(rooms, REALTIME_EVENTS.GEOAGENT_ANALYSIS_CREATED, payload);
   }
+
+  /**
+   * Emits decision created event
+   */
+  emitDecisionCreated(emergencyId, vehicleId, payload) {
+    const rooms = [REALTIME_ROOMS.CONTROL_ROOM];
+    if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
+    if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
+    this.emitToRooms(rooms, REALTIME_EVENTS.DECISION_CREATED, payload);
+  }
+
+  /**
+   * Emits decision approved event
+   */
+  emitDecisionApproved(emergencyId, vehicleId, payload) {
+    const rooms = [REALTIME_ROOMS.CONTROL_ROOM];
+    if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
+    if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
+    this.emitToRooms(rooms, REALTIME_EVENTS.DECISION_APPROVED, payload);
+  }
+
+  /**
+   * Emits decision rejected event
+   */
+  emitDecisionRejected(emergencyId, vehicleId, payload) {
+    const rooms = [REALTIME_ROOMS.CONTROL_ROOM];
+    if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
+    if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
+    this.emitToRooms(rooms, REALTIME_EVENTS.DECISION_REJECTED, payload);
+  }
+
+  /**
+   * Emits decision executed event
+   */
+  emitDecisionExecuted(emergencyId, vehicleId, payload) {
+    const rooms = [REALTIME_ROOMS.CONTROL_ROOM];
+    if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
+    if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
+    this.emitToRooms(rooms, REALTIME_EVENTS.DECISION_EXECUTED, payload);
+  }
 }
 
 export default new RealtimeService();
