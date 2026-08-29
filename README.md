@@ -1,6 +1,6 @@
 # GeoAgentic Emergency Response System
 
-The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays, recommend alternative routes, and provide end-to-end AI agent decision support to control room operators via REST APIs and real-time push streaming.
+The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent, hardened platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays, recommend alternative routes, and provide end-to-end AI agent decision support to control room operators via REST APIs and real-time push streaming.
 
 ## Current Technology Stack
 
@@ -26,11 +26,11 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 ## Feature Status
 
 ### IMPLEMENTED
-- **Backend Foundation** (Express, Helmet, CORS, Error Handling, MongoDB connection)
-- **Authentication & Authorization** (JWT in HTTP-only cookies, Role-Based Access Control)
-- **Vehicle Management** (Vehicle CRUD, immutable `vehicleId`, status tracking)
-- **Emergency & Incident Management** (CRUD, GeoJSON points, `2dsphere` indexes, soft deletions)
-- **GPS Tracking & Trajectories** (GPS ingestion, compound indexed history, clock-skew protection)
+- **Backend Foundation** (Express, Helmet, CORS, Error Handling with exact status code preservation, MongoDB connection)
+- **Authentication & Authorization** (JWT in HTTP-only cookies and Authorization Bearer header support, Role-Based Access Control)
+- **Vehicle Management** (Vehicle CRUD, immutable `vehicleId`, status tracking, compound indexes)
+- **Emergency & Incident Management** (CRUD, GeoJSON points, `2dsphere` indexes, soft deletions, compound indexes)
+- **GPS Tracking & Trajectories** (GPS ingestion, compound indexed history, NaN/negative parameter protection, clock-skew validation)
 - **Routing Engine** (Route model, provider abstraction, Mock provider, GeoJSON LineStrings)
 - **Route Deviation Engine** (Deterministic distance & bearing calculation, GPS jitter filtering)
 - **Deviation Classification** (Configurable thresholds: `ON_ROUTE`, `WARNING`, `DEVIATED`, `CRITICAL_DEVIATION`)
@@ -49,6 +49,7 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 - **Room Isolation & Management** (`control-room`, `emergency:${id}`, `vehicle:${id}`)
 - **Full Backend Integration & Orchestration** (`POST /api/orchestration/emergencies/:emergencyId/analyze` executing end-to-end workflow)
 - **Three-Tier Epistemic Breakdown** (`OBSERVED` facts vs `INFERRED` causes vs `UNKNOWN` data gaps)
+- **Final Backend Hardening** (Error status preservation, query boundary protection, GeoJSON validation, index optimizations)
 - **Frontend Landing Page & Prototype Dashboard** (SwiftCare UI)
 
 ### PLANNED
@@ -67,7 +68,7 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 ├── server/                           # Express.js Backend
 │   ├── config/db.js                  # MongoDB connection
 │   ├── modules/
-│   │   ├── auth/                     # Authentication & JWT
+│   │   ├── auth/                     # Authentication & JWT (Cookie + Bearer)
 │   │   ├── vehicles/                 # Vehicle CRUD & registry
 │   │   ├── emergencies/              # Emergency calls & vehicle assignment
 │   │   ├── incidents/                # Incident management & soft deletes
@@ -79,14 +80,9 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 │   │   ├── geoagents/                # Production GeoAgent AI module
 │   │   ├── decisions/                # Decision & Dispatch Engine
 │   │   ├── orchestration/            # End-to-End Orchestration Layer
-│   │   │   ├── orchestration.constants.js  # Stages, event names, standard units
-│   │   │   ├── orchestration.validation.js # Request validator & tampering defense
-│   │   │   ├── orchestration.service.js    # Workflow coordinator & epistemic parser
-│   │   │   ├── orchestration.controller.js # HTTP controller
-│   │   │   └── orchestration.routes.js     # Protected router
 │   │   └── realtime/                 # Real-time Socket.IO module
 │   ├── shared/
-│   │   ├── middleware/               # errorHandler, roleMiddleware
+│   │   ├── middleware/               # errorHandler (status-preserving), roleMiddleware
 │   │   └── services/                 # geospatial.service.js (Turf.js)
 │   ├── server.js                     # Express + HTTP Server + Socket.IO entry point
 │   ├── test-part7.js                 # Part 7 tests
@@ -94,49 +90,13 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 │   ├── test-part9.js                 # Part 9 tests
 │   ├── test-part10.js                # Part 10 tests (Decision Engine)
 │   ├── test-part11.js                # Part 11 tests (Full Backend Integration)
+│   ├── test-part12.js                # Part 12 tests (Hardening & End-to-End Regression)
 │   └── .env.example
 ├── geoagent-emergency-project/       # Legacy Next.js scaffold (unused)
 ├── AI_MEMORY.md
 ├── README.md
 ├── CHANGELOG.md
 └── WALKTHROUGH.md
-```
-
-## End-to-End Orchestration Flow
-
-```text
-POST /api/orchestration/emergencies/:emergencyId/analyze
-                      │
-                      ▼
-            Auth & Role Validation
-                      │
-                      ▼
-         Load & Validate Emergency
-                      │
-         Load & Validate Assigned Vehicle
-                      │
-         Load & Validate Active Route
-                      │
-         Load Latest GPS Trajectory
-                      │
-         Run Deterministic Spatial Analysis
-      (Deviation, Progress, Traffic, Incidents, ETA)
-                      │
-                      ▼
-        Run GeoAgent AI (Advisory)
-                      │
-                      ▼
-        Run Decision Engine (Authoritative)
-                      │
-                      ▼
-    Generate Three-Tier Epistemic Breakdown
-       (OBSERVED, INFERRED, UNKNOWN)
-                      │
-                      ▼
-      Emit Real-Time Workflow Events
-                      │
-                      ▼
-       Normalized Operational Response
 ```
 
 ## Backend Setup & Testing
@@ -165,6 +125,7 @@ POST /api/orchestration/emergencies/:emergencyId/analyze
    node test-part9.js
    node test-part10.js
    node test-part11.js
+   node test-part12.js
    ```
 
 4. **Start Development Server**:

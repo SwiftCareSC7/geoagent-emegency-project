@@ -147,15 +147,22 @@ All measurements across domain services and the orchestration layer adhere to co
 
 ---
 
-## 3. File-by-File Explanation (Part 11 Additions)
+## 3. Part 12 Deep Dive: Backend Hardening, Performance & Query Safety
 
-### Orchestration Module (`server/modules/orchestration/`)
-- [`orchestration.constants.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/orchestration/orchestration.constants.js): Defines workflow stages (`INITIALIZING`, `VALIDATING`, `COLLECTING_CONTEXT`, `ANALYZING_SPATIAL`, `AI_REASONING`, `DECISION_EVALUATION`, `COMPLETED`, `PARTIAL`, `FAILED`), real-time event names, and standardized unit constants.
-- [`orchestration.validation.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/orchestration/orchestration.validation.js): Request validator ensuring `:emergencyId` parameter validity and rejecting client-supplied operational field tampering with HTTP 400.
-- [`orchestration.service.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/orchestration/orchestration.service.js): End-to-end workflow coordinator managing cross-module consistency validation, situation analysis aggregation, GeoAgent AI advisory, Decision Engine evaluation, epistemic breakdown generation, and real-time event emissions.
-- [`orchestration.controller.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/orchestration/orchestration.controller.js): Express controller handling `POST /api/orchestration/emergencies/:emergencyId/analyze`.
-- [`orchestration.routes.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/orchestration/orchestration.routes.js): Express router mounting protected endpoints with `protect` and `requireRole('CONTROL_ROOM', 'ADMIN')`.
-- [`server/test-part11.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/test-part11.js): Comprehensive end-to-end test suite verifying the complete happy path workflow, dependency failure paths, cross-module consistency, input tampering defense, and unit standards.
+### 3.1 Status Code Preservation in Error Handling
+In Express middleware, operational errors created with `err.status = 400 | 401 | 403 | 404 | 409` must have their explicit status codes preserved. [`server/shared/middleware/errorHandler.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/shared/middleware/errorHandler.js) checks `err.status || err.statusCode || (res.statusCode !== 200 ? res.statusCode : 500)` before responding with JSON, ensuring clients receive accurate HTTP status codes rather than generic 500 errors.
+
+### 3.2 Dual Authentication Transport
+Authentication supports both browser-based HTTP-only cookies (`token=...`) and standard HTTP headers (`Authorization: Bearer <token>`). This enables both the Next.js web application and external mobile/simulator clients to authenticate seamlessly.
+
+### 3.3 Database Index Optimizations
+Compound indexes were added across operational models to support common filter patterns without full collection scans:
+- `Emergency`: `{ assignedVehicle: 1, isDeleted: 1 }`, `{ status: 1, isDeleted: 1 }`
+- `Incident`: `{ emergency: 1, isDeleted: 1 }`, `{ status: 1, isDeleted: 1 }`
+- `Vehicle`: `{ status: 1, isDeleted: 1 }`
+
+### 3.4 Parameter Boundary & NaN Protection
+All paginated queries (e.g. `GET /api/trajectories/:vehicleId`) sanitize inputs against `NaN`, negative numbers, and unbounded values (hard maximum limit of 100 items per page).
 
 ---
 
@@ -169,6 +176,7 @@ All measurements across domain services and the orchestration layer adhere to co
    node test-part9.js
    node test-part10.js
    node test-part11.js
+   node test-part12.js
    ```
 
 2. **Trigger Full End-to-End Orchestration**:
