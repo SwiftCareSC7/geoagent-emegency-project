@@ -11,6 +11,7 @@ import { protect } from '../auth/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/roleMiddleware.js';
 import { validateEmergencyCreate, validateEmergencyUpdate, validateEmergencyAssign } from './emergency.validation.js';
 import { getEmergencyRoutes } from '../routes/route.controller.js';
+import { getEmergencyDecisions } from '../decisions/decision.controller.js';
 
 const router = express.Router();
 
@@ -42,5 +43,10 @@ router
   .route('/:emergencyId/routes')
   // GET: CONTROL_ROOM & ADMIN
   .get(requireRole('CONTROL_ROOM', 'ADMIN'), getEmergencyRoutes);
+
+router
+  .route('/:emergencyId/decisions')
+  // GET: CONTROL_ROOM & ADMIN — list all decisions for this emergency
+  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getEmergencyDecisions);
 
 export default router;
