@@ -47,9 +47,10 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 - **Socket Handshake JWT Authentication & Authorization** (Restricted to `CONTROL_ROOM` and `ADMIN`)
 - **Room Isolation & Management** (`control-room`, `emergency:${id}`, `vehicle:${id}`)
 - **Frontend Landing Page & Prototype Dashboard** (SwiftCare UI)
+- **Decision & Dispatch Engine** (deterministic operational rules, severity, status state machine, human-in-the-loop approval, audit trail, real-time decision events, idempotency via situation hash)
 
 ### PLANNED
-- **Decision Engine Execution Layer** (Automated reroute dispatch and escalation approval workflows)
+- **Decision Dashboard & Operator Workflow UX** (Decision queue UI, auto-expiry of stale PENDING decisions, automatic ALTERNATIVE route persistence on REROUTE approval)
 - **Frontend ↔ Backend Live Integration** (Replacing mock adapter with live backend API + Socket.IO client)
 - **Live Traffic API Providers** (Google Routes / Mapbox Traffic live integration)
 - **Control Room Multi-Vehicle Dashboard**
@@ -75,6 +76,14 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 │   │   ├── traffic/                  # Traffic abstraction & mock provider
 │   │   ├── analysis/                 # Situation analysis orchestrator & ETA engine
 │   │   ├── geoagents/                # Production GeoAgent AI module
+│   │   ├── decisions/                # Decision & Dispatch Engine
+│   │   │   ├── decision.constants.js # enums, thresholds, state machine
+│   │   │   ├── decision.rules.js     # pure deterministic rules
+│   │   │   ├── decision.model.js     # Mongoose model
+│   │   │   ├── decision.service.js   # orchestrator + action executor
+│   │   │   ├── decision.controller.js
+│   │   │   ├── decision.routes.js
+│   │   │   └── decision.validation.js
 │   │   └── realtime/                 # Real-time Socket.IO module
 │   │       ├── realtime.constants.js # Event names, commands, room definitions
 │   │       ├── realtime.events.js    # Versioned envelope builder & payload formatters
@@ -87,6 +96,7 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 │   ├── test-part7.js                 # Part 7 tests
 │   ├── test-part8.js                 # Part 8 tests
 │   ├── test-part9.js                 # Part 9 tests
+│   ├── test-part10.js                # Part 10 tests (Decision & Dispatch Engine)
 │   └── .env.example
 ├── geoagent-emergency-project/       # Legacy Next.js scaffold (unused)
 ├── AI_MEMORY.md
@@ -130,6 +140,10 @@ All events are wrapped in a standard versioned envelope:
 | `traffic.updated` | Congestion changes | `control-room` |
 | `eta.updated` | ETA / delay recalculated | `control-room`, `emergency:${id}`, `vehicle:${id}` |
 | `geoagent.analysis.created`| AI recommendation generated | `control-room`, `emergency:${id}`, `vehicle:${id}` |
+| `decision.created` | New decision generated | `control-room`, `emergency:${id}`, `vehicle:${id}` |
+| `decision.approved` | Operator approved a decision | `control-room`, `emergency:${id}`, `vehicle:${id}` |
+| `decision.rejected` | Operator rejected a decision | `control-room`, `emergency:${id}`, `vehicle:${id}` |
+| `decision.executed` | Approved decision executed | `control-room`, `emergency:${id}`, `vehicle:${id}` |
 
 ## Backend Setup & Testing
 

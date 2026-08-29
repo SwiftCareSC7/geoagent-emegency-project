@@ -2,6 +2,33 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
+## [Unreleased] - Part 10
+
+### Added — Decision & Dispatch Engine
+- Created dedicated `server/modules/decisions/` feature module with strict separation of concerns:
+  - `decision.constants.js`: Decision enums (`CONTINUE`, `REROUTE`, `CONSIDER_BACKUP`, `ALERT_CONTROL_ROOM`, `NO_ACTION`), severity (`NORMAL`, `WARNING`, `CRITICAL`), status state machine, reason codes, and configurable thresholds (`CRITICAL_ETA_THRESHOLD_MINUTES`, `MAX_ACCEPTABLE_DELAY_MINUTES`, `BACKUP_TIME_ADVANTAGE_MINUTES`, `CRITICAL_DEVIATION_DISTANCE_METERS`, `BACKUP_SEARCH_RADIUS_KM`, `MAX_ALTERNATIVE_ROUTES`).
+  - `decision.rules.js`: Pure deterministic rule engine — deviation-driven reroute, traffic-driven reroute, delay/ETA threshold, critical incident blocking, alternative route scoring, backup evaluation, AI conflict detection, insufficient-data safety net.
+  - `decision.model.js`: Mongoose Decision model with unique `decisionId`, compact `inputSnapshot`, `situationHash` (idempotency), and full audit fields.
+  - `decision.service.js`: Orchestrator that loads situation server-side, reconciles GeoAgent advisory, persists the decision, enforces state-machine transitions, and runs a controlled action executor.
+  - `decision.controller.js`: REST controllers for analyze, get, approve, reject, execute, and list-by-emergency.
+  - `decision.routes.js`: Express routes registered at `/api/decisions`, protected by `protect` + `requireRole('CONTROL_ROOM', 'ADMIN')`.
+  - `decision.validation.js`: Strict request validation that rejects any client-supplied operational field with HTTP 400.
+- New endpoints:
+  - `POST /api/decisions/analyze` — generate a deterministic operational decision.
+  - `GET /api/decisions/:decisionId` — retrieve a single decision with audit fields.
+  - `GET /api/emergencies/:emergencyId/decisions` — paginated decision history.
+  - `PATCH /api/decisions/:decisionId/approve` — operator approval (human-in-the-loop).
+  - `PATCH /api/decisions/:decisionId/reject` — operator rejection (records operator + reason).
+  - `PATCH /api/decisions/:decisionId/execute` — execute an APPROVED decision via the controlled action service.
+- New real-time events: `decision.created`, `decision.approved`, `decision.rejected`, `decision.executed` (broadcast to `control-room`, `emergency:${id}`, `vehicle:${id}` rooms).
+- Decision state machine with explicit allowed transitions; invalid transitions return HTTP 409.
+- Idempotency via SHA-256 `situationHash` with a 30-second reuse window to avoid duplicate decisions on re-analysis of unchanged state.
+- Backup candidate ranking using a deterministic per-vehicle ETA (screening estimate; operator approval is still required).
+- Real-time realtime service extended with new event methods; realtime constants extended with four new event names.
+- `.env.example` updated with the new decision-engine thresholds (prototype policy values, not medically validated).
+- Added comprehensive automated test suite `server/test-part10.js` covering 16 scenarios: continue / reroute / backup / insufficient data / AI conflict / state machine / end-to-end analyze→approve→execute / rejection / invalid transitions / idempotency / 401 / 403 / 400 (client-supplied operational fields) / real-time event broadcast / list-by-emergency.
+- Updated `AI_MEMORY.md`, `README.md`, and `WALKTHROUGH.md` to document the Decision Engine architecture, rules, persistence, audit trail, real-time events, and safety principles.
+
 ## [Unreleased] - Part 9
 
 ### Added — Real-Time Backend (Socket.IO & Live Event Streaming)
