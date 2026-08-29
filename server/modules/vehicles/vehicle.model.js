@@ -55,12 +55,17 @@ const vehicleSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: [1, 'Capacity must be a positive integer']
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false
     }
   },
   {
     timestamps: true
   }
 );
+
 
 // Method to return a safe version of the vehicle object
 vehicleSchema.methods.toSafeObject = function() {

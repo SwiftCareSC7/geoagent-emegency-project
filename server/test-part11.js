@@ -110,9 +110,10 @@ const testTrajectory = new Trajectory({
   speed: 25,
   heading: 120,
   timestamp: new Date(),
-  source: 'GPS_DEVICE'
+  source: 'DEVICE'
 });
 await testTrajectory.save();
+
 
 // Correlate a nearby severe incident
 const testIncident = new Incident({
