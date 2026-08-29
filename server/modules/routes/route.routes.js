@@ -2,7 +2,7 @@ import express from 'express';
 import { protect } from '../auth/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/roleMiddleware.js';
 import { validateRouteCreate } from './route.validation.js';
-import { createRoute, getRoutes, getRoute } from './route.controller.js';
+import { createRoute, getRoutes, getRoute, getRouteAnalysis } from './route.controller.js';
 
 const router = express.Router();
 
@@ -17,4 +17,8 @@ router.route('/')
 router.route('/:routeId')
   .get(getRoute);
 
+router.route('/:routeId/analysis')
+  .get(getRouteAnalysis);
+
 export default router;
+

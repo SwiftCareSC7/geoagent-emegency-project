@@ -1,4 +1,5 @@
 import routeService from './route.service.js';
+import analysisService from '../analysis/analysis.service.js';
 
 /**
  * @desc    Generate and create a new route
@@ -97,3 +98,24 @@ export const getEmergencyRoutes = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Get complete situation analysis for a specific route
+ * @route   GET /api/routes/:routeId/analysis
+ * @access  Private (CONTROL_ROOM, ADMIN)
+ */
+export const getRouteAnalysis = async (req, res, next) => {
+  try {
+    const { routeId } = req.params;
+    const analysis = await analysisService.getRouteSituation(routeId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Route situation analysis generated',
+      data: analysis
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
