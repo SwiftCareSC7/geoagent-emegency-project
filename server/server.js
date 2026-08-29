@@ -1,3 +1,4 @@
+import http from 'http';
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
@@ -15,6 +16,7 @@ import deviationRoutes from './modules/deviation/deviation.routes.js';
 import trafficRoutes from './modules/traffic/traffic.routes.js';
 import analysisRoutes from './modules/analysis/analysis.routes.js';
 import geoagentRoutes from './modules/geoagents/geoagent.routes.js';
+import realtimeService from './modules/realtime/realtime.service.js';
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +36,7 @@ app.use(helmet());
 // We restrict access to the explicitly defined CLIENT_URL instead of allowing '*'
 const corsOptions = {
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
@@ -81,9 +84,15 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 
-// --- Start Server ---
+// --- Create HTTP Server & Initialize Socket.IO ---
+const server = http.createServer(app);
+realtimeService.init(server, {
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173'
+});
+
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
+

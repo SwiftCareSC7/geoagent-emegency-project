@@ -1,5 +1,7 @@
 import Trajectory from './trajectory.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
+import realtimeService from '../realtime/realtime.service.js';
+import { formatVehicleLocationPayload } from '../realtime/realtime.events.js';
 
 /**
  * Ingest a new GPS trajectory point
@@ -38,8 +40,30 @@ export const createTrajectory = async (trajectoryData) => {
   });
 
   await newTrajectory.save();
+
+  // 4. Emit Real-Time Events
+  try {
+    const locationPayload = formatVehicleLocationPayload(
+      vehicle.vehicleId,
+      location,
+      speed,
+      heading,
+      newTrajectory.timestamp.toISOString()
+    );
+
+    realtimeService.emitVehicleLocationUpdated(vehicle.vehicleId, locationPayload);
+    realtimeService.emitTrajectoryCreated(vehicle.vehicleId, {
+      trajectoryId: newTrajectory._id.toString(),
+      ...locationPayload
+    });
+  } catch (err) {
+    // Non-blocking real-time error logging
+    console.error(`[TrajectoryService] Real-time event emission error: ${err.message}`);
+  }
+
   return newTrajectory;
 };
+
 
 /**
  * Get the latest GPS point for a specific vehicle
