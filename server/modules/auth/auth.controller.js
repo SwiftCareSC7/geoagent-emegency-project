@@ -1,5 +1,6 @@
-import * as authService from './auth.service.js';
+import { registerUser, loginUser } from './auth.service.js';
 import { generateToken } from './jwt.utils.js';
+
 
 // Configuration for HTTP-only cookie
 const getCookieOptions = () => ({

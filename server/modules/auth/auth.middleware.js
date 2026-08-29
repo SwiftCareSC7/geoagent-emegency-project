@@ -6,11 +6,11 @@ import User from './user.model.js';
  */
 export const protect = async (req, res, next) => {
   try {
-    let token;
-
-    // Read the token from the cookie
+    // Read token from cookie or Authorization header
     if (req.cookies && req.cookies.token) {
       token = req.cookies.token;
+    } else if (req.headers && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1];
     }
 
     if (!token) {
@@ -19,6 +19,7 @@ export const protect = async (req, res, next) => {
       error.isOperational = true;
       return next(error);
     }
+
 
     try {
       // Verify token

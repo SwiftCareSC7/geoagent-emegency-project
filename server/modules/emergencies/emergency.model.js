@@ -75,9 +75,12 @@ const emergencySchema = new mongoose.Schema(
   }
 );
 
-// 2dsphere indexes for geospatial queries
+// Indexes for operational queries
 emergencySchema.index({ location: '2dsphere' });
 emergencySchema.index({ destination: '2dsphere' });
+emergencySchema.index({ assignedVehicle: 1, isDeleted: 1 });
+emergencySchema.index({ status: 1, isDeleted: 1 });
+
 
 // Method to return a safe version of the emergency object
 emergencySchema.methods.toSafeObject = function() {

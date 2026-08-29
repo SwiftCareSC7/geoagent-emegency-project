@@ -64,8 +64,11 @@ const incidentSchema = new mongoose.Schema(
   }
 );
 
-// 2dsphere index for geospatial queries
+// Indexes for operational queries
 incidentSchema.index({ location: '2dsphere' });
+incidentSchema.index({ emergency: 1, isDeleted: 1 });
+incidentSchema.index({ status: 1, isDeleted: 1 });
+
 
 // Method to return a safe version of the incident object
 incidentSchema.methods.toSafeObject = function() {

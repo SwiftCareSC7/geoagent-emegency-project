@@ -19,14 +19,15 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default to 500 server error
-  const statusCode = res.statusCode !== 200 ? res.statusCode : 500;
+  // Preserve explicit status code from operational error or response
+  const statusCode = err.status || err.statusCode || (res.statusCode !== 200 ? res.statusCode : 500);
   
   res.status(statusCode).json({
     success: false,
     message: err.isOperational ? err.message : 'Something went wrong'
   });
 };
+
 
 /**
  * 404 Route Not Found Middleware
