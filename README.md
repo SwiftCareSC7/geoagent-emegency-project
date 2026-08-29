@@ -1,12 +1,13 @@
 # GeoAgentic Emergency Response System
 
-The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays, recommend alternative routes, and provide AI agent decision support to control room operators.
+The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays, recommend alternative routes, and provide AI agent decision support to control room operators via REST APIs and real-time push streaming.
 
 ## Current Technology Stack
 
 ### Backend
 - **Runtime**: Node.js
-- **Framework**: Express.js
+- **Framework**: Express.js + Node HTTP Server
+- **Real-Time Layer**: Socket.IO
 - **Database**: MongoDB
 - **ODM**: Mongoose
 - **Security**: bcryptjs, jsonwebtoken, helmet, cors
@@ -42,12 +43,14 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 - **Controlled GeoAgent AI Tools** (`getVehicleSituation`, `getAlternativeRoutes`, `getNearbyAvailableVehicles`, `getNearbyIncidents`)
 - **AI Schema Validation & Sanitization** (Strict JSON structure, prompt injection defense)
 - **Deterministic AI Fallback Engine** (Safe degradation if Gemini is unreachable or unconfigured)
+- **Real-Time Event Streaming (Socket.IO)** (Live push updates for fleet, incidents, deviations, and AI recommendations)
+- **Socket Handshake JWT Authentication & Authorization** (Restricted to `CONTROL_ROOM` and `ADMIN`)
+- **Room Isolation & Management** (`control-room`, `emergency:${id}`, `vehicle:${id}`)
 - **Frontend Landing Page & Prototype Dashboard** (SwiftCare UI)
 
 ### PLANNED
-- **Real-Time WebSocket Updates** (Socket.IO for live driver and operator dashboards)
-- **Decision Engine Execution Layer** (Operational action dispatch and approval workflows)
-- **Frontend ↔ Backend Live Integration** (Replacing mock adapter with live backend API)
+- **Decision Engine Execution Layer** (Automated reroute dispatch and escalation approval workflows)
+- **Frontend ↔ Backend Live Integration** (Replacing mock adapter with live backend API + Socket.IO client)
 - **Live Traffic API Providers** (Google Routes / Mapbox Traffic live integration)
 - **Control Room Multi-Vehicle Dashboard**
 
@@ -71,22 +74,19 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 │   │   ├── deviation/                # Route deviation detection & classification
 │   │   ├── traffic/                  # Traffic abstraction & mock provider
 │   │   ├── analysis/                 # Situation analysis orchestrator & ETA engine
-│   │   └── geoagents/                # Production GeoAgent AI module
-│   │       ├── geoagent.constants.js # Constants, action & cause enums
-│   │       ├── geoagent.schemas.js   # JSON validation & sanitization
-│   │       ├── geoagent.tools.js     # Tool declarations & handlers
-│   │       ├── geoagent.validation.js# Request validators
-│   │       ├── geoagent.controller.js# HTTP controllers
-│   │       ├── geoagent.routes.js    # Express route definitions
-│   │       ├── geoAgent.service.js   # Gemini tool orchestration & fallback
-│   │       └── prompts/
-│   │           └── geoagent.system.js# System prompt & guardrails
+│   │   ├── geoagents/                # Production GeoAgent AI module
+│   │   └── realtime/                 # Real-time Socket.IO module
+│   │       ├── realtime.constants.js # Event names, commands, room definitions
+│   │       ├── realtime.events.js    # Versioned envelope builder & payload formatters
+│   │       ├── realtime.handlers.js  # Handshake JWT authentication & room validators
+│   │       └── realtime.service.js   # Central Socket.IO singleton & emitter functions
 │   ├── shared/
 │   │   ├── middleware/               # errorHandler, roleMiddleware
 │   │   └── services/                 # geospatial.service.js (Turf.js)
-│   ├── server.js                     # Express entry point
+│   ├── server.js                     # Express + HTTP Server + Socket.IO entry point
 │   ├── test-part7.js                 # Part 7 tests
 │   ├── test-part8.js                 # Part 8 tests
+│   ├── test-part9.js                 # Part 9 tests
 │   └── .env.example
 ├── geoagent-emergency-project/       # Legacy Next.js scaffold (unused)
 ├── AI_MEMORY.md
@@ -95,7 +95,43 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
 └── WALKTHROUGH.md
 ```
 
-## Backend Setup
+## Real-Time Event Architecture (Socket.IO)
+
+Socket.IO is attached to the main Express HTTP server. All connections require valid JWT authentication during the handshake.
+
+### Room Channels
+- `control-room`: Joined automatically by all connected operators. Receives global events.
+- `emergency:${emergencyId}`: Scoped channel for updates pertaining to a specific active case.
+- `vehicle:${vehicleId}`: Scoped channel for vehicle-specific telemetry, assignment, and deviation alerts.
+
+### Event Envelope
+All events are wrapped in a standard versioned envelope:
+```json
+{
+  "version": 1,
+  "event": "vehicle.location.updated",
+  "timestamp": "2026-08-29T18:40:00.000Z",
+  "data": { ... }
+}
+```
+
+### Supported Events
+| Event Name | Trigger | Target Rooms |
+|---|---|---|
+| `vehicle.location.updated` | GPS trajectory ingested | `control-room`, `vehicle:${id}` |
+| `vehicle.status.updated` | Vehicle status modified | `control-room`, `vehicle:${id}` |
+| `trajectory.created` | Trajectory saved to DB | `control-room`, `vehicle:${id}` |
+| `emergency.created` | Emergency case registered | `control-room` |
+| `emergency.updated` | Case details/status modified | `control-room`, `emergency:${id}` |
+| `incident.created` | Hazard reported | `control-room` |
+| `incident.updated` | Hazard modified/resolved | `control-room` |
+| `route.updated` | New route generated | `control-room`, `emergency:${id}`, `vehicle:${id}` |
+| `route.deviation.detected`| Significant deviation detected | `control-room`, `emergency:${id}`, `vehicle:${id}` |
+| `traffic.updated` | Congestion changes | `control-room` |
+| `eta.updated` | ETA / delay recalculated | `control-room`, `emergency:${id}`, `vehicle:${id}` |
+| `geoagent.analysis.created`| AI recommendation generated | `control-room`, `emergency:${id}`, `vehicle:${id}` |
+
+## Backend Setup & Testing
 
 1. **Install dependencies**:
    ```bash
@@ -103,164 +139,29 @@ The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is an intelligent 
    npm install
    ```
 
-2. **Environment Variables**:
-   Copy `.env.example` to `.env` and configure:
+2. **Configure Environment Variables**:
+   Copy `.env.example` to `.env` and configure your credentials:
    ```env
    PORT=5000
-   MONGO_URI=your_mongodb_connection_string
+   MONGO_URI=mongodb://localhost:27017/geoagent-emergency
    CLIENT_URL=http://localhost:3000
-   NODE_ENV=development
-   JWT_SECRET=replace_with_a_long_random_secret
-   JWT_EXPIRES_IN=30d
-
-   # Routing
-   ROUTING_PROVIDER=mock
-   # GOOGLE_MAPS_API_KEY=your_key
-   # MAPBOX_ACCESS_TOKEN=your_token
-
-   # Traffic
-   TRAFFIC_PROVIDER=mock
-   DEFAULT_FREE_FLOW_SPEED_KMH=45
-
-   # Deviation Thresholds
-   ROUTE_WARNING_DISTANCE_METERS=50
-   ROUTE_DEVIATION_DISTANCE_METERS=100
-   ROUTE_CRITICAL_DISTANCE_METERS=250
-   BEARING_WARNING_DEGREES=30
-   BEARING_DEVIATION_DEGREES=60
-   GPS_STABILITY_WINDOW=3
-
-   # Incident Proximity
-   INCIDENT_PROXIMITY_RADIUS_METERS=500
-
-   # GeoAgent AI
-   GEMINI_API_KEY=your_gemini_api_key
-   GEMINI_MODEL=gemini-2.5-flash
+   JWT_SECRET=your_jwt_secret_key_here
+   GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
-3. **Run Unit & Integration Tests**:
+3. **Run Automated Test Suites**:
    ```bash
+   # Run Part 7 (Deviation, Traffic, ETA logic)
    node test-part7.js
+
+   # Run Part 8 (GeoAgent AI, tools, validation, fallback)
    node test-part8.js
+
+   # Run Part 9 (Real-time Socket.IO, handshake auth, rooms, events)
+   node test-part9.js
    ```
 
 4. **Start Development Server**:
    ```bash
    npm run dev
    ```
-
----
-
-## API Documentation
-
-*Base URL: `http://localhost:5000`*
-
-### Health
-- `GET /api/health` — Server health status (Public)
-
-### Authentication (`/api/auth`)
-- `POST /register` — Register new user `{ name, email, password }`
-- `POST /login` — Login with credentials, sets HTTP-only cookie
-- `POST /logout` — Clear auth cookie
-- `GET /me` — Current authenticated user details
-
-### Vehicles (`/api/vehicles`)
-- `POST /` — Create vehicle (`ADMIN`)
-- `GET /` — List vehicles (`CONTROL_ROOM`, `ADMIN`)
-- `GET /:vehicleId` — Get vehicle details (`CONTROL_ROOM`, `ADMIN`)
-- `PATCH /:vehicleId` — Update vehicle (`CONTROL_ROOM`, `ADMIN`)
-- `DELETE /:vehicleId` — Delete vehicle (`ADMIN`)
-
-### Emergencies (`/api/emergencies`)
-- `POST /` — Create emergency with GeoJSON location (`CONTROL_ROOM`, `ADMIN`)
-- `GET /` — List emergencies with query filters
-- `GET /:emergencyId` — Get emergency details
-- `PATCH /:emergencyId` — Update emergency details
-- `PATCH /:emergencyId/assign` — Assign vehicle to emergency
-- `DELETE /:emergencyId` — Soft-delete emergency (`ADMIN`)
-- `GET /:emergencyId/routes` — Get routes attached to emergency
-
-### Incidents (`/api/incidents`)
-- `POST /` — Report incident with GeoJSON location (`CONTROL_ROOM`, `ADMIN`)
-- `GET /` — List active incidents
-- `GET /:incidentId` — Get incident details
-- `PATCH /:incidentId` — Update incident status/severity
-- `DELETE /:incidentId` — Soft-delete incident (`ADMIN`)
-
-### GPS Trajectories (`/api/trajectories`)
-- `POST /` — Ingest GPS point `{ vehicleId, location, speed, heading, timestamp, source }`
-- `GET /:vehicleId/latest` — Absolute latest GPS point for vehicle
-- `GET /:vehicleId` — Paginated GPS history (`?page=1&limit=50`)
-- `GET /:vehicleId/recent` — Last N GPS points for live map display (`?limit=20`)
-
-### Routing (`/api/routes`)
-- `POST /` — Generate and save a new route `{ emergencyId, vehicleId, routeType, origin, destination }`
-- `GET /` — List routes with filters
-- `GET /:routeId` — Get route details
-- `GET /:routeId/analysis` — Get complete situation analysis for a specific route
-
-### Deviation Engine (`/api/deviation`)
-- `GET /vehicle/:vehicleId` — Standalone deviation analysis for an active vehicle
-
-### Traffic (`/api/traffic`)
-- `GET /location?lng=77.5946&lat=12.9716` — Get traffic conditions at coordinates
-
-### Situation Analysis (`/api/analysis`)
-- `GET /vehicle/:vehicleId` — Comprehensive vehicle situation analysis (Deviation + Progress + Traffic + Incidents + ETA + Delay + Evidence)
-
-### GeoAgent AI Decision Engine (`/api/geoagent`)
-- `POST /analyze` — Trigger AI decision analysis for an emergency:
-  ```json
-  {
-    "emergencyId": "EMG-0001"
-  }
-  ```
-- `POST /analyze/vehicle/:vehicleId` — Trigger AI decision analysis for a vehicle
-
-#### Example GeoAgent AI Response:
-```json
-{
-  "success": true,
-  "message": "GeoAgent emergency analysis generated",
-  "data": {
-    "status": "ANALYZED",
-    "vehicleId": "AMB-001",
-    "emergencyId": "EMG-0001",
-    "assessment": {
-      "routeStatus": "DEVIATED",
-      "likelyCause": "ACCIDENT_INDUCED_CONGESTION",
-      "confidence": 0.92
-    },
-    "eta": {
-      "currentMinutes": 15,
-      "originalMinutes": 10,
-      "delayMinutes": 5
-    },
-    "recommendation": {
-      "action": "REROUTE",
-      "routeId": "ROUTE-0002",
-      "summary": "Reroute via bypass to avoid high severity accident corridor"
-    },
-    "backup": {
-      "recommended": false,
-      "reason": "Primary ambulance delay is manageable via Route B bypass",
-      "candidateVehicleId": null
-    },
-    "observations": {
-      "observed": [
-        "Ambulance is 182m from planned route",
-        "Traffic is heavy with congestion ratio 0.73",
-        "High-severity accident reported 350m ahead on primary route"
-      ],
-      "inferred": [
-        "Driver deviated to avoid accident-induced queue"
-      ],
-      "unknown": [
-        "Driver audio communication"
-      ]
-    },
-    "reasoning": "The ambulance is currently experiencing heavy congestion due to an accident on the primary corridor. Taking Route B via the bypass saves 5 minutes and avoids the bottleneck.",
-    "analyzedAt": "2026-08-29T18:00:00.000Z"
-  }
-}
-```

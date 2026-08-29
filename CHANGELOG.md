@@ -2,6 +2,25 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
+## [Unreleased] - Part 9
+
+### Added — Real-Time Backend (Socket.IO & Live Event Streaming)
+- Created dedicated `server/modules/realtime/` feature module:
+  - `realtime.constants.js`: Centralized definitions for 12 operational event names (`vehicle.location.updated`, `route.deviation.detected`, `eta.updated`, `geoagent.analysis.created`, etc.), client commands, and room naming conventions.
+  - `realtime.events.js`: Standardized, versioned event envelope builder (`version: 1`) and payload normalization helpers.
+  - `realtime.handlers.js`: Socket.IO handshake authentication middleware (validating JWT tokens from cookies or authorization headers) and client event handlers with server-side DB validation (`join.emergency`, `join.vehicle`, `join.control_room`).
+  - `realtime.service.js`: Singleton Socket.IO management service exposing safe emission methods.
+- Attached Socket.IO to Express HTTP server via `http.createServer(app)` in `server/server.js`.
+- Integrated real-time event emissions into core domain services:
+  - `trajectory.service.js`: Emits `trajectory.created` and `vehicle.location.updated`.
+  - `emergency.service.js`: Emits `emergency.created` and `emergency.updated`.
+  - `incident.service.js`: Emits `incident.created` and `incident.updated`.
+  - `route.service.js`: Emits `route.updated`.
+  - `vehicle.service.js`: Emits `vehicle.status.updated`.
+  - `geoAgent.service.js`: Emits `geoagent.analysis.created`.
+- Added automated test suite `server/test-part9.js` verifying handshake authentication, rejection of unauthenticated/invalid connections, room authorization, and live event broadcasting.
+- Updated documentation in `AI_MEMORY.md`, `README.md`, and `WALKTHROUGH.md`.
+
 ## [Unreleased] - Part 8
 
 ### Added — GeoAgent AI Backend Integration
@@ -17,7 +36,6 @@ All notable changes to the GeoAgentic Emergency Response System will be document
 - Extended `server/server.js` with `geoagentRoutes` registration.
 - Added `server/test-part8.js` comprehensive test suite for tool execution, sanitization, schema validation, and fallback mechanisms.
 - Updated `server/.env.example` with `GEMINI_MODEL`.
-- Updated `AI_MEMORY.md`, `README.md`, and `WALKTHROUGH.md`.
 
 ## [Unreleased] - Part 7
 
