@@ -1,4 +1,5 @@
 import Vehicle from './vehicle.model.js';
+import realtimeService from '../realtime/realtime.service.js';
 
 /**
  * Create a new emergency vehicle
@@ -89,8 +90,22 @@ export const updateVehicle = async (vehicleId, updateData) => {
     throw error;
   }
 
+  // Emit Real-Time Event if status changed
+  if (filteredUpdates.status) {
+    try {
+      realtimeService.emitVehicleStatusUpdated(vehicle.vehicleId, {
+        vehicleId: vehicle.vehicleId,
+        status: vehicle.status,
+        updatedAt: vehicle.updatedAt
+      });
+    } catch (err) {
+      console.error(`[VehicleService] Real-time event emission error: ${err.message}`);
+    }
+  }
+
   return vehicle;
 };
+
 
 /**
  * Delete an emergency vehicle

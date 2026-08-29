@@ -3,6 +3,8 @@ import Route from './route.model.js';
 import routingService from './routing.service.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
+import realtimeService from '../realtime/realtime.service.js';
+
 
 class RouteService {
   /**
@@ -49,8 +51,26 @@ class RouteService {
     });
 
     await route.save();
+
+    // Emit Real-Time Event
+    try {
+      realtimeService.emitRouteUpdated(emergency.emergencyId, vehicle.vehicleId, {
+        routeId: route.routeId,
+        emergencyId: emergency.emergencyId,
+        vehicleId: vehicle.vehicleId,
+        routeType: route.routeType,
+        distanceMeters: route.distance,
+        durationSeconds: route.duration,
+        provider: route.provider,
+        status: route.status
+      });
+    } catch (err) {
+      console.error(`[RouteService] Real-time event emission error: ${err.message}`);
+    }
+
     return route;
   }
+
 
   /**
    * Retrieves routes with pagination and filters

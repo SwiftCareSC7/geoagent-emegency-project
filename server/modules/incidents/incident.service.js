@@ -1,4 +1,5 @@
 import Incident from './incident.model.js';
+import realtimeService from '../realtime/realtime.service.js';
 
 /**
  * Generate a unique incident ID (e.g., INC-0001)
@@ -23,6 +24,22 @@ export const createIncident = async (incidentData, userId) => {
   });
 
   await newIncident.save();
+
+  // Emit Real-Time Event
+  try {
+    realtimeService.emitIncidentCreated({
+      incidentId: newIncident.incidentId,
+      type: newIncident.type,
+      severity: newIncident.severity,
+      status: newIncident.status,
+      description: newIncident.description,
+      location: newIncident.location,
+      createdAt: newIncident.createdAt
+    });
+  } catch (err) {
+    console.error(`[IncidentService] Real-time event emission error: ${err.message}`);
+  }
+
   return newIncident;
 };
 
@@ -87,6 +104,19 @@ export const updateIncident = async (incidentId, updateData) => {
     throw error;
   }
 
+  // Emit Real-Time Event
+  try {
+    realtimeService.emitIncidentUpdated(incident.incidentId, {
+      incidentId: incident.incidentId,
+      status: incident.status,
+      severity: incident.severity,
+      description: incident.description,
+      updatedAt: incident.updatedAt
+    });
+  } catch (err) {
+    console.error(`[IncidentService] Real-time event emission error: ${err.message}`);
+  }
+
   return incident;
 };
 
@@ -107,5 +137,17 @@ export const deleteIncident = async (incidentId) => {
     throw error;
   }
 
+  // Emit Real-Time Event
+  try {
+    realtimeService.emitIncidentUpdated(incident.incidentId, {
+      incidentId: incident.incidentId,
+      status: 'DELETED',
+      isDeleted: true
+    });
+  } catch (err) {
+    console.error(`[IncidentService] Real-time event emission error: ${err.message}`);
+  }
+
   return incident;
 };
+

@@ -212,14 +212,24 @@ Otherwise, output the final structured JSON object immediately.
         // If no tool call was requested, we have our final text output
         if (!functionCalls || functionCalls.length === 0) {
           const rawJSON = this.parseJSONResponse(response.text);
-          return validateGeoAgentOutput(rawJSON, {
+          const validated = validateGeoAgentOutput(rawJSON, {
             vehicleId,
             emergencyId: emergency.emergencyId,
             routeStatus: situation.deviation.status,
             currentMinutes: situation.eta.currentMinutes,
             originalMinutes: situation.eta.originalMinutes
           });
+
+          // Emit Real-Time Event
+          try {
+            realtimeService.emitGeoAgentAnalysis(emergency.emergencyId, vehicleId, validated);
+          } catch (err) {
+            console.error(`[GeoAgentService] Real-time event emission error: ${err.message}`);
+          }
+
+          return validated;
         }
+
 
         // Handle tool calls
         const firstCall = functionCalls[0];

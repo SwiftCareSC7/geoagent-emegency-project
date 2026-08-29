@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import Emergency from './emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
+import realtimeService from '../realtime/realtime.service.js';
 
 /**
  * Generate a unique emergency ID (e.g., EMG-0001)
@@ -26,6 +27,22 @@ export const createEmergency = async (emergencyData, userId) => {
   });
 
   await newEmergency.save();
+
+  // Emit Real-Time Event
+  try {
+    realtimeService.emitEmergencyCreated({
+      emergencyId: newEmergency.emergencyId,
+      type: newEmergency.type,
+      priority: newEmergency.priority,
+      status: newEmergency.status,
+      location: newEmergency.location,
+      destination: newEmergency.destination,
+      createdAt: newEmergency.createdAt
+    });
+  } catch (err) {
+    console.error(`[EmergencyService] Real-time event emission error: ${err.message}`);
+  }
+
   return newEmergency;
 };
 
@@ -92,6 +109,19 @@ export const updateEmergency = async (emergencyId, updateData) => {
     throw error;
   }
 
+  // Emit Real-Time Event
+  try {
+    realtimeService.emitEmergencyUpdated(emergency.emergencyId, {
+      emergencyId: emergency.emergencyId,
+      status: emergency.status,
+      priority: emergency.priority,
+      destination: emergency.destination,
+      updatedAt: emergency.updatedAt
+    });
+  } catch (err) {
+    console.error(`[EmergencyService] Real-time event emission error: ${err.message}`);
+  }
+
   return emergency;
 };
 
@@ -137,7 +167,26 @@ export const assignVehicle = async (emergencyId, vehicleId) => {
     await session.commitTransaction();
     session.endSession();
 
-    return await Emergency.findById(emergency._id).populate('assignedVehicle', 'vehicleId registrationNumber status');
+    const result = await Emergency.findById(emergency._id).populate('assignedVehicle', 'vehicleId registrationNumber status');
+
+    // Emit Real-Time Events
+    try {
+      realtimeService.emitEmergencyUpdated(emergency.emergencyId, {
+        emergencyId: emergency.emergencyId,
+        status: 'DISPATCHED',
+        assignedVehicleId: vehicle.vehicleId
+      });
+
+      realtimeService.emitVehicleStatusUpdated(vehicle.vehicleId, {
+        vehicleId: vehicle.vehicleId,
+        status: 'DISPATCHED',
+        assignedEmergencyId: emergency.emergencyId
+      });
+    } catch (err) {
+      console.error(`[EmergencyService] Real-time event emission error: ${err.message}`);
+    }
+
+    return result;
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -162,5 +211,17 @@ export const deleteEmergency = async (emergencyId) => {
     throw error;
   }
 
+  // Emit Real-Time Event
+  try {
+    realtimeService.emitEmergencyUpdated(emergency.emergencyId, {
+      emergencyId: emergency.emergencyId,
+      status: 'DELETED',
+      isDeleted: true
+    });
+  } catch (err) {
+    console.error(`[EmergencyService] Real-time event emission error: ${err.message}`);
+  }
+
   return emergency;
 };
+
