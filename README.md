@@ -1,29 +1,56 @@
 # GeoAgentic Emergency Response System
 
-The GeoAgentic Emergency Response System is a platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays, recommend alternative routes, and provide AI agent decision support to control room operators.
+The GeoAgentic Emergency Response System (SwiftCare GeoAgent) is a platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays, recommend alternative routes, and provide AI agent decision support to control room operators.
 
 ## Current Technology Stack
 
+### Backend
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Database**: MongoDB
 - **ODM**: Mongoose
 - **Security**: bcryptjs, jsonwebtoken, helmet, cors
-- **Environment**: dotenv
+- **Geospatial**: @turf/turf
+- **AI**: @google/genai (Gemini SDK)
+- **Environment**: dotenv, cookie-parser
+
+### Frontend (SwiftCare GeoAgent Prototype)
+- **Framework**: Next.js (App Router, TypeScript)
+- **Styling**: Tailwind CSS v4, tw-animate-css, shadcn
+- **UI Primitives**: @base-ui/react, class-variance-authority
+- **Icons**: Lucide React
+- **Fonts**: Inter, Plus Jakarta Sans (Google Fonts)
+- **Analytics**: @vercel/analytics
 
 ## Current Features
 
-- **Backend Foundation**        COMPLETED
-- **Authentication**            COMPLETED
-- **Vehicle Management**        COMPLETED
-- **Emergency Management**      COMPLETED
-- **Incident Management**       COMPLETED
-- **GPS Tracking**              COMPLETED
-- **Routing**                   COMPLETED
-- **Traffic Analysis**          PLANNED
-- **GeoAgent AI**               PLANNED
-- **Real-Time Communication**   PLANNED
-- **Decision Engine**           PLANNED
+- **Backend Foundation**            COMPLETED
+- **Authentication**                COMPLETED
+- **Vehicle Management**            COMPLETED
+- **Emergency Management**          COMPLETED
+- **Incident Management**           COMPLETED
+- **GPS Tracking**                  COMPLETED
+- **Routing**                       COMPLETED
+- **Frontend Landing Page**         COMPLETED
+- **Frontend Login / Signup**       COMPLETED (prototype, no auth)
+- **Frontend Driver Dashboard**     COMPLETED (mock data)
+- **GeoAgent AI (Gemini PoC)**      COMPLETED (standalone)
+- **Live Map Integration**          PLANNED
+- **Frontend ↔ Backend Connect**    PLANNED
+- **Real-Time (Socket.IO)**         PLANNED
+- **Route Deviation Detection**     PLANNED
+- **Traffic Analysis**              PLANNED
+- **Control Room Dashboard**        PLANNED
+
+## Project Structure
+
+The project has three codebases in a monorepo layout:
+
+| Directory | Purpose |
+|---|---|
+| `app/`, `components/`, `lib/`, `public/` | Active Next.js frontend (SwiftCare prototype) |
+| `server/` | Express.js backend API |
+| `geoagent-emergency-project/` | Legacy Next.js scaffold (unused) |
 
 ## Backend Setup
 
@@ -38,15 +65,18 @@ The GeoAgentic Emergency Response System is a platform designed to monitor emerg
    ```env
    PORT=5000
    MONGO_URI=your_mongodb_connection_string
-   CLIENT_URL=http://localhost:5173
-   
+   CLIENT_URL=http://localhost:3000
+   NODE_ENV=development
+   JWT_SECRET=replace_with_a_long_random_secret
+   JWT_EXPIRES_IN=7d
+
    # Routing
    ROUTING_PROVIDER=mock
    # GOOGLE_MAPS_API_KEY=your_key
    # MAPBOX_ACCESS_TOKEN=your_token
-   NODE_ENV=development
-   JWT_SECRET=replace_with_a_long_random_secret
-   JWT_EXPIRES_IN=7d
+
+   # GeoAgent AI
+   # GEMINI_API_KEY=your_gemini_api_key
    ```
 
 3. **Development Server**:
@@ -58,6 +88,30 @@ The GeoAgentic Emergency Response System is a platform designed to monitor emerg
    ```bash
    npm start
    ```
+
+## Frontend Setup
+
+1. **Install dependencies** (from the project root):
+   ```bash
+   npm install
+   ```
+
+2. **Run the development server**:
+   ```bash
+   npm run dev
+   ```
+   The frontend is a prototype UI — it uses mock data and does not require the backend to be running.
+
+## Frontend Pages
+
+| Route | Component | Description |
+|---|---|---|
+| `/` | `LandingPage` | Hero section, feature cards, contact info |
+| `/login` | `LoginPage` | Login form (prototype — any credentials work) |
+| `/signup` | `SignupPage` | Registration with driver/operator role selector |
+| `/driver/dashboard` | `DriverDashboardPage` | Real-time route status, ETA, deviation analysis, GeoAgent recommendation |
+
+> **Note**: The frontend is a prototype UI. Authentication is not implemented — login and signup redirect directly to the driver dashboard.
 
 ## API Documentation
 
