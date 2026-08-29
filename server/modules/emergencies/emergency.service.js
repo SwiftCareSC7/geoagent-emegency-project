@@ -129,70 +129,69 @@ export const updateEmergency = async (emergencyId, updateData) => {
  * Assign a vehicle to an emergency
  */
 export const assignVehicle = async (emergencyId, vehicleId) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const isEmergencyObjectId = typeof emergencyId === 'string' && emergencyId.match(/^[0-9a-fA-F]{24}$/);
+  const emgQuery = isEmergencyObjectId ? { _id: emergencyId, isDeleted: false } : { emergencyId, isDeleted: false };
+  const emergency = await Emergency.findOne(emgQuery);
 
-  try {
-    const emergency = await Emergency.findOne({ emergencyId, isDeleted: false }).session(session);
-    if (!emergency) {
-      const error = new Error('Emergency not found');
-      error.status = 404;
-      error.isOperational = true;
-      throw error;
-    }
-
-    const vehicle = await Vehicle.findOne({ vehicleId }).session(session);
-    if (!vehicle) {
-      const error = new Error('Vehicle not found');
-      error.status = 404;
-      error.isOperational = true;
-      throw error;
-    }
-
-    if (vehicle.status !== 'AVAILABLE') {
-      const error = new Error('Vehicle is not available for assignment');
-      error.status = 400;
-      error.isOperational = true;
-      throw error;
-    }
-
-    // Perform updates
-    emergency.assignedVehicle = vehicle._id;
-    emergency.status = 'DISPATCHED';
-    await emergency.save({ session });
-
-    vehicle.status = 'DISPATCHED';
-    await vehicle.save({ session });
-
-    await session.commitTransaction();
-    session.endSession();
-
-    const result = await Emergency.findById(emergency._id).populate('assignedVehicle', 'vehicleId registrationNumber status');
-
-    // Emit Real-Time Events
-    try {
-      realtimeService.emitEmergencyUpdated(emergency.emergencyId, {
-        emergencyId: emergency.emergencyId,
-        status: 'DISPATCHED',
-        assignedVehicleId: vehicle.vehicleId
-      });
-
-      realtimeService.emitVehicleStatusUpdated(vehicle.vehicleId, {
-        vehicleId: vehicle.vehicleId,
-        status: 'DISPATCHED',
-        assignedEmergencyId: emergency.emergencyId
-      });
-    } catch (err) {
-      console.error(`[EmergencyService] Real-time event emission error: ${err.message}`);
-    }
-
-    return result;
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
+  if (!emergency) {
+    const error = new Error('Emergency not found');
+    error.status = 404;
+    error.isOperational = true;
     throw error;
   }
+
+  const isVehicleObjectId = typeof vehicleId === 'string' && vehicleId.match(/^[0-9a-fA-F]{24}$/);
+  const vehQuery = isVehicleObjectId ? { _id: vehicleId, isDeleted: false } : { vehicleId, isDeleted: false };
+  const vehicle = await Vehicle.findOne(vehQuery);
+
+  if (!vehicle) {
+    const error = new Error('Vehicle not found');
+    error.status = 404;
+    error.isOperational = true;
+    throw error;
+  }
+
+  if (vehicle.status !== 'AVAILABLE') {
+    const error = new Error('Vehicle is not available for assignment');
+    error.status = 400;
+    error.isOperational = true;
+    throw error;
+  }
+
+  // Perform updates
+  emergency.assignedVehicle = vehicle._id;
+  emergency.status = 'DISPATCHED';
+  await emergency.save();
+
+  vehicle.status = 'DISPATCHED';
+  await vehicle.save();
+
+  const result = await Emergency.findById(emergency._id).populate(
+    'assignedVehicle',
+    'vehicleId registrationNumber status'
+  );
+
+  // Emit Real-Time Events
+  try {
+    realtimeService.emitEmergencyUpdated(emergency.emergencyId, {
+      emergencyId: emergency.emergencyId,
+      status: 'DISPATCHED',
+      assignedVehicleId: vehicle.vehicleId
+    });
+
+    realtimeService.emitVehicleStatusUpdated(vehicle.vehicleId, {
+      vehicleId: vehicle.vehicleId,
+      status: 'DISPATCHED',
+      assignedEmergencyId: emergency.emergencyId
+    });
+  } catch (err) {
+    console.error(`[EmergencyService] Real-time event emission error: ${err.message}`);
+  }
+
+  return result;
 };
+
+
 
 /**
  * Soft delete an emergency

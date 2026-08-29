@@ -17,16 +17,29 @@ class RouteService {
     const { emergencyId, vehicleId, origin, destination, routeType = 'PLANNED' } = routeData;
 
     // 1. Validate Emergency
-    const emergency = await Emergency.findById(emergencyId);
+    const isEmergencyObjectId = typeof emergencyId === 'string' && emergencyId.match(/^[0-9a-fA-F]{24}$/);
+    const emergency = await Emergency.findOne(
+      isEmergencyObjectId ? { _id: emergencyId, isDeleted: false } : { emergencyId, isDeleted: false }
+    );
     if (!emergency) {
-      throw new Error('Emergency not found');
+      const error = new Error('Emergency not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
     }
 
     // 2. Validate Vehicle
-    const vehicle = await Vehicle.findById(vehicleId);
+    const isVehicleObjectId = typeof vehicleId === 'string' && vehicleId.match(/^[0-9a-fA-F]{24}$/);
+    const vehicle = await Vehicle.findOne(
+      isVehicleObjectId ? { _id: vehicleId, isDeleted: false } : { vehicleId, isDeleted: false }
+    );
     if (!vehicle) {
-      throw new Error('Vehicle not found');
+      const error = new Error('Vehicle not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
     }
+
 
     // 3. Call External Routing Service (Mock or Real)
     // The routingService throws safe errors if provider fails

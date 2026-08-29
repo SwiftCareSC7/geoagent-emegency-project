@@ -4,11 +4,11 @@
 To monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic or accidents, calculate delays and ETA, recommend alternative routes, and provide end-to-end decision support to emergency control room operators via an AI agent (GeoAgent) and a deterministic Decision & Dispatch Engine.
 
 ## Problem Statement
-Current emergency response systems lack intelligent, real-time spatial awareness. Control rooms struggle to monitor active deviations from optimal routes and don't have automated context (like nearby incidents or traffic) to provide immediate driver assistance. The system requires an end-to-end integration and orchestration layer that connects Emergency Calls, Vehicle Tracking, GPS Trajectories, Route Deviation, Live Traffic, Incident Correlation, ETA Calculation, Advisory AI Reasoning, and Authoritative Decision Support into a single resilient workflow.
+Current emergency response systems lack intelligent, real-time spatial awareness. Control rooms struggle to monitor active deviations from optimal routes and don't have automated context (like nearby incidents or traffic) to provide immediate driver assistance. The system requires an end-to-end integration and orchestration layer that connects Emergency Calls, Vehicle Tracking, GPS Trajectories, Route Deviation, Live Traffic, Incident Correlation, ETA Calculation, Advisory AI Reasoning, and Authoritative Decision Support into a single resilient, hardened workflow.
 
 ## Core Requirements
-- Secure backend foundation.
-- Authentication & Role-based Access (`ADMIN`, `CONTROL_ROOM`).
+- Secure backend foundation with centralized error handling and exact status code preservation.
+- Authentication & Role-based Access (`ADMIN`, `CONTROL_ROOM`) with cookie and `Authorization: Bearer` support.
 - Entity tracking: Vehicles, Emergencies, Incidents, Trajectories, Routes, Decisions.
 - Route deviation detection (distance, bearing, stability, threshold classification).
 - Route progress analysis (distance along route, percentage, remaining distance).
@@ -20,6 +20,7 @@ Current emergency response systems lack intelligent, real-time spatial awareness
 - Deterministic Decision & Dispatch Engine — authoritative operational decisions.
 - Full Backend Integration & Orchestration Layer — end-to-end workflow execution with 3-tier epistemic discipline (OBSERVED, INFERRED, UNKNOWN).
 - Real-Time Communication Layer (Socket.IO with handshake JWT authentication and room-based event streaming).
+- Final Backend Hardening (Query bounds, NaN safety, GeoJSON coordinate boundaries, compound index optimizations).
 - Frontend prototype UI (SwiftCare GeoAgent) for driver dashboard and landing pages.
 
 ## Technology Stack
@@ -80,11 +81,11 @@ Current emergency response systems lack intelligent, real-time spatial awareness
 
 ## Backend Architecture
 **Feature-Based (Modular) Architecture**:
-- `server/modules/auth`: User authentication, JWT, cookies, role checks.
-- `server/modules/vehicles`: Vehicle registry and lifecycle management.
-- `server/modules/emergencies`: Emergency call handling and vehicle dispatch assignment.
-- `server/modules/incidents`: Incident management, proximity tagging, soft deletes.
-- `server/modules/trajectories`: GPS ingestion, compound index history, clock-skew protection.
+- `server/modules/auth`: User authentication, JWT, cookies, Bearer header support, role checks.
+- `server/modules/vehicles`: Vehicle registry, lifecycle management, compound indexes.
+- `server/modules/emergencies`: Emergency call handling, vehicle dispatch assignment, compound indexes.
+- `server/modules/incidents`: Incident management, proximity tagging, soft deletes, compound indexes.
+- `server/modules/trajectories`: GPS ingestion, compound indexed history, NaN-safe pagination, clock-skew protection.
 - `server/modules/routes`: Route models, provider abstraction (Mock/Google/Mapbox), GeoJSON LineStrings.
 - `server/modules/deviation`: Route deviation engine, threshold classification, bearing comparison, GPS jitter stability.
 - `server/modules/traffic`: Traffic abstraction layer, congestion ratios, mock traffic provider.
@@ -113,11 +114,6 @@ server/
 │   ├── geoagents/
 │   ├── decisions/
 │   ├── orchestration/
-│   │   ├── orchestration.constants.js  # Stages, event names, standard units
-│   │   ├── orchestration.validation.js # Validation & client operational field rejection
-│   │   ├── orchestration.service.js    # End-to-end workflow coordinator & epistemic parser
-│   │   ├── orchestration.controller.js # HTTP controller for workflow execution
-│   │   └── orchestration.routes.js     # Protected router mounted at /api/orchestration
 │   └── realtime/
 ├── shared/
 │   ├── middleware/
@@ -128,14 +124,15 @@ server/
 ├── test-part9.js                       # Part 9 tests
 ├── test-part10.js                      # Part 10 tests
 ├── test-part11.js                      # Part 11 tests
+├── test-part12.js                      # Part 12 tests (Hardening, Security & End-to-End)
 └── .env.example
 ```
 
 ## API Inventory
 **Auth**: `POST /api/auth/register`, `/login`, `/logout`, `GET /me`
-**Vehicles**: `GET /api/vehicles`, `/:id`, `POST /`, `PATCH /:id`, `DELETE /:id`
-**Emergencies**: `GET /api/emergencies`, `/:id`, `POST /`, `PATCH /:id`, `PATCH /:id/assign`, `DELETE /:id`, `GET /:id/routes`, `GET /:id/decisions`
-**Incidents**: `GET /api/incidents`, `/:id`, `POST /`, `PATCH /:id`, `DELETE /:id`
+**Vehicles**: `GET /api/vehicles`, `/:vehicleId`, `POST /`, `PATCH /:vehicleId`, `DELETE /:vehicleId`
+**Emergencies**: `GET /api/emergencies`, `/:emergencyId`, `POST /`, `PATCH /:emergencyId`, `PATCH /:emergencyId/assign`, `DELETE /:emergencyId`, `GET /:emergencyId/routes`, `GET /:emergencyId/decisions`
+**Incidents**: `GET /api/incidents`, `/:incidentId`, `POST /`, `PATCH /:incidentId`, `DELETE /:incidentId`
 **Trajectories**: `POST /api/trajectories`, `GET /:vehicleId`, `GET /:vehicleId/latest`, `GET /:vehicleId/recent`
 **Routes**: `POST /api/routes`, `GET /api/routes`, `GET /api/routes/:routeId`, `GET /api/routes/:routeId/analysis`
 **Deviation**: `GET /api/deviation/vehicle/:vehicleId`
@@ -145,14 +142,14 @@ server/
 **Decisions**: `POST /api/decisions/analyze`, `POST /api/decisions/:decisionId/approve`, `POST /api/decisions/:decisionId/reject`, `POST /api/decisions/:decisionId/execute`, `GET /api/decisions/:decisionId`
 **Orchestration**: `POST /api/orchestration/emergencies/:emergencyId/analyze`
 
-## Database Models
-- `User` (name, email, password, role)
-- `Vehicle` (vehicleId, registrationNumber, type, status, capacity, driverName, isDeleted)
-- `Emergency` (emergencyId, type, priority, status, location, destination, assignedVehicle, createdBy, isDeleted)
-- `Incident` (incidentId, type, severity, status, location, reportedBy, emergency, isDeleted)
-- `Trajectory` (vehicle, location, speed, heading, timestamp, source, createdAt)
-- `Route` (routeId, emergency, vehicle, origin, destination, geometry, distance, duration, provider, routeType, status, createdBy)
-- `Decision` (decisionId, emergency, vehicle, route, primaryAction, severity, status, reasonCodes, inputSnapshot, situationHash, approvedBy, rejectedBy, executedAt)
+## Database Models & Indexes
+- `User` (name, email, password, role) — `email` (unique)
+- `Vehicle` (vehicleId, registrationNumber, type, status, capacity, driverName, isDeleted) — `vehicleId` (unique), `registrationNumber` (unique), `{ status: 1, isDeleted: 1 }`
+- `Emergency` (emergencyId, type, priority, status, location, destination, assignedVehicle, createdBy, isDeleted) — `emergencyId` (unique), `location` (2dsphere), `destination` (2dsphere), `{ assignedVehicle: 1, isDeleted: 1 }`, `{ status: 1, isDeleted: 1 }`
+- `Incident` (incidentId, type, severity, status, location, reportedBy, emergency, isDeleted) — `incidentId` (unique), `location` (2dsphere), `{ emergency: 1, isDeleted: 1 }`, `{ status: 1, isDeleted: 1 }`
+- `Trajectory` (vehicle, location, speed, heading, timestamp, source, createdAt) — `{ vehicle: 1, timestamp: -1 }`, `location` (2dsphere)
+- `Route` (routeId, emergency, vehicle, origin, destination, geometry, distance, duration, provider, routeType, status, createdBy) — `routeId` (unique), `{ emergency: 1, routeType: 1 }`, `{ vehicle: 1, status: 1 }`, `geometry` (2dsphere), `origin` (2dsphere), `destination` (2dsphere)
+- `Decision` (decisionId, emergency, vehicle, route, primaryAction, severity, status, reasonCodes, inputSnapshot, situationHash, approvedBy, rejectedBy, executedAt) — `decisionId` (unique), `{ emergency: 1, createdAt: -1 }`, `{ emergency: 1, situationHash: 1 }`, `{ status: 1, createdAt: -1 }`
 
 ## Standardized Units
 - **Distance**: `meters`
@@ -163,6 +160,8 @@ server/
 
 ## Security Rules
 - All orchestration, decision, AI, and analysis APIs require authentication (`protect`) and `CONTROL_ROOM` or `ADMIN` roles.
+- Passwords hashed with bcrypt (salt rounds: 12), never logged, never returned in API payloads.
+- HTTP-only cookies with `sameSite: strict` and conditional `secure` in production; Bearer token fallback supported for API clients.
 - Cross-module consistency checks ensure `Emergency.assignedVehicle == Route.vehicle == Trajectory.vehicle`.
 - Client requests cannot submit fake operational metrics (ETA, traffic, deviation, decision); any such fields in the request body are rejected with `400 Bad Request`.
 - Socket.IO handshakes require valid JWTs extracted from cookies or authorization headers; anonymous connections are rejected.
@@ -171,22 +170,20 @@ server/
 
 ## Part-by-Part Development History
 
-### Part 11 — Full Backend Integration & End-to-End Workflow (Completed)
+### Part 12 — Final Backend Hardening, Security, Performance & Testing (Completed)
 **Implemented**:
-- `server/modules/orchestration/` — thin orchestration module coordinating domain services into a single unified workflow.
-- Endpoint: `POST /api/orchestration/emergencies/:emergencyId/analyze`.
-- End-to-end flow: Emergency → Vehicle Assignment → Route → Trajectory → Incidents → Traffic → ETA → GeoAgent AI Advisory → Decision Engine Evaluation → Real-Time Event Broadcast.
-- Strict cross-module consistency validation:
-  - Verifies Emergency exists and assigned Vehicle exists.
-  - Verifies Route belongs to the assigned Vehicle (`route.vehicle == vehicle._id`).
-  - Verifies Trajectory belongs to the assigned Vehicle (`trajectory.vehicle == vehicle._id`).
-- Graceful partial analysis handling: missing assigned vehicle, route, or trajectory returns structured partial results (`workflowStatus: "PARTIAL"`) with explicit reason codes instead of crashing.
-- Three-tier epistemic breakdown:
-  - `observed`: Verified telemetry facts (deviation meters, progress %, traffic speed km/h, correlated incidents).
-  - `inferred`: Causal explanations from spatial correlation and GeoAgent reasoning.
-  - `unknown`: Explicitly declared data gaps (driver verbal confirmation, hospital ER capacity).
-- Real-time events: Emits `emergency.analysis.started` and `emergency.analysis.completed` to `control-room` and `emergency:${id}` rooms.
-- Comprehensive test suite `server/test-part11.js` verifying happy path, partial failure handling, client tampering rejection, and unit standards.
+- Hardened centralized error handler `server/shared/middleware/errorHandler.js` to preserve `err.status || err.statusCode` for all operational errors (400, 401, 403, 404, 409).
+- Hardened authentication controller and middleware:
+  - Fixed named imports in `auth.controller.js`.
+  - Added support for both HTTP-only cookies and `Authorization: Bearer <token>` in `auth.middleware.js`.
+- Added performance and query indexes to MongoDB models:
+  - `Emergency`: `{ assignedVehicle: 1, isDeleted: 1 }`, `{ status: 1, isDeleted: 1 }`.
+  - `Incident`: `{ emergency: 1, isDeleted: 1 }`, `{ status: 1, isDeleted: 1 }`.
+  - `Vehicle`: `{ status: 1, isDeleted: 1 }`.
+- Hardened trajectory pagination: protected `getTrajectoryHistory` and `getRecentTrajectories` against `NaN` and negative limits.
+- Hardened `assignVehicle` and `createRoute` to handle friendly business IDs (`EMG-0001`, `AMB-001`) as well as ObjectIds, and support standalone MongoDB installations without replica set transaction crashes.
+- Created comprehensive regression and hardening test suite `server/test-part12.js` covering authentication, error handler status code preservation, query boundaries, coordinate validation (-180..180, -90..90), Socket.IO handshakes, and end-to-end orchestration.
+- Verified 100% passing test status across all test suites (Parts 7, 8, 9, 10, 11, 12).
 
 ## Implementation Status
 - Part 1  Backend Foundation: **COMPLETED**
@@ -200,16 +197,4 @@ server/
 - Part 9  Real-Time Backend: **COMPLETED**
 - Part 10 Decision & Dispatch Engine: **COMPLETED**
 - Part 11 Full Backend Integration: **COMPLETED**
-
----
-
-## NEXT DEVELOPMENT TASK:
-### Part 12 — Frontend ↔ Backend Live Integration & Real-Time Dashboard Wiring
-
-**Why it comes next**:
-With all backend intelligence, AI advisory, authoritative decision engine, real-time push events, and end-to-end orchestration endpoints fully complete and tested, the final phase is connecting the Next.js frontend prototype to live backend endpoints and Socket.IO channels.
-
-**Dependencies**:
-- `server/modules/orchestration/`: `POST /api/orchestration/emergencies/:emergencyId/analyze`
-- `server/modules/decisions/`: `POST /api/decisions/:id/approve`, `POST /api/decisions/:id/reject`
-- `server/modules/realtime/`: Socket.IO client connection for live telemetry, deviation alerts, and decision updates.
+- Part 12 Final Backend Hardening & Testing: **COMPLETED**
