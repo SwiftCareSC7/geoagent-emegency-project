@@ -114,3 +114,60 @@ export const calculateRouteLength = (lineString) => {
     meters: Number((lengthKm * 1000).toFixed(1))
   };
 };
+
+/**
+ * Calculates progress of a point along a LineString route
+ * @param {Object} point GeoJSON Point
+ * @param {Object} lineString GeoJSON LineString
+ * @returns {Object} { progressPercentage, distanceAlongRouteMeters, remainingDistanceMeters, totalRouteDistanceMeters }
+ */
+export const calculateRouteProgress = (point, lineString) => {
+  const pt = turf.point(point.coordinates);
+  const line = turf.lineString(lineString.coordinates);
+
+  const totalLengthKm = turf.length(line, { units: 'kilometers' });
+  const nearest = turf.nearestPointOnLine(line, pt, { units: 'kilometers' });
+  const distanceAlongKm = nearest.properties.location || 0;
+
+  const totalMeters = Number((totalLengthKm * 1000).toFixed(1));
+  const distanceAlongMeters = Number((distanceAlongKm * 1000).toFixed(1));
+  const remainingMeters = Math.max(0, Number((totalMeters - distanceAlongMeters).toFixed(1)));
+  const progressPercentage = totalMeters > 0 
+    ? Math.min(100, Math.max(0, Number(((distanceAlongMeters / totalMeters) * 100).toFixed(1))))
+    : 0;
+
+  return {
+    progressPercentage,
+    distanceAlongRouteMeters: distanceAlongMeters,
+    remainingDistanceMeters: remainingMeters,
+    totalRouteDistanceMeters: totalMeters
+  };
+};
+
+/**
+ * Calculates the forward route bearing (in degrees 0-360) at the route segment closest to the given point
+ * @param {Object} lineString GeoJSON LineString
+ * @param {Object} point GeoJSON Point
+ * @returns {Number} Bearing in degrees (0-360)
+ */
+export const getRouteBearingAtPoint = (lineString, point) => {
+  const coords = lineString.coordinates;
+  if (!coords || coords.length < 2) {
+    return 0;
+  }
+
+  const pt = turf.point(point.coordinates);
+  const line = turf.lineString(coords);
+  const nearest = turf.nearestPointOnLine(line, pt, { units: 'kilometers' });
+  
+  let segIndex = typeof nearest.properties.index === 'number' ? nearest.properties.index : 0;
+  if (segIndex >= coords.length - 1) {
+    segIndex = coords.length - 2;
+  }
+
+  const p1 = createPoint(coords[segIndex][0], coords[segIndex][1]);
+  const p2 = createPoint(coords[segIndex + 1][0], coords[segIndex + 1][1]);
+
+  return calculateBearing(p1, p2);
+};
+
