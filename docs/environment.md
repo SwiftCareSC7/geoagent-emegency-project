@@ -1,17 +1,17 @@
 # Environment Variable Configuration
 
-This document lists all environment variables used by the GeoAgentic Emergency Response System backend.
+This document lists all environment variables used by the SwiftCare GeoAgentic Emergency Response System across backend and frontend tiers.
 
 ---
 
-## 1. Core Server & Database Variables
+## 1. Backend Server & Database Variables (`server/.env`)
 
 | Variable | Required? | Default | Purpose | Production Behavior |
 |---|---|---|---|---|
 | `PORT` | Optional | `5000` | Port on which the Express & Socket.IO server listens | Set by cloud provider (e.g. `8080`, `5000`) |
 | `NODE_ENV` | Optional | `development` | Environment mode (`development`, `test`, `production`) | Enables strict security headers & cookie flags |
 | `MONGO_URI` | **Required** | `mongodb://127.0.0.1:27017/geoagent-emergency` | MongoDB connection string | Managed MongoDB Atlas / replica set connection |
-| `CLIENT_URL` | Optional | `http://localhost:5173` | Allowed CORS origin & Socket.IO allowed origin | Set to production domain (e.g. `https://swiftcare.domain.com`) |
+| `CLIENT_URL` | Optional | `http://localhost:3000` | Allowed CORS origin & Socket.IO allowed origin | Set to production frontend domain (e.g. `https://geoagent-emegency-project.vercel.app`) |
 
 ---
 
@@ -56,3 +56,12 @@ This document lists all environment variables used by the GeoAgentic Emergency R
 | `BEARING_DEVIATION_DEGREES` | Optional | `60` | Bearing angle diff threshold for Deviation |
 | `GPS_STABILITY_WINDOW` | Optional | `3` | Number of consecutive points evaluated for jitter stability |
 | `INCIDENT_PROXIMITY_RADIUS_METERS` | Optional | `500` | Proximity radius to correlate road hazards with vehicle/route |
+
+---
+
+## 6. Frontend Environment Variables (`.env.local`)
+
+| Variable | Required? | Default | Purpose |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | Optional | `http://localhost:5000/api` | Backend base REST API URL |
+| `NEXT_PUBLIC_SOCKET_URL` | Optional | `http://localhost:5000` | Backend Socket.IO server URL |

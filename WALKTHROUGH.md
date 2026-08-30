@@ -1,17 +1,24 @@
 # GeoAgentic Emergency Response System — Technical Walkthrough
 
-This document provides a comprehensive technical walkthrough of the **GeoAgentic Emergency Response System** backend across all 12 development parts and illustrates a complete end-to-end emergency operational lifecycle.
+This document provides a comprehensive technical walkthrough of the **SwiftCare GeoAgentic Emergency Response System** across all architectural tiers, development parts, and illustrates a complete end-to-end emergency operational lifecycle.
 
 ---
 
-## 1. System Architecture Overview
+## 1. Full-Stack System Architecture Overview
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│  Frontend (Next.js App Router, TypeScript)               │
-│  ├── Landing Page, Login, Signup                         │
-│  ├── Driver Dashboard (ETA, Map, Timeline, GeoAgent)     │
-│  └── API Adapter (lib/api.ts → REST + Socket.IO)         │
+│  Frontend (Next.js 16 App Router, React 19, TypeScript) │
+│  ├── Landing Page (/), Login (/login), Signup (/signup)  │
+│  ├── Driver Dashboard (/driver/dashboard)               │
+│  │   (Live ETA, Route Status, Timeline, GeoAgent Card)   │
+│  └── Client API Adapter (lib/api.ts → REST + Socket.IO) │
+├─────────────────────────────────────────────────────────┤
+│  Python Spatial Routing & V2X Engine (Member 2)         │
+│  ├── Dynamic Corridor Path Calculation                  │
+│  ├── Haversine & Cross-Track Deviation Detection        │
+│  ├── V2X Green-Wave Traffic Signal Preemption Scoring   │
+│  └── Interactive Leaflet.js Map Visualizer              │
 ├─────────────────────────────────────────────────────────┤
 │  Backend (Express.js, Node.js, HTTP Server)              │
 │  ├── End-to-End Orchestration Layer (Part 11)           │
@@ -94,7 +101,7 @@ This document provides a comprehensive technical walkthrough of the **GeoAgentic
 
 ### Part 12: Core Hardening, Performance & Regression Testing
 - **Goal**: Parameter boundary protection, status code preservation in error middleware, compound index optimizations, and comprehensive test suites.
-- **Key Files**: `server/shared/middleware/errorHandler.js`, `server/test-part12.js`.
+- **Key Files**: `server/shared/middleware/errorHandler.js`, `server/test-part12.js`, `server/test-security.js`.
 - **Decisions**: Hardened query boundaries against `NaN` and unbounded limits. Graceful `SIGINT`/`SIGTERM` shutdown handlers close HTTP, Socket.IO, and Mongoose connections cleanly.
 
 ---
@@ -128,43 +135,17 @@ Here is the exact step-by-step lifecycle of an emergency mission from intake to 
    Incident detected at 180m from corridor
    Deviation status classified as "DEVIATED" (Stability: STABLE)
 
-6. UNIFIED ORCHESTRATION & DECISION (POST /api/orchestration/emergencies/EMG-0001/analyze)
-   - Spatial Analysis: Aggregates deviation (194m), traffic (LIGHT), ETA (6 min)
-   - GeoAgent AI: Analyzes situation via Gemini function calling -> recommends "REROUTE"
-   - Decision Engine: Evaluates rules -> generates authoritative Decision action "REROUTE" (WARNING)
-   - Epistemic Breakdown: Categorizes OBSERVED facts, INFERRED causes, and UNKNOWN data gaps
-   - Socket.IO: Emits "decision.created" to "control-room" and "emergency:EMG-0001"
+6. AI REASONING & ADVISORY RECOMMENDATIONS
+   Gemini AI analyzes the corridor and proposes alternative route via Richmond Road (+2m faster)
+   Advisory recommendation output: "Recommend reroute to alternative route ALT-02"
 
-7. OPERATOR APPROVAL & EXECUTION (PATCH /api/decisions/DEC-1001/approve)
-   Control room operator reviews recommendation and clicks Approve
+7. AUTHORITATIVE DECISION EVALUATION
+   Decision Engine checks thresholds: delay > 8 mins, critical deviation > 250m
+   Creates Decision Action: rerouteRecommended=true, requiresOperatorApproval=true
+   Socket.IO: Emits "decision.created" to control room
+
+8. OPERATOR APPROVAL & EXECUTION (POST /api/decisions/:id/approve)
+   Operator approves alternative route in UI
    MongoDB: Sets decision.status="APPROVED", approvedBy="USR-101"
-   Socket.IO: Emits "decision.status_updated" -> Ambulance dashboard receives new route
+   Socket.IO: Emits "decision.updated" to ambulance driver and control room
 ```
-
----
-
-## 4. Verification & Testing Summary
-
-```bash
-cd server
-
-# Execute full automated test suite (7 suites)
-node test-part7.js
-node test-part8.js
-node test-part9.js
-node test-part10.js
-node test-part11.js
-node test-part12.js
-node test-security.js
-```
-
-**Results**:
-- `test-part7.js`: 7 passed
-- `test-part8.js`: 8 passed
-- `test-part9.js`: 8 passed
-- `test-part10.js`: 16 passed
-- `test-part11.js`: 4 passed
-- `test-part12.js`: 6 passed
-- `test-security.js`: 23 passed
-- **Total**: 72 assertions passed (0 failures, 100% pass rate across 7 test suites).
-
