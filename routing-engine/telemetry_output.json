@@ -1,0 +1,79 @@
+{
+  "ambulance_id": "A102",
+  "timestamp": "2026-08-30T14:30:00Z",
+  "status": "delayed_and_deviated",
+  "location": {
+    "lat": 12.976,
+    "lng": 77.62
+  },
+  "planned_route": {
+    "route_id": "ROUTE_PLANNED_A",
+    "name": "Route A (Old Airport Road)",
+    "distance_km": 6.22,
+    "eta_minutes": 10.0,
+    "traffic_condition": "heavy_congestion",
+    "description": "Primary arterial route via Old Airport Road",
+    "green_wave_signals": 4,
+    "hospital_readiness_score": 0.95,
+    "waypoints_count": 7
+  },
+  "planned_eta_minutes": 10.0,
+  "current_eta_minutes": 16.0,
+  "delay_minutes": 6.0,
+  "route_deviation": {
+    "detected": true,
+    "distance_from_planned_route_meters": 444.7,
+    "threshold_meters": 100.0,
+    "alarm_level": "CRITICAL",
+    "current_location": {
+      "lat": 12.976,
+      "lng": 77.62
+    }
+  },
+  "incident": {
+    "incident_id": "INC-100",
+    "type": "road_accident",
+    "severity": "high",
+    "location": {
+      "lat": 12.9725,
+      "lng": 77.618
+    },
+    "description": "Multi-vehicle collision near Command Hospital junction"
+  },
+  "alternative_routes": [
+    {
+      "name": "Route A (Current - Delayed)",
+      "eta_minutes": 16.0,
+      "status": "congested"
+    },
+    {
+      "name": "Route B (via Indiranagar 100ft Rd)",
+      "eta_minutes": 11.0,
+      "status": "recommended"
+    },
+    {
+      "name": "Route C (via Inner Ring Road)",
+      "eta_minutes": 14.0,
+      "status": "available"
+    }
+  ],
+  "recommendation": {
+    "recommended_route_id": "ROUTE_ALT_B",
+    "recommended_route_name": "Route B (via Indiranagar 100ft Rd)",
+    "recommended_eta_minutes": 11.0,
+    "time_saved_minutes": 5.0,
+    "green_wave_signals_cleared": 6,
+    "hospital_readiness": 0.98,
+    "reason": "Route B (via Indiranagar 100ft Rd) is 5.0 minutes faster with 6 V2X green-wave signals synchronized."
+  },
+  "backup_ambulance": {
+    "recommended": false,
+    "reason": "Delay (+6.0 min) is below critical threshold (10 min). Route B handles emergency ETA effectively."
+  },
+  "differentials_vs_google_maps": [
+    "Control room emergency deviation alert on >100m drift",
+    "V2X traffic signal green-wave clearance optimization",
+    "Hospital ER bed capacity & triage severity matching",
+    "Automated backup vehicle dispatch evaluation"
+  ]
+}
