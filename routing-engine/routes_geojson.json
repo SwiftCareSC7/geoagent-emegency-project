@@ -1,0 +1,198 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.5946,
+            12.9716
+          ],
+          [
+            77.603,
+            12.973
+          ],
+          [
+            77.611,
+            12.9735
+          ],
+          [
+            77.618,
+            12.9725
+          ],
+          [
+            77.63,
+            12.966
+          ],
+          [
+            77.64,
+            12.961
+          ],
+          [
+            77.6483,
+            12.9582
+          ]
+        ]
+      },
+      "properties": {
+        "id": "planned_route",
+        "color": "#3B82F6",
+        "name": "Planned Route A"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.5946,
+            12.9716
+          ],
+          [
+            77.603,
+            12.973
+          ],
+          [
+            77.612,
+            12.9745
+          ],
+          [
+            77.62,
+            12.976
+          ]
+        ]
+      },
+      "properties": {
+        "id": "actual_trajectory",
+        "color": "#EF4444",
+        "name": "Deviated Path",
+        "dash": true
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.5946,
+            12.9716
+          ],
+          [
+            77.62,
+            12.976
+          ],
+          [
+            77.635,
+            12.969
+          ],
+          [
+            77.643,
+            12.962
+          ],
+          [
+            77.6483,
+            12.9582
+          ]
+        ]
+      },
+      "properties": {
+        "id": "alternative_b",
+        "color": "#10B981",
+        "name": "Alternative Route B"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.5946,
+            12.9716
+          ],
+          [
+            77.608,
+            12.96
+          ],
+          [
+            77.625,
+            12.95
+          ],
+          [
+            77.64,
+            12.954
+          ],
+          [
+            77.6483,
+            12.9582
+          ]
+        ]
+      },
+      "properties": {
+        "id": "alternative_c",
+        "color": "#F59E0B",
+        "name": "Alternative Route C"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.5946,
+          12.9716
+        ]
+      },
+      "properties": {
+        "id": "start",
+        "label": "Start: MG Road"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.6483,
+          12.9582
+        ]
+      },
+      "properties": {
+        "id": "destination",
+        "label": "Hospital: Manipal"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.618,
+          12.9725
+        ]
+      },
+      "properties": {
+        "id": "incident",
+        "label": "Accident Zone"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.62,
+          12.976
+        ]
+      },
+      "properties": {
+        "id": "ambulance",
+        "label": "Ambulance A102"
+      }
+    }
+  ]
+}
