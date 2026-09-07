@@ -98,7 +98,7 @@ const predictionSchema = new mongoose.Schema(
     },
     modelVersion: {
       type: String,
-      default: 'v1.2-exponential-traffic-blend'
+      default: 'v1.3-exponential-traffic-blend'
     },
     trafficSource: {
       type: String,

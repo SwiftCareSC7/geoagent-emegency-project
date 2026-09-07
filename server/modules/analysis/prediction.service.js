@@ -22,7 +22,7 @@ import realtimeService from '../realtime/realtime.service.js';
 
 class PredictionService {
   constructor() {
-    this.modelVersion = 'v1.2-exponential-traffic-blend';
+    this.modelVersion = 'v1.3-exponential-traffic-blend';
     // Alpha for exponential smoothing of speed
     this.speedAlpha = 0.4;
     // Throttle snapshot saves: min 30 seconds between writes per vehicle
@@ -161,7 +161,8 @@ class PredictionService {
     progress,
     deviation,
     traffic,
-    incidents = []
+    incidents = [],
+    historicalSpeedKmh = null
   }) {
     const factors = [];
     const now = Date.now();
@@ -193,6 +194,17 @@ class PredictionService {
     } else {
       effectiveSpeedKmh = 0.2 * emaSpeedKmh + 0.8 * trafficSpeed;
     }
+
+    // Historical speed benchmark blend (if available, gently weight 15% historical to smooth erratic traffic swings)
+    if (typeof historicalSpeedKmh === 'number' && historicalSpeedKmh > 5) {
+      factors.push({
+        factor: `Historical corridor speed benchmark for vehicle: ${historicalSpeedKmh} km/h`,
+        impact: 'HISTORICAL_BASELINE',
+        epistemicType: 'DERIVED'
+      });
+      effectiveSpeedKmh = 0.85 * effectiveSpeedKmh + 0.15 * historicalSpeedKmh;
+    }
+
     // Safety guard
     effectiveSpeedKmh = Math.max(5, effectiveSpeedKmh);
 
