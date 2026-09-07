@@ -22,7 +22,7 @@ export const createVehicle = async (req, res, next) => {
  */
 export const getVehicles = async (req, res, next) => {
   try {
-    const vehicles = await vehicleService.getVehicles();
+    const vehicles = await vehicleService.getVehicles(req.query);
     
     res.status(200).json({
       success: true,

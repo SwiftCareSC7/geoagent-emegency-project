@@ -36,10 +36,13 @@ export const createVehicle = async (vehicleData) => {
 };
 
 /**
- * Get all emergency vehicles
+ * Get all emergency vehicles, optionally filtering by status and type
  */
-export const getVehicles = async () => {
-  return await Vehicle.find({});
+export const getVehicles = async (filters = {}) => {
+  const query = { isDeleted: false };
+  if (filters.status) query.status = filters.status;
+  if (filters.type) query.type = filters.type;
+  return await Vehicle.find(query);
 };
 
 /**

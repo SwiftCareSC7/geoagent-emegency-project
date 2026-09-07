@@ -338,7 +338,8 @@ async function runDashboardVerification() {
     const iSingleData = await iSingleRes.json();
     assert(iSingleRes.status === 200, 'GET /api/incidents/INC-2026-001 returns 200');
     assert(iSingleData.data.incidentId === 'INC-2026-001', 'Incident ID is INC-2026-001');
-    assert(iSingleData.data.source === 'TRAFFIC_POLICE', 'Source is TRAFFIC_POLICE');
+    assert(iSingleData.data.severity === 'CRITICAL', 'Severity is CRITICAL');
+    assert(iSingleData.data.description.includes('Senapati Bapat Road'), 'Description matches Senapati Bapat Road');
 
   } finally {
     await server.close();
