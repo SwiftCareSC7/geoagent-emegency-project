@@ -583,6 +583,73 @@ paths:
         '200':
           description: Comprehensive situation snapshot
 
+  /analysis/vehicle/{vehicleId}/prediction:
+    get:
+      summary: Real-time ETA, delay prediction, and risk classification
+      tags: [Analysis]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Prediction intelligence snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      vehicleId: { type: string }
+                      predictedEta: { type: string, format: date-time }
+                      baselineEta: { type: string, format: date-time }
+                      predictedDelayMinutes: { type: number }
+                      delayRisk: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+                      confidence: { type: string, enum: [HIGH, MEDIUM, LOW, UNKNOWN] }
+                      confidenceScore: { type: number }
+                      rerouteAdvised: { type: boolean }
+                      factors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            factor: { type: string }
+                            impact: { type: string }
+                            epistemicType: { type: string, enum: [OBSERVED, DERIVED, UNKNOWN] }
+
+  /health/providers:
+    get:
+      summary: Evaluate health status of external providers safely without leaking keys
+      tags: [Health]
+      responses:
+        '200':
+          description: Health evaluation for Google Routes, Roads, and Gemini AI
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      timestamp: { type: string, format: date-time }
+                      activeRoutingProvider: { type: string }
+                      activeTrafficProvider: { type: string }
+                      providers:
+                        type: object
+                        properties:
+                          googleRoutes: { type: object }
+                          googleRoads: { type: object }
+                          gemini: { type: object }
+
   # --- GEOAGENT AI & DECISION ENGINE ---
   /geoagent/analyze:
     post:

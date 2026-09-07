@@ -263,3 +263,65 @@ Trajectories          Routes                     │         │
   - Full backend regression suite: 164 total passing assertions (0 failures).
   - TypeScript checking (`npx tsc --noEmit`): 0 errors.
   - Next.js production build (`npm run build`): Successfully compiled in under 2 seconds.
+
+---
+
+## 9. Real-Time Intelligence & External Data Integration (CURRENT ACTUAL STATE)
+
+- **Architecture & System Flow**:
+  - The system has moved from mock routing/traffic behavior to real external data and real-time intelligence:
+    `Real Vehicle Telemetry → Trajectory Processing → Google Roads / Routes → Real Traffic-Aware Routing → ETA / Delay Prediction → Gemini Decision Reasoning → Decision Engine → Socket.IO → Control Room Frontend`.
+- **Backend External Providers**:
+  - **Google Routes Provider** (`server/modules/routes/providers/googleRoutingProvider.js`):
+    - Implements Google Routes API (`computeRoutes`) with explicit field masks: `routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs,routes.warnings,routes.description`.
+    - Implements custom high-precision polyline decoder producing standard GeoJSON `[longitude, latitude]` LineStrings.
+    - Requests `TRAFFIC_AWARE_OPTIMAL` routing and parses alternative routes (primary + up to 2 alternative candidates).
+    - 60-second in-memory caching to avoid redundant API quota usage.
+    - Honest fallback: when `ROUTING_PROVIDER=mock` or API key is absent, falls back to deterministic local routing.
+  - **Google Roads Provider** (`server/modules/routes/providers/googleRoadsProvider.js`):
+    - Batches GPS coordinates in chunks <= 100 points.
+    - 5-minute in-memory caching.
+    - Seamless Turf.js spatial nearest-point fallback when key is not configured or network unavailable.
+    - Static speed-limit context lookup labeled strictly as non-realtime metadata.
+  - **Google Traffic Provider** (`server/modules/traffic/providers/googleTrafficProvider.js`):
+    - Derives traffic congestion ratio deterministically from Google Routes `durationSeconds` vs `staticDurationSeconds`.
+    - Explicitly categorizes `epistemicType: 'DERIVED'` (distinguishing `OBSERVED`, `DERIVED`, and `UNKNOWN`).
+  - **Provider Health & Safety** (`server/modules/health/providerHealth.service.js` & `GET /api/health/providers`):
+    - Evaluates Google Routes, Google Roads, and Gemini AI status (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`).
+    - Zero credential leak: never returns API keys or internal secrets in JSON payloads.
+- **Telemetry Ingestion Hardening** (`server/modules/trajectories/trajectory.service.js`):
+  - Validates coordinate bounds: longitude in `[-180, 180]`, latitude in `[-90, 90]`.
+  - Rejects impossible future timestamps (> 2 minutes in future).
+  - Validates speed bounds (`0 - 250 km/h`) and heading (`0 - 360°`).
+  - Implements teleport anomaly detection: flags sudden jumps > 1,000m within 10 seconds.
+- **Real-Time Prediction Engine** (`server/modules/analysis/prediction.service.js` & `prediction.model.js`):
+  - Calculates rolling exponential moving average (EMA) speed trend from recent trajectory fixes.
+  - Computes remaining route distance using Turf.js slicing.
+  - Accounts for Google traffic delays, deviation penalties, and incident obstruction penalties.
+  - Generates delay risk classification (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) and route risk urgency.
+  - Persists prediction snapshots in MongoDB with index on `vehicleId` and `createdAt`.
+  - Exposes `GET /api/analysis/vehicle/:vehicleId/prediction` REST endpoint.
+- **GeoAgent & Decision Engine Integration** (`server/modules/geoagents/geoAgent.service.js` & `decision.service.js`):
+  - Gemini 2.5 Flash acts as advisory reasoning engine; deterministic safety rules make authoritative decisions.
+  - Generates comparative trade-off matrix: "Why did the route change?" (evidence-based triggers) and "What if we do nothing?" (delay and risk penalties).
+  - Enforces state machine requiring operator approval: decisions transition to `PENDING_OPERATOR_ACTION` and require operator `/approve` or `/reject` actions before execution.
+- **Socket.IO Real-Time Streaming** (`server/modules/realtime/` & `lib/socket/`):
+  - Authenticated WebSocket handshake using JWT token or HTTP-only cookie.
+  - Isolated rooms: `control-room`, `emergency:${id}`, `vehicle:${id}`.
+  - Streams `prediction.updated` events whenever a new prediction is calculated.
+  - Client singleton (`lib/socket/client.ts`) with automatic reconnection and envelope unwrapping.
+  - React hooks (`lib/socket/useRealtime.ts`): `useSocketStatus()` and `useRealtimeEmergency()`.
+- **Frontend Intelligence UI**:
+  - `components/emergency-detail/prediction-intelligence-panel.tsx`: Real-time ETA, delay risk badge, model confidence, structured predictive factors, and LIVE/STALE freshness badge.
+  - `components/emergency-detail/route-comparison-card.tsx`: Trade-off matrix comparing Active Corridor vs Best Alternative Candidate with time savings and distance delta.
+  - `components/emergency-detail/decision-approval-card.tsx`: Authoritative decision state with operator approve/reject controls.
+  - `lib/api/decisions.ts`: Typed decision client (`analyze`, `get`, `list`, `approve`, `reject`, `execute`).
+- **Automated Verification**:
+  - `server/test-realtime-external-e2e.js`: 48/48 passing assertions.
+  - `server/test-emergency-detail-e2e.js`: 63/63 passing assertions.
+  - `server/test-dashboard-e2e.js`: 47/47 passing assertions.
+  - `server/test-auth-e2e.js`: 31/31 passing assertions.
+  - `server/test-security.js`: 23/23 passing assertions.
+  - Total automated assertions passing: 212/212 (100% pass rate).
+  - TypeScript checking (`npx tsc --noEmit`): 0 errors.
+  - Next.js production build (`npm run build`): Successfully compiled.

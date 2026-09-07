@@ -269,49 +269,37 @@ Trajectories          Routes                     │         │
 
 ## 5. What Still Needs to Be Done (TODO)
 
-### 🔴 CRITICAL — Frontend ↔ Backend Integration (In Progress)
+### 🔴 CRITICAL — Real-Time Intelligence & External Data Integration (COMPLETED IN PART 16)
 
-Authentication, Dashboard REST domain feeds, and Emergency Detail/Analysis Intelligence are **fully connected**. Next steps involve real-time Socket.IO streaming and interactive mapping.
+Authentication, Dashboard REST domain feeds, Emergency Detail Corridor Analysis, External Providers (Google Routes, Roads, Traffic), Real-Time Prediction Engine, Decision Engine Rationale, and Socket.IO real-time streaming are **fully implemented and verified**.
 
-| # | Task | Priority | Details |
+| # | Task | Status | Details |
 |---|---|---|---|
-| 1 | **Wire `lib/api` to the real backend** | ✅ Done | Centralized API client (`lib/api/client.ts`) and typed modules (`vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `analysis`, `orchestration`, `auth`) connected to Express REST endpoints. |
+| 1 | **Wire `lib/api` to the real backend** | ✅ Done | Centralized API client (`lib/api/client.ts`) and typed modules (`vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `analysis`, `decisions`, `orchestration`, `auth`) connected to Express REST endpoints. |
 | 2 | **Implement real Login flow** | ✅ Done | `POST /api/auth/login` → issues HTTP-only cookie → populates session → redirects to dashboard. |
 | 3 | **Implement real Signup flow** | ✅ Done | `POST /api/auth/register` → assigns `CONTROL_ROOM` → creates account → auto-authenticates. |
 | 4 | **Build authenticated API client** | ✅ Done | Centralized HTTP client (`lib/api/client.ts`) with `credentials: 'include'`, typed error normalization, and session persistence. |
 | 5 | **Connect Dashboard to real backend data** | ✅ Done | Connected `/driver/dashboard` to live MongoDB collections via `GET /api/vehicles`, `GET /api/emergencies`, and `GET /api/incidents` with view toggles, filter pills, error recovery, and empty state banners. |
-| 6 | **Build Emergency Detail & Analysis View** | ✅ Done | Connected `/emergencies/[id]` to live backend endpoints for emergency details, planned routes, GPS trajectories, situation analysis (deviation, traffic, delay, correlated incidents), and 3-tier epistemic breakdown. |
-| 7 | **Implement Socket.IO client connection** | 🔴 Critical | Connect to `http://localhost:5000` via `socket.io-client`, authenticate with JWT, join rooms (`control-room`, `emergency:${id}`, `vehicle:${id}`), handle live events (`deviation.detected`, `decision.created`, `trajectory.ingested`, etc.). |
+| 6 | **Build Emergency Detail & Analysis View** | ✅ Done | Connected `/emergencies/[id]` to live backend endpoints for emergency details, planned routes, GPS trajectories, situation analysis, and 3-tier epistemic breakdown. |
+| 7 | **External Google Routes Provider** | ✅ Done | Implemented Google Routes API (`directions/v2:computeRoutes`) with explicit field masks, `TRAFFIC_AWARE_OPTIMAL` routing, polyline decoding to GeoJSON LineStrings, alternative route parsing, and 60s caching. |
+| 8 | **External Google Roads Provider** | ✅ Done | Batched road snapping (max 100 points), 5-minute caching, Turf.js spatial nearest-point fallback, and static speed-limit metadata. |
+| 9 | **External Google Traffic Provider** | ✅ Done | Deterministic delay and congestion calculation from Google Routes duration comparisons, tagged with `epistemicType: 'DERIVED'`. |
+| 10 | **Telemetry Hardening & Teleport Defense** | ✅ Done | Ingestion bounds checks (`[-180, 180]`, `[-90, 90]`), speed checks (`0 - 250 km/h`), heading (`0 - 360°`), and teleport jitter anomaly detection (> 1000m jump in 10s). |
+| 11 | **Real-Time Prediction Engine** | ✅ Done | Rolling EMA speed trend, remaining route distance slicing, traffic/deviation delay penalties, delay risk enum, confidence scoring, Mongoose persistence, and REST endpoint `GET /api/analysis/vehicle/:id/prediction`. |
+| 12 | **GeoAgent & Decision Engine Rationale** | ✅ Done | Comparative trade-off matrix ("Why did the route change?", "What if we do nothing?"), advisory Gemini 2.5 Flash reasoning, and `PENDING_OPERATOR_ACTION` state machine requiring operator approval. |
+| 13 | **Socket.IO Real-Time Client & Streaming** | ✅ Done | Authenticated WebSocket connection (token & cookies), room isolation (`control-room`, `emergency:${id}`, `vehicle:${id}`), live `prediction.updated` push stream, and React hooks `useSocketStatus` and `useRealtimeEmergency`. |
+| 14 | **Provider Health & Safe Evaluation** | ✅ Done | `GET /api/health/providers` returning safe evaluation (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`) without exposing API keys. |
 
 ---
 
-### 🟠 HIGH — Missing Frontend Pages & Features
+### 🟠 NEXT PHASE — Interactive Map & Control Room Expansion
 
 | # | Task | Priority | Details |
 |---|---|---|---|
-| 7 | **Control Room Dashboard page** | 🟠 High | New page (`/control-room/dashboard`) showing all active emergencies, fleet status, incoming deviation alerts, decision approvals. This is the core operator interface. |
-| 8 | **Admin Panel page** | 🟠 High | New page (`/admin`) for user management, vehicle fleet CRUD, system configuration. |
-| 9 | **Replace SVG map with real interactive map** | 🟠 High | Replace `map-placeholder.tsx` with a real Leaflet/Mapbox/Google Maps component showing live vehicle positions, planned routes (GeoJSON LineStrings), actual trajectories, incidents, and deviations. The draft `MapView.jsx.txt` in `geoagent-emergency-project/components/` is a starting reference. |
-| 10 | **Real-time dashboard updates via Socket.IO** | 🟠 High | Dashboard should update live when `deviation.detected`, `emergency.updated`, `vehicle.status_updated`, `decision.created` events arrive. No page refresh needed. |
-| 11 | **Decision Approval UI** | 🟠 High | When the Decision Engine creates a decision requiring operator approval (`requiresOperatorApproval: true`), show an approval/rejection modal in the control room UI. Call `POST /api/decisions/:id/approve` or `POST /api/decisions/:id/reject`. |
-| 12 | **Emergency Creation form** | 🟠 High | UI form to create new emergencies (`POST /api/emergencies`) — select type, priority, location (map click or address), assign vehicle. |
-| 13 | **Vehicle Fleet Management UI** | 🟠 High | List/create/update/delete vehicles, view current status, track dispatch history. |
-| 14 | **Incident Reporting UI** | 🟠 High | Form to report road incidents (`POST /api/incidents`) with type, severity, and location selection. |
-
----
-
-### 🟡 MEDIUM — Backend Gaps & Enhancements
-
-| # | Task | Priority | Details |
-|---|---|---|---|
-| 15 | **Switch routing from mock to live provider** | 🟡 Medium | Set `ROUTING_PROVIDER=google` or `mapbox` in `.env` with a valid API key. Currently all routes use the mock provider returning hardcoded geometries. |
-| 16 | **Switch traffic from mock to live provider** | 🟡 Medium | Set `TRAFFIC_PROVIDER=google` in `.env` with a valid Google Maps API key. Currently traffic data is simulated. |
-| 17 | **Build a Dashboard aggregation endpoint** | 🟡 Medium | Create `GET /api/dashboard/:ambulanceId` (or similar) that aggregates vehicle status, active emergency, latest trajectory, route, deviation status, ETA, and AI recommendation into a single JSON payload for the frontend. Currently the frontend must call 5+ separate endpoints. |
-| 18 | **Implement password reset flow** | 🟡 Medium | `POST /api/auth/forgot-password`, `POST /api/auth/reset-password` — email-based or token-based password recovery. Not currently implemented. |
-| 19 | **Add rate limiting** | 🟡 Medium | Add `express-rate-limit` to prevent brute-force login attempts and API abuse. Not currently implemented. |
-| 20 | **Add request validation middleware** | 🟡 Medium | The backend has validation schemas (`.validation.js` files) but some endpoints may not enforce them consistently. Audit all routes. |
-| 21 | **Add API versioning** | 🟡 Medium | Prefix all routes with `/api/v1/` to support future breaking changes. Currently all routes are under `/api/`. |
-| 22 | **Implement Logout endpoint** | 🟡 Medium | `POST /api/auth/logout` to clear HTTP-only cookie. The backend sets cookies but has no explicit logout/cookie-clearing route. |
+| 15 | **Replace SVG map with real interactive map** | 🟠 High | Replace `map-placeholder.tsx` with a real Mapbox GL / Google Maps / Leaflet component showing live vehicle positions, planned routes (GeoJSON LineStrings), actual trajectories, incidents, and deviations. (Intentionally deferred during backend integration). |
+| 16 | **Control Room Dashboard page** | 🟠 High | Dedicated multi-emergency overview (`/control-room/dashboard`) showing concurrent active emergency corridors, fleet readiness, and incoming deviation alerts. |
+| 17 | **Admin Panel page** | 🟠 High | Management interface (`/admin`) for vehicle fleet CRUD, user role assignments, and provider configuration. |
+| 18 | **Emergency Creation modal/form** | 🟡 Medium | Operator UI form to trigger new emergency dispatch calls directly from the control room. |
 
 ---
 

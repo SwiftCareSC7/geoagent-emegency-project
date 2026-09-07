@@ -84,11 +84,11 @@ async function runTests() {
     assert(decoded[0][1] >= -90 && decoded[0][1] <= 90, 'Latitude within valid bounds');
 
     // Test routingService active provider (calculates route with active fallback)
-    const activeRoute = await routingService.calculateRoute(
+    const activeRoute = await routingService.getRoute(
       { coordinates: [77.5946, 12.9716] },
       { coordinates: [77.6050, 12.9850] }
     );
-    assert(activeRoute !== null, 'routingService.calculateRoute returns valid route');
+    assert(activeRoute !== null, 'routingService.getRoute returns valid route');
     assert(activeRoute.distanceMeters > 0, 'Route has positive distanceMeters');
     assert(activeRoute.durationSeconds > 0, 'Route has positive durationSeconds');
     assert(activeRoute.geometry && activeRoute.geometry.type === 'LineString', 'Route geometry is GeoJSON LineString');
@@ -277,7 +277,7 @@ async function runTests() {
     assert(fallbackResponse.recommendation !== undefined, 'Contains advisory recommendation');
     assert(fallbackResponse.whatIfDoNothing !== undefined, 'Contains "What if we do nothing?" trade-off evaluation');
     assert(Array.isArray(fallbackResponse.whyRouteChanged), 'Contains "Why did the route change?" evidence points');
-    assert(fallbackResponse.confidenceScore !== undefined, 'Has explicit confidence score');
+    assert(typeof fallbackResponse.confidenceScore === 'number', 'Has explicit confidence score: ' + fallbackResponse.confidenceScore);
   } catch (err) {
     console.error('Decision engine test error:', err);
     failed++;
@@ -349,17 +349,17 @@ async function runTests() {
       const timeout = setTimeout(() => {
         socket.disconnect();
         reject(new Error('Socket connection timed out'));
-      }, 5000);
+      }, 6000);
 
       socket.on('connect', () => {
-        clearTimeout(timeout);
         assert(socket.connected, 'Socket connected successfully with operator auth');
 
-        // Test join:control_room
-        socket.emit('join:control_room');
+        // Test join.control_room command
+        socket.emit('join.control_room');
 
-        // Test join:emergency with acknowledgment
-        socket.emit('join:emergency', testEmergencyId, (ack) => {
+        // Test join.emergency command with acknowledgment
+        socket.emit('join.emergency', { emergencyId: testEmergencyId }, (ack) => {
+          clearTimeout(timeout);
           assert(ack && ack.success === true, 'Joined emergency room with server acknowledgment');
           assert(ack.room === `emergency:${testEmergencyId}`, 'Confirmed room name: ' + ack.room);
           socket.disconnect();

@@ -94,6 +94,16 @@ class GeoAgentService {
           'AI generative explanation unavailable'
         ]
       },
+      whatIfDoNothing: {
+        estimatedDelayMinutes: safeEta.delayMinutes,
+        riskLevel: deviation.status !== 'ON_ROUTE' ? 'ELEVATED' : 'NOMINAL',
+        summary: `Maintaining route without intervention projects ~${safeEta.delayMinutes} min delay under current conditions`
+      },
+      whyRouteChanged: [
+        `Vehicle route status is ${deviation.status}`,
+        `Traffic condition is ${traffic ? traffic.level : 'UNKNOWN'}`
+      ],
+      confidenceScore: 0.80,
       reasoning: `Vehicle ${vehicleId} is currently ${deviation.status} with an estimated delay of ${safeEta.delayMinutes} minutes. Recommended action: ${action}.`,
       analyzedAt: new Date().toISOString(),
       fallback: true

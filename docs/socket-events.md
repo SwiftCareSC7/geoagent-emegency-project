@@ -212,6 +212,44 @@ All server-emitted events are authoritative and emitted only after state changes
 
 ---
 
+### 3.5 Real-Time Prediction & Delay Events
+
+#### `prediction.updated`
+- **Room**: `control-room`, `emergency:${emergencyId}`, `vehicle:${vehicleId}`
+- **Trigger**: Prediction engine recalculates rolling ETA, delay risk, and confidence
+- **Payload**:
+  ```json
+  {
+    "vehicleId": "AMB-101",
+    "emergencyId": "EMG-0001",
+    "predictedEta": "2026-08-30T01:14:00.000Z",
+    "baselineEta": "2026-08-30T01:10:00.000Z",
+    "predictedDelayMinutes": 4,
+    "predictedDelaySeconds": 240,
+    "delayRisk": "MEDIUM",
+    "routeRisk": "LOW",
+    "confidence": "HIGH",
+    "confidenceScore": 0.88,
+    "rerouteAdvised": false,
+    "rerouteUrgency": "NONE",
+    "factors": [
+      {
+        "factor": "Traffic delay (+4.0 min)",
+        "impact": "+4 min",
+        "epistemicType": "DERIVED"
+      },
+      {
+        "factor": "GPS Fix Speed EMA: 32 km/h",
+        "impact": "Stable",
+        "epistemicType": "OBSERVED"
+      }
+    ],
+    "predictedAt": "2026-08-30T01:06:20.000Z"
+  }
+  ```
+
+---
+
 ## 4. Reconnection & Cleanup
 
 - **Heartbeats**: Socket.IO default ping interval is 25s with 20s timeout.

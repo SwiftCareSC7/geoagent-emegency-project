@@ -2,7 +2,35 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
-## [Unreleased] - Real-Time Socket.IO Streaming & Interactive Map
+## [Unreleased] - Interactive Map Integration
+
+## [1.4.0] - Real-Time Intelligence & External Data Integration
+
+### Added
+- **External Routing & Traffic Providers**:
+  - `GoogleRoutingProvider`: Implements Google Routes API (`directions/v2:computeRoutes`) with explicit field masks, `TRAFFIC_AWARE_OPTIMAL` routing, high-precision polyline decoding to GeoJSON `LineString`, candidate alternative route parsing, and 60-second in-memory caching.
+  - `GoogleRoadsProvider`: Batched road-snapping with max 100 points, 5-minute caching, Turf.js spatial nearest-point fallback, and static speed-limit context lookup.
+  - `GoogleTrafficProvider`: Deterministic traffic delay and congestion calculation from Google Routes duration comparisons, labeled with `epistemicType: 'DERIVED'`.
+  - `ProviderHealthService`: Evaluates live health status (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`) of Google Routes, Google Roads, and Gemini AI without leaking keys at `GET /api/health/providers`.
+- **Telemetry Ingestion Hardening**:
+  - Added strict coordinate bounds check (`[-180, 180]`, `[-90, 90]`), future timestamp rejection (> 2 min), speed validation (`0 - 250 km/h`), heading validation (`0 - 360°`), and teleport jitter anomaly detection (> 1000m jump within 10s).
+- **Real-Time Prediction Engine**:
+  - `PredictionService` and `Prediction` Mongoose model: Rolling exponential moving average (EMA) speed trend, remaining distance slicing, traffic-aware delay estimation, deviation/incident penalties, risk classification (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), and evidence-based confidence scoring.
+  - Exposed `GET /api/analysis/vehicle/:vehicleId/prediction` REST endpoint.
+- **GeoAgent & Decision Engine Rationale**:
+  - Integrated Gemini 2.5 Flash as advisory reasoning partner with deterministic fallback.
+  - Generated trade-off matrix: "Why did the route change?" (evidence tags) and "What if we do nothing?" (delay & risk projection).
+  - Enforced `PENDING_OPERATOR_ACTION` state machine requiring operator approval before execution.
+- **Socket.IO Real-Time Streaming**:
+  - Authenticated WebSocket handshake supporting JWT tokens and HTTP-only cookies.
+  - Event streaming for `prediction.updated` across isolated rooms (`control-room`, `emergency:${id}`, `vehicle:${id}`).
+  - Client singleton `lib/socket/client.ts` with auto-reconnect, and React hooks `useSocketStatus` and `useRealtimeEmergency`.
+- **Frontend Intelligence UI**:
+  - `PredictionIntelligencePanel`: Displays live predicted ETA, delay risk badge, model confidence, structured predictive factors, and LIVE/STALE freshness badge.
+  - `RouteComparisonCard`: Interactive corridor comparison matrix contrasting Active Corridor vs Best Alternative Candidate.
+  - `DecisionApprovalCard`: Displays authoritative decision state with operator approve/reject controls.
+- **Automated Verification**:
+  - Created `server/test-realtime-external-e2e.js` with 48 automated assertions verifying health status, routing polyline decoding, roads batching, traffic epistemic logic, telemetry hardening, prediction engine, decision rationales, and Socket.IO room streaming (100% pass rate).
 
 ## [1.3.0] - Emergency Detail & Corridor Analysis View
 
