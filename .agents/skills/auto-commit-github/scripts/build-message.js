@@ -136,15 +136,16 @@ function extractIdentifiers(line) {
     'catch', 'finally', 'async', 'await', 'export', 'default', 'import',
     'from', 'require', 'module', 'exports', 'typeof', 'instanceof', 'in',
     'of', 'delete', 'void', 'do', 'with', 'super', 'yield', 'static']);
+  const filtered = [];
   for (const id of ids) {
     if (id.length <= 2 || noise.has(id)) continue;
-    if (/^[A-Z]$/.test(id)) continue; // single uppercase letter
-    if (/^_|__/.test(id)) continue;   // private convention
-    if (/\d+$/.test(id)) continue;    // ends with number (regex capture groups)
-    results.push(id);
+    if (/^[A-Z]$/.test(id)) continue;
+    if (/^_|__/.test(id)) continue;
+    if (/\d+$/.test(id)) continue;
+    filtered.push(id);
   }
 
-  return results;
+  return filtered;
 }
 
 // Parse the diff into per-file hunks and extract added/removed lines.
