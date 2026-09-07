@@ -1,28 +1,16 @@
 #!/usr/bin/env node
 /*
- * build-message.js — generate a detailed, human-readable commit message from
- * the currently staged diff in a git repository.
+ * build-message.js — generate a detailed, meaningful commit message from
+ * the currently staged diff.
  *
- * Usage:
- *   node build-message.js <repo-dir> <tick>
+ * Unlike generic "auto-sync" messages, this script:
+ *   1. Reads the actual diff hunks to detect WHAT was added/changed/removed
+ *   2. Extracts component names, function names, and variable names
+ *   3. Infers the human intent (e.g. "add auth guard", "fix DB index")
+ *   4. Writes a subject line that describes the work, not just the file
  *
- * Output goes to stdout (the caller pipes it to a temp file and uses
- * `git commit -F <file>`).
- *
- * The message has the shape:
- *
- *   <type>(<scope>): <short summary>
- *
- *   - <file1>: <what changed>
- *   - <file2>: <what changed>
- *   ...
- *
- *   Affected areas:
- *     - <subsystem>: <file-count> file(s)
- *
- *   Stats: +<insertions> / -<deletions> across <files> file(s)
- *
- *   Auto-commit @ <ISO timestamp> | tick #<N>
+ * Usage:  node build-message.js <repo-dir> <tick>
+ * Output: stdout (piped to a temp file for `git commit -F`)
  */
 
 'use strict';
@@ -42,17 +30,19 @@ if (!fs.existsSync(path.join(repoDir, '.git'))) {
 const git = (args) => {
   try {
     return execFileSync('git', args, { cwd: repoDir, encoding: 'utf8' });
-  } catch (err) {
+  } catch {
     return '';
   }
 };
 
-// ---------- 1. Status (added / modified / deleted / renamed) ------------------
+// ---------------------------------------------------------------------------
+// 1. Collect staged status
+// ---------------------------------------------------------------------------
 const statusRaw = git(['diff', '--cached', '--name-status']);
 const statusByFile = new Map();
 statusRaw
   .split('\n')
-  .map((line) => line.trim())
+  .map((l) => l.trim())
   .filter(Boolean)
   .forEach((line) => {
     const [code, ...rest] = line.split('\t');
@@ -60,11 +50,13 @@ statusRaw
     statusByFile.set(file, code);
   });
 
-// ---------- 2. Per-file stats from `git diff --cached --numstat` --------------
+// ---------------------------------------------------------------------------
+// 2. Per-file stats (numstat)
+// ---------------------------------------------------------------------------
 const numstatRaw = git(['diff', '--cached', '--numstat', '--no-renames']);
 const perFile = numstatRaw
   .split('\n')
-  .map((line) => line.trim())
+  .map((l) => l.trim())
   .filter(Boolean)
   .map((line) => {
     const [add, del, file] = line.split('\t');
@@ -77,53 +69,314 @@ const perFile = numstatRaw
   });
 
 if (perFile.length === 0) {
-  // Nothing staged; the wrapper script should not have called us. Emit a
-  // minimal message so `git commit` still produces something.
-  console.log(`chore: auto-commit (tick #${tick})`);
-  console.log('');
-  console.log('No staged diff detected.');
+  console.log(`chore: auto-commit (tick #${tick})\n\nNo staged diff detected.`);
   process.exit(0);
 }
 
-// ---------- 3. Aggregate stats ------------------------------------------------
-const totalAdd = perFile.reduce((s, f) => s + f.add, 0);
-const totalDel = perFile.reduce((s, f) => s + f.del, 0);
+// ---------------------------------------------------------------------------
+// 3. Read the actual diff content (max 30 kB to avoid huge commits)
+// ---------------------------------------------------------------------------
+const rawDiff = git(['diff', '--cached', '--no-renames', '--unified=3']);
+const diffLines = rawDiff.split('\n');
 
-// ---------- 4. Infer type + scope from changed paths --------------------------
-// Conventional Commits-ish mapping for the GeoAgent project.
+// ---------------------------------------------------------------------------
+// 4. Diff analysis helpers
+// ---------------------------------------------------------------------------
+
+// Extract identifiers from a single diff line (+ or -)
+function extractIdentifiers(line) {
+  const ids = [];
+
+  // ES6/TS/JS: const/let/var NAME = or export (const|function|class) NAME
+  const declMatch = line.match(
+    /(?:export\s+)?(?:const|let|var|function|class|interface|type|enum)\s+(\w+)/,
+  );
+  if (declMatch) ids.push(declMatch[1]);
+
+  // Arrow / named function: const name = (...) =>
+  const arrowMatch = line.match(/(?:const|let|var)\s+(\w+)\s*=\s*(\([^)]*\)|\w+)\s*=>/);
+  if (arrowMatch) ids.push(arrowMatch[1]);
+
+  // Import: import { A, B } from  or  import X from
+  const importNames = [...line.matchAll(
+    /import\s+(?:\{([^}]+)\}|(\w+))\s+from/g,
+  )];
+  for (const m of importNames) {
+    if (m[1]) ids.push(...m[1].split(',').map((s) => s.trim().split(/\s+as\s+/).pop()));
+    if (m[2]) ids.push(m[2]);
+  }
+
+  // JSX / TSX component usage: <ComponentName  or </ComponentName
+  const jsxMatches = [...line.matchAll(/<\/?([A-Z]\w+)/g)];
+  for (const m of jsxMatches) ids.push(m[1]);
+
+  // Mongoose model: mongoose.model('X', ...) or new Schema / new Model
+  const mongooseMatch = line.match(/mongoose\.model\(\s*['"](\w+)['"]/);
+  if (mongooseMatch) ids.push(mongooseMatch[1]);
+
+  // Express route: router.(get|post|put|delete|patch)('...',
+  const routeMatch = line.match(/router\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)/);
+  if (routeMatch) ids.push(`route:${routeMatch[1].toUpperCase()} ${routeMatch[2]}`);
+
+  // Socket event: socket.emit('X', ...)  or  socket.on('X', ...)
+  const socketMatch = line.match(/socket\.(emit|on)\s*\(\s*['"`]([^'"`]+)/);
+  if (socketMatch) ids.push(`event:${socketMatch[2]}`);
+
+  // console.log / console.error
+  if (/console\.(log|error|warn)\s*\(/.test(line)) ids.push('logging');
+
+  // return / throw (control flow changes)
+  if (/^\s*\+.*return\b/.test(line)) ids.push('return');
+  if (/^\s*\+.*throw\b/.test(line)) ids.push('throw');
+
+  // Remove noise: single-letter vars, generic keywords, and regex internals
+  const noise = new Set(['const', 'let', 'var', 'function', 'return', 'throw',
+    'logging', 'true', 'false', 'null', 'undefined', 'this', 'new', 'if',
+    'else', 'for', 'while', 'switch', 'case', 'break', 'continue', 'try',
+    'catch', 'finally', 'async', 'await', 'export', 'default', 'import',
+    'from', 'require', 'module', 'exports', 'typeof', 'instanceof', 'in',
+    'of', 'delete', 'void', 'do', 'with', 'super', 'yield', 'static']);
+  for (const id of ids) {
+    if (id.length <= 2 || noise.has(id)) continue;
+    if (/^[A-Z]$/.test(id)) continue; // single uppercase letter
+    if (/^_|__/.test(id)) continue;   // private convention
+    if (/\d+$/.test(id)) continue;    // ends with number (regex capture groups)
+    results.push(id);
+  }
+
+  return results;
+}
+
+// Parse the diff into per-file hunks and extract added/removed lines.
+function parseDiffHunks(diffText) {
+  const hunks = [];
+  let currentFile = null;
+
+  for (const line of diffText.split('\n')) {
+    if (line.startsWith('diff --git')) {
+      // "diff --git a/path/to/file b/path/to/file"
+      const match = line.match(/ b\/(.+)$/);
+      currentFile = match ? match[1] : null;
+    }
+    if (currentFile) {
+      if (!hunks.find((h) => h.file === currentFile)) {
+        hunks.push({ file: currentFile, added: [], removed: [] });
+      }
+      const hunk = hunks.find((h) => h.file === currentFile);
+      if (line.startsWith('+') && !line.startsWith('+++')) {
+        hunk.added.push(line.slice(1));
+      } else if (line.startsWith('-') && !line.startsWith('---')) {
+        hunk.removed.push(line.slice(1));
+      }
+    }
+  }
+  return hunks;
+}
+
+const hunks = parseDiffHunks(rawDiff);
+
+// For each file, collect all new identifiers (added lines) and removed identifiers.
+const fileAnalysis = hunks.map((h) => {
+  const newIds = new Set();
+  const removedIds = new Set();
+  for (const line of h.added) {
+    for (const id of extractIdentifiers(line)) newIds.add(id);
+  }
+  for (const line of h.removed) {
+    for (const id of extractIdentifiers(line)) removedIds.add(id);
+  }
+  return {
+    file: h.file,
+    newIds: [...newIds],
+    removedIds: [...removedIds],
+    addedCount: h.added.length,
+    removedCount: h.removed.length,
+  };
+});
+
+// ---------------------------------------------------------------------------
+// 5. Classify file status
+// ---------------------------------------------------------------------------
+function fileVerb(file) {
+  const code = statusByFile.get(file) || 'M';
+  switch (code.charAt(0)) {
+    case 'A': return 'added';
+    case 'D': return 'deleted';
+    case 'R': return 'renamed';
+    default:  return 'modified';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6. Infer type + scope (Conventional Commits style)
+// ---------------------------------------------------------------------------
 function inferType(file) {
   const f = file.toLowerCase();
   if (f.includes('/test-') || f.endsWith('.test.js') || f.endsWith('.spec.js'))
     return 'test';
-  if (f.startsWith('server/modules/') || f.startsWith('server/')) return 'feat(server)';
+  if (f.startsWith('server/modules/') || f.startsWith('server/')) return 'feat';
   if (f.startsWith('app/') || f.startsWith('components/') || f.startsWith('lib/'))
-    return 'feat(frontend)';
-  if (f.startsWith('routing-engine/')) return 'feat(routing)';
+    return 'feat';
+  if (f.startsWith('routing-engine/')) return 'feat';
   if (f.startsWith('docs/')) return 'docs';
   if (f.endsWith('.md')) return 'docs';
-  if (f.endsWith('.json') || f.endsWith('.yaml') || f.endsWith('.yml')) return 'chore(config)';
+  if (f.endsWith('.json') || f.endsWith('.yaml') || f.endsWith('.yml')) return 'chore';
   if (f.endsWith('.css') || f.endsWith('.scss')) return 'style';
-  if (f.endsWith('.html')) return 'feat(ui)';
-  if (f.endsWith('.py')) return 'feat(routing)';
-  if (f.endsWith('.ts') || f.endsWith('.tsx')) return 'feat(frontend)';
-  if (f.endsWith('.js') || f.endsWith('.jsx')) return 'feat(server)';
+  if (f.endsWith('.html')) return 'feat';
+  if (f.endsWith('.py')) return 'feat';
   return 'chore';
 }
 
-// Scope = top-level folder for the most-touched file.
 function inferScope(file) {
   const parts = file.split('/');
   if (parts.length === 1) return 'root';
   if (parts[0] === 'server' && parts.length >= 3 && parts[1] === 'modules') {
-    return parts[2]; // e.g. server/modules/auth -> scope = auth
+    return parts[2];
   }
-  if (parts[0] === '.agents' && parts[1] === 'skills' && parts[2]) {
-    return parts[2]; // .agents/skills/<name> -> scope = <name>
-  }
-  return parts[0]; // app, components, lib, routing-engine, docs, ...
+  if (parts[0] === '.agents' && parts[1] === 'skills' && parts[2]) return parts[2];
+  if (parts[0] === 'components' && parts.length >= 3) return parts[1]; // components/auth/LoginForm.tsx → auth
+  return parts[0];
 }
 
-// Bucket files by subsystem (top-level folder or server/module).
+function dominantScope(files) {
+  const counts = new Map();
+  for (const f of files) {
+    const s = inferScope(f);
+    counts.set(s, (counts.get(s) || 0) + 1);
+  }
+  let best = 'root';
+  let bestN = -1;
+  for (const [s, n] of counts) if (n > bestN) { best = s; bestN = n; }
+  return best;
+}
+
+// ---------------------------------------------------------------------------
+// 7. Detect what was done (the "verb phrase" for the subject line)
+// ---------------------------------------------------------------------------
+
+function detectWorkSummary(analysis) {
+  // Aggregate all new and removed identifiers across every file.
+  const allNew = new Set();
+  const allRemoved = new Set();
+  for (const fa of analysis) {
+    for (const id of fa.newIds) allNew.add(id);
+    for (const id of fa.removedIds) allRemoved.add(id);
+  }
+
+  const newCount = analysis.reduce((s, f) => s + f.addedCount, 0);
+  const removedCount = analysis.reduce((s, f) => s + f.removedCount, 0);
+  const total = newCount + removedCount;
+
+  // --- Pattern 1: New files only (all status A) ----------------------------
+  const allAdded = analysis.every((f) => (statusByFile.get(f.file) || 'M').startsWith('A'));
+  if (allAdded) {
+    // Detect what was added
+    const components = [...allNew].filter((id) => /^[A-Z]/.test(id));
+    const funcs = [...allNew].filter((id) => /^[a-z]/.test(id));
+    if (components.length === 1 && funcs.length <= 3) {
+      return `add ${components[0]} component`;
+    }
+    if (components.length > 1) {
+      return `add ${components.length} new components`;
+    }
+    if (funcs.length === 1) {
+      return `add ${funcs[0]} function`;
+    }
+    if (funcs.length > 1) {
+      return `add ${funcs.slice(0, 3).join(', ')} and ${funcs.length - 3} more`;
+    }
+    return `add new ${inferScope(analysis[0].file)} files`;
+  }
+
+  // --- Pattern 2: Deleted files only (all status D) -------------------------
+  const allDeleted = analysis.every((f) => (statusByFile.get(f.file) || 'M').startsWith('D'));
+  if (allDeleted) {
+    const names = analysis.map((f) => path.basename(f.file, path.extname(f.file)));
+    if (names.length === 1) return `remove ${names[0]}`;
+    return `remove ${names.length} files (${names.slice(0, 3).join(', ')})`;
+  }
+
+  // --- Pattern 3: Pure additions (no deletions) -----------------------------
+  if (removedCount === 0) {
+    const components = [...allNew].filter((id) => /^[A-Z]/.test(id));
+    const funcs = [...allNew].filter((id) => /^[a-z]/.test(id) && id.length > 2);
+
+    if (components.length === 1) return `add ${components[0]} component`;
+    if (components.length > 1) return `add ${components.length} new ${inferScope(analysis[0].file)} components`;
+    if (funcs.length === 1) return `add ${funcs[0]} to ${inferScope(analysis[0].file)}`;
+    if (funcs.length > 1) return `add ${funcs.slice(0, 3).join(', ')} to ${inferScope(analysis[0].file)}`;
+    return `add new ${inferScope(analysis[0].file)} code`;
+  }
+
+  // --- Pattern 4: Pure deletions (no additions) -----------------------------
+  if (newCount === 0) {
+    const names = [...allRemoved].slice(0, 3);
+    if (names.length === 1) return `remove ${names[0]}`;
+    return `remove ${names.join(', ')} and ${allRemoved.size - names.length} more`;
+  }
+
+  // --- Pattern 5: Mixed — detect the dominant change ------------------------
+  // If more additions than removals, it's likely "add X" with some cleanup.
+  // If more removals, it's likely "remove/refactor X" with some additions.
+  if (newCount > removedCount * 2) {
+    const components = [...allNew].filter((id) => /^[A-Z]/.test(id));
+    const funcs = [...allNew].filter((id) => /^[a-z]/.test(id) && id.length > 2);
+    if (components.length >= 1) return `add ${components.slice(0, 3).join(', ')} components`;
+    if (funcs.length >= 1) return `add ${funcs.slice(0, 3).join(', ')} to ${inferScope(analysis[0].file)}`;
+    return `update ${inferScope(analysis[0].file)} with new code`;
+  }
+
+  if (removedCount > newCount * 2) {
+    const names = [...allRemoved].filter((id) => id.length > 2).slice(0, 3);
+    if (names.length === 1) return `remove ${names[0]}`;
+    if (names.length > 1) return `remove ${names.join(', ')} from ${inferScope(analysis[0].file)}`;
+    return `clean up ${inferScope(analysis[0].file)}`;
+  }
+
+  // --- Fallback: balanced change --------------------------------------------
+  const topNames = [...allNew].slice(0, 2);
+  if (topNames.length === 1) return `update ${topNames[0]} in ${inferScope(analysis[0].file)}`;
+  if (topNames.length > 1) return `update ${topNames.join(', ')} in ${inferScope(analysis[0].file)}`;
+  return `update ${inferScope(analysis[0].file)} module`;
+}
+
+// ---------------------------------------------------------------------------
+// 8. Build the per-file description line (richer than before)
+// ---------------------------------------------------------------------------
+function describeFile(fa) {
+  const code = statusByFile.get(fa.file) || 'M';
+  const verb = fileVerb(fa.file);
+  const shortPath = fa.file;
+
+  if (verb === 'added') return `- \`${shortPath}\`: new file`;
+  if (verb === 'deleted') return `- \`${shortPath}\`: removed`;
+  if (verb === 'renamed') return `- \`${shortPath}\`: renamed`;
+
+  // Modified: describe what changed using identifiers
+  const newNames = fa.newIds.filter((id) => !['return', 'throw', 'logging'].includes(id));
+  const remNames = fa.removedIds.filter((id) => !['return', 'throw', 'logging'].includes(id));
+  const parts = [];
+  if (newNames.length > 0) {
+    const display = newNames.slice(0, 4).join(', ');
+    const extra = newNames.length > 4 ? ` +${newNames.length - 4}` : '';
+    parts.push(`add ${display}${extra}`);
+  }
+  if (remNames.length > 0) {
+    const display = remNames.slice(0, 4).join(', ');
+    const extra = remNames.length > 4 ? ` +${remNames.length - 4}` : '';
+    parts.push(`remove ${display}${extra}`);
+  }
+
+  if (parts.length === 0) {
+    // Generic fallback for modified files with no extractable identifiers
+    return `- \`${shortPath}\`: updated`;
+  }
+  return `- \`${shortPath}\`: ${parts.join('; ')}`;
+}
+
+// ---------------------------------------------------------------------------
+// 9. Subsystem buckets
+// ---------------------------------------------------------------------------
 function bucketBySubsystem(fileList) {
   const buckets = new Map();
   for (const f of fileList) {
@@ -139,73 +392,23 @@ function bucketBySubsystem(fileList) {
   return buckets;
 }
 
-// Dominant type = most-used type across files.
-function dominantType(fileList) {
-  const counts = new Map();
-  for (const f of fileList) {
-    const t = inferType(f);
-    counts.set(t, (counts.get(t) || 0) + 1);
-  }
-  let best = 'chore';
-  let bestN = -1;
-  for (const [t, n] of counts) if (n > bestN) { best = t; bestN = n; }
-  return best;
-}
-
-// ---------- 5. Build the human-friendly per-file summary ----------------------
-function describeFile(f) {
-  const code = statusByFile.get(f.file) || 'M';
-  const verb = {
-    A: 'added',
-    M: 'modified',
-    D: 'deleted',
-    R: 'renamed',
-    C: 'copied',
-    T: 'type-changed',
-  }[code.charAt(0)] || 'modified';
-
-  const lower = f.file.toLowerCase();
-  let kind = 'updated';
-  if (verb === 'added') kind = 'new file';
-  else if (verb === 'deleted') kind = 'removed';
-  else if (/config|\.env|\.json|\.ya?ml/.test(lower)) kind = 'config tweak';
-  else if (/readme|\.md$|docs\//.test(lower)) kind = 'doc update';
-  else if (/test/.test(lower)) kind = 'test update';
-  else if (/\.(ts|tsx|js|jsx)$/.test(lower)) kind = 'code change';
-  else if (/\.(py)$/.test(lower)) kind = 'python change';
-  else if (/\.(css|scss)$/.test(lower)) kind = 'style update';
-  else if (/\.(html)$/.test(lower)) kind = 'markup change';
-
-  return `- \`${f.file}\`: ${kind}`;
-}
-
-// Pick the "most important" file for the short summary: largest diff first,
-// ties broken by file name length (proxy for "descriptive").
-function pickHeadline(files) {
-  const sorted = [...files].sort((a, b) => {
-    const diff = (b.add + b.del) - (a.add + a.del);
-    if (diff !== 0) return diff;
-    return b.file.length - a.file.length;
-  });
-  return sorted[0].file;
-}
-
-function shortSummary(headline) {
-  const base = headline.split('/').pop();
-  return `auto-sync changes (top file: ${base})`;
-}
-
-// ---------- 6. Compose --------------------------------------------------------
+// ---------------------------------------------------------------------------
+// 10. Compose the final message
+// ---------------------------------------------------------------------------
 const files = perFile.map((f) => f.file);
-const type = dominantType(files);
-const scope = inferScope(pickHeadline(perFile));
-const typeWithScope = type.includes('(') ? type : `${type}(${scope})`;
-const headline = shortSummary(pickHeadline(perFile));
+const totalAdd = perFile.reduce((s, f) => s + f.add, 0);
+const totalDel = perFile.reduce((s, f) => s + f.del, 0);
+
+const type = inferType(files[0]);
+const scope = dominantScope(files);
+const workSummary = detectWorkSummary(fileAnalysis);
+
+const subject = `${type}(${scope}): ${workSummary}`;
 
 const lines = [];
-lines.push(`${typeWithScope}: ${headline}`);
+lines.push(subject);
 lines.push('');
-lines.push(...perFile.map(describeFile));
+lines.push(...fileAnalysis.map(describeFile));
 lines.push('');
 lines.push('Affected areas:');
 for (const [area, count] of [...bucketBySubsystem(files)].sort()) {
