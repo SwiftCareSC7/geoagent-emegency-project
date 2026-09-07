@@ -1,6 +1,9 @@
 import crypto from 'crypto';
 import Route from './route.model.js';
 import routingService from './routing.service.js';
+import routeComparisonService from './routeComparison.service.js';
+import analysisService from '../analysis/analysis.service.js';
+import predictionService from '../analysis/prediction.service.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import realtimeService from '../realtime/realtime.service.js';
@@ -156,6 +159,59 @@ class RouteService {
     }
 
     return route;
+  }
+
+  /**
+   * Compare a route against provider alternative candidates
+   * @param {String} routeId
+   * @returns {Promise<Object>} Structured route comparison
+   */
+  async compareRoute(routeId) {
+    const route = await this.getRouteById(routeId);
+
+    // Get candidate alternatives from routing provider
+    const routeResult = await routingService.getRouteWithAlternatives(route.origin, route.destination);
+    const candidates = routeResult.alternatives || [];
+
+    // Attempt to enrich with live vehicle situation and prediction if vehicle is assigned
+    let vehicleState = null;
+    let predictionState = null;
+    let deviationState = null;
+    let incidents = [];
+
+    if (route.vehicle && route.vehicle.vehicleId) {
+      try {
+        const situation = await analysisService.getVehicleSituation(route.vehicle.vehicleId);
+        deviationState = situation.deviation;
+        incidents = situation.incidents || [];
+        vehicleState = {
+          vehicleId: route.vehicle.vehicleId,
+          status: route.vehicle.status
+        };
+      } catch {
+        // Continue with un-enriched route comparison if situation unavailable
+      }
+
+      try {
+        predictionState = await predictionService.predictForVehicle(route.vehicle.vehicleId);
+      } catch {
+        // Continue if prediction unavailable
+      }
+    }
+
+    return routeComparisonService.compareRoutes({
+      currentRoute: {
+        description: `Route ${route.routeId} (Planned Corridor)`,
+        distanceMeters: route.distance,
+        durationSeconds: route.duration,
+        provider: route.provider
+      },
+      candidateRoutes: candidates,
+      currentVehicleState: vehicleState,
+      predictionState,
+      deviationState,
+      incidents
+    });
   }
 }
 

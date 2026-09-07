@@ -119,3 +119,26 @@ export const getRouteAnalysis = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get deterministic route comparison and what-if analysis
+ * @route   GET /api/routes/:routeId/compare
+ * @access  Private (CONTROL_ROOM, ADMIN)
+ */
+export const compareRoute = async (req, res, next) => {
+  try {
+    const { routeId } = req.params;
+    const comparison = await routeService.compareRoute(routeId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Route candidate comparison generated',
+      data: comparison
+    });
+  } catch (error) {
+    if (error.message === 'Route not found') {
+      res.status(404);
+    }
+    next(error);
+  }
+};
+
