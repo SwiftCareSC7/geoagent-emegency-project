@@ -1,4 +1,5 @@
 import mockTrafficProvider from './providers/mockTrafficProvider.js';
+import googleTrafficProvider from './providers/googleTrafficProvider.js';
 import { trafficConfig } from './traffic.config.js';
 
 class TrafficService {
@@ -7,15 +8,16 @@ class TrafficService {
   }
 
   /**
-   * Retrieves the traffic provider based on configuration
+   * Retrieves the traffic provider based on dynamic runtime configuration
    */
   getProvider() {
-    switch (this.providerName.toLowerCase()) {
+    const activeProvider = (process.env.TRAFFIC_PROVIDER || this.providerName || 'mock').toLowerCase();
+    switch (activeProvider) {
       case 'google':
         if (!process.env.GOOGLE_MAPS_API_KEY) {
           throw new Error('GOOGLE_MAPS_API_KEY required for google traffic provider');
         }
-        throw new Error('Google traffic provider not implemented yet');
+        return googleTrafficProvider;
       case 'mock':
       default:
         return mockTrafficProvider;

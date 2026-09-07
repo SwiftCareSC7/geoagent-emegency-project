@@ -1,4 +1,5 @@
 import mockRoutingProvider from './providers/mockRoutingProvider.js';
+import googleRoutingProvider from './providers/googleRoutingProvider.js';
 
 class RoutingService {
   constructor() {
@@ -6,29 +7,26 @@ class RoutingService {
   }
 
   /**
-   * Retrieves a routing provider based on configuration
+   * Retrieves the active routing provider based on runtime configuration
    * @returns {Object} Routing provider instance
    */
   getProvider() {
-    switch (this.provider.toLowerCase()) {
+    const activeProvider = (process.env.ROUTING_PROVIDER || this.provider || 'mock').toLowerCase();
+    switch (activeProvider) {
       case 'google':
         if (!process.env.GOOGLE_MAPS_API_KEY) {
           throw new Error('GOOGLE_MAPS_API_KEY is required when using the google routing provider');
         }
-        // TODO: return googleRoutingProvider
-        throw new Error('Google provider not implemented yet');
+        return googleRoutingProvider;
       case 'mapbox':
         if (!process.env.MAPBOX_ACCESS_TOKEN) {
           throw new Error('MAPBOX_ACCESS_TOKEN is required when using the mapbox routing provider');
         }
-        // TODO: return mapboxRoutingProvider
         throw new Error('Mapbox provider not implemented yet');
       case 'osrm':
-        // TODO: return osrmRoutingProvider
         throw new Error('OSRM provider not implemented yet');
       case 'mock':
       default:
-        console.warn('Using MOCK routing provider. This should not be used in production.');
         return mockRoutingProvider;
     }
   }
@@ -38,7 +36,7 @@ class RoutingService {
    * @param {Object} origin GeoJSON Point
    * @param {Object} destination GeoJSON Point
    * @param {Object} options Routing options
-   * @returns {Promise<Object>} { geometry, distanceMeters, durationSeconds, provider }
+   * @returns {Promise<Object>} { geometry, distanceMeters, durationSeconds, provider, ... }
    */
   async getRoute(origin, destination, options = {}) {
     const providerInstance = this.getProvider();
@@ -57,16 +55,61 @@ class RoutingService {
       return routeData;
     } catch (error) {
       console.error(`[RoutingService] Error calculating route: ${error.message}`);
-      // Throw a safe generic error so we don't leak external API details to the client
-      throw new Error('Unable to calculate route. Provider error.');
+      throw new Error(`Unable to calculate route: ${error.message}`);
     }
   }
 
   /**
-   * Compares multiple routes and scores them based on heuristics (Placeholder for Part 7)
+   * Retrieves primary route along with up to 2 candidate alternative routes
+   * @param {Object} origin GeoJSON Point
+   * @param {Object} destination GeoJSON Point
+   * @param {Object} options Routing options
+   * @returns {Promise<Object>} { primary, alternatives: [...] }
    */
-  compareRoutes() {
-    throw new Error('compareRoutes is not implemented yet');
+  async getRouteWithAlternatives(origin, destination, options = {}) {
+    const activeProvider = (process.env.ROUTING_PROVIDER || this.provider || 'mock').toLowerCase();
+
+    if (activeProvider === 'google') {
+      const providerInstance = this.getProvider();
+      return await providerInstance.getRouteWithAlternatives(origin, destination, options);
+    }
+
+    // Mock fallback: generate primary and a simulated alternative
+    const primary = await this.getRoute(origin, destination, options);
+    const [origLng, origLat] = origin.coordinates;
+    const [destLng, destLat] = destination.coordinates;
+
+    const altMidLng = (origLng + destLng) / 2 - 0.002;
+    const altMidLat = (origLat + destLat) / 2 + 0.002;
+
+    const alternative = {
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [origLng, origLat],
+          [altMidLng, altMidLat],
+          [destLng, destLat]
+        ]
+      },
+      distanceMeters: Math.round(primary.distanceMeters * 1.08),
+      durationSeconds: Math.round(primary.durationSeconds * 0.95), // alternative has slightly better traffic
+      staticDurationSeconds: primary.durationSeconds,
+      trafficDelaySeconds: 0,
+      provider: 'MOCK',
+      description: 'Alternative Corridor via Boulevard (Mock)',
+      isAlternative: true,
+      candidateIndex: 1,
+      warnings: [],
+      retrievedAt: new Date().toISOString()
+    };
+
+    return {
+      primary: {
+        ...primary,
+        alternatives: [alternative]
+      },
+      alternatives: [alternative]
+    };
   }
 }
 

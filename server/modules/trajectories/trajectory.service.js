@@ -2,14 +2,76 @@ import Trajectory from './trajectory.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import realtimeService from '../realtime/realtime.service.js';
 import { formatVehicleLocationPayload } from '../realtime/realtime.events.js';
+import { calculateDistance } from '../../shared/services/geospatial.service.js';
 
 /**
- * Ingest a new GPS trajectory point
+ * Ingest a new GPS trajectory point with robust telemetry validation
  */
 export const createTrajectory = async (trajectoryData) => {
-  const { vehicleId, location, speed, heading, timestamp, source } = trajectoryData;
+  const { vehicleId, source } = trajectoryData;
 
-  // 1. Verify that the vehicle exists
+  // 1. Resolve coordinates from either GeoJSON location or lat/lng properties
+  let lng = trajectoryData.location?.coordinates?.[0] ?? trajectoryData.longitude;
+  let lat = trajectoryData.location?.coordinates?.[1] ?? trajectoryData.latitude;
+
+  if (typeof lng !== 'number' || isNaN(lng) || lng < -180 || lng > 180) {
+    const error = new Error('Invalid longitude coordinate: must be between -180 and 180 degrees');
+    error.status = 400;
+    error.isOperational = true;
+    throw error;
+  }
+
+  if (typeof lat !== 'number' || isNaN(lat) || lat < -90 || lat > 90) {
+    const error = new Error('Invalid latitude coordinate: must be between -90 and 90 degrees');
+    error.status = 400;
+    error.isOperational = true;
+    throw error;
+  }
+
+  const validLocation = {
+    type: 'Point',
+    coordinates: [Number(lng.toFixed(6)), Number(lat.toFixed(6))]
+  };
+
+  // 2. Validate timestamp
+  const rawTimestamp = trajectoryData.timestamp || new Date();
+  const parsedDate = new Date(rawTimestamp);
+  if (isNaN(parsedDate.getTime())) {
+    const error = new Error('Invalid timestamp: must be a valid date or ISO string');
+    error.status = 400;
+    error.isOperational = true;
+    throw error;
+  }
+
+  // Reject impossible future timestamps (> 2 minutes in future)
+  if (parsedDate.getTime() > Date.now() + 2 * 60 * 1000) {
+    const error = new Error('Timestamp cannot be in the future');
+    error.status = 400;
+    error.isOperational = true;
+    throw error;
+  }
+
+  // 3. Validate speed (0 - 250 km/h)
+  const rawSpeed = trajectoryData.speed !== undefined ? trajectoryData.speed : 0;
+  const speed = typeof rawSpeed === 'number' ? rawSpeed : parseFloat(rawSpeed);
+  if (isNaN(speed) || speed < 0 || speed > 250) {
+    const error = new Error('Speed must be a valid number between 0 and 250 km/h');
+    error.status = 400;
+    error.isOperational = true;
+    throw error;
+  }
+
+  // 4. Validate heading (0 - 360 degrees)
+  const rawHeading = trajectoryData.heading !== undefined ? trajectoryData.heading : 0;
+  const heading = typeof rawHeading === 'number' ? rawHeading : parseFloat(rawHeading);
+  if (isNaN(heading) || heading < 0 || heading > 360) {
+    const error = new Error('Heading must be a valid number between 0 and 360 degrees');
+    error.status = 400;
+    error.isOperational = true;
+    throw error;
+  }
+
+  // 5. Verify that the vehicle exists
   const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
   if (!vehicle) {
     const error = new Error('Vehicle not found');
@@ -18,7 +80,7 @@ export const createTrajectory = async (trajectoryData) => {
     throw error;
   }
 
-  // 2. Verify vehicle status is appropriate for location tracking
+  // 6. Verify vehicle status is appropriate for location tracking
   const allowedStatuses = ['DISPATCHED', 'EN_ROUTE', 'AT_SCENE', 'RETURNING', 'AVAILABLE'];
   if (!allowedStatuses.includes(vehicle.status)) {
     const error = new Error(`Cannot accept GPS updates from vehicle in ${vehicle.status} status`);
@@ -27,15 +89,28 @@ export const createTrajectory = async (trajectoryData) => {
     throw error;
   }
 
-  // 3. Create trajectory record
-  // Note: For duplicate or out-of-order GPS data, we simply ingest it as-is with its actual timestamp.
-  // We rely on sorting by timestamp descending during retrieval to reconstruct the timeline accurately.
+  // 7. Teleport / Jitter detection against latest known fix
+  const latestFix = await Trajectory.findOne({ vehicle: vehicle._id }).sort({ timestamp: -1 });
+  if (latestFix && latestFix.location && latestFix.location.coordinates) {
+    const timeDeltaSec = Math.abs((parsedDate.getTime() - new Date(latestFix.timestamp).getTime()) / 1000);
+    const { meters } = calculateDistance(latestFix.location, validLocation);
+
+    // If points are within 10 seconds of each other but jumped > 1,000 meters (>360 km/h)
+    if (timeDeltaSec > 0 && timeDeltaSec < 10 && meters > 1000) {
+      const error = new Error(`GPS teleport anomaly detected: vehicle jumped ${Math.round(meters)}m in ${timeDeltaSec.toFixed(1)}s`);
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+  }
+
+  // 8. Create trajectory record
   const newTrajectory = new Trajectory({
     vehicle: vehicle._id,
-    location,
-    speed,
-    heading,
-    timestamp: new Date(timestamp),
+    location: validLocation,
+    speed: Number(speed.toFixed(1)),
+    heading: Number(heading.toFixed(1)),
+    timestamp: parsedDate,
     source: source || 'SIMULATOR'
   });
 
