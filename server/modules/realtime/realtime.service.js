@@ -18,11 +18,16 @@ class RealtimeService {
       return this.io;
     }
 
-    const clientUrl = options.clientUrl || process.env.CLIENT_URL || 'http://localhost:5173';
+    const clientUrl = options.clientUrl || process.env.CLIENT_URL || 'http://localhost:3000';
+    const allowedOrigins = Array.from(new Set([
+      clientUrl,
+      'http://localhost:3000',
+      'http://localhost:5173'
+    ].filter(Boolean)));
 
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: clientUrl,
+        origin: allowedOrigins,
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE']
       },
