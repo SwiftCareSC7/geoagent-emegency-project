@@ -14,6 +14,7 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import type { Route } from '@/lib/api/types'
+import { RealInteractiveMap } from '@/components/dashboard/real-interactive-map'
 import { cn } from '@/lib/utils'
 
 interface RouteAnalysisPanelProps {
@@ -193,12 +194,9 @@ export function RouteAnalysisPanel({ route, loading = false, error = null }: Rou
         </div>
       </div>
 
-      {/* Interactive Map Notice */}
-      <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center gap-2 text-[11px] text-zinc-400">
-        <ShieldAlert className="h-3.5 w-3.5 text-zinc-400" />
-        <span>
-          Interactive 2D/3D map rendering is intentionally deferred in this release. Route geometry is verified via spatial database indexing.
-        </span>
+      {/* Real Interactive Map View */}
+      <div className="mt-4">
+        <RealInteractiveMap height="340px" />
       </div>
     </div>
   )
