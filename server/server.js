@@ -38,15 +38,29 @@ connectDB();
 // Initialize Express app
 const app = express();
 
+import providerHealthService from './modules/health/providerHealth.service.js';
+
 // --- Security & Middleware ---
 
 // Use Helmet to set appropriate security headers
 app.use(helmet());
 
 // Configure CORS securely
-// We restrict access to the explicitly defined CLIENT_URL instead of allowing '*'
+// Support both Next.js frontend (port 3000) and legacy Vite (port 5173) or custom CLIENT_URL
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'http://localhost:3000',
+  'http://localhost:5173'
+].filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -70,6 +84,27 @@ app.get('/api/health', (req, res) => {
     success: true,
     message: 'GeoAgentic backend is running'
   });
+});
+
+/**
+ * Provider health endpoint
+ * Returns safe health statuses (AVAILABLE, DEGRADED, UNAVAILABLE, NOT_CONFIGURED)
+ * for Google Routes, Google Roads, and Gemini AI without leaking keys or secrets.
+ */
+app.get('/api/health/providers', async (req, res) => {
+  try {
+    const health = await providerHealthService.getHealthStatus();
+    res.status(200).json({
+      success: true,
+      data: health
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to evaluate provider health',
+      error: error.message
+    });
+  }
 });
 
 // Routes
