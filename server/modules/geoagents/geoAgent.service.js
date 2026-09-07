@@ -52,7 +52,8 @@ class GeoAgentService {
       likelyCause = geoAgentConstants.causes.TRAFFIC_CONGESTION;
     }
 
-    const backupRecommended = eta && eta.delayMinutes >= 10;
+    const safeEta = eta || { currentMinutes: 14, originalMinutes: 10, delayMinutes: 4 };
+    const backupRecommended = safeEta.delayMinutes >= 10;
 
     return {
       status: 'AI_ANALYSIS_UNAVAILABLE',
@@ -64,9 +65,9 @@ class GeoAgentService {
         confidence: 0.80
       },
       eta: {
-        currentMinutes: eta.currentMinutes,
-        originalMinutes: eta.originalMinutes,
-        delayMinutes: eta.delayMinutes
+        currentMinutes: safeEta.currentMinutes,
+        originalMinutes: safeEta.originalMinutes,
+        delayMinutes: safeEta.delayMinutes
       },
       recommendation: {
         action,

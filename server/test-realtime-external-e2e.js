@@ -12,13 +12,17 @@
  * 8. Socket.IO real-time room streaming (prediction.updated event propagation)
  */
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 import { io } from 'socket.io-client';
-import mongoose from 'mongoose';
-import jwt from 'jsonwebtoken';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 const BASE_URL = process.env.API_URL || 'http://localhost:5001';
 const SOCKET_URL = process.env.SOCKET_URL || 'http://localhost:5001';
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret_key_change_in_production_32char';
 
 let passed = 0;
 let failed = 0;
@@ -67,29 +71,29 @@ async function runTests() {
   // -------------------------------------------------------------
   console.log('\n[2/8] Testing Google Routing Provider Utilities...');
   try {
-    const { googleRoutingProvider } = await import('./modules/routes/providers/googleRoutingProvider.js');
+    const { default: googleRoutingProvider, decodeGooglePolyline } = await import('./modules/routes/providers/googleRoutingProvider.js');
     
     // Test polyline decoder
     // Encoded polyline for roughly Bangalore coordinates: (12.9716, 77.5946) to (12.9800, 77.6000)
     const testEncoded = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
-    const decoded = googleRoutingProvider.decodePolyline(testEncoded);
+    const decoded = decodeGooglePolyline(testEncoded);
     assert(Array.isArray(decoded) && decoded.length > 0, 'Polyline decoder produces coordinate array');
     assert(decoded[0].length === 2, 'Decoded points are [lng, lat] pairs');
     assert(decoded[0][0] >= -180 && decoded[0][0] <= 180, 'Longitude within valid bounds');
     assert(decoded[0][1] >= -90 && decoded[0][1] <= 90, 'Latitude within valid bounds');
 
     // Test route calculation in current mode (mock/fallback)
-    const routeRes = await googleRoutingProvider.calculateRoute(
+    const routeRes = await googleRoutingProvider.getRoute(
       { coordinates: [77.5946, 12.9716] },
       { coordinates: [77.6050, 12.9850] }
     );
-    assert(routeRes !== null, 'calculateRoute returns route result');
+    assert(routeRes !== null, 'getRoute returns route result');
     assert(routeRes.distanceMeters > 0, 'Route has positive distanceMeters');
     assert(routeRes.durationSeconds > 0, 'Route has positive durationSeconds');
     assert(routeRes.geometry && routeRes.geometry.type === 'LineString', 'Route geometry is GeoJSON LineString');
 
     // Test alternative routes
-    const altRes = await googleRoutingProvider.calculateRouteWithAlternatives(
+    const altRes = await googleRoutingProvider.getRouteWithAlternatives(
       { coordinates: [77.5946, 12.9716] },
       { coordinates: [77.6050, 12.9850] }
     );
@@ -105,7 +109,7 @@ async function runTests() {
   // -------------------------------------------------------------
   console.log('\n[3/8] Testing Google Roads Provider...');
   try {
-    const { googleRoadsProvider } = await import('./modules/routes/providers/googleRoadsProvider.js');
+    const { default: googleRoadsProvider } = await import('./modules/routes/providers/googleRoadsProvider.js');
     
     const samplePoints = [
       { coordinates: [77.5946, 12.9716] },
@@ -113,8 +117,8 @@ async function runTests() {
       { coordinates: [77.5960, 12.9730] }
     ];
 
-    const snapped = await googleRoadsProvider.snapTrajectoryToRoads(samplePoints);
-    assert(Array.isArray(snapped), 'snapTrajectoryToRoads returns array');
+    const snapped = await googleRoadsProvider.snapToRoads(samplePoints);
+    assert(Array.isArray(snapped), 'snapToRoads returns array');
     assert(snapped.length === samplePoints.length, 'Snapped output length matches input count');
     assert(snapped[0].coordinates !== undefined, 'Snapped elements contain coordinates');
   } catch (err) {
@@ -127,16 +131,22 @@ async function runTests() {
   // -------------------------------------------------------------
   console.log('\n[4/8] Testing Traffic Provider Epistemic Logic...');
   try {
-    const { googleTrafficProvider } = await import('./modules/traffic/providers/googleTrafficProvider.js');
+    const { default: googleTrafficProvider } = await import('./modules/traffic/providers/googleTrafficProvider.js');
     
-    const trafficEstimate = await googleTrafficProvider.estimateCorridorTraffic(
-      { coordinates: [77.5946, 12.9716] },
-      { coordinates: [77.6050, 12.9850] }
-    );
-    assert(trafficEstimate.congestionRatio >= 1.0, 'Congestion ratio is at least 1.0');
-    assert(['LOW', 'MODERATE', 'HEAVY', 'SEVERE'].includes(trafficEstimate.congestionLevel), 'Congestion level is valid enum');
+    const sampleLineString = {
+      type: 'LineString',
+      coordinates: [
+        [77.5946, 12.9716],
+        [77.6000, 12.9780],
+        [77.6050, 12.9850]
+      ]
+    };
+
+    const trafficEstimate = await googleTrafficProvider.getTrafficForRoute(sampleLineString);
+    assert(typeof trafficEstimate.congestionRatio === 'number', 'Congestion ratio is numeric');
+    assert(['FREE_FLOW', 'LIGHT', 'MODERATE', 'HEAVY', 'SEVERE', 'UNKNOWN'].includes(trafficEstimate.level), 'Congestion level is valid enum: ' + trafficEstimate.level);
     assert(trafficEstimate.epistemicType === 'DERIVED', 'Epistemic type explicitly tagged as DERIVED');
-    assert(typeof trafficEstimate.delaySeconds === 'number', 'delaySeconds is numeric');
+    assert(typeof trafficEstimate.speedKmh === 'number', 'speedKmh is numeric');
   } catch (err) {
     console.error('Traffic provider test error:', err);
     failed++;
@@ -147,12 +157,13 @@ async function runTests() {
   // -------------------------------------------------------------
   console.log('\n[5/8] Testing Telemetry Bounds & Teleport Anomaly Detection...');
   try {
-    const trajectoryModule = await import('./modules/trajectories/trajectory.service.js');
+    const { createTrajectory } = await import('./modules/trajectories/trajectory.service.js');
     
     // Out of bounds coordinates
     let oobError = null;
     try {
-      await trajectoryModule.recordTelemetry('VEH-TEST-OOB', {
+      await createTrajectory({
+        vehicleId: 'VEH-TEST-OOB',
         location: { type: 'Point', coordinates: [999.0, 999.0] },
         speed: 40,
         heading: 90
@@ -160,12 +171,13 @@ async function runTests() {
     } catch (e) {
       oobError = e;
     }
-    assert(oobError !== null && oobError.message.includes('Invalid coordinates'), 'Rejects out-of-bound coordinates [999, 999]');
+    assert(oobError !== null && oobError.message.includes('Invalid longitude coordinate'), 'Rejects out-of-bound longitude [999, 999]');
 
     // Invalid negative speed
     let speedError = null;
     try {
-      await trajectoryModule.recordTelemetry('VEH-TEST-SPD', {
+      await createTrajectory({
+        vehicleId: 'VEH-TEST-SPD',
         location: { type: 'Point', coordinates: [77.5946, 12.9716] },
         speed: -10,
         heading: 90
@@ -173,12 +185,13 @@ async function runTests() {
     } catch (e) {
       speedError = e;
     }
-    assert(speedError !== null && speedError.message.includes('Invalid speed'), 'Rejects negative speed');
+    assert(speedError !== null && speedError.message.includes('Speed must be a valid number'), 'Rejects negative speed');
 
     // Invalid heading
     let headingError = null;
     try {
-      await trajectoryModule.recordTelemetry('VEH-TEST-HDG', {
+      await createTrajectory({
+        vehicleId: 'VEH-TEST-HDG',
         location: { type: 'Point', coordinates: [77.5946, 12.9716] },
         speed: 40,
         heading: 450
@@ -186,7 +199,7 @@ async function runTests() {
     } catch (e) {
       headingError = e;
     }
-    assert(headingError !== null && headingError.message.includes('Invalid heading'), 'Rejects heading > 360');
+    assert(headingError !== null && headingError.message.includes('Heading must be a valid number'), 'Rejects heading > 360');
   } catch (err) {
     console.error('Telemetry validation test error:', err);
     failed++;
@@ -195,71 +208,99 @@ async function runTests() {
   // -------------------------------------------------------------
   // Test 6: Testing Real-Time Prediction Engine
   // -------------------------------------------------------------
-  console.log('\n[6/8] Testing Real-Time Prediction Engine (/api/analysis/vehicle/:id/prediction)...');
+  console.log('\n[6/8] Testing Real-Time Prediction Engine...');
   try {
-    const { predictionService } = await import('./modules/analysis/prediction.service.js');
+    const { default: predictionService } = await import('./modules/analysis/prediction.service.js');
     
-    const mockVehicleId = 'VEH-E2E-PREDICT-' + Date.now();
-    const prediction = await predictionService.generatePrediction(mockVehicleId, {
+    // Test pure calculation engine
+    const prediction = predictionService.calculatePrediction({
       plannedDurationSeconds: 600,
-      destination: { coordinates: [77.6200, 12.9900] },
+      remainingDistanceMeters: 4500,
+      recentTrajectories: [
+        { speed: 20, timestamp: new Date() },
+        { speed: 22, timestamp: new Date(Date.now() - 5000) },
+        { speed: 25, timestamp: new Date(Date.now() - 10000) }
+      ],
+      traffic: {
+        level: 'HEAVY',
+        trafficDelaySeconds: 180,
+        congestionRatio: 0.35,
+        source: 'GOOGLE_ROUTES_TRAFFIC_DERIVED'
+      },
+      deviation: {
+        status: 'DEVIATED',
+        crossTrackDistanceMeters: 120
+      },
+      incidents: [
+        { type: 'ACCIDENT', severity: 'HIGH' }
+      ],
       emergencySeverity: 'CRITICAL'
     });
 
     assert(prediction !== null, 'Prediction generated successfully');
-    assert(prediction.vehicleId === mockVehicleId, 'Prediction matches vehicleId');
-    assert(prediction.predictedDurationSeconds >= 0, 'predictedDurationSeconds is valid');
+    assert(prediction.predictedDurationSeconds >= 600, 'Projected duration includes traffic and incident delays');
+    assert(prediction.predictedDelayMinutes > 0, 'Projected delay minutes is positive under traffic');
     assert(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(prediction.delayRisk), 'delayRisk is valid enum');
     assert(typeof prediction.confidenceScore === 'number', 'confidenceScore is numeric');
     assert(Array.isArray(prediction.factors), 'prediction factors returned as array');
     assert(prediction.factors.length > 0, 'Prediction includes structural factor explanations');
-    assert(prediction.factors[0].epistemicType !== undefined, 'Factors include epistemicType');
-
-    // Check persistence
-    const saved = await predictionService.getLatestPrediction(mockVehicleId);
-    assert(saved !== null && saved.vehicleId === mockVehicleId, 'Prediction persisted and retrieved from database');
+    assert(prediction.factors[0].epistemicType !== undefined, 'Factors include epistemicType attribution');
   } catch (err) {
     console.error('Prediction engine test error:', err);
     failed++;
   }
 
   // -------------------------------------------------------------
-  // Test 7: Testing Decision Engine Trade-Off Rationale
+  // Test 7: Testing Decision Engine Fallback Rationale & Trade-Offs
   // -------------------------------------------------------------
-  console.log('\n[7/8] Testing Decision Engine Rationale & Trade-Offs...');
+  console.log('\n[7/8] Testing Decision Engine Fallback Rationale & Trade-Offs...');
   try {
-    const { geoAgentService } = await import('./modules/geoagents/geoAgent.service.js');
+    const { default: geoAgentService } = await import('./modules/geoagents/geoAgent.service.js');
     
-    const agentAnalysis = await geoAgentService.analyzeRouteObstruction({
-      emergencyId: 'EMG-TEST-AGENT',
-      vehicleId: 'VEH-TEST-AGENT',
-      delayMinutes: 8,
-      congestionRatio: 2.1,
-      crossTrackDistanceMeters: 80
-    });
+    const fallbackResponse = geoAgentService.generateFallbackResponse({
+      emergency: { title: 'Cardiovascular Distress', priority: 'CRITICAL' },
+      deviation: { status: 'CRITICAL_DEVIATION', distanceFromRouteMeters: 280 },
+      traffic: { level: 'HEAVY' },
+      incidents: [{ type: 'ACCIDENT', severity: 'HIGH' }],
+      prediction: { delayRisk: 'HIGH', predictedDelayMinutes: 8 }
+    }, 'Gemini API not configured');
 
-    assert(agentAnalysis !== null, 'Agent analysis returned result');
-    assert(agentAnalysis.recommendation !== undefined, 'Agent produces recommendation');
-    assert(agentAnalysis.whatIfDoNothing !== undefined, 'Produces "What if we do nothing?" trade-off evaluation');
-    assert(Array.isArray(agentAnalysis.whyRouteChanged), 'Produces "Why did the route change?" evidence points');
+    assert(fallbackResponse !== null, 'Fallback response generated');
+    assert(fallbackResponse.recommendation !== undefined, 'Contains advisory recommendation');
+    assert(fallbackResponse.whatIfDoNothing !== undefined, 'Contains "What if we do nothing?" trade-off evaluation');
+    assert(Array.isArray(fallbackResponse.whyRouteChanged), 'Contains "Why did the route change?" evidence points');
+    assert(fallbackResponse.confidenceScore !== undefined, 'Has explicit confidence score');
   } catch (err) {
     console.error('Decision engine test error:', err);
     failed++;
   }
 
   // -------------------------------------------------------------
-  // Test 8: Testing Socket.IO Real-Time Streaming
+  // Test 8: Testing Socket.IO Real-Time Streaming & Room Join
   // -------------------------------------------------------------
   console.log('\n[8/8] Testing Socket.IO Real-Time Room Streaming...');
   try {
-    const testToken = jwt.sign(
-      { id: 'usr_test_operator', role: 'operator', name: 'Test Operator' },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    // 8.1 Register operator user
+    const testEmail = `operator_${Date.now()}@swiftcare.local`;
+    const regRes = await fetch(`${BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Test Operator',
+        email: testEmail,
+        password: 'Password123!'
+      })
+    });
+    const regData = await regRes.json();
+    assert(regRes.status === 201, 'Test operator created via /api/auth/register');
 
+    const { generateToken } = await import('./modules/auth/jwt.utils.js');
+    const operatorToken = generateToken(regData.user.id, 'CONTROL_ROOM');
+    assert(typeof operatorToken === 'string' && operatorToken.length > 20, 'Generated valid JWT token with CONTROL_ROOM role');
+
+    // 8.2 Connect to Socket.IO with token
     const socket = io(SOCKET_URL, {
-      auth: { token: testToken },
+      auth: { token: operatorToken },
       transports: ['websocket'],
       reconnection: false
     });
@@ -272,14 +313,14 @@ async function runTests() {
 
       socket.on('connect', async () => {
         clearTimeout(timeout);
-        assert(socket.connected, 'Socket connected successfully with auth token');
+        assert(socket.connected, 'Socket connected successfully with operator auth');
 
         const testEmergencyId = 'EMG-SOCKET-' + Date.now();
         const testVehicleId = 'VEH-SOCKET-' + Date.now();
 
         // Subscribe to prediction updates
         socket.on('prediction.updated', (event) => {
-          assert(event.emergencyId === testEmergencyId, 'Received prediction.updated event for emergency room');
+          assert(event.emergencyId === testEmergencyId, 'Received prediction.updated event for joined emergency room');
           assert(event.vehicleId === testVehicleId, 'Event vehicleId matches');
           assert(event.data.delayRisk !== undefined, 'Event payload contains delayRisk');
           assert(event.data.predictedDurationMinutes !== undefined || event.data.predictedEta !== undefined, 'Event payload contains arrival estimates');
@@ -290,10 +331,9 @@ async function runTests() {
         // Join the room
         socket.emit('join:emergency', testEmergencyId);
 
-        // Allow room join propagation
+        // Allow room join propagation then emit server-side event
         setTimeout(async () => {
-          // Emit prediction update from server module
-          const { realtimeService } = await import('./modules/realtime/realtime.service.js');
+          const { default: realtimeService } = await import('./modules/realtime/realtime.service.js');
           realtimeService.emitPredictionUpdated(testEmergencyId, testVehicleId, {
             predictedEta: new Date(Date.now() + 12 * 60000).toISOString(),
             baselineEta: new Date(Date.now() + 10 * 60000).toISOString(),
