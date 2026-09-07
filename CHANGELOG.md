@@ -4,6 +4,31 @@ All notable changes to the GeoAgentic Emergency Response System will be document
 
 ## [Unreleased] - Real-Time Socket.IO Streaming & Interactive Map
 
+## [1.3.0] - Emergency Detail & Corridor Analysis View
+
+### Added
+- **Emergency Detail & Corridor Analysis Page (`/emergencies/[id]`)**:
+  - Created dynamic route `app/emergencies/[id]/page.tsx` wrapped in `<ProtectedRoute>` and integrated with `DashboardTopbar`.
+  - Created master container `EmergencyDetailView` with concurrent sub-resource requests (`Promise.allSettled`), independent error isolation, and 404 handling.
+  - Added "Track & Analyze Corridor →" navigational action link to emergency cards in `ActiveEmergenciesPanel`.
+- **UI Component Suite**:
+  - `EmergencyOverviewCard`: Type icon, priority badge (with pulse for CRITICAL), status pill, formatted timestamps, caller details, and copyable WGS84 GPS coordinates.
+  - `VehicleMovementPanel`: Latest fix telemetry strip (coordinates, speed in km/h, cardinal heading direction, source) and paginated bounded GPS trajectory table with prev/next controls.
+  - `RouteAnalysisPanel`: Planned route ID, provider attribution (`MOCK Provider (Local Simulation)`), distance, duration, and GeoJSON LineString waypoint verification.
+  - `DeviationAnalysisPanel`: Cross-track distance (meters), bearing divergence (°), GPS stability (`STABLE`/`UNSTABLE`), traffic congestion metrics, ETA comparison, calculated delay, and structured evidence badges.
+  - `CorrelatedIncidentsPanel`: Incidents affecting the response corridor with distance offsets from vehicle and route centerline.
+  - `EpistemicBreakdownCard`: Strict 3-tier epistemic breakdown (`OBSERVED`, `INFERRED`, `UNKNOWN`).
+- **Frontend API Client Layer**:
+  - Added typed API modules: `lib/api/routes.ts` (`routeApi`), `lib/api/analysis.ts` (`analysisApi`), and `lib/api/orchestration.ts` (`orchestrationApi`).
+  - Added `trajectoryApi.getLatestSafe` to handle 404 empty states gracefully without throwing uncaught errors.
+  - Expanded `lib/api/types.ts` with exact backend interfaces for `Route`, `SituationAnalysis`, `DeviationAnalysis`, `TrafficAnalysis`, `OrchestrationWorkflowResult`, and `EpistemicBreakdown`.
+- **Backend Compatibility Fix**:
+  - Fixed Mongoose `CastError` in `server/modules/routes/route.service.js` by resolving friendly `emergencyId` (e.g. `EMG-2026-001`) and `vehicleId` to ObjectIds prior to querying `Route`.
+  - Corrected populate field names from `caseId` to `emergencyId` and removed non-existent `callSign` on Vehicle model.
+- **Database Seeder & Test Suite**:
+  - Extended `server/seed-dashboard-data.js` to seed active planned routes and 15 sequential GPS trajectory points for `AMB-102`.
+  - Created `server/test-emergency-detail-e2e.js` with 63 automated assertions testing emergency retrieval, route resolution, trajectory pagination, situation analysis, orchestration, and empty state handling (100% pass rate).
+
 ## [1.2.0] - Part 14: Live Backend REST Integration & Operations Dashboard
 
 ### Added

@@ -131,6 +131,30 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - `server/test-dashboard-e2e.js`: Comprehensive 47-point end-to-end contract test suite.
 - **Verification**: 47 / 47 assertions passing in `server/test-dashboard-e2e.js`, 31 / 31 assertions passing in `server/test-auth-e2e.js`, 23 / 23 assertions passing in `server/test-security.js`, and clean Next.js build compilation.
 
+### Part 14: Emergency Detail & Corridor Analysis View (`/emergencies/[id]`)
+- **Goal**: Build a dedicated operational corridor analysis page answering:
+  1. What emergency is happening (type, priority, caller, coordinates)
+  2. What incidents affect it (corridor hazards within 500m of route or 2000m of vehicle)
+  3. Where the vehicle has been (paginated raw GPS fixes, speed, cardinal heading, timestamps)
+  4. What route it was expected to follow (planned LineString, distance, duration, provider attribution)
+  5. Whether it deviated (cross-track distance in meters, bearing divergence, stability filtering)
+  6. Delay information (original ETA vs current estimated duration, traffic congestion friction)
+  7. 3-tier epistemic breakdown (`OBSERVED`, `INFERRED`, `UNKNOWN`)
+- **Key Files**:
+  - `app/emergencies/[id]/page.tsx`: Dynamic route protected by `<ProtectedRoute>`.
+  - `components/emergency-detail/emergency-detail-view.tsx`: Master coordinator with concurrent `Promise.allSettled` fetching, reload, and re-run analysis triggers.
+  - `components/emergency-detail/emergency-overview-card.tsx`: Status, priority, WGS84 coordinates, and assigned vehicle.
+  - `components/emergency-detail/vehicle-movement-panel.tsx`: Latest fix telemetry strip and paginated bounded GPS trajectory table.
+  - `components/emergency-detail/route-analysis-panel.tsx`: Planned route details and `MOCK Provider (Local Simulation)` attribution.
+  - `components/emergency-detail/deviation-analysis-panel.tsx`: Cross-track distance, bearing divergence, traffic metrics, delay calculations, and causal evidence tags.
+  - `components/emergency-detail/correlated-incidents-panel.tsx`: Road disruptions near the corridor.
+  - `components/emergency-detail/epistemic-breakdown-card.tsx`: 3-tier epistemic breakdown.
+  - `lib/api/routes.ts`, `lib/api/analysis.ts`, `lib/api/orchestration.ts`: Typed API client modules.
+  - `server/modules/routes/route.service.js`: Fixed Mongoose `CastError` and populate fields.
+  - `server/seed-dashboard-data.js`: Seeded planned routes and 15 sequential GPS trajectory fixes.
+  - `server/test-emergency-detail-e2e.js`: 63-point automated integration test suite (100% pass rate).
+- **Verification**: 63 / 63 assertions passing in `server/test-emergency-detail-e2e.js`, 0 TypeScript errors (`npx tsc --noEmit`), clean Next.js production build (`npm run build`).
+
 ---
 
 ## 3. End-to-End Emergency Operational Lifecycle
