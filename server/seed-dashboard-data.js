@@ -17,6 +17,8 @@ import User from './modules/auth/user.model.js';
 import Vehicle from './modules/vehicles/vehicle.model.js';
 import Emergency from './modules/emergencies/emergency.model.js';
 import Incident from './modules/incidents/incident.model.js';
+import Route from './modules/routes/route.model.js';
+import Trajectory from './modules/trajectories/trajectory.model.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -37,10 +39,12 @@ async function seed() {
 
   const isClean = process.argv.includes('--clean');
   if (isClean) {
-    console.log('[Seed] --clean flag passed: Removing existing vehicles, emergencies, incidents...');
+    console.log('[Seed] --clean flag passed: Removing existing vehicles, emergencies, incidents, routes, trajectories...');
     await Vehicle.deleteMany({});
     await Emergency.deleteMany({});
     await Incident.deleteMany({});
+    await Route.deleteMany({});
+    await Trajectory.deleteMany({});
   }
 
   // 1. Ensure Operator User exists for createdBy / reportedBy references
@@ -206,6 +210,7 @@ async function seed() {
     },
   ];
 
+  const emergencyDocs = {};
   for (const eData of emergencyDefs) {
     let e = await Emergency.findOne({ emergencyId: eData.emergencyId });
     if (!e) {
@@ -214,6 +219,7 @@ async function seed() {
     } else {
       console.log(`[Seed] Emergency ${e.emergencyId} already exists`);
     }
+    emergencyDocs[e.emergencyId] = e;
   }
 
   // 4. Seed Road Incidents
@@ -269,11 +275,135 @@ async function seed() {
     }
   }
 
+  // 5. Seed Planned Routes
+  const routeDefs = [
+    {
+      routeId: 'ROUTE-2026-001',
+      emergency: emergencyDocs['EMG-2026-001']?._id,
+      vehicle: vehicleDocs['AMB-102']?._id,
+      origin: {
+        type: 'Point',
+        coordinates: [73.8567, 18.5204],
+      },
+      destination: {
+        type: 'Point',
+        coordinates: [73.8742, 18.5312],
+      },
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [73.8567, 18.5204],
+          [73.8590, 18.5220],
+          [73.8615, 18.5238],
+          [73.8640, 18.5255],
+          [73.8665, 18.5270],
+          [73.8690, 18.5285],
+          [73.8715, 18.5300],
+          [73.8742, 18.5312],
+        ],
+      },
+      distance: 2350, // meters
+      duration: 420,  // 7 minutes
+      provider: 'MOCK',
+      routeType: 'PLANNED',
+      status: 'ACTIVE',
+      createdBy: operator._id,
+    },
+    {
+      routeId: 'ROUTE-2026-002',
+      emergency: emergencyDocs['EMG-2026-002']?._id,
+      vehicle: vehicleDocs['AMB-103']?._id,
+      origin: {
+        type: 'Point',
+        coordinates: [73.8412, 18.5245],
+      },
+      destination: {
+        type: 'Point',
+        coordinates: [73.8742, 18.5312],
+      },
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          [73.8412, 18.5245],
+          [73.8500, 18.5270],
+          [73.8600, 18.5290],
+          [73.8742, 18.5312],
+        ],
+      },
+      distance: 3800,
+      duration: 600,
+      provider: 'MOCK',
+      routeType: 'PLANNED',
+      status: 'ACTIVE',
+      createdBy: operator._id,
+    },
+  ];
+
+  for (const rData of routeDefs) {
+    if (!rData.emergency || !rData.vehicle) continue;
+    let r = await Route.findOne({ routeId: rData.routeId });
+    if (!r) {
+      r = await Route.create(rData);
+      console.log(`[Seed] Created Route: ${r.routeId} (${r.status}, ${r.distance}m)`);
+    } else {
+      console.log(`[Seed] Route ${r.routeId} already exists`);
+    }
+  }
+
+  // 6. Seed Trajectory Points for AMB-102 (15 sequential points along the response corridor)
+  const amb102 = vehicleDocs['AMB-102'];
+  if (amb102) {
+    const existingTrajCount = await Trajectory.countDocuments({ vehicle: amb102._id });
+    if (existingTrajCount === 0) {
+      console.log('[Seed] Seeding 15 sequential GPS trajectory fixes for AMB-102...');
+      const baseTime = Date.now() - (15 * 30 * 1000); // 7.5 minutes ago
+      const coords = [
+        [73.8567, 18.5204],
+        [73.8573, 18.5208],
+        [73.8580, 18.5213],
+        [73.8588, 18.5219],
+        [73.8596, 18.5225],
+        [73.8604, 18.5230],
+        [73.8612, 18.5236],
+        [73.8620, 18.5241],
+        [73.8628, 18.5247],
+        [73.8636, 18.5252],
+        [73.8644, 18.5257],
+        [73.8652, 18.5262],
+        [73.8660, 18.5267],
+        [73.8668, 18.5272],
+        [73.8672, 18.5275],
+      ];
+
+      for (let idx = 0; idx < coords.length; idx++) {
+        const pointTime = new Date(baseTime + idx * 30 * 1000);
+        const speed = 32 + (idx % 4) * 3; // 32 to 41 km/h
+        const heading = 42 + (idx % 3);   // ~42-44 degrees
+        await Trajectory.create({
+          vehicle: amb102._id,
+          location: {
+            type: 'Point',
+            coordinates: coords[idx],
+          },
+          speed,
+          heading,
+          timestamp: pointTime,
+          source: 'SIMULATOR',
+        });
+      }
+      console.log('[Seed] Seeded 15 trajectory points for AMB-102');
+    } else {
+      console.log(`[Seed] Vehicle AMB-102 already has ${existingTrajCount} trajectory points`);
+    }
+  }
+
   console.log('\n[Seed] Data seeding complete!');
   const totalV = await Vehicle.countDocuments({ isDeleted: false });
   const totalE = await Emergency.countDocuments({ isDeleted: false });
   const totalI = await Incident.countDocuments({ isDeleted: false });
-  console.log(`[Seed] Summary in DB -> Vehicles: ${totalV}, Emergencies: ${totalE}, Incidents: ${totalI}`);
+  const totalR = await Route.countDocuments({});
+  const totalT = await Trajectory.countDocuments({});
+  console.log(`[Seed] Summary in DB -> Vehicles: ${totalV}, Emergencies: ${totalE}, Incidents: ${totalI}, Routes: ${totalR}, Trajectories: ${totalT}`);
 
   await mongoose.disconnect();
 }
@@ -282,3 +412,4 @@ seed().catch((err) => {
   console.error('[Seed] Error seeding data:', err);
   process.exit(1);
 });
+

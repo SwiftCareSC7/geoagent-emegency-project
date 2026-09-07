@@ -42,7 +42,7 @@ export interface RouteAnalysisResponse {
   data: SituationAnalysis
 }
 
-export interface RouteQueryFilters {
+export interface RouteQueryFilters extends Record<string, string | number | undefined> {
   emergencyId?: string
   vehicleId?: string
   routeType?: RouteType
@@ -54,7 +54,7 @@ export interface RouteQueryFilters {
 export const routeApi = {
   /** Get routes with optional filters */
   list(filters?: RouteQueryFilters): Promise<RouteListResponse> {
-    return get<RouteListResponse>('/routes', filters as Record<string, unknown>)
+    return get<RouteListResponse>('/routes', filters)
   },
 
   /** Get a single route by ID (business routeId or Mongo _id) */
@@ -74,7 +74,7 @@ export const routeApi = {
   ): Promise<RouteListResponse> {
     return get<RouteListResponse>(
       `/emergencies/${encodeURIComponent(emergencyId)}/routes`,
-      params as Record<string, unknown>,
+      params as Record<string, string | number | undefined>,
     )
   },
 
