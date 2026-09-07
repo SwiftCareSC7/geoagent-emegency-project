@@ -440,6 +440,15 @@ class PredictionService {
 
     return prediction;
   }
+
+  /**
+   * Retrieve the latest stored prediction snapshot for a vehicle
+   * @param {string} vehicleId
+   * @returns {Promise<Object|null>}
+   */
+  async getLatestPrediction(vehicleId) {
+    return Prediction.findOne({ vehicleId }).sort({ createdAt: -1 });
+  }
 }
 
 export default new PredictionService();
