@@ -179,7 +179,14 @@ class AdminService {
     };
 
     try {
-      externalProviders = await providerHealthService.getHealthStatus();
+      const report = await providerHealthService.getHealthStatus();
+      const provMap = report?.providers || report || {};
+      externalProviders = {
+        googleRoutes: provMap.googleRoutes || { status: 'NOT_CONFIGURED', provider: 'google', mode: 'mock' },
+        googleRoads: provMap.googleRoads || { status: 'NOT_CONFIGURED', provider: 'google', mode: 'mock' },
+        geminiAi: provMap.gemini || provMap.geminiAi || { status: 'NOT_CONFIGURED', provider: 'gemini', mode: 'mock' },
+        gemini: provMap.gemini || provMap.geminiAi || { status: 'NOT_CONFIGURED', provider: 'gemini', mode: 'mock' }
+      };
     } catch (err) {
       // Graceful fallback if provider service is degraded
     }

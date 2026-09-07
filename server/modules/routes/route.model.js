@@ -97,6 +97,7 @@ routeSchema.index({ vehicle: 1, status: 1 });
 routeSchema.index({ geometry: '2dsphere' });
 routeSchema.index({ origin: '2dsphere' });
 routeSchema.index({ destination: '2dsphere' });
+routeSchema.index({ createdAt: -1 });
 
 // Safe object representation
 routeSchema.methods.toSafeObject = function() {

@@ -9,18 +9,18 @@ import { BrandLogo } from '@/components/brand-logo'
 import { useAuth } from '@/lib/auth/context'
 
 interface DashboardTopbarProps {
-  ambulanceId: string
-  driverName: string
-  emergencyActive: boolean
-  lastRefreshed: string
+  ambulanceId?: string
+  driverName?: string
+  emergencyActive?: boolean
+  lastRefreshed?: string
 }
 
 export function DashboardTopbar({
-  ambulanceId,
-  driverName,
-  emergencyActive,
-  lastRefreshed,
-}: DashboardTopbarProps) {
+  ambulanceId = 'HQ-01',
+  driverName = 'Officer',
+  emergencyActive = false,
+  lastRefreshed = '',
+}: DashboardTopbarProps = {}) {
   const router = useRouter()
   const { user, logout } = useAuth()
   const [loggingOut, setLoggingOut] = useState(false)
@@ -85,6 +85,17 @@ export function DashboardTopbar({
               {userRole}
             </span>
           </div>
+
+          {/* Admin Console shortcut for ADMIN role */}
+          {user?.role === 'ADMIN' && (
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-white/25 active:scale-95"
+            >
+              <Shield className="size-3.5 text-amber-300" />
+              <span>Admin Console</span>
+            </Link>
+          )}
 
           <span className="text-xs text-primary-foreground/70">
             {lastRefreshed}

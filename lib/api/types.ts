@@ -603,3 +603,84 @@ export class ApiError extends Error {
     return this.status === 409
   }
 }
+
+// ---------------------------------------------------------------------------
+// Admin Types
+// ---------------------------------------------------------------------------
+
+export interface AdminSystemCounts {
+  users: number
+  vehicles: number
+  activeVehicles: number
+  emergencies: number
+  activeEmergencies: number
+  incidents: number
+  activeIncidents: number
+  trajectories: number
+  routes: number
+  decisions: number
+  pendingDecisions: number
+  predictions: number
+}
+
+export interface AdminSystemStats {
+  databaseConnected: boolean
+  connectionState: string
+  counts: AdminSystemCounts
+  recentActivity: {
+    emergenciesLast24h: number
+    decisionsLast24h: number
+    incidentsLast24h: number
+  }
+  timestamp: string
+}
+
+export interface AdminDatabaseHealth {
+  status: 'CONNECTED' | 'DEGRADED' | 'DISCONNECTED'
+  connected: boolean
+  latencyMs: number | null
+  readyState: string
+  databaseName: string | null
+  checkedAt: string
+}
+
+export interface AdminProviderStatus {
+  status: 'AVAILABLE' | 'DEGRADED' | 'UNAVAILABLE' | 'NOT_CONFIGURED'
+  provider?: string
+  mode?: string
+  details?: string
+}
+
+export interface AdminSystemHealthSummary {
+  database: AdminDatabaseHealth
+  providers: {
+    googleRoutes: AdminProviderStatus
+    googleRoads: AdminProviderStatus
+    geminiAi: AdminProviderStatus
+    socketIo?: AdminProviderStatus
+    [key: string]: AdminProviderStatus | undefined
+  }
+  checkedAt: string
+}
+
+export interface AdminPagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+export interface AdminPaginatedResponse<T> {
+  success: boolean
+  data: T[]
+  pagination: AdminPagination
+}
+
+export interface AdminQueryParams {
+  page?: number
+  limit?: number
+  sort?: string
+  sortDir?: 'asc' | 'desc' | '1' | '-1'
+  [key: string]: string | number | undefined
+}
+

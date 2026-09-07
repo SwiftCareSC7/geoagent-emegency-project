@@ -13,3 +13,5 @@ export * from './routes'
 export * from './analysis'
 export * from './orchestration'
 export * from './decisions'
+export * from './admin'
+
