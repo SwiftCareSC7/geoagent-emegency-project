@@ -325,3 +325,46 @@ Trajectories          Routes                     │         │
   - Total automated assertions passing: 212/212 (100% pass rate).
   - TypeScript checking (`npx tsc --noEmit`): 0 errors.
   - Next.js production build (`npm run build`): Successfully compiled.
+
+---
+
+## 13. Admin Database Administration & System Observability Layer
+
+- **Architecture & Boundary**:
+  `ADMIN -> Frontend Admin Console (/admin) -> Express Admin API (/api/admin/*) -> protect + requireRole('ADMIN') -> Mongoose -> MongoDB`.
+  Strictly NOT a raw database browser: zero arbitrary MongoDB command execution, no client-side `$where` or `$regex` evaluation, and zero database credential or URI exposure.
+- **Role Exclusivity**:
+  - Only `ADMIN` role can access `/api/admin/*` endpoints and `/admin` frontend route.
+  - Unauthenticated requests are rejected with `401 Unauthorized`.
+  - Non-ADMIN roles (`CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`) are rejected with `403 Forbidden: Insufficient privileges`.
+- **Backend Admin Module** (`server/modules/admin/`):
+  - `admin.validation.js`: Bounded pagination (`limit <= 100`), allowlisted sort fields, strip dangerous `$`/`.` keys.
+  - `admin.service.js`:
+    - `getSystemStats()`: Real operational counts across all 8 verified collections (`users`, `vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `decisions`, `predictions`). Uses `Trajectory.estimatedDocumentCount()` for $O(1)$ constant-time count over high-frequency GPS fixes.
+    - `getDatabaseHealth()`: Safe ping latency test via `mongoose.connection.db.admin().ping()`. Reports `CONNECTED`, `DEGRADED`, or `DISCONNECTED` with roundtrip latency in ms without exposing credentials.
+    - `getSystemHealthSummary()`: Combines database health with provider statuses (Google Routes, Google Roads, Gemini 2.5 Flash, Socket.IO).
+    - Paginated readers with safe projection: `getUsers` (strictly omits `password`), `getVehicles`, `getEmergencies`, `getIncidents`, `getRoutes`, `getTrajectories` (bounded slices), `getPredictions`, `getDecisions`.
+  - `admin.controller.js`: Request handlers with structured JSON audit logging (endpoint, userId, action, resource, durationMs, statusCode).
+  - `admin.routes.js`: Protected by `protect` and `requireRole('ADMIN')`.
+  - Mounted at `/api/admin` in `server/server.js`.
+- **Verified Mongoose Models & Index Optimizations**:
+  - `User`: `{ email: 1 }` (unique), `{ role: 1, createdAt: -1 }`.
+  - `Vehicle`: `{ vehicleId: 1 }` (unique), `{ registrationNumber: 1 }` (unique), `{ status: 1, isDeleted: 1 }`, `{ createdAt: -1 }`.
+  - `Emergency`: `{ location: '2dsphere' }`, `{ destination: '2dsphere' }`, `{ assignedVehicle: 1, isDeleted: 1 }`, `{ status: 1, isDeleted: 1 }`, `{ createdAt: -1 }`.
+  - `Incident`: `{ location: '2dsphere' }`, `{ emergency: 1, isDeleted: 1 }`, `{ status: 1, isDeleted: 1 }`, `{ createdAt: -1 }`.
+  - `Trajectory`: `{ vehicle: 1, timestamp: -1 }`, `{ location: '2dsphere' }`.
+  - `Route`: `{ routeId: 1 }` (unique), `{ emergency: 1, routeType: 1 }`, `{ vehicle: 1, status: 1 }`, `{ geometry: '2dsphere' }`, `{ origin: '2dsphere' }`, `{ destination: '2dsphere' }`, `{ createdAt: -1 }`.
+  - `Decision`: `{ emergency: 1, createdAt: -1 }`, `{ emergency: 1, situationHash: 1 }`, `{ status: 1, createdAt: -1 }`.
+  - `Prediction`: `{ vehicle: 1, createdAt: -1 }`, `{ emergency: 1, createdAt: -1 }`, `{ delayRisk: 1 }`.
+- **Frontend Admin Console** (`/admin`):
+  - Protected with `<ProtectedRoute allowedRoles={['ADMIN']}>`.
+  - `components/admin/admin-overview.tsx`: Real-time system counters, MongoDB health card (status, latency ms, DB name), upstream provider health grid, and 24h operational flow window.
+  - `components/admin/admin-database-explorer.tsx`: Tabbed dataset browser for all 8 collections with pagination controls, filters, and a record inspector drawer with formatted view and sanitized JSON debug view.
+  - `components/dashboard/dashboard-topbar.tsx`: Displays an "Admin Console" link button for authenticated `ADMIN` users.
+  - `lib/api/admin.ts`: Strongly typed API client methods.
+- **Developer Local Inspection**:
+  - Use **MongoDB Compass** connected to local MongoDB (`mongodb://127.0.0.1:27017`) for direct development queries. The app console remains an operational observability interface.
+- **Automated Verification**:
+  - `server/test-admin-e2e.js`: 60/60 passing assertions covering RBAC, stats, ping latency, sensitive field exclusion, query hardening, and paginated collections.
+  - Total test suite assertions across project: 272/272 passing (100% pass rate).
+  - Next.js production build (`npm run build`): Successfully compiled with `/admin` route.

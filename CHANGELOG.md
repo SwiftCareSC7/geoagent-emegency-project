@@ -4,6 +4,33 @@ All notable changes to the GeoAgentic Emergency Response System will be document
 
 ## [Unreleased] - Interactive Map Integration
 
+## [1.5.0] - Admin Database Administration & System Observability Layer
+
+### Added
+- **ADMIN-Only Security & Authorization Architecture**:
+  - Gated all `/api/admin/*` routes behind `protect` and `requireRole('ADMIN')`.
+  - Rejects unauthenticated requests with `401 Unauthorized` and non-ADMIN roles (`CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`) with `403 Forbidden: Insufficient privileges`.
+  - Zero raw database exposure: No arbitrary MongoDB command execution, no client-submitted query operators (`$where`, `$regex`), and zero credential/URI leaks.
+- **Backend Admin Module (`server/modules/admin/`)**:
+  - `admin.validation.js`: Bounded pagination (`limit <= 100`), allowlisted sort fields, and input sanitization stripping reserved MongoDB operator characters.
+  - `admin.service.js`:
+    - `getSystemStats()`: Real counts across all 8 verified collections (`users`, `vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `decisions`, `predictions`). Uses `Trajectory.estimatedDocumentCount()` for $O(1)$ fast count over high-frequency GPS fixes.
+    - `getDatabaseHealth()`: Safe live ping latency test via `mongoose.connection.db.admin().ping()`. Reports `CONNECTED`, `DEGRADED`, or `DISCONNECTED` with roundtrip latency in ms without exposing credentials.
+    - `getSystemHealthSummary()`: Combines database health with provider statuses (Google Routes, Google Roads, Gemini AI, Socket.IO).
+    - Paginated readers with safe projection: `getUsers` (strictly omits `password`), `getVehicles`, `getEmergencies`, `getIncidents`, `getRoutes`, `getTrajectories` (bounded slices), `getPredictions`, `getDecisions`.
+  - `admin.controller.js`: Structured JSON audit logging (endpoint, userId, action, resource, durationMs, statusCode).
+  - Mounted router at `/api/admin` in `server/server.js`.
+- **Model Index Optimization**:
+  - Added indexes: `{ role: 1, createdAt: -1 }` on `User`, and `{ createdAt: -1 }` on `Vehicle`, `Emergency`, `Incident`, `Route` for high-performance sorting and pagination.
+- **Frontend Admin Console (`/admin`)**:
+  - Created protected page `app/admin/page.tsx` with `<ProtectedRoute allowedRoles={['ADMIN']}>`.
+  - `AdminOverview`: Real-time system counters, MongoDB primary health card, upstream provider status grid, and 24h operational flow window.
+  - `AdminDatabaseExplorer`: Tabbed dataset browser for all 8 collections with pagination controls, filters, and a record inspector drawer with formatted view and sanitized JSON debug view.
+  - `DashboardTopbar`: Added "Admin Console" link button for authenticated `ADMIN` users.
+  - `lib/api/admin.ts`: Strongly typed API client methods.
+- **Automated Verification**:
+  - Created `server/test-admin-e2e.js` with 60 automated assertions verifying RBAC, stats, ping latency, sensitive field exclusion, query hardening, and paginated collections (100% pass rate). Total project assertion count: 272/272 passing.
+
 ## [1.4.0] - Real-Time Intelligence & External Data Integration
 
 ### Added

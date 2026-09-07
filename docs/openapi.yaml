@@ -794,6 +794,250 @@ paths:
                           inferred: { type: array, items: { type: string } }
                           unknown: { type: array, items: { type: string } }
 
+  # --- ADMIN & OBSERVABILITY ---
+  /admin/stats:
+    get:
+      summary: Retrieve real-time system counts and 24h activity (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Real operational statistics across all 8 verified collections
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/health:
+    get:
+      summary: Check live MongoDB connection state and ping latency (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Live database health metrics with zero credential leaks
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/providers:
+    get:
+      summary: Check status of database and upstream providers (Google, Gemini, Socket.IO)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Provider health summary without exposing API keys
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/users:
+    get:
+      summary: List users with pagination and search (ADMIN only, passwords omitted)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: role
+          in: query
+          schema: { type: string, enum: [CONTROL_ROOM, ADMIN] }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated sanitized user list
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/vehicles:
+    get:
+      summary: List fleet vehicles with pagination and status filters (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: type
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated vehicle list
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/emergencies:
+    get:
+      summary: List emergency response missions with populated units (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: priority
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated emergency missions
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/incidents:
+    get:
+      summary: List road incidents and hazards (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: severity
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated road incidents
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/routes:
+    get:
+      summary: List planned and alternative routes (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        '200':
+          description: Paginated route paths
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/trajectories:
+    get:
+      summary: List high-frequency GPS fixes with bounded pagination (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: vehicleId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated trajectory points
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/predictions:
+    get:
+      summary: List quantitative ETA and delay prediction engine snapshots (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: delayRisk
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated prediction snapshots
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/decisions:
+    get:
+      summary: List operational decision engine lifecycle audit records (ADMIN only)
+      tags: [Admin]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20, maximum: 100 }
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: severity
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated decision records
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
 components:
   securitySchemes:
     cookieAuth:

@@ -289,6 +289,7 @@ Authentication, Dashboard REST domain feeds, Emergency Detail Corridor Analysis,
 | 12 | **GeoAgent & Decision Engine Rationale** | ✅ Done | Comparative trade-off matrix ("Why did the route change?", "What if we do nothing?"), advisory Gemini 2.5 Flash reasoning, and `PENDING_OPERATOR_ACTION` state machine requiring operator approval. |
 | 13 | **Socket.IO Real-Time Client & Streaming** | ✅ Done | Authenticated WebSocket connection (token & cookies), room isolation (`control-room`, `emergency:${id}`, `vehicle:${id}`), live `prediction.updated` push stream, and React hooks `useSocketStatus` and `useRealtimeEmergency`. |
 | 14 | **Provider Health & Safe Evaluation** | ✅ Done | `GET /api/health/providers` returning safe evaluation (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`) without exposing API keys. |
+| 15 | **Admin Database Administration & Observability** | ✅ Done | Secure ADMIN-only layer (`/admin`) with real system counts across all 8 verified collections, live database latency ping, tabbed collection browser with safe projection and bounded pagination, and strict RBAC (`protect` + `requireRole('ADMIN')`). |
 
 ---
 
@@ -296,9 +297,8 @@ Authentication, Dashboard REST domain feeds, Emergency Detail Corridor Analysis,
 
 | # | Task | Priority | Details |
 |---|---|---|---|
-| 15 | **Replace SVG map with real interactive map** | 🟠 High | Replace `map-placeholder.tsx` with a real Mapbox GL / Google Maps / Leaflet component showing live vehicle positions, planned routes (GeoJSON LineStrings), actual trajectories, incidents, and deviations. (Intentionally deferred during backend integration). |
-| 16 | **Control Room Dashboard page** | 🟠 High | Dedicated multi-emergency overview (`/control-room/dashboard`) showing concurrent active emergency corridors, fleet readiness, and incoming deviation alerts. |
-| 17 | **Admin Panel page** | 🟠 High | Management interface (`/admin`) for vehicle fleet CRUD, user role assignments, and provider configuration. |
+| 16 | **Replace SVG map with real interactive map** | 🟠 High | Replace `map-placeholder.tsx` with a real Mapbox GL / Google Maps / Leaflet component showing live vehicle positions, planned routes (GeoJSON LineStrings), actual trajectories, incidents, and deviations. (Intentionally deferred during backend integration). |
+| 17 | **Control Room Dashboard page** | 🟠 High | Dedicated multi-emergency overview (`/control-room/dashboard`) showing concurrent active emergency corridors, fleet readiness, and incoming deviation alerts. |
 | 18 | **Emergency Creation modal/form** | 🟡 Medium | Operator UI form to trigger new emergency dispatch calls directly from the control room. |
 
 ---

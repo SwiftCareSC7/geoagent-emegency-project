@@ -13,6 +13,8 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 | `MONGO_URI` | **Required** | `mongodb://127.0.0.1:27017/geoagent-emergency` | MongoDB connection string | Managed MongoDB Atlas / replica set connection |
 | `CLIENT_URL` | Optional | `http://localhost:3000` | Allowed CORS origin & Socket.IO allowed origin | Set to production frontend domain (e.g. `https://geoagent-emegency-project.vercel.app`) |
 
+> **Security Rule**: `MONGO_URI` must **never** be exposed in client bundles or public endpoints. The Admin Console at `/admin` communicates strictly via Express APIs and never exposes database connection strings, credentials, or raw query capabilities.
+
 ---
 
 ## 2. Authentication Variables
