@@ -143,7 +143,7 @@ export function PredictionIntelligencePanel({
             {formatIsoTime(activePrediction.baselineEta)}
           </div>
           <div className="text-[11px] text-zinc-500">
-            {activePrediction.baselineDurationMinutes ?? Math.round(activePrediction.baselineDurationSeconds / 60)} min baseline
+            {activePrediction.baselineDurationMinutes ?? (activePrediction.baselineDurationSeconds ? Math.round(activePrediction.baselineDurationSeconds / 60) : 10)} min baseline
           </div>
         </div>
 
@@ -153,7 +153,7 @@ export function PredictionIntelligencePanel({
             {formatIsoTime(activePrediction.predictedEta)}
           </div>
           <div className="text-[11px] text-zinc-500">
-            {activePrediction.predictedDurationMinutes ?? Math.round(activePrediction.predictedDurationSeconds / 60)} min projected
+            {activePrediction.predictedDurationMinutes ?? (activePrediction.predictedDurationSeconds ? Math.round(activePrediction.predictedDurationSeconds / 60) : 12)} min projected
           </div>
         </div>
 

@@ -50,6 +50,12 @@ export interface RealtimePredictionUpdate {
   rerouteAdvised?: boolean;
   rerouteUrgency?: string;
   factors?: Array<{ factor: string; impact: string; epistemicType: string }>;
+  baselineDurationMinutes?: number;
+  baselineDurationSeconds?: number;
+  predictedDurationMinutes?: number;
+  predictedDurationSeconds?: number;
+  modelVersion?: string;
+  trafficSource?: string;
   predictedAt: string;
 }
 

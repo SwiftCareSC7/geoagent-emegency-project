@@ -119,7 +119,7 @@ export function RouteComparisonCard({
           <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/60 p-3 text-xs space-y-2 font-mono">
             <div className="flex justify-between items-center text-zinc-300">
               <span className="text-zinc-500">Maintain Current Route:</span>
-              <span className="font-semibold text-red-400">ETA ~{currentEta} min (+{Math.max(0, currentEta - plannedEtaMinutes)} min delay)</span>
+              <span className="font-semibold text-red-400">ETA ~{currentEta} min (+{Math.max(0, currentEta - (plannedEtaMinutes ?? 10))} min delay)</span>
             </div>
             <div className="flex justify-between items-center text-zinc-300">
               <span className="text-zinc-500">Switch to Alternative:</span>
