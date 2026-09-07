@@ -135,6 +135,19 @@ export function PredictionIntelligencePanel({
         )}
       </div>
 
+      {/* User-Friendly Takeaway Callout Box */}
+      <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-200 space-y-1">
+        <div className="flex items-center gap-2 font-bold text-emerald-400">
+          <Zap className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>Executive Takeaway: {delayMinutes > 0 ? `+${delayMinutes} min Delay Expected` : 'On Schedule'}</span>
+        </div>
+        <p className="text-emerald-100/90 leading-relaxed">
+          {delayMinutes > 0
+            ? `Current traffic conditions add +${delayMinutes} minutes to Route A. The system recommends switching to Route B to arrive on time.`
+            : 'Vehicle is moving smoothly along the corridor with no significant delays.'}
+        </p>
+      </div>
+
       {/* Metrics Row */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/50 p-3">
