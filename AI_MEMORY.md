@@ -202,3 +202,29 @@ Trajectories          Routes                     │         │
 - **Role Support**:
   - Active backend roles: `CONTROL_ROOM`, `ADMIN`.
   - User role badge and identity displayed in `DashboardTopbar`.
+
+---
+
+## 7. Frontend Live Backend REST Connection (CURRENT ACTUAL STATE)
+
+- **Architecture & Data Flow**:
+  - The driver/operator dashboard (`/driver/dashboard`) connects to live Express REST endpoints backed by MongoDB.
+  - All calls are transmitted over HTTP with `credentials: 'include'` using the centralized client (`lib/api/client.ts`).
+  - View switcher provides instantaneous toggling between:
+    - **Operations Live Overview**: Real-time MongoDB feeds for fleet status, active emergency call streams, and corridor road hazards with live aggregated counter metrics.
+    - **Corridor Telemetry & Route**: Preserved active corridor navigation view with SVG map placeholder, ETA breakdown, route timeline, deviation metrics, and GeoAgent explanation.
+- **REST Endpoints Connected**:
+  - `GET /api/vehicles`: Returns `{ success: true, count: number, data: Vehicle[] }`. Supports `?status=` and `?type=` filters.
+  - `GET /api/emergencies`: Returns `{ success: true, count: number, data: Emergency[] }`. Supports `?status=`, `?priority=`, and `?type=` filters. Populates `assignedVehicle` reference with vehicle ID and registration number.
+  - `GET /api/incidents`: Returns `{ success: true, count: number, data: Incident[] }`. Supports `?status=`, `?severity=`, and `?type=` filters.
+- **Components Implemented**:
+  - `components/dashboard/emergency-summary-cards.tsx`: Computes dynamic metric cards (Active Calls, Critical Calls, Deployed Units, Fleet Ready, Road Hazards) with loading skeletons.
+  - `components/dashboard/vehicle-fleet-panel.tsx`: Displays fleet units with status badges, vehicle type icons, hospital assignment, driver contact, status filter chips, and honest empty states.
+  - `components/dashboard/active-emergencies-panel.tsx`: Displays live emergency calls with priority badges, status badges, GeoJSON location coordinates, assigned unit summary, priority filter chips, and honest empty states.
+  - `components/dashboard/road-incidents-panel.tsx`: Displays traffic disruptions and road hazards with severity badges, GeoJSON coordinates, source details, severity filter chips, and honest empty states.
+- **Data Seeder & Verification**:
+  - `server/seed-dashboard-data.js`: Seeds 5 realistic vehicles, 4 emergencies, and 3 road incidents with referential integrity to MongoDB.
+  - `server/test-dashboard-e2e.js`: 47/47 automated assertions passing covering route protection, operator authentication, empty database responses, query filtering, and populated references.
+  - `server/test-auth-e2e.js`: 31/31 automated assertions passing.
+  - `server/test-security.js`: 23/23 automated assertions passing.
+  - Next.js build: Clean compilation with Turbopack and 0 TypeScript errors (`npx tsc --noEmit`).

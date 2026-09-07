@@ -22,7 +22,18 @@ import dotenv from 'dotenv';
 import authRoutes from './modules/auth/auth.routes.js';
 import { errorHandler, notFoundHandler } from './shared/middleware/errorHandler.js';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
+
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = 'test_jwt_secret_for_part10_verification';
+}
 
 const MONGO_TEST_URI = 'mongodb://127.0.0.1:27017/geoagent-auth-e2e-test';
 

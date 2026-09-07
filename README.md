@@ -253,12 +253,12 @@ Trajectories          Routes                     │         │
 | **Login Page** (`/login`) | ✅ Done | Production `LoginForm` with inline validation, backend error banners, auto-redirect |
 | **Signup Page** (`/signup`) | ✅ Done | Production `SignupForm` with password requirements checklist, auto-login upon creation |
 | **Landing Page** (`/`) | ✅ Done | Hero section, feature cards, contact section, help modal, site header |
-| **Driver Dashboard** (`/driver/dashboard`) | ⚠️ Partial | Protected by `<ProtectedRoute>`, top bar shows authenticated user & logout button; telemetry cards currently use mock data |
+| **Driver Dashboard** (`/driver/dashboard`) | ✅ Done | Protected by `<ProtectedRoute>`; connects to live Express REST endpoints (`/api/vehicles`, `/api/emergencies`, `/api/incidents`) with real MongoDB feeds, status/priority filtering, dynamic counter cards, and instant toggle to Corridor Telemetry view |
 | **Centralized API Client** | ✅ Done | `lib/api/client.ts` with `credentials: 'include'`, network error normalization, OpenAPI types |
-| **SVG Map Placeholder** | ✅ Done | Schematic SVG map with markers (NOT a real interactive map) |
-| **Mock Data Layer** | ✅ Done | `lib/mock-data.ts` with static Bengaluru ambulance demo scenario (kept for dashboard widgets) |
+| **SVG Map Placeholder** | ✅ Done | Schematic SVG map with markers (preserved; interactive map planned for future phase) |
+| **Mock Data Layer** | ✅ Done | `lib/mock-data.ts` with static ambulance demo scenario (preserved for corridor telemetry view) |
 | **Brand Assets** | ✅ Done | Logo, hero image, icons, favicons |
-| **UI Component Library** | ✅ Done | Button (CVA), Modal, BrandLogo, LoginForm, SignupForm, ProtectedRoute |
+| **UI Component Library** | ✅ Done | Button (CVA), Modal, BrandLogo, LoginForm, SignupForm, ProtectedRoute, EmergencySummaryCards, VehicleFleetPanel, ActiveEmergenciesPanel, RoadIncidentsPanel |
 
 ---
 
@@ -266,15 +266,15 @@ Trajectories          Routes                     │         │
 
 ### 🔴 CRITICAL — Frontend ↔ Backend Integration (In Progress)
 
-Authentication is **fully connected**. Next steps involve wiring the dashboard telemetry widgets to the domain API endpoints and initializing real-time Socket.IO.
+Authentication and REST domain feeds (Vehicles, Emergencies, Incidents) are **fully connected**. Next steps involve real-time Socket.IO streaming and interactive mapping.
 
 | # | Task | Priority | Details |
 |---|---|---|---|
-| 1 | **Wire `lib/api.ts` to the real backend** | 🔴 Critical | Route dashboard data calls to `lib/api/` modules (`vehicles`, `emergencies`, `trajectories`, `orchestration`). |
+| 1 | **Wire `lib/api` to the real backend** | ✅ Done | Centralized API client (`lib/api/client.ts`) and typed modules (`vehicles`, `emergencies`, `incidents`, `auth`) connected to Express REST endpoints. |
 | 2 | **Implement real Login flow** | ✅ Done | `POST /api/auth/login` → issues HTTP-only cookie → populates session → redirects to dashboard. |
 | 3 | **Implement real Signup flow** | ✅ Done | `POST /api/auth/register` → assigns `CONTROL_ROOM` → creates account → auto-authenticates. |
 | 4 | **Build authenticated API client** | ✅ Done | Centralized HTTP client (`lib/api/client.ts`) with `credentials: 'include'`, typed error normalization, and session persistence. |
-| 5 | **Connect Dashboard to real backend data** | 🔴 Critical | Replace mock `DashboardData` with live data from `GET /api/vehicles`, `GET /api/emergencies`, `GET /api/trajectories`, `POST /api/orchestration/emergencies/:id/analyze`. |
+| 5 | **Connect Dashboard to real backend data** | ✅ Done | Connected `/driver/dashboard` to live MongoDB collections via `GET /api/vehicles`, `GET /api/emergencies`, and `GET /api/incidents` with view toggles, filter pills, error recovery, and empty state banners. |
 | 6 | **Implement Socket.IO client connection** | 🔴 Critical | Connect to `http://localhost:5000` via `socket.io-client`, authenticate with JWT, join rooms (`control-room`, `emergency:${id}`, `vehicle:${id}`), handle live events (`deviation.detected`, `decision.created`, `trajectory.ingested`, etc.). |
 
 ---
