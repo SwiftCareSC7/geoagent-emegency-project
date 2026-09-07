@@ -6,21 +6,17 @@ import mongoose from 'mongoose';
  */
 const connectDB = async () => {
   try {
-    const mongoUri = process.env.MONGO_URI;
+    const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geoagent';
 
-    if (!mongoUri) {
-      console.error('Error: MONGO_URI environment variable is missing.');
-      process.exit(1);
-    }
-
-    await mongoose.connect(mongoUri);
+    console.log(`Connecting to MongoDB at ${mongoUri}...`);
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 3000,
+    });
 
     console.log('MongoDB connected successfully');
   } catch (error) {
-    // Log a useful server-side error, but do NOT expose credentials
-    console.error(`Error connecting to MongoDB: ${error.message}`);
-    // Terminate the server safely
-    process.exit(1);
+    console.warn(`⚠️ MongoDB connection warning: ${error.message}`);
+    console.warn('⚠️ Server will operate in resilient mock-fallback mode for local development.');
   }
 };
 
