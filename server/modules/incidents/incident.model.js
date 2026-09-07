@@ -68,6 +68,7 @@ const incidentSchema = new mongoose.Schema(
 incidentSchema.index({ location: '2dsphere' });
 incidentSchema.index({ emergency: 1, isDeleted: 1 });
 incidentSchema.index({ status: 1, isDeleted: 1 });
+incidentSchema.index({ createdAt: -1 });
 
 
 // Method to return a safe version of the incident object

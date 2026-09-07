@@ -20,6 +20,7 @@ import analysisRoutes from './modules/analysis/analysis.routes.js';
 import geoagentRoutes from './modules/geoagents/geoagent.routes.js';
 import decisionRoutes from './modules/decisions/decision.routes.js';
 import orchestrationRoutes from './modules/orchestration/orchestration.routes.js';
+import adminRoutes from './modules/admin/admin.routes.js';
 import realtimeService from './modules/realtime/realtime.service.js';
 
 import path from 'path';
@@ -120,6 +121,7 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/geoagent', geoagentRoutes);
 app.use('/api/decisions', decisionRoutes);
 app.use('/api/orchestration', orchestrationRoutes);
+app.use('/api/admin', adminRoutes);
 
 
 

@@ -68,6 +68,7 @@ const vehicleSchema = new mongoose.Schema(
 
 // Indexes for operational queries
 vehicleSchema.index({ status: 1, isDeleted: 1 });
+vehicleSchema.index({ createdAt: -1 });
 
 
 // Method to return a safe version of the vehicle object

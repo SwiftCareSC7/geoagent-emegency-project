@@ -29,6 +29,9 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for administrative listings and sorting
+userSchema.index({ role: 1, createdAt: -1 });
+
 // We don't hash password in a pre-save hook here to keep auth business logic in authService
 // But we can add a method to return a safe user object (without password)
 userSchema.methods.toSafeObject = function() {
