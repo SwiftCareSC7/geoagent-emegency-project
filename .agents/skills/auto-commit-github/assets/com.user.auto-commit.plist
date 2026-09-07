@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.user.auto-commit.plist
+  Runs scripts/auto-commit.sh every 60 seconds.
+
+  Loaded by install-launchd.sh into ~/Library/LaunchAgents.
+  Unloaded by uninstall-launchd.sh.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.user.auto-commit</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/priyanshu/Documents/geoagent-emegency-project/.agents/skills/auto-commit-github/scripts/auto-commit.sh</string>
+  </array>
+
+  <!-- Run every 60 seconds. -->
+  <key>StartInterval</key>
+  <integer>60</integer>
+
+  <!-- Run as soon as the job is loaded, then again every 60s. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!--
+    Keep the agent alive if it crashes; do not auto-restart the machine.
+  -->
+  <key>KeepAlive</key>
+  <false/>
+
+  <!-- Environment: headless git, no interactive prompts. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>GIT_TERMINAL_PROMPT</key>
+    <string>0</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+  </dict>
+
+  <!-- Capture stdout/stderr to a log file we can tail. -->
+  <key>StandardOutPath</key>
+  <string>/Users/priyanshu/Documents/geoagent-emegency-project/.agents/skills/auto-commit-github/assets/auto-commit.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/priyanshu/Documents/geoagent-emegency-project/.agents/skills/auto-commit-github/assets/auto-commit.err.log</string>
+
+  <!--
+    macOS asks for a sane working directory; using HOME keeps git happy
+    when it expands "~" or reads ~/.gitconfig.
+  -->
+  <key>WorkingDirectory</key>
+  <string>/Users/priyanshu/Documents/geoagent-emegency-project</string>
+</dict>
+</plist>
