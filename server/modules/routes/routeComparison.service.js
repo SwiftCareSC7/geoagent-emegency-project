@@ -187,6 +187,7 @@ class RouteComparisonService {
 
     return {
       current: currentSummary,
+      currentRoute: currentSummary,
       alternatives: normalizedAlternatives,
       bestAlternative,
       whatIfDoNothing,

@@ -537,6 +537,52 @@ paths:
         '200':
           description: Route progress analysis
 
+  /routes/{routeId}/compare:
+    get:
+      summary: Deterministic route candidate comparison and what-if scenario projection
+      description: >
+        Compares the active route corridor against provider alternative candidates.
+        Calculates distance delta, duration delta, traffic delay delta, time saved,
+        a deterministic "What if we do nothing?" scenario projection, and causal evidence tags.
+      tags: [Routes]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+          description: Friendly routeId (e.g. ROUTE-0001) or MongoDB ObjectId
+      responses:
+        '200':
+          description: Route comparison and what-if projection matrix
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      currentRoute: { type: object }
+                      alternatives: { type: array, items: { type: object } }
+                      bestAlternative: { type: object, nullable: true }
+                      whatIfDoNothing:
+                        type: object
+                        properties:
+                          scenario: { type: string, example: MAINTAIN_CURRENT_CORRIDOR }
+                          projectedDelayMinutes: { type: number, example: 5 }
+                          operationalRisk: { type: string, enum: [NOMINAL, ELEVATED, HIGH, CRITICAL] }
+                          etaDeltaVsBestMinutes: { type: number, example: 4 }
+                          summary: { type: string }
+                          reasons: { type: array, items: { type: string } }
+                      whyRouteChanged: { type: array, items: { type: string } }
+                      evaluatedAt: { type: string, format: date-time }
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # --- DEVIATION & SITUATION ANALYSIS ---
   /deviation/vehicle/{vehicleId}:
     get:

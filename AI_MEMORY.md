@@ -368,3 +368,45 @@ Trajectories          Routes                     │         │
   - `server/test-admin-e2e.js`: 60/60 passing assertions covering RBAC, stats, ping latency, sensitive field exclusion, query hardening, and paginated collections.
   - Total test suite assertions across project: 272/272 passing (100% pass rate).
   - Next.js production build (`npm run build`): Successfully compiled with `/admin` route.
+
+---
+
+## 14. Real-Time Intelligence Pipeline & Route Comparison Engine
+
+- **End-to-End Pipeline**:
+  `Real GPS Telemetry → Trajectory Processing → Deviation Analysis → Current Vehicle State → Google Routes API (Traffic-Aware) → ETA / Delay Prediction → Candidate Route Comparison ("What if we do nothing?") → Structured Evidence → Gemini 2.5 Flash Advisory Reasoning → Deterministic Decision Engine → Operator Approval → Execution → Socket.IO Streaming → Control Room Frontend`.
+- **Google Routes Provider Hardening** (`server/modules/routes/providers/googleRoutingProvider.js`):
+  - Pre-request coordinate validation (`validateCoordinates`) enforcing WGS84 boundaries: longitude `[-180, 180]`, latitude `[-90, 90]`.
+  - Enforces maximum 25 intermediate waypoints supported by computeRoutes.
+  - Supports `TRAFFIC_AWARE_OPTIMAL` and `TRAFFIC_AWARE` routing preferences with explicit field masks (`routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs,routes.warnings,routes.description`).
+  - Strict honesty: when `ROUTING_PROVIDER=google` fails or key is absent, returns explicit HTTP 503 / `PROVIDER_NOT_CONFIGURED` without silent mock downgrading.
+  - Bounded in-memory route caching (60s TTL) by coordinate hash to optimize external call budgets.
+- **Route Candidate Comparison & What-If Service** (`server/modules/routes/routeComparison.service.js`):
+  - Deterministic evaluation comparing active response corridor against candidate alternatives.
+  - Calculates `distanceDeltaMeters`, `durationSeconds`, `etaMinutes`, `trafficDelaySeconds`, `trafficDelayDeltaSeconds`, and `timeSavedMinutes`.
+  - Deterministic "What if we do nothing?" scenario projection (`scenario: 'MAINTAIN_CURRENT_CORRIDOR'`, `projectedDelayMinutes`, `operationalRisk: NOMINAL | ELEVATED | HIGH | CRITICAL`, `etaDeltaVsBestMinutes`, `summary`, `reasons`).
+  - Deterministic "Why did the route change?" causal evidence tags (`whyRouteChanged`).
+  - Mounted on backend at `GET /api/routes/:routeId/compare` and integrated into `lib/api/routes.ts` (`routeApi.compare(routeId)`).
+- **Prediction Engine Hardening** (`server/modules/analysis/prediction.service.js` & `prediction.model.js`):
+  - Model Version: `v1.3-exponential-traffic-blend`.
+  - Integrated vehicle-scoped historical speed benchmark (15% historical blend, zero cross-emergency or cross-vehicle leakage).
+  - Epistemic classification on all predictive factors (`OBSERVED`, `DERIVED`, `INFERRED`, `UNKNOWN`).
+- **GeoAgent Advisory Tools Registry** (`server/modules/geoagents/geoAgent.tools.js`):
+  - Full suite of 9 required intelligence tools defined in `geoAgentToolDeclarations` and executable in `executeGeoAgentTool`:
+    1. `getEmergencyState`
+    2. `getVehicleState`
+    3. `getRecentTrajectory`
+    4. `getCurrentRoute`
+    5. `getRouteAlternatives`
+    6. `getTrafficAnalysis`
+    7. `getPrediction`
+    8. `getNearbyIncidents`
+    9. `getDecisionHistory`
+    - Operational helpers: `getVehicleSituation`, `getNearbyAvailableVehicles`.
+- **Telemetry Ingestion & Real-Time Payload Emission** (`server/modules/trajectories/trajectory.service.js`):
+  - Fixed parameter reference bug (`location` -> `validLocation`) ensuring real-time location payload formatting and Socket.IO emission succeed on every GPS fix.
+  - Added throttled background prediction trigger on ingestion (position delta >= 100m or >= 30s elapsed) to keep ingestion fast (< 20ms).
+- **Automated Verification**:
+  - `server/test-intelligence-pipeline.js`: 26/26 passing assertions.
+  - Total automated verification assertions: **298 / 298 passing (100% pass rate)**.
+  - TypeScript typecheck (`npx tsc --noEmit`): 0 errors.

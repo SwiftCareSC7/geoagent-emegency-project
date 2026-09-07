@@ -140,7 +140,7 @@ class GoogleRoutingProvider {
       error.isOperational = true;
       throw error;
     }
-    if (point.type !== 'Point' || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
+    if ((point.type && point.type !== 'Point') || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
       const error = new Error(`Invalid ${name}: must be a GeoJSON Point with [longitude, latitude]`);
       error.status = 400;
       error.isOperational = true;

@@ -4,6 +4,45 @@ All notable changes to the GeoAgentic Emergency Response System will be document
 
 ## [Unreleased] - Interactive Map Integration
 
+## [1.6.0] - Real-Time Intelligence Pipeline & Route Comparison Engine
+
+### Added
+- **Google Routes Provider Pre-Request Validation & Honesty**:
+  - `validateCoordinates`: Pre-request WGS84 coordinate boundaries check (`[-180, 180]`, `[-90, 90]`) on origin and destination GeoJSON Points.
+  - Enforced 25 intermediate waypoint limit on Google Routes computeRoutes API calls.
+  - Strict honesty: When `ROUTING_PROVIDER=google` fails or is unconfigured, returns explicit HTTP 503 / `PROVIDER_NOT_CONFIGURED` without silent mock downgrading.
+  - Bounded in-memory route caching (60s TTL) by coordinate hash to optimize external API budgets.
+- **Route Candidate Comparison & What-If Analysis Service (`server/modules/routes/routeComparison.service.js`)**:
+  - Deterministic evaluation comparing active response corridor against candidate alternatives without AI hallucination.
+  - Calculates `distanceDeltaMeters`, `durationSeconds`, `etaMinutes`, `trafficDelaySeconds`, `trafficDelayDeltaSeconds`, and `timeSavedMinutes`.
+  - Deterministic "What if we do nothing?" scenario projection (`scenario: 'MAINTAIN_CURRENT_CORRIDOR'`, `projectedDelayMinutes`, `operationalRisk: NOMINAL | ELEVATED | HIGH | CRITICAL`, `etaDeltaVsBestMinutes`, `summary`, `reasons`).
+  - Deterministic "Why did the route change?" causal evidence tags (`whyRouteChanged`).
+  - Mounted REST endpoint at `GET /api/routes/:routeId/compare`.
+  - Added `routeApi.compare(routeId)` to frontend client `lib/api/routes.ts`.
+- **Prediction Engine Hardening (`v1.3-exponential-traffic-blend`)**:
+  - Updated model version to `v1.3-exponential-traffic-blend` across `prediction.model.js` and `prediction.service.js`.
+  - Integrated vehicle-scoped historical speed benchmark (15% blend to smooth erratic traffic swings, zero cross-emergency or cross-vehicle leakage).
+  - Explicit 3-tier epistemic tagging (`OBSERVED`, `DERIVED`, `INFERRED`, `UNKNOWN`) on all prediction factors.
+- **GeoAgent Advisory Tools Registry (`server/modules/geoagents/geoAgent.tools.js`)**:
+  - Full suite of 9 required intelligence tools explicitly declared and callable:
+    1. `getEmergencyState`
+    2. `getVehicleState`
+    3. `getRecentTrajectory`
+    4. `getCurrentRoute`
+    5. `getRouteAlternatives`
+    6. `getTrafficAnalysis`
+    7. `getPrediction`
+    8. `getNearbyIncidents`
+    9. `getDecisionHistory`
+    - Operational helpers: `getVehicleSituation`, `getNearbyAvailableVehicles`.
+- **Telemetry Ingestion & Real-Time Payload Emission (`server/modules/trajectories/trajectory.service.js`)**:
+  - Fixed parameter reference bug (`location` -> `validLocation`) ensuring real-time location payload formatting and Socket.IO emission succeed on every GPS fix.
+  - Added throttled background prediction trigger on ingestion (position delta >= 100m or >= 30s elapsed) maintaining < 20ms ingestion speed.
+- **Automated Verification**:
+  - Created `server/test-intelligence-pipeline.js` with 26 automated assertions.
+  - Total automated verification assertions: **298 / 298 passing (100% pass rate)**.
+  - TypeScript typecheck (`npx tsc --noEmit`): 0 errors.
+
 ## [1.5.0] - Admin Database Administration & System Observability Layer
 
 ### Added
