@@ -1,7 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import Emergency from '../emergencies/emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
+import Route from '../routes/route.model.js';
 import analysisService from '../analysis/analysis.service.js';
+import predictionService from '../analysis/prediction.service.js';
+import routingService from '../routes/routing.service.js';
 import { geoAgentConstants } from './geoagent.constants.js';
 import { geoAgentToolDeclarations, executeGeoAgentTool } from './geoagent.tools.js';
 import { GEOAGENT_SYSTEM_PROMPT } from './prompts/geoagent.system.js';
@@ -146,13 +149,84 @@ class GeoAgentService {
     // 2. Obtain deterministic Situation Analysis
     const situation = await analysisService.getVehicleSituation(vehicleId);
 
-    // 3. Check for Gemini client
-    const ai = this.getAIClient();
-    if (!ai) {
-      return this.generateFallbackResponse(situation, 'GEMINI_API_KEY environment variable not configured');
+    // 3. Obtain quantitative prediction if available
+    let prediction = null;
+    try {
+      prediction = await predictionService.predictForVehicle(vehicleId);
+    } catch {
+      // Non-fatal if prediction cannot be computed
     }
 
-    // 4. Construct AI Prompts with Prompt Injection Defenses
+    // 4. Compute candidate route comparison & "What if we do nothing?"
+    const activeRoute = await Route.findOne({
+      vehicle: emergency.assignedVehicle._id,
+      status: 'ACTIVE'
+    }).sort({ createdAt: -1 });
+
+    let comparison = {
+      currentRoute: {
+        etaMinutes: situation.eta.currentMinutes,
+        distanceMeters: situation.progress ? situation.progress.remainingDistanceMeters : (activeRoute ? activeRoute.distance : 0),
+        trafficLevel: situation.traffic ? situation.traffic.level : 'UNKNOWN',
+        delayMinutes: situation.delay ? situation.delay.delayMinutes : 0
+      },
+      bestAlternative: null,
+      whatIfDoNothing: {
+        estimatedDelayMinutes: situation.delay ? situation.delay.delayMinutes : 0,
+        riskLevel: situation.deviation.status !== 'ON_ROUTE' ? 'ELEVATED' : 'NOMINAL',
+        summary: 'Maintaining current route may sustain delays if corridor congestion or deviation persists'
+      },
+      whyRouteChanged: []
+    };
+
+    if (activeRoute) {
+      try {
+        const routeResult = await routingService.getRouteWithAlternatives(activeRoute.origin, activeRoute.destination);
+        const alternatives = routeResult.alternatives || [];
+        if (alternatives.length > 0) {
+          const bestAlt = alternatives[0];
+          const bestAltEtaMinutes = Math.max(1, Math.round(bestAlt.durationSeconds / 60));
+          const timeSavedMin = Math.max(0, situation.eta.currentMinutes - bestAltEtaMinutes);
+
+          comparison.bestAlternative = {
+            description: bestAlt.description,
+            etaMinutes: bestAltEtaMinutes,
+            distanceMeters: bestAlt.distanceMeters,
+            trafficDelaySeconds: bestAlt.trafficDelaySeconds || 0,
+            timeSavedMinutes: timeSavedMin,
+            distanceDeltaMeters: bestAlt.distanceMeters - activeRoute.distance
+          };
+
+          if (timeSavedMin >= 2) {
+            comparison.whyRouteChanged.push(`Alternative route provides an estimated time savings of ${timeSavedMin} minutes`);
+          }
+        }
+      } catch (routeErr) {
+        console.warn(`[GeoAgentService] Alternative route lookup warning: ${routeErr.message}`);
+      }
+    }
+
+    if (situation.deviation.status !== 'ON_ROUTE') {
+      comparison.whyRouteChanged.push(`Vehicle is ${Math.round(situation.deviation.distanceFromRouteMeters || 0)}m off planned route (${situation.deviation.status})`);
+    }
+    if (situation.traffic && (situation.traffic.level === 'HEAVY' || situation.traffic.level === 'SEVERE')) {
+      comparison.whyRouteChanged.push(`Current corridor traffic is ${situation.traffic.level} with active slowdowns`);
+    }
+    if (prediction && prediction.delayRisk !== 'LOW') {
+      comparison.whyRouteChanged.push(`Prediction model detected ${prediction.delayRisk} risk of arrival delay (+${prediction.predictedDelayMinutes} min)`);
+    }
+
+    // 5. Check for Gemini client
+    const ai = this.getAIClient();
+    if (!ai) {
+      const fallback = this.generateFallbackResponse(situation, 'GEMINI_API_KEY environment variable not configured');
+      fallback.comparison = comparison;
+      fallback.prediction = prediction;
+      fallback.whyRouteChanged = comparison.whyRouteChanged;
+      return fallback;
+    }
+
+    // 6. Construct AI Prompts with Prompt Injection Defenses
     const untrustedDescription = emergency.description
       ? sanitizeText(emergency.description).slice(0, 300)
       : 'None';
@@ -175,7 +249,14 @@ class GeoAgentService {
       eta: situation.eta,
       delay: situation.delay,
       incidents: situation.incidents,
-      evidence: situation.evidence
+      evidence: situation.evidence,
+      prediction: prediction ? {
+        predictedDelayMinutes: prediction.predictedDelayMinutes,
+        delayRisk: prediction.delayRisk,
+        confidence: prediction.confidence,
+        rerouteAdvised: prediction.rerouteAdvised
+      } : null,
+      comparison
     };
 
     const initialPrompt = `
@@ -221,6 +302,10 @@ Otherwise, output the final structured JSON object immediately.
             currentMinutes: situation.eta.currentMinutes,
             originalMinutes: situation.eta.originalMinutes
           });
+
+          validated.comparison = comparison;
+          validated.prediction = prediction;
+          validated.whyRouteChanged = comparison.whyRouteChanged;
 
           // Emit Real-Time Event
           try {
@@ -269,10 +354,18 @@ Otherwise, output the final structured JSON object immediately.
       }
 
       // If loop exceeded max rounds, return fallback based on deterministic situation
-      return this.generateFallbackResponse(situation, 'AI tool call round limit reached');
+      const roundLimitFallback = this.generateFallbackResponse(situation, 'AI tool call round limit reached');
+      roundLimitFallback.comparison = comparison;
+      roundLimitFallback.prediction = prediction;
+      roundLimitFallback.whyRouteChanged = comparison.whyRouteChanged;
+      return roundLimitFallback;
     } catch (error) {
       console.error(`[GeoAgentService] Error during AI inference: ${error.message}`);
-      return this.generateFallbackResponse(situation, `AI inference error: ${error.message}`);
+      const errorFallback = this.generateFallbackResponse(situation, `AI inference error: ${error.message}`);
+      errorFallback.comparison = comparison;
+      errorFallback.prediction = prediction;
+      errorFallback.whyRouteChanged = comparison.whyRouteChanged;
+      return errorFallback;
     }
   }
 
