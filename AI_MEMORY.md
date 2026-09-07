@@ -228,3 +228,38 @@ Trajectories          Routes                     │         │
   - `server/test-auth-e2e.js`: 31/31 automated assertions passing.
   - `server/test-security.js`: 23/23 automated assertions passing.
   - Next.js build: Clean compilation with Turbopack and 0 TypeScript errors (`npx tsc --noEmit`).
+
+---
+
+## 8. Frontend Emergency Detail & Analysis View (CURRENT ACTUAL STATE)
+
+- **Architecture & Routing**:
+  - Dynamic route `/emergencies/[id]` (`app/emergencies/[id]/page.tsx`) wrapped in `<ProtectedRoute>` and integrated with `DashboardTopbar`.
+  - Accessible via "Track & Analyze Corridor →" on each emergency card in `active-emergencies-panel.tsx`.
+  - Master container component `components/emergency-detail/emergency-detail-view.tsx` coordinates sub-resource loading using concurrent `Promise.allSettled`.
+  - Section-level error boundaries isolate failures so missing optional sub-resources (such as an unassigned route) never crash the emergency overview.
+  - Dedicated 404 state handles non-existent emergencies with a clear navigational recovery link back to `/driver/dashboard`.
+- **Backend APIs Integrated**:
+  - `GET /api/emergencies/:id`: Primary emergency record with caller details, GeoJSON coordinates, priority, and assigned vehicle.
+  - `GET /api/emergencies/:emergencyId/routes`: Resolves emergency business ID (e.g. `EMG-2026-001`) to ObjectId and returns planned routes. Fixed critical `CastError` in `server/modules/routes/route.service.js`.
+  - `GET /api/routes/:routeId`: Returns single route with populated `emergency` and `vehicle` references.
+  - `GET /api/trajectories/:vehicleId`: Paginated telemetry GPS fixes with page/limit parameters.
+  - `GET /api/trajectories/:vehicleId/latest`: Most recent GPS telemetry fix. Safely handles 404 (0 points recorded) via `trajectoryApi.getLatestSafe`.
+  - `GET /api/analysis/vehicle/:vehicleId`: Deterministic situation analysis containing cross-track error, bearing divergence, GPS stability, traffic congestion, and correlated corridor incidents.
+  - `POST /api/orchestration/emergencies/:emergencyId/analyze`: Full mission analysis executing situational reasoning, GeoAgent recommendation, decision engine rules, and 3-tier epistemic breakdown.
+- **UI Components Created**:
+  - `components/emergency-detail/emergency-overview-card.tsx`: Type icon, priority badge (with pulse for CRITICAL), status pill, formatted timestamps, caller details, and copyable WGS84 GPS coordinates.
+  - `components/emergency-detail/vehicle-movement-panel.tsx`: Latest fix telemetry strip (coordinates, speed in km/h, cardinal heading direction, source) and paginated bounded GPS trajectory table.
+  - `components/emergency-detail/route-analysis-panel.tsx`: Route ID, provider attribution (`MOCK Provider (Local Simulation)`), total distance (m/km), planned duration (mins), status, origin/destination points, and waypoint vertices count.
+  - `components/emergency-detail/deviation-analysis-panel.tsx`: Deviation status pill (`ON_ROUTE`, `WARNING`, `DEVIATED`, `CRITICAL_DEVIATION`, `UNKNOWN`), cross-track distance (meters), bearing divergence (°), GPS stability (`STABLE` / `UNSTABLE`), traffic congestion level & speed, ETA & delay metrics, and structured evidence tags.
+  - `components/emergency-detail/correlated-incidents-panel.tsx`: Incidents within 500m of corridor or 2,000m of vehicle with distance offsets and honest empty states.
+  - `components/emergency-detail/epistemic-breakdown-card.tsx`: Explicit 3-tier epistemic breakdown separating verified physical observations (`OBSERVED`), algorithmic inferences (`INFERRED`), and unobserved operational variables (`UNKNOWN`).
+- **Scope Safeguards Strictly Maintained**:
+  - NO interactive map (Mapbox, Google Maps, Leaflet deferred; geometric verification relies on GeoJSON spatial indexing).
+  - NO Socket.IO live streaming in this view (telemetry labeled "Latest received position" and "Last updated at [timestamp]").
+  - Zero mock data fallback (empty database responses render honest, informative empty states).
+- **Automated Verification**:
+  - `server/test-emergency-detail-e2e.js`: 63/63 passing assertions.
+  - Full backend regression suite: 164 total passing assertions (0 failures).
+  - TypeScript checking (`npx tsc --noEmit`): 0 errors.
+  - Next.js production build (`npm run build`): Successfully compiled in under 2 seconds.
