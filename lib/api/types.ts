@@ -233,16 +233,19 @@ export interface UpdateIncidentPayload {
 // Trajectories
 // ---------------------------------------------------------------------------
 
-export type TrajectorySource = 'DEVICE' | 'SIMULATOR' | 'MANUAL'
+export type TrajectorySource = 'DEVICE' | 'SIMULATOR' | 'MANUAL' | 'API'
 
 export interface Trajectory {
-  id: string
-  vehicle: string
+  id?: string
+  _id?: string
+  vehicle?: string
+  vehicleId?: string
   location: GeoJSONPoint
-  speed: number
-  heading?: number
+  speed: number // km/h
+  heading?: number // 0-360 degrees
   timestamp: string
-  source: TrajectorySource
+  source?: TrajectorySource
+  createdAt?: string
 }
 
 export interface IngestTrajectoryPayload {
@@ -258,19 +261,37 @@ export interface IngestTrajectoryPayload {
 // Routes
 // ---------------------------------------------------------------------------
 
-export type RouteType = 'PLANNED' | 'ALTERNATIVE' | 'HISTORICAL'
-export type RouteStatus = 'ACTIVE' | 'COMPLETED' | 'ABANDONED'
+export type RouteType = 'PLANNED' | 'ALTERNATIVE' | 'CURRENT' | 'HISTORICAL'
+export type RouteStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ABANDONED'
+export type RouteProvider = 'MOCK' | 'GOOGLE' | 'MAPBOX' | 'OSRM'
+
+export interface RoutePopulatedEmergency {
+  _id?: string
+  emergencyId: string
+  status: EmergencyStatus
+  priority: EmergencyPriority
+}
+
+export interface RoutePopulatedVehicle {
+  _id?: string
+  vehicleId: string
+  status: VehicleStatus
+  registrationNumber?: string
+  driverName?: string
+}
 
 export interface Route {
-  id: string
+  id?: string
+  _id?: string
   routeId: string
-  emergency: string
-  vehicle: string
+  emergency: string | RoutePopulatedEmergency
+  vehicle: string | RoutePopulatedVehicle
   origin: GeoJSONPoint
   destination: GeoJSONPoint
   geometry: GeoJSONLineString
   distance: number // meters
   duration: number // seconds
+  provider?: RouteProvider
   status: RouteStatus
   routeType?: RouteType
   createdAt?: string
@@ -286,22 +307,86 @@ export interface CreateRoutePayload {
 }
 
 // ---------------------------------------------------------------------------
-// Deviation & Analysis
+// Traffic & Deviation & Situation Analysis
 // ---------------------------------------------------------------------------
+
+export type TrafficLevel = 'FREE' | 'LIGHT' | 'MODERATE' | 'HEAVY' | 'SEVERE' | 'UNKNOWN'
 
 export type DeviationStatus =
   | 'ON_ROUTE'
   | 'WARNING'
   | 'DEVIATED'
   | 'CRITICAL_DEVIATION'
+  | 'UNKNOWN'
 
-export type StabilityStatus = 'STABLE' | 'UNSTABLE' | 'JITTER'
+export type StabilityStatus = 'STABLE' | 'UNSTABLE' | 'INSUFFICIENT_DATA' | 'JITTER'
 
-export interface DeviationResult {
+export interface CorrelatedIncident {
+  id?: string
+  _id?: string
+  incidentId: string
+  type: IncidentType
+  severity: IncidentSeverity
+  description?: string
+  location: GeoJSONPoint
+  distanceFromVehicleMeters: number
+  distanceFromRouteMeters: number
+}
+
+export interface DeviationAnalysis {
   status: DeviationStatus
-  crossTrackDistanceMeters: number
-  bearingDifferenceDegrees: number
-  stability: StabilityStatus
+  distanceFromRouteMeters: number
+  nearestPointOnRoute: GeoJSONPoint
+  bearingDifferenceDegrees: number | null
+  vehicleBearing: number | null
+  routeBearing: number
+  gpsStability: StabilityStatus
+  sustainedDeviation: boolean
+  confidence: 'HIGH' | 'LOW'
+}
+
+export interface RouteProgress {
+  remainingDistanceMeters: number
+  progressPercentage: number
+}
+
+export interface TrafficAnalysis {
+  level: TrafficLevel
+  speedKmh: number
+  freeFlowSpeedKmh: number
+  congestionRatio: number
+  source: string
+}
+
+export interface EtaAnalysis {
+  currentMinutes: number | null
+  originalMinutes: number
+  remainingDistanceMeters: number
+  estimatedSpeedKmh: number
+  status: string
+}
+
+export interface DelayAnalysis {
+  delayMinutes: number
+  timeSavedMinutes: number
+}
+
+export interface SituationAnalysis {
+  vehicleId: string
+  routeId: string
+  emergencyId: string | null
+  analyzedAt: string
+  status: {
+    route: DeviationStatus
+    traffic: TrafficLevel
+  }
+  deviation: DeviationAnalysis
+  progress: RouteProgress
+  traffic: TrafficAnalysis
+  eta: EtaAnalysis
+  delay: DelayAnalysis
+  incidents: CorrelatedIncident[]
+  evidence: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -342,7 +427,7 @@ export interface Decision {
 }
 
 // ---------------------------------------------------------------------------
-// Orchestration
+// Orchestration & Epistemic Breakdown
 // ---------------------------------------------------------------------------
 
 export type WorkflowStatus = 'COMPLETED' | 'PARTIAL' | 'FAILED'
@@ -353,15 +438,51 @@ export interface EpistemicBreakdown {
   unknown: string[]
 }
 
-export interface OrchestrationResult {
+export interface OrchestrationWorkflowResult {
   workflowStatus: WorkflowStatus
-  emergency: Emergency
-  vehicle: Vehicle
-  route: Route
-  situationAnalysis: Record<string, unknown>
-  geoAgentRecommendation: Record<string, unknown>
-  decision: Decision
+  stage?: string
+  reason?: string
+  units?: Record<string, string>
+  emergency: {
+    emergencyId: string
+    type?: EmergencyType
+    priority: EmergencyPriority
+    status: EmergencyStatus
+    location?: GeoJSONPoint
+    destination?: GeoJSONPoint
+  }
+  vehicle: {
+    vehicleId: string
+    registrationNumber?: string
+    type?: VehicleType
+    status: VehicleStatus
+    driverName?: string
+  }
+  route: {
+    routeId: string
+    distanceMeters?: number
+    durationSeconds?: number
+    routeType?: RouteType
+    status?: RouteStatus
+  } | null
+  trajectory: {
+    location: GeoJSONPoint
+    speedKmh: number
+    headingDegrees?: number
+    recordedAt: string
+  } | null
+  analysis: SituationAnalysis | { status: string; error?: string } | null
+  geoAgent?: {
+    recommendation?: string
+    riskLevel?: string
+    explanation?: string
+    status?: string
+    error?: string
+    fallback?: boolean
+  } | null
+  decision?: Decision | null
   epistemicBreakdown: EpistemicBreakdown
+  executionTimeMs: number
 }
 
 // ---------------------------------------------------------------------------

@@ -44,6 +44,19 @@ export const trajectoryApi = {
     )
   },
 
+  /** Safe get latest GPS fix that returns null if 404 (no trajectory points found) */
+  async getLatestSafe(vehicleId: string): Promise<Trajectory | null> {
+    try {
+      const res = await this.getLatest(vehicleId)
+      return res?.data ?? null
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 404) {
+        return null
+      }
+      throw err
+    }
+  },
+
   /** Get recent trajectory points for a vehicle */
   getRecent(vehicleId: string): Promise<TrajectoryListResponse> {
     return get<TrajectoryListResponse>(
