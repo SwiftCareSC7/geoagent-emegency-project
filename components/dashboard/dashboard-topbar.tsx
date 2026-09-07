@@ -1,7 +1,12 @@
-import { Siren, UserRound } from 'lucide-react'
+'use client'
+
+import { LogOut, Shield, Siren, UserRound } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import React, { useState } from 'react'
 
 import { BrandLogo } from '@/components/brand-logo'
+import { useAuth } from '@/lib/auth/context'
 
 interface DashboardTopbarProps {
   ambulanceId: string
@@ -16,6 +21,25 @@ export function DashboardTopbar({
   emergencyActive,
   lastRefreshed,
 }: DashboardTopbarProps) {
+  const router = useRouter()
+  const { user, logout } = useAuth()
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await logout()
+      router.push('/login')
+    } catch {
+      router.push('/login')
+    } finally {
+      setLoggingOut(false)
+    }
+  }
+
+  const displayName = user?.name || driverName
+  const userRole = user?.role || 'DRIVER'
+
   return (
     <header className="border-b border-border bg-primary text-primary-foreground">
       <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
@@ -35,7 +59,7 @@ export function DashboardTopbar({
               GeoAgent
             </p>
             <p className="text-sm text-primary-foreground/70">
-              Ambulance {ambulanceId} · Driver {driverName}
+              Ambulance {ambulanceId} · Operator {displayName}
             </p>
           </div>
         </div>
@@ -51,13 +75,32 @@ export function DashboardTopbar({
               Standby
             </span>
           )}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-sm">
+
+          {/* Authenticated user & role badge */}
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1 pl-3 pr-2 text-sm">
             <UserRound className="size-4" />
-            {driverName}
-          </span>
+            <span className="font-medium">{displayName}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold tracking-wide">
+              <Shield className="size-3" />
+              {userRole}
+            </span>
+          </div>
+
           <span className="text-xs text-primary-foreground/70">
-            Last updated: {lastRefreshed}
+            {lastRefreshed}
           </span>
+
+          {/* Real Logout button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 bg-white/10 px-2.5 py-1.5 text-xs font-semibold transition-colors hover:bg-white/20 active:scale-95 disabled:opacity-50"
+            aria-label="Log out"
+          >
+            <LogOut className="size-3.5" />
+            <span>{loggingOut ? 'Exiting...' : 'Log out'}</span>
+          </button>
         </div>
       </div>
     </header>

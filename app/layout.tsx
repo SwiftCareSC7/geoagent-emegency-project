@@ -1,6 +1,7 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
+import { AuthProvider } from '@/lib/auth/context'
 import './globals.css'
 
 const inter = Inter({
@@ -55,7 +56,9 @@ export default function RootLayout({
       className={`light bg-background ${inter.variable} ${jakarta.variable}`}
     >
       <body className="font-sans antialiased">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

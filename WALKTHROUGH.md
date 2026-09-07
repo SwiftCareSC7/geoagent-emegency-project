@@ -104,6 +104,17 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 - **Key Files**: `server/shared/middleware/errorHandler.js`, `server/test-part12.js`, `server/test-security.js`.
 - **Decisions**: Hardened query boundaries against `NaN` and unbounded limits. Graceful `SIGINT`/`SIGTERM` shutdown handlers close HTTP, Socket.IO, and Mongoose connections cleanly.
 
+### Part 13: Real Frontend Authentication & Session Management
+- **Goal**: Connect Next.js 16 frontend to existing Express + MongoDB backend with production login, signup, session persistence via HTTP-only cookies, protected routes, and role awareness.
+- **Key Files**: `lib/api/client.ts`, `lib/api/auth.ts`, `lib/auth/context.tsx`, `lib/auth/session.ts`, `components/auth/LoginForm.tsx`, `components/auth/SignupForm.tsx`, `components/auth/ProtectedRoute.tsx`, `components/dashboard/dashboard-topbar.tsx`, `server/test-auth-e2e.js`.
+- **Decisions**:
+  - **Cookie-Only Transport**: Backend sets HTTP-only `token` cookie (`SameSite=Strict`, 7 days); no JWT stored in `localStorage` or exposed in JSON payloads.
+  - **Graceful Session Restoration**: Initial `GET /api/auth/me` handles expected 401 unauthenticated status without crashing, while network dropouts (status 0) surface a clear connectivity message.
+  - **Auto-Authentication on Register**: After successful registration (`201 Created` with default `CONTROL_ROOM` role), frontend automatically authenticates credentials to immediately transition into the dashboard.
+  - **Non-Flashing Route Protection**: `<ProtectedRoute>` renders an accessible pulsed loading state while verifying session, redirecting unauthenticated visitors to `/login?redirect=...`.
+  - **Role Support & Logout**: User role (`CONTROL_ROOM`, `ADMIN`) is rendered as a verified badge on the dashboard topbar with a working `Log out` button that calls `POST /api/auth/logout`.
+  - **Verification**: 31 / 31 assertions passing in `server/test-auth-e2e.js` covering registration, duplicate conflicts, invalid passwords, login, cookie setting, session refresh, logout, and post-logout protection.
+
 ---
 
 ## 3. End-to-End Emergency Operational Lifecycle

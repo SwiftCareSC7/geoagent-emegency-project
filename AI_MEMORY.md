@@ -98,16 +98,37 @@ Trajectories          Routes                     │         │
 ```text
 /
 ├── app/                                      # Next.js App Router Pages
-│   ├── layout.tsx                            # Root layout with fonts & analytics
+│   ├── layout.tsx                            # Root layout with AuthProvider & fonts
 │   ├── page.tsx                              # Landing page
-│   ├── login/page.tsx                        # Login interface
-│   ├── signup/page.tsx                       # Signup interface
-│   └── driver/dashboard/page.tsx             # Driver telemetry mission dashboard
+│   ├── login/page.tsx                        # Real authenticated login interface
+│   ├── signup/page.tsx                       # Real authenticated registration interface
+│   └── driver/dashboard/page.tsx             # Protected driver telemetry mission dashboard
 ├── components/                               # React UI Components
+│   ├── auth/                                 # Authentication UI Components
+│   │   ├── LoginForm.tsx                     # Production login form with validation & errors
+│   │   ├── SignupForm.tsx                    # Production registration with password rules
+│   │   └── ProtectedRoute.tsx                # Client route guard & role access control
 │   ├── dashboard/                            # Mission dashboard widgets
+│   │   └── dashboard-topbar.tsx              # Top bar with authenticated user & logout
 │   ├── landing/                              # Landing page sections
 │   └── ui/                                   # Base UI primitives
 ├── lib/                                      # Frontend Utilities & API Client
+│   ├── api/                                  # Centralized typed API client
+│   │   ├── client.ts                         # Fetch wrapper (credentials: 'include', network error normalization)
+│   │   ├── types.ts                          # Full TypeScript interfaces derived from OpenAPI 3.0
+│   │   ├── auth.ts                           # Auth API methods (register, login, logout, getMe)
+│   │   ├── vehicles.ts                       # Vehicle CRUD API
+│   │   ├── emergencies.ts                    # Emergency management API
+│   │   ├── incidents.ts                      # Road hazards API
+│   │   ├── trajectories.ts                   # GPS telemetry API
+│   │   └── index.ts                          # API barrel export
+│   ├── auth/                                 # Client-side Auth State & Session
+│   │   ├── types.ts                          # AuthState & AuthContextType interfaces
+│   │   ├── session.ts                        # Session retrieval (401 vs network error handling)
+│   │   └── context.tsx                       # AuthContext, AuthProvider & useAuth hook
+│   ├── api.ts                                # Legacy adapter (mock data fallback)
+│   ├── mock-data.ts                          # Static demo dashboard data
+│   └── utils.ts                              # Classname styling utilities
 ├── public/                                   # Frontend Static Assets
 ├── next.config.mjs                           # Next.js build configuration
 ├── tsconfig.json                             # TypeScript configuration
@@ -137,6 +158,7 @@ Trajectories          Routes                     │         │
 │   │   └── realtime/                         # Socket.IO handlers, room streaming
 │   ├── shared/
 │   │   └── middleware/                       # Centralized error handler & security
+│   ├── test-auth-e2e.js                      # 10-Scenario contract test suite (31 assertions)
 │   ├── test-*.js                             # Integration test suites (Parts 7-12)
 │   └── test-security.js                      # 23-Point automated security suite
 └── docs/
@@ -158,3 +180,25 @@ Trajectories          Routes                     │         │
    - `OBSERVED`: Physical, measured telemetry.
    - `INFERRED`: Calculated and model-derived estimates.
    - `UNKNOWN`: Missing operational context and unobserved variables.
+
+---
+
+## 6. Frontend Authentication System (CURRENT ACTUAL STATE)
+
+- **Authentication Architecture**:
+  - Cookie-based session transport with `credentials: 'include'` on all client requests.
+  - `AuthProvider` wraps root layout in `app/layout.tsx`.
+  - On initialization, `getSession()` requests `GET /api/auth/me`. Expected 401 returns `{ user: null }` without throwing, while network connection errors (status 0) surface a friendly connectivity message.
+- **Contract Endpoints Used**:
+  - `POST /api/auth/register`: `{ name, email, password }` -> 201 Created. Backend assigns `role: 'CONTROL_ROOM'` and does not set a cookie. Frontend notifies user and automatically authenticates.
+  - `POST /api/auth/login`: `{ email, password }` -> 200 OK. Backend issues HTTP-only `token` cookie (`SameSite=Strict`, 7-day max-age). The JWT is omitted from JSON payloads.
+  - `GET /api/auth/me`: 200 OK with `SafeUser` `{ id, name, email, role }` or 401 Unauthorized.
+  - `POST /api/auth/logout`: 200 OK. Clears the HTTP-only `token` cookie.
+- **Route Protection**:
+  - `<ProtectedRoute>` wraps `/driver/dashboard`.
+  - Prevents content flash with accessible loading state while checking session.
+  - Redirects unauthenticated visitors to `/login?redirect=<current_path>`.
+  - Supports optional `allowedRoles?: UserRole[]` for granular role enforcement.
+- **Role Support**:
+  - Active backend roles: `CONTROL_ROOM`, `ADMIN`.
+  - User role badge and identity displayed in `DashboardTopbar`.

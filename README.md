@@ -243,35 +243,37 @@ Trajectories          Routes                     │         │
 
 ---
 
-### ✅ Frontend UI — PARTIALLY IMPLEMENTED (Scaffold + Static Mock Data)
+### ✅ Frontend UI & Authentication — IMPLEMENTED (Auth Connected + UI Scaffold)
 
 | Feature | Status | Details |
 |---|---|---|
 | **Next.js 16 App Router Setup** | ✅ Done | Turbopack, React 19, TypeScript, Tailwind CSS v4, PostCSS |
+| **Authentication & Session** | ✅ Done | Real `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/me`, `POST /api/auth/logout`, HTTP-only cookie transport, session persistence |
+| **Protected Routes & RBAC** | ✅ Done | `<ProtectedRoute>` route guard, loading state to prevent flashing, role-aware access (`CONTROL_ROOM`, `ADMIN`) |
+| **Login Page** (`/login`) | ✅ Done | Production `LoginForm` with inline validation, backend error banners, auto-redirect |
+| **Signup Page** (`/signup`) | ✅ Done | Production `SignupForm` with password requirements checklist, auto-login upon creation |
 | **Landing Page** (`/`) | ✅ Done | Hero section, feature cards, contact section, help modal, site header |
-| **Login Page** (`/login`) | ✅ Done | Login form UI |
-| **Signup Page** (`/signup`) | ✅ Done | Registration form UI |
-| **Driver Dashboard** (`/driver/dashboard`) | ✅ Done | Top bar, ETA summary, route status cards, timeline panel, GeoAgent AI card, stat cards |
+| **Driver Dashboard** (`/driver/dashboard`) | ⚠️ Partial | Protected by `<ProtectedRoute>`, top bar shows authenticated user & logout button; telemetry cards currently use mock data |
+| **Centralized API Client** | ✅ Done | `lib/api/client.ts` with `credentials: 'include'`, network error normalization, OpenAPI types |
 | **SVG Map Placeholder** | ✅ Done | Schematic SVG map with markers (NOT a real interactive map) |
-| **Mock Data Layer** | ✅ Done | `lib/mock-data.ts` with static Bengaluru ambulance demo scenario |
-| **API Adapter Stub** | ✅ Done | `lib/api.ts` with `USE_MOCK = true` (real fetch code commented out) |
+| **Mock Data Layer** | ✅ Done | `lib/mock-data.ts` with static Bengaluru ambulance demo scenario (kept for dashboard widgets) |
 | **Brand Assets** | ✅ Done | Logo, hero image, icons, favicons |
-| **UI Component Library** | ✅ Done | Button (CVA), Modal, BrandLogo |
+| **UI Component Library** | ✅ Done | Button (CVA), Modal, BrandLogo, LoginForm, SignupForm, ProtectedRoute |
 
 ---
 
 ## 5. What Still Needs to Be Done (TODO)
 
-### 🔴 CRITICAL — Frontend ↔ Backend Integration (Currently Disconnected)
+### 🔴 CRITICAL — Frontend ↔ Backend Integration (In Progress)
 
-The frontend and backend are currently **completely disconnected**. The frontend runs entirely on static mock data and does not communicate with the backend at all.
+Authentication is **fully connected**. Next steps involve wiring the dashboard telemetry widgets to the domain API endpoints and initializing real-time Socket.IO.
 
 | # | Task | Priority | Details |
 |---|---|---|---|
-| 1 | **Wire `lib/api.ts` to the real backend** | 🔴 Critical | Set `USE_MOCK = false`, uncomment the real `fetch()` calls, point to `http://localhost:5000/api/*`. Handle auth tokens (store JWT from login response, attach to all subsequent requests). |
-| 2 | **Implement real Login flow** | 🔴 Critical | `POST /api/auth/login` → store JWT token → redirect to dashboard. Currently the login form UI exists but submits nowhere. |
-| 3 | **Implement real Signup flow** | 🔴 Critical | `POST /api/auth/register` → handle success/error → redirect to login. Currently the signup form UI exists but submits nowhere. |
-| 4 | **Build authenticated API client** | 🔴 Critical | Create a reusable fetch wrapper that attaches `credentials: 'include'` or `Authorization: Bearer <token>` to every request. Handle 401 (expired token) → redirect to login. |
+| 1 | **Wire `lib/api.ts` to the real backend** | 🔴 Critical | Route dashboard data calls to `lib/api/` modules (`vehicles`, `emergencies`, `trajectories`, `orchestration`). |
+| 2 | **Implement real Login flow** | ✅ Done | `POST /api/auth/login` → issues HTTP-only cookie → populates session → redirects to dashboard. |
+| 3 | **Implement real Signup flow** | ✅ Done | `POST /api/auth/register` → assigns `CONTROL_ROOM` → creates account → auto-authenticates. |
+| 4 | **Build authenticated API client** | ✅ Done | Centralized HTTP client (`lib/api/client.ts`) with `credentials: 'include'`, typed error normalization, and session persistence. |
 | 5 | **Connect Dashboard to real backend data** | 🔴 Critical | Replace mock `DashboardData` with live data from `GET /api/vehicles`, `GET /api/emergencies`, `GET /api/trajectories`, `POST /api/orchestration/emergencies/:id/analyze`. |
 | 6 | **Implement Socket.IO client connection** | 🔴 Critical | Connect to `http://localhost:5000` via `socket.io-client`, authenticate with JWT, join rooms (`control-room`, `emergency:${id}`, `vehicle:${id}`), handle live events (`deviation.detected`, `decision.created`, `trajectory.ingested`, etc.). |
 
@@ -433,7 +435,7 @@ Complete API, database, and event documentation is available in the `docs/` dire
 For developers connecting the frontend dashboard to the backend:
 
 ### 1. Authentication
-Send credentials to `POST /api/auth/login`. The server returns an HTTP-only `token` cookie and a bearer token in the JSON response:
+Send credentials to `POST /api/auth/login`. The server returns an HTTP-only `token` cookie (`SameSite=Strict`, 7 days) and user profile:
 ```javascript
 const res = await fetch('http://localhost:5000/api/auth/login', {
   method: 'POST',
@@ -441,7 +443,8 @@ const res = await fetch('http://localhost:5000/api/auth/login', {
   credentials: 'include',
   body: JSON.stringify({ email: 'operator@geoagent.local', password: 'SecurePassword123!' })
 });
-const { token, user } = await res.json();
+const { user } = await res.json();
+// Subsequent requests automatically include the HTTP-only cookie via credentials: 'include'
 ```
 
 ### 2. Calling REST Endpoints
@@ -506,14 +509,14 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 ## Summary: Current State at a Glance
 
 ```
-✅ Backend API (40+ endpoints, 12 modules)     → COMPLETE & TESTED
+✅ Backend API (40+ endpoints, 12 modules)     → COMPLETE & TESTED (72/72 tests passing)
 ✅ Python Routing Engine (V2X, maps)            → COMPLETE & STANDALONE
-⚠️  Frontend UI (pages, components)             → BUILT but runs on MOCK DATA
-❌ Frontend ↔ Backend Integration               → NOT CONNECTED
-❌ Real Interactive Map                          → SVG PLACEHOLDER only
+✅ Frontend Authentication & Session            → COMPLETE & CONNECTED (HTTP-only cookies, 31/31 tests passing)
+⚠️  Dashboard Telemetry Widgets                 → BUILT (Currently using mock data layer)
+⏳ Real-time Socket.IO in Frontend              → NEXT TASK
+❌ Real Interactive Map                          → SVG PLACEHOLDER only (Do not build yet)
 ❌ Control Room Dashboard                       → NOT BUILT
-❌ Real-time Socket.IO in Frontend              → NOT IMPLEMENTED
 ❌ Docker / CI-CD                               → NOT CONFIGURED
 ```
 
-> **The #1 priority for next sprint**: Wire the frontend to the backend (tasks #1–#6 above). Everything else depends on this integration.
+> **Current sprint focus**: Connect remaining dashboard widgets to domain API endpoints and configure Socket.IO push streaming.

@@ -10,10 +10,11 @@ set -u
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INTERVAL="${AUTO_COMMIT_INTERVAL:-60}"
+REPO_DIR="${AUTO_COMMIT_REPO_DIR:-/Users/priyanshu/Documents/geoagent-emegency-project}"
 
 mkdir -p "$SKILL_DIR/../assets"
 
-echo "Starting auto-commit loop (interval=${INTERVAL}s, repo=$AUTO_COMMIT_REPO_DIR)."
+echo "Starting auto-commit loop (interval=${INTERVAL}s, repo=${REPO_DIR})."
 echo "Press Ctrl-C to stop."
 
 while true; do
