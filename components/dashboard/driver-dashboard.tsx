@@ -1,13 +1,34 @@
 'use client'
 
-import { Eye, EyeOff, PhoneCall, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import {
+  AlertCircle,
+  AlertTriangle,
+  Ambulance,
+  Eye,
+  EyeOff,
+  LayoutDashboard,
+  Navigation,
+  PhoneCall,
+  RefreshCw,
+  Siren,
+} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { getDashboard } from '@/lib/api'
+import { vehicleApi } from '@/lib/api/vehicles'
+import { emergencyApi } from '@/lib/api/emergencies'
+import { incidentApi } from '@/lib/api/incidents'
+import type { Emergency, Vehicle, Incident } from '@/lib/api/types'
 import type { DashboardData } from '@/lib/mock-data'
+import { cn } from '@/lib/utils'
+
 import { DashboardTopbar } from './dashboard-topbar'
+import { EmergencySummaryCards } from './emergency-summary-cards'
+import { VehicleFleetPanel } from './vehicle-fleet-panel'
+import { ActiveEmergenciesPanel } from './active-emergencies-panel'
+import { RoadIncidentsPanel } from './road-incidents-panel'
 import { EtaSummary } from './eta-summary'
 import { GeoAgentCard } from './geoagent-card'
 import { MapPlaceholder } from './map-placeholder'
@@ -23,88 +44,258 @@ function formatTime(date: Date) {
 }
 
 export function DriverDashboard({ data }: { data: DashboardData }) {
-  const [lastRefreshed, setLastRefreshed] = useState(() =>
-    formatTime(new Date()),
-  )
+  const [activeTab, setActiveTab] = useState<'operations' | 'telemetry'>('operations')
+
+  // Live Backend State
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [emergencies, setEmergencies] = useState<Emergency[]>([])
+  const [incidents, setIncidents] = useState<Incident[]>([])
+  const [loadingLive, setLoadingLive] = useState<boolean>(true)
+  const [liveError, setLiveError] = useState<string | null>(null)
+
+  // Route & UI State
+  const [lastRefreshed, setLastRefreshed] = useState(() => formatTime(new Date()))
   const [refreshing, setRefreshing] = useState(false)
   const [showRecommended, setShowRecommended] = useState(true)
   const [contactOpen, setContactOpen] = useState(false)
   const [contactSent, setContactSent] = useState(false)
 
+  // Fetch real data from live backend REST endpoints
+  const fetchLiveData = useCallback(async () => {
+    setLoadingLive(true)
+    setLiveError(null)
+
+    const [vRes, eRes, iRes] = await Promise.allSettled([
+      vehicleApi.list(),
+      emergencyApi.list(),
+      incidentApi.list(),
+    ])
+
+    const errors: string[] = []
+
+    if (vRes.status === 'fulfilled') {
+      setVehicles(vRes.value.data || [])
+    } else {
+      errors.push(`Vehicles: ${vRes.reason?.message || 'Failed to load'}`)
+    }
+
+    if (eRes.status === 'fulfilled') {
+      setEmergencies(eRes.value.data || [])
+    } else {
+      errors.push(`Emergencies: ${eRes.reason?.message || 'Failed to load'}`)
+    }
+
+    if (iRes.status === 'fulfilled') {
+      setIncidents(iRes.value.data || [])
+    } else {
+      errors.push(`Incidents: ${iRes.reason?.message || 'Failed to load'}`)
+    }
+
+    if (errors.length > 0) {
+      setLiveError(errors.join(' · '))
+    }
+
+    setLoadingLive(false)
+    setLastRefreshed(formatTime(new Date()))
+  }, [])
+
+  useEffect(() => {
+    fetchLiveData()
+  }, [fetchLiveData])
+
   const handleRefresh = async () => {
     setRefreshing(true)
-    // Re-run the API adapter (mock today, real GET /api/dashboard/:id later).
-    await getDashboard(data.ambulanceId)
-    setLastRefreshed(formatTime(new Date()))
+    await Promise.all([
+      fetchLiveData(),
+      getDashboard(data.ambulanceId),
+    ])
     setRefreshing(false)
   }
+
+  const activeEmergenciesCount = emergencies.filter(
+    (e) => !['RESOLVED', 'CANCELLED'].includes(e.status),
+  ).length
 
   return (
     <div className="min-h-svh bg-background">
       <DashboardTopbar
         ambulanceId={data.ambulanceId}
         driverName={data.driverName}
-        emergencyActive={data.emergencyActive}
+        emergencyActive={data.emergencyActive || activeEmergenciesCount > 0}
         lastRefreshed={lastRefreshed}
       />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Action bar */}
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <Button onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={refreshing ? 'animate-spin' : undefined} />
-            Refresh Route
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setShowRecommended((v) => !v)}
-            aria-pressed={showRecommended}
-          >
-            {showRecommended ? <EyeOff /> : <Eye />}
-            View Alternative Route
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => {
-              setContactSent(false)
-              setContactOpen(true)
-            }}
-          >
-            <PhoneCall />
-            Contact Control Room
-          </Button>
-          <span className="ml-auto text-xs text-muted-foreground">
-            Last refreshed: {lastRefreshed}
-          </span>
+        {/* Navigation & Action Bar */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* View Mode Toggle */}
+          <div className="inline-flex rounded-xl border border-border bg-card p-1 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('operations')}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all',
+                activeTab === 'operations'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <LayoutDashboard className="size-3.5" />
+              <span>Operations Live Overview</span>
+              {activeEmergenciesCount > 0 ? (
+                <span className="flex size-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
+                  {activeEmergenciesCount}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('telemetry')}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all',
+                activeTab === 'telemetry'
+                  ? 'bg-primary text-primary-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <Navigation className="size-3.5" />
+              <span>Corridor Telemetry & Route</span>
+            </button>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing || loadingLive}
+              size="sm"
+            >
+              <RefreshCw
+                className={refreshing || loadingLive ? 'animate-spin' : undefined}
+              />
+              Refresh Live Data
+            </Button>
+
+            {activeTab === 'telemetry' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRecommended((v) => !v)}
+                aria-pressed={showRecommended}
+              >
+                {showRecommended ? <EyeOff /> : <Eye />}
+                View Alternative Route
+              </Button>
+            ) : null}
+
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setContactSent(false)
+                setContactOpen(true)
+              }}
+            >
+              <PhoneCall />
+              Contact Control Room
+            </Button>
+
+            <span className="text-xs text-muted-foreground">
+              Synced: {lastRefreshed}
+            </span>
+          </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-5">
-          {/* Left column: ETA summary, large map, then timeline */}
-          <div className="space-y-6 lg:col-span-3">
-            <EtaSummary data={data} />
-            <MapPlaceholder
-              markers={data.markers}
-              showRecommended={showRecommended}
+        {/* Global Live Error Banner */}
+        {liveError ? (
+          <div className="mb-6 flex items-start justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-700 dark:text-rose-400">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>
+                <strong>Backend Sync Warning:</strong> {liveError}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={fetchLiveData}
+              className="ml-3 shrink-0 underline hover:no-underline font-semibold"
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
+
+        {/* TAB 1: OPERATIONS LIVE OVERVIEW */}
+        {activeTab === 'operations' ? (
+          <div className="space-y-6">
+            {/* Live Metrics Summary */}
+            <EmergencySummaryCards
+              emergencies={emergencies}
+              vehicles={vehicles}
+              incidents={incidents}
+              loading={loadingLive}
             />
-            <TimelinePanel events={data.timeline} />
-          </div>
 
-          {/* Right column: deviation & benefit analysis */}
-          <div className="space-y-6 lg:col-span-2">
-            <RouteStatusCards data={data} />
-            <GeoAgentCard explanation={data.explanation} />
+            {/* Operations Grid */}
+            <div className="grid gap-6 lg:grid-cols-5">
+              {/* Left Column: Live Emergency Stream & Road Hazards */}
+              <div className="space-y-6 lg:col-span-3">
+                <ActiveEmergenciesPanel
+                  emergencies={emergencies}
+                  loading={loadingLive}
+                  error={liveError && emergencies.length === 0 ? liveError : null}
+                  onRetry={fetchLiveData}
+                />
+                <RoadIncidentsPanel
+                  incidents={incidents}
+                  loading={loadingLive}
+                  error={liveError && incidents.length === 0 ? liveError : null}
+                  onRetry={fetchLiveData}
+                />
+              </div>
+
+              {/* Right Column: Fleet Unit Registry */}
+              <div className="space-y-6 lg:col-span-2">
+                <VehicleFleetPanel
+                  vehicles={vehicles}
+                  loading={loadingLive}
+                  error={liveError && vehicles.length === 0 ? liveError : null}
+                  onRetry={fetchLiveData}
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* TAB 2: CORRIDOR TELEMETRY & ROUTE (Preserved View) */
+          <div className="grid gap-6 lg:grid-cols-5">
+            {/* Left column: ETA summary, large map, then timeline */}
+            <div className="space-y-6 lg:col-span-3">
+              <EtaSummary data={data} />
+              <MapPlaceholder
+                markers={data.markers}
+                showRecommended={showRecommended}
+              />
+              <TimelinePanel events={data.timeline} />
+            </div>
+
+            {/* Right column: deviation & benefit analysis */}
+            <div className="space-y-6 lg:col-span-2">
+              <RouteStatusCards data={data} />
+              <GeoAgentCard explanation={data.explanation} />
+            </div>
+          </div>
+        )}
       </main>
 
+      {/* Priority Voice Modal */}
       <Modal
         open={contactOpen}
         onClose={() => setContactOpen(false)}
         title={contactSent ? 'Control room notified' : 'Contact control room?'}
         description={
           contactSent
-            ? `A voice channel request for ${data.ambulanceId} has been queued (prototype).`
-            : `This will open a priority line to the control room for ambulance ${data.ambulanceId}.`
+            ? `A priority voice channel request for ${data.ambulanceId} has been queued with dispatcher.`
+            : `This will open an immediate priority radio/voice channel to the central control room for unit ${data.ambulanceId}.`
         }
         footer={
           contactSent ? (
@@ -119,7 +310,7 @@ export function DriverDashboard({ data }: { data: DashboardData }) {
                 onClick={() => setContactSent(true)}
               >
                 <PhoneCall />
-                Confirm call
+                Confirm Priority Call
               </Button>
             </>
           )
