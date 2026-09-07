@@ -1,4 +1,5 @@
 import analysisService from '../analysis/analysis.service.js';
+import predictionService from '../analysis/prediction.service.js';
 import routingService from '../routes/routing.service.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Incident from '../incidents/incident.model.js';
@@ -24,8 +25,22 @@ export const geoAgentToolDeclarations = [
     }
   },
   {
+    name: 'getPrediction',
+    description: 'Retrieve quantitative ETA and delay prediction metrics including delay risk, rolling speed trend, and evidence-based confidence for an emergency vehicle.',
+    parameters: {
+      type: 'object',
+      properties: {
+        vehicleId: {
+          type: 'string',
+          description: 'The vehicle identifier, e.g. AMB-101'
+        }
+      },
+      required: ['vehicleId']
+    }
+  },
+  {
     name: 'getAlternativeRoutes',
-    description: 'Calculate alternative candidate routes between origin and destination to avoid traffic congestion or incident areas.',
+    description: 'Calculate real alternative candidate routes between origin and destination with traffic-aware duration and distance comparison.',
     parameters: {
       type: 'object',
       properties: {
@@ -76,48 +91,45 @@ export const executeGeoAgentTool = async (name, args = {}) => {
       return await analysisService.getVehicleSituation(vehicleId);
     }
 
+    case 'getPrediction': {
+      const { vehicleId } = args;
+      if (!vehicleId) throw new Error('vehicleId parameter is required');
+      return await predictionService.predictForVehicle(vehicleId);
+    }
+
     case 'getAlternativeRoutes': {
       const { originLng, originLat, destLng, destLat } = args;
       const origin = createPoint(originLng, originLat);
       const destination = createPoint(destLng, destLat);
       
-      const primaryRoute = await routingService.getRoute(origin, destination);
-      const baseDistance = primaryRoute.distanceMeters;
-      const baseDuration = primaryRoute.durationSeconds;
+      const routeResult = await routingService.getRouteWithAlternatives(origin, destination);
+      const primary = routeResult.primary;
+      const alternatives = routeResult.alternatives || [];
 
-      // Candidate alternative routes
-      const routes = [
+      const candidateRoutes = [
         {
-          name: 'Route A (Primary Corridor)',
-          distanceMeters: baseDistance,
-          etaMinutes: Math.round(baseDuration / 60),
-          traffic: 'HEAVY',
-          incidentExposure: 'HIGH',
-          description: 'Direct main arterial route, currently experiencing heavy congestion.'
+          name: primary.description || 'Primary Corridor',
+          distanceMeters: primary.distanceMeters,
+          etaMinutes: Math.max(1, Math.round(primary.durationSeconds / 60)),
+          traffic: primary.trafficDelaySeconds > 120 ? 'HEAVY' : 'MODERATE',
+          incidentExposure: 'EVALUATED',
+          description: primary.description || 'Current active response corridor'
         },
-        {
-          name: 'Route B (Express Bypass)',
-          distanceMeters: Math.round(baseDistance * 1.15),
-          etaMinutes: Math.max(1, Math.round((baseDuration * 0.7) / 60)),
-          traffic: 'MODERATE',
+        ...alternatives.map((alt, idx) => ({
+          name: alt.description || `Alternative Route ${idx + 1}`,
+          distanceMeters: alt.distanceMeters,
+          etaMinutes: Math.max(1, Math.round(alt.durationSeconds / 60)),
+          traffic: (alt.trafficDelaySeconds || 0) > 120 ? 'HEAVY' : 'LIGHT',
           incidentExposure: 'LOW',
-          description: 'Slightly longer distance via bypass road with free-flowing traffic.'
-        },
-        {
-          name: 'Route C (Secondary Parallel Arterial)',
-          distanceMeters: Math.round(baseDistance * 1.08),
-          etaMinutes: Math.max(1, Math.round((baseDuration * 0.85) / 60)),
-          traffic: 'LIGHT',
-          incidentExposure: 'LOW',
-          description: 'Parallel service road route avoiding major intersection bottlenecks.'
-        }
+          description: alt.description || `Alternative corridor via bypass ${idx + 1}`
+        }))
       ];
 
       return {
         origin: origin.coordinates,
         destination: destination.coordinates,
-        provider: primaryRoute.provider,
-        candidateRoutes: routes
+        provider: primary.provider,
+        candidateRoutes
       };
     }
 
