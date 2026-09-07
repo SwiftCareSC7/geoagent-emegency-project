@@ -19,11 +19,11 @@ import {
   Siren,
   TrafficCone,
   Truck,
-} from 'lucide-react'
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   analysisApi,
+  decisionApi,
   emergencyApi,
   orchestrationApi,
   routeApi,
@@ -35,7 +35,10 @@ import {
   type SituationAnalysis,
   type Trajectory,
   type Vehicle,
+  type PredictionResult,
+  type Decision
 } from '@/lib/api/index'
+import { useRealtimeEmergency } from '@/lib/socket/useRealtime'
 import { Button } from '@/components/ui/button'
 import { EmergencyOverviewCard } from './emergency-overview-card'
 import { VehicleMovementPanel } from './vehicle-movement-panel'
@@ -43,6 +46,9 @@ import { RouteAnalysisPanel } from './route-analysis-panel'
 import { DeviationAnalysisPanel } from './deviation-analysis-panel'
 import { CorrelatedIncidentsPanel } from './correlated-incidents-panel'
 import { EpistemicBreakdownCard } from './epistemic-breakdown-card'
+import { PredictionIntelligencePanel } from './prediction-intelligence-panel'
+import { RouteComparisonCard } from './route-comparison-card'
+import { DecisionApprovalCard } from './decision-approval-card'
 import { cn } from '@/lib/utils'
 
 interface EmergencyDetailViewProps {
@@ -58,6 +64,8 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
   const [trajectoryTotal, setTrajectoryTotal] = useState<number>(0)
   const [trajectoryPage, setTrajectoryPage] = useState<number>(1)
   const [situationAnalysis, setSituationAnalysis] = useState<SituationAnalysis | null>(null)
+  const [prediction, setPrediction] = useState<PredictionResult | null>(null)
+  const [decision, setDecision] = useState<Decision | null>(null)
   const [orchestrationResult, setOrchestrationResult] = useState<OrchestrationWorkflowResult | null>(null)
 
   const [loading, setLoading] = useState(true)
@@ -65,6 +73,39 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string>('')
+
+  // Real-Time Socket.IO Hook
+  const assignedVehId = emergency?.assignedVehicle
+    ? typeof emergency.assignedVehicle === 'object' && 'vehicleId' in emergency.assignedVehicle
+      ? emergency.assignedVehicle.vehicleId
+      : (typeof emergency.assignedVehicle === 'string' ? emergency.assignedVehicle : undefined)
+    : undefined;
+
+  const {
+    isConnected: socketConnected,
+    freshness,
+    liveLocation,
+    liveDeviation,
+    livePrediction,
+    liveDecision,
+    getAgeString
+  } = useRealtimeEmergency(emergencyId, assignedVehId);
+
+  // Reflect live telemetry updates into state
+  useEffect(() => {
+    if (liveLocation) {
+      setLatestTrajectory({
+        id: `live-${Date.now()}`,
+        vehicleId: liveLocation.vehicleId,
+        location: liveLocation.location as any,
+        speed: liveLocation.speed,
+        heading: liveLocation.heading,
+        timestamp: liveLocation.timestamp,
+        source: 'DEVICE',
+        createdAt: liveLocation.timestamp
+      });
+    }
+  }, [liveLocation]);
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -127,6 +168,13 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
           .then((traj) => setLatestTrajectory(traj))
         promises.push(latestTrajPromise)
 
+        // Real-Time Arrival & Delay Prediction
+        const predPromise = analysisApi
+          .getVehiclePredictionSafe(assignedVehId)
+          .then((p) => setPrediction(p))
+          .catch(() => setPrediction(null))
+        promises.push(predPromise)
+
         // Trajectory History (Page 1, 5 fixes)
         const trajHistoryPromise = trajectoryApi
           .getHistory(assignedVehId, { page: 1, limit: 5 })
@@ -151,7 +199,21 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         setTrajectoryHistory([])
         setTrajectoryTotal(0)
         setSituationAnalysis(null)
+        setPrediction(null)
       }
+
+      // Authoritative Decision
+      const decisionPromise = decisionApi
+        .list({ emergencyId })
+        .then((res) => {
+          if (res.data && res.data.length > 0) {
+            setDecision(res.data[0])
+          } else {
+            setDecision(null)
+          }
+        })
+        .catch(() => setDecision(null))
+      promises.push(decisionPromise)
 
       // Orchestration full mission analysis
       const orchPromise = orchestrationApi
@@ -203,6 +265,13 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         if (res.data.analysis && 'deviation' in res.data.analysis) {
           setSituationAnalysis(res.data.analysis as SituationAnalysis)
         }
+        if (res.data.decision) {
+          setDecision(res.data.decision)
+        }
+      }
+      if (assignedVehId) {
+        const p = await analysisApi.getVehiclePredictionSafe(assignedVehId)
+        setPrediction(p)
       }
       setLastUpdated(new Date().toLocaleTimeString())
     } catch (err) {
@@ -264,6 +333,26 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Socket.IO Real-Time Stream Freshness Indicator */}
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono border border-zinc-200/50 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 shadow-sm">
+            {freshness === 'LIVE' ? (
+              <span className="flex items-center gap-1.5 text-emerald-500 dark:text-emerald-400 font-bold">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>LIVE FEED</span>
+              </span>
+            ) : freshness === 'STALE' ? (
+              <span className="flex items-center gap-1.5 text-amber-500 dark:text-amber-400 font-medium">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                <span>STALE ({getAgeString()})</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-zinc-400 font-medium">
+                <span className="h-2 w-2 rounded-full bg-zinc-400" />
+                <span>REST REFRESH</span>
+              </span>
+            )}
+          </div>
+
           {lastUpdated && (
             <span className="text-xs font-mono text-zinc-400 flex items-center gap-1 bg-zinc-100/60 dark:bg-zinc-800/60 px-2.5 py-1 rounded-md border border-zinc-200/40 dark:border-zinc-700/40">
               <Clock className="h-3 w-3" />
@@ -311,10 +400,35 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         </div>
       )}
 
-      {/* Section 2: Expected Route Corridor */}
+      {/* Section 2: Real-Time Arrival & Delay Prediction */}
+      <PredictionIntelligencePanel
+        prediction={prediction}
+        livePrediction={livePrediction}
+        isLoading={loading}
+      />
+
+      {/* Section 3: "Why did the route change?" & "What if we do nothing?" Comparison */}
+      <RouteComparisonCard
+        currentRoute={route}
+        alternatives={(orchestrationResult?.geoAgent as any)?.comparison?.alternatives || []}
+        whyRouteChanged={(orchestrationResult?.geoAgent as any)?.whyRouteChanged || []}
+        whatIfDoNothing={(orchestrationResult?.geoAgent as any)?.comparison?.whatIfDoNothing}
+        currentEtaMinutes={situationAnalysis?.eta?.currentMinutes}
+        plannedEtaMinutes={situationAnalysis?.eta?.originalMinutes}
+      />
+
+      {/* Section 4: Authoritative Decision Engine & Operator Approval Card */}
+      <DecisionApprovalCard
+        decision={decision}
+        liveDecision={liveDecision}
+        emergencyId={emergencyId}
+        onDecisionUpdated={(updated) => setDecision(updated)}
+      />
+
+      {/* Section 5: Expected Route Corridor */}
       <RouteAnalysisPanel route={route} loading={loading} />
 
-      {/* Section 3: Vehicle Movement & GPS Telemetry Table */}
+      {/* Section 6: Vehicle Movement & GPS Telemetry Table */}
       <VehicleMovementPanel
         vehicle={vehicle}
         latestFix={latestTrajectory}
@@ -327,19 +441,19 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         onRefresh={loadData}
       />
 
-      {/* Section 4: Corridor Deviation & Traffic Intelligence */}
+      {/* Section 7: Corridor Deviation & Traffic Intelligence */}
       <DeviationAnalysisPanel
         analysis={situationAnalysis}
         loading={loading}
       />
 
-      {/* Section 5: Corridor Hazards & Correlated Incidents */}
+      {/* Section 8: Corridor Hazards & Correlated Incidents */}
       <CorrelatedIncidentsPanel
         correlatedIncidents={situationAnalysis?.incidents || []}
         loading={loading}
       />
 
-      {/* Section 6: 3-Tier Epistemic Analysis */}
+      {/* Section 9: 3-Tier Epistemic Analysis */}
       <EpistemicBreakdownCard
         breakdown={orchestrationResult?.epistemicBreakdown}
         executionTimeMs={orchestrationResult?.executionTimeMs}
