@@ -14,6 +14,7 @@ export const REALTIME_EVENTS = {
   ROUTE_DEVIATION_DETECTED: 'route.deviation.detected',
   TRAFFIC_UPDATED: 'traffic.updated',
   ETA_UPDATED: 'eta.updated',
+  PREDICTION_UPDATED: 'prediction.updated',
   GEOAGENT_ANALYSIS_CREATED: 'geoagent.analysis.created',
   DECISION_CREATED: 'decision.created',
   DECISION_APPROVED: 'decision.approved',

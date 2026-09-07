@@ -170,6 +170,16 @@ class RealtimeService {
   }
 
   /**
+   * Emits Prediction updated event
+   */
+  emitPredictionUpdated(emergencyId, vehicleId, payload) {
+    const rooms = [REALTIME_ROOMS.CONTROL_ROOM];
+    if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
+    if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
+    this.emitToRooms(rooms, REALTIME_EVENTS.PREDICTION_UPDATED, payload);
+  }
+
+  /**
    * Emits GeoAgent analysis created event
    */
   emitGeoAgentAnalysis(emergencyId, vehicleId, payload) {

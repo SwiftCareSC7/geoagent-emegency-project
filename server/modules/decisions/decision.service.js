@@ -193,37 +193,29 @@ class DecisionService {
 
     if (destPoint && routingService) {
       try {
-        const primary = await routingService.getRoute(
+        const routeResult = await routingService.getRouteWithAlternatives(
           emergency.location,
           destPoint
         );
-        const baseDistance = primary.distanceMeters;
-        const baseDuration = primary.durationSeconds;
+        const primary = routeResult.primary;
+        const alts = routeResult.alternatives || [];
         alternativeRoutes = [
           {
-            name: 'Route A (Primary Corridor)',
-            distanceMeters: baseDistance,
-            etaMinutes: Math.round(baseDuration / 60),
-            traffic: 'HEAVY',
+            name: primary.description || 'Route A (Primary Corridor)',
+            distanceMeters: primary.distanceMeters,
+            etaMinutes: Math.round(primary.durationSeconds / 60),
+            traffic: (primary.trafficDelaySeconds || 0) > 120 ? 'HEAVY' : 'MODERATE',
             incidentExposure: 'MEDIUM',
-            description: 'Direct primary corridor'
+            description: primary.description || 'Direct primary corridor'
           },
-          {
-            name: 'Route B (Express Bypass)',
-            distanceMeters: Math.round(baseDistance * 1.15),
-            etaMinutes: Math.max(1, Math.round((baseDuration * 0.7) / 60)),
-            traffic: 'MODERATE',
+          ...alts.map((alt, idx) => ({
+            name: alt.description || `Alternative Route ${idx + 1}`,
+            distanceMeters: alt.distanceMeters,
+            etaMinutes: Math.max(1, Math.round(alt.durationSeconds / 60)),
+            traffic: (alt.trafficDelaySeconds || 0) > 120 ? 'HEAVY' : 'LIGHT',
             incidentExposure: 'LOW',
-            description: 'Express bypass'
-          },
-          {
-            name: 'Route C (Secondary Arterial)',
-            distanceMeters: Math.round(baseDistance * 1.08),
-            etaMinutes: Math.max(1, Math.round((baseDuration * 0.85) / 60)),
-            traffic: 'LIGHT',
-            incidentExposure: 'LOW',
-            description: 'Secondary parallel arterial'
-          }
+            description: alt.description || `Alternative corridor via bypass ${idx + 1}`
+          }))
         ];
       } catch (err) {
         // Routing provider failure — engine treats it as "no alternative routes available".
