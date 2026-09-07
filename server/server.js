@@ -51,13 +51,21 @@ app.use(helmet());
 const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:3000',
-  'http://localhost:5173'
+  'http://localhost:5173',
+  // Vercel deployments — auto-allow any *.vercel.app subdomain
+  /^https:\/\/.*\.vercel\.app$/
 ].filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
+    // Check exact matches and regex patterns (for Vercel subdomains)
+    const isAllowed = allowedOrigins.some((allowed) => {
+      if (typeof allowed === 'string') return allowed === origin;
+      if (allowed instanceof RegExp) return allowed.test(origin);
+      return false;
+    });
+    if (isAllowed) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));
