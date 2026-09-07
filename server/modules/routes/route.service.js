@@ -99,8 +99,20 @@ class RouteService {
     const skip = (safePage - 1) * safeLimit;
 
     const query = {};
-    if (filters.emergencyId) query.emergency = filters.emergencyId;
-    if (filters.vehicleId) query.vehicle = filters.vehicleId;
+    if (filters.emergencyId) {
+      const isEmergencyObjectId = typeof filters.emergencyId === 'string' && filters.emergencyId.match(/^[0-9a-fA-F]{24}$/);
+      const em = await Emergency.findOne(
+        isEmergencyObjectId ? { _id: filters.emergencyId } : { emergencyId: filters.emergencyId }
+      );
+      query.emergency = em ? em._id : filters.emergencyId;
+    }
+    if (filters.vehicleId) {
+      const isVehicleObjectId = typeof filters.vehicleId === 'string' && filters.vehicleId.match(/^[0-9a-fA-F]{24}$/);
+      const veh = await Vehicle.findOne(
+        isVehicleObjectId ? { _id: filters.vehicleId } : { vehicleId: filters.vehicleId }
+      );
+      query.vehicle = veh ? veh._id : filters.vehicleId;
+    }
     if (filters.routeType) query.routeType = filters.routeType;
     if (filters.status) query.status = filters.status;
 
@@ -109,8 +121,8 @@ class RouteService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(safeLimit)
-        .populate('emergency', 'caseId status priority')
-        .populate('vehicle', 'vehicleId status'),
+        .populate('emergency', 'emergencyId status priority')
+        .populate('vehicle', 'vehicleId status registrationNumber driverName'),
       Route.countDocuments(query)
     ]);
 
@@ -136,8 +148,8 @@ class RouteService {
     const query = isObjectId ? { _id: routeId } : { routeId };
 
     const route = await Route.findOne(query)
-      .populate('emergency', 'caseId status')
-      .populate('vehicle', 'vehicleId status callSign');
+      .populate('emergency', 'emergencyId status priority')
+      .populate('vehicle', 'vehicleId status registrationNumber driverName');
 
     if (!route) {
       throw new Error('Route not found');
