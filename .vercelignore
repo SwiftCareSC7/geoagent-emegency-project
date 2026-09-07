@@ -1,0 +1,9 @@
+# Legacy nested Next.js scaffold — not part of the active app
+geoagent-emergency-project/
+routing-engine/
+server/
+docs/
+*.md
+.agents/
+.env
+.env.*
