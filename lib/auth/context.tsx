@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: `usr_${Date.now()}`,
           email: data.email,
           name: data.name || data.email.split('@')[0],
-          role: (data.role as any) || 'CONTROL_ROOM',
+          role: 'CONTROL_ROOM',
           createdAt: new Date().toISOString(),
         }
         setUser(fallbackUser)
