@@ -82,4 +82,9 @@ export const routeApi = {
   create(payload: CreateRoutePayload): Promise<RouteSingleResponse> {
     return post<RouteSingleResponse>('/routes', payload)
   },
+
+  /** Compare a route against candidate alternatives and what-if scenarios */
+  compare(routeId: string): Promise<{ success: true; message: string; data: any }> {
+    return get<{ success: true; message: string; data: any }>(`/routes/${encodeURIComponent(routeId)}/compare`)
+  },
 }

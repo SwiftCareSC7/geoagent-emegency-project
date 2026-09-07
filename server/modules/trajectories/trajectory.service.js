@@ -1,8 +1,13 @@
 import Trajectory from './trajectory.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import realtimeService from '../realtime/realtime.service.js';
+import predictionService from '../analysis/prediction.service.js';
 import { formatVehicleLocationPayload } from '../realtime/realtime.events.js';
 import { calculateDistance } from '../../shared/services/geospatial.service.js';
+
+// Cache for throttling live prediction calculations on incoming telemetry
+const vehicleLastPredictionTimes = new Map();
+const vehicleLastPredictionLocations = new Map();
 
 /**
  * Ingest a new GPS trajectory point with robust telemetry validation
@@ -120,7 +125,7 @@ export const createTrajectory = async (trajectoryData) => {
   try {
     const locationPayload = formatVehicleLocationPayload(
       vehicle.vehicleId,
-      location,
+      validLocation,
       speed,
       heading,
       newTrajectory.timestamp.toISOString()
@@ -134,6 +139,22 @@ export const createTrajectory = async (trajectoryData) => {
   } catch (err) {
     // Non-blocking real-time error logging
     console.error(`[TrajectoryService] Real-time event emission error: ${err.message}`);
+  }
+
+  // 5. Throttled Real-Time Prediction Refresh (position delta >= 100m or >= 30s elapsed)
+  const now = Date.now();
+  const lastTime = vehicleLastPredictionTimes.get(vehicle.vehicleId) || 0;
+  const lastLoc = vehicleLastPredictionLocations.get(vehicle.vehicleId);
+  const timeSinceLast = now - lastTime;
+  const distMeters = lastLoc ? calculateDistance(lastLoc, validLocation).meters : Infinity;
+
+  if (timeSinceLast >= 30000 || distMeters >= 100) {
+    vehicleLastPredictionTimes.set(vehicle.vehicleId, now);
+    vehicleLastPredictionLocations.set(vehicle.vehicleId, validLocation);
+    // Fire-and-forget background prediction refresh so ingestion stays fast (< 20ms)
+    predictionService.predictForVehicle(vehicle.vehicleId).catch(() => {
+      // Non-fatal if vehicle is not currently assigned to an active route
+    });
   }
 
   return newTrajectory;

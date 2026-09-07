@@ -393,6 +393,26 @@ class PredictionService {
       traffic = await trafficService.getTrafficForLocation(latestTrajectory.location);
     }
 
+    // Query vehicle-scoped historical trajectory speed benchmark (avoiding cross-vehicle / cross-emergency leakage)
+    let historicalSpeedKmh = null;
+    try {
+      const pastTrajectories = await Trajectory.find({ vehicle: vehicle._id })
+        .sort({ timestamp: -1 })
+        .skip(10)
+        .limit(20)
+        .select('speed');
+      if (pastTrajectories && pastTrajectories.length >= 5) {
+        const validSpeeds = pastTrajectories
+          .map((p) => (typeof p.speed === 'number' ? p.speed : 0))
+          .filter((s) => s > 5);
+        if (validSpeeds.length > 0) {
+          historicalSpeedKmh = Number((validSpeeds.reduce((a, b) => a + b, 0) / validSpeeds.length).toFixed(1));
+        }
+      }
+    } catch {
+      // Non-blocking query
+    }
+
     const prediction = this.calculatePrediction({
       latestTrajectory,
       recentTrajectories,
@@ -400,7 +420,8 @@ class PredictionService {
       progress,
       deviation,
       traffic,
-      incidents
+      incidents,
+      historicalSpeedKmh
     });
 
     const emergencyId = route && route.emergency ? route.emergency.emergencyId : null;
