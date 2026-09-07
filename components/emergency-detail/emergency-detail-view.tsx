@@ -35,7 +35,7 @@ import {
   type SituationAnalysis,
   type Trajectory,
   type Vehicle,
-} from '@/lib/api'
+} from '@/lib/api/index'
 import { Button } from '@/components/ui/button'
 import { EmergencyOverviewCard } from './emergency-overview-card'
 import { VehicleMovementPanel } from './vehicle-movement-panel'

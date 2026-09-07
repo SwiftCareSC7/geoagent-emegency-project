@@ -3,6 +3,7 @@
 import {
   Activity,
   AlertCircle,
+  ArrowRight,
   Clock,
   Flame,
   HeartPulse,
@@ -15,6 +16,7 @@ import {
   Truck,
   User,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
 import type { Emergency, EmergencyPriority, AssignedVehicleSummary } from '@/lib/api/types'
 import { Button } from '@/components/ui/button'
@@ -325,6 +327,20 @@ export function ActiveEmergenciesPanel({
                         </span>
                       </div>
                     ) : null}
+                  </div>
+
+                  {/* Action Link to Emergency Detail & Corridor Analysis */}
+                  <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">
+                      Dispatch ID: <span className="font-mono font-medium text-foreground">{e.emergencyId}</span>
+                    </span>
+                    <Link
+                      href={`/emergencies/${encodeURIComponent(e.emergencyId)}`}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors group"
+                    >
+                      <span>Track & Analyze Corridor</span>
+                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </Link>
                   </div>
                 </article>
               )
