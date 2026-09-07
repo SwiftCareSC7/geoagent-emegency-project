@@ -392,21 +392,22 @@ curl http://localhost:5000/api/health
 
 ## 7. Running Automated Test Suites
 
-The test suite validates the complete backend stack across 7 comprehensive test files:
+The automated test suites validate the complete system across integration, security, domain APIs, admin console, and the real-time intelligence pipeline:
 
 ```bash
 cd server
 
-# Run all 7 test suites
-node test-part7.js    # Deviation, Traffic, ETA, Situation Analysis
-node test-part8.js    # GeoAgent AI Function-Calling & Fallbacks
-node test-part9.js    # Real-Time Socket.IO Handshake & Room Broadcasting
-node test-part10.js   # Authoritative Decision & Dispatch Engine
-node test-part11.js   # Full Backend Integration & Epistemic Breakdown
-node test-part12.js   # Hardening, Status Codes & Query Boundaries
-node test-security.js # Dedicated 23-Point Security & Privilege Suite
+# Automated E2E & Intelligence Verification Suites:
+node test-intelligence-pipeline.js # Real-time intelligence pipeline, What-If projection, epistemic factors, GeoAgent tools
+node test-realtime-external-e2e.js # Google Routes/Roads/Traffic providers, telemetry hardening, prediction engine
+node test-admin-e2e.js             # Admin RBAC, real system statistics, database ping latency, paginated exploration
+node test-emergency-detail-e2e.js  # Emergency corridor analysis, routes, trajectories, situation, orchestration
+node test-dashboard-e2e.js         # Dashboard domain feeds (vehicles, emergencies, incidents), empty states
+node test-auth-e2e.js              # Authentication contract, registration, login, cookies, session persistence
+node test-security.js              # Dedicated 23-point security, privilege, and input-sanitization suite
 ```
-**Audit Result**: 72 / 72 assertions passing across 7 test suites (100% pass rate).
+**Audit Result**: **298 / 298 assertions passing across all test suites (100% pass rate)**.
+**TypeScript Verification**: `npx tsc --noEmit` — 0 errors.
 
 ---
 

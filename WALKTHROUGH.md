@@ -155,6 +155,27 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - `server/test-emergency-detail-e2e.js`: 63-point automated integration test suite (100% pass rate).
 - **Verification**: 63 / 63 assertions passing in `server/test-emergency-detail-e2e.js`, 0 TypeScript errors (`npx tsc --noEmit`), clean Next.js production build (`npm run build`).
 
+### Part 14: Real-Time Intelligence Pipeline & Route Candidate Comparison
+- **Goal**: Connect live GPS telemetry, trajectory processing, Google Routes traffic-aware routing, ETA prediction, route candidate comparison ("What if we do nothing?"), structured evidence, Gemini 2.5 Flash advisory tools registry, deterministic decision engine, operator approval, and Socket.IO streaming.
+- **Key Modules & Files**:
+  - `server/modules/routes/providers/googleRoutingProvider.js`: WGS84 coordinate boundary validation, 25-waypoint limit enforcement, `TRAFFIC_AWARE_OPTIMAL` routing preference, polyline decoding, explicit 503 error on missing credentials (no silent mock fallback).
+  - `server/modules/routes/routeComparison.service.js`: Deterministic route comparison matrix (`distanceDeltaMeters`, `durationSeconds`, `etaMinutes`, `trafficDelaySeconds`, `timeSavedMinutes`, `whatIfDoNothing`, `whyRouteChanged`).
+  - `server/modules/routes/route.routes.js`: Mounted `GET /api/routes/:routeId/compare`.
+  - `server/modules/analysis/prediction.service.js` & `prediction.model.js`: Upgraded to model version `v1.3-exponential-traffic-blend` with vehicle-scoped historical speed benchmark (15% blend, zero cross-emergency leakage) and explicit 3-tier epistemic tagging (`OBSERVED`, `DERIVED`, `INFERRED`, `UNKNOWN`).
+  - `server/modules/geoagents/geoAgent.tools.js`: Implemented all 9 required intelligence tools (`getEmergencyState`, `getVehicleState`, `getRecentTrajectory`, `getCurrentRoute`, `getRouteAlternatives`, `getTrafficAnalysis`, `getPrediction`, `getNearbyIncidents`, `getDecisionHistory`) plus operational helpers.
+  - `server/modules/trajectories/trajectory.service.js`: Fixed `location` -> `validLocation` ReferenceError bug and added throttled background prediction refresh trigger (delta >= 100m or >= 30s).
+  - `server/test-intelligence-pipeline.js`: 26-point automated verification suite.
+- **Verification Summary**:
+  - `server/test-intelligence-pipeline.js`: 26 / 26 passing.
+  - `server/test-realtime-external-e2e.js`: 48 / 48 passing.
+  - `server/test-admin-e2e.js`: 60 / 60 passing.
+  - `server/test-emergency-detail-e2e.js`: 63 / 63 passing.
+  - `server/test-dashboard-e2e.js`: 47 / 47 passing.
+  - `server/test-auth-e2e.js`: 31 / 31 passing.
+  - `server/test-security.js`: 23 / 23 passing.
+  - **Total automated assertions**: **298 / 298 passing (100% pass rate)**.
+  - TypeScript typecheck (`npx tsc --noEmit`): 0 errors.
+
 ---
 
 ## 3. End-to-End Emergency Operational Lifecycle
