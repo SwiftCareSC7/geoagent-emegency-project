@@ -30,17 +30,30 @@ class TrafficService {
    * @returns {Promise<Object>} Normalized traffic response
    */
   async getTrafficForLocation(location) {
+    const activeProvider = (process.env.TRAFFIC_PROVIDER || this.providerName || 'mock').toLowerCase();
     try {
       const provider = this.getProvider();
       return await provider.getTrafficForLocation(location);
     } catch (error) {
       console.error(`[TrafficService] Error fetching traffic: ${error.message}`);
+      if (activeProvider === 'google') {
+        return {
+          level: trafficConfig.levels.UNKNOWN,
+          speedKmh: trafficConfig.defaultFreeFlowSpeedKmh,
+          freeFlowSpeedKmh: trafficConfig.defaultFreeFlowSpeedKmh,
+          congestionRatio: 0,
+          source: 'GOOGLE_UNAVAILABLE',
+          epistemicType: 'UNKNOWN',
+          error: error.message
+        };
+      }
       return {
         level: trafficConfig.levels.UNKNOWN,
         speedKmh: trafficConfig.defaultFreeFlowSpeedKmh,
         freeFlowSpeedKmh: trafficConfig.defaultFreeFlowSpeedKmh,
         congestionRatio: 0,
-        source: 'FALLBACK'
+        source: 'FALLBACK',
+        epistemicType: 'UNKNOWN'
       };
     }
   }
@@ -51,17 +64,30 @@ class TrafficService {
    * @returns {Promise<Object>} Normalized traffic response
    */
   async getTrafficForRoute(routeGeometry) {
+    const activeProvider = (process.env.TRAFFIC_PROVIDER || this.providerName || 'mock').toLowerCase();
     try {
       const provider = this.getProvider();
       return await provider.getTrafficForRoute(routeGeometry);
     } catch (error) {
       console.error(`[TrafficService] Error fetching route traffic: ${error.message}`);
+      if (activeProvider === 'google') {
+        return {
+          level: trafficConfig.levels.UNKNOWN,
+          speedKmh: trafficConfig.defaultFreeFlowSpeedKmh,
+          freeFlowSpeedKmh: trafficConfig.defaultFreeFlowSpeedKmh,
+          congestionRatio: 0,
+          source: 'GOOGLE_UNAVAILABLE',
+          epistemicType: 'UNKNOWN',
+          error: error.message
+        };
+      }
       return {
         level: trafficConfig.levels.UNKNOWN,
         speedKmh: trafficConfig.defaultFreeFlowSpeedKmh,
         freeFlowSpeedKmh: trafficConfig.defaultFreeFlowSpeedKmh,
         congestionRatio: 0,
-        source: 'FALLBACK'
+        source: 'FALLBACK',
+        epistemicType: 'UNKNOWN'
       };
     }
   }

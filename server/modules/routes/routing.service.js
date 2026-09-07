@@ -55,7 +55,11 @@ class RoutingService {
       return routeData;
     } catch (error) {
       console.error(`[RoutingService] Error calculating route: ${error.message}`);
-      throw new Error(`Unable to calculate route: ${error.message}`);
+      const err = new Error(`Unable to calculate route: ${error.message}`);
+      err.status = error.status || 500;
+      err.code = error.code || 'ROUTING_ERROR';
+      err.isOperational = true;
+      throw err;
     }
   }
 

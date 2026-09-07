@@ -129,6 +129,39 @@ class GoogleRoutingProvider {
   }
 
   /**
+   * Validates a GeoJSON Point coordinate structure
+   * @param {Object} point GeoJSON Point
+   * @param {String} name Identifier name for error messages
+   */
+  validateCoordinates(point, name = 'coordinate') {
+    if (!point || typeof point !== 'object') {
+      const error = new Error(`Invalid ${name}: point must be a GeoJSON object`);
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+    if (point.type !== 'Point' || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
+      const error = new Error(`Invalid ${name}: must be a GeoJSON Point with [longitude, latitude]`);
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+    const [lng, lat] = point.coordinates;
+    if (typeof lng !== 'number' || isNaN(lng) || lng < -180 || lng > 180) {
+      const error = new Error(`Invalid ${name} longitude: ${lng}. Must be a valid number between -180 and 180 degrees.`);
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+    if (typeof lat !== 'number' || isNaN(lat) || lat < -90 || lat > 90) {
+      const error = new Error(`Invalid ${name} latitude: ${lat}. Must be a valid number between -90 and 90 degrees.`);
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+  }
+
+  /**
    * Fetches route from Google Maps Routes API
    * @param {Object} origin GeoJSON Point
    * @param {Object} destination GeoJSON Point
@@ -136,15 +169,24 @@ class GoogleRoutingProvider {
    * @returns {Promise<Object>} Normalized route with optional alternatives
    */
   async getRoute(origin, destination, options = {}) {
+    // 1. Validate inputs before doing any work
+    this.validateCoordinates(origin, 'origin');
+    this.validateCoordinates(destination, 'destination');
+
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
-      throw new Error('GOOGLE_MAPS_API_KEY is not configured on the server');
+      const error = new Error('GOOGLE_MAPS_API_KEY is not configured on the server');
+      error.status = 503;
+      error.code = 'PROVIDER_NOT_CONFIGURED';
+      error.isOperational = true;
+      throw error;
     }
 
     // Check cache
     const cacheKey = this._getCacheKey(origin, destination, options);
     const cached = this.cache.get(cacheKey);
-    if (cached && (Date.now() - cached.cachedAt) < this.cacheTtlMs) {
+    const effectiveTtl = typeof options.cacheTtlMs === 'number' ? options.cacheTtlMs : this.cacheTtlMs;
+    if (cached && (Date.now() - cached.cachedAt) < effectiveTtl) {
       return cached.data;
     }
 
@@ -152,7 +194,10 @@ class GoogleRoutingProvider {
     const [destLng, destLat] = destination.coordinates;
 
     const computeAlternatives = options.computeAlternativeRoutes !== false;
-    const routingPreference = options.routingPreference || 'TRAFFIC_AWARE_OPTIMAL';
+    let routingPreference = options.routingPreference || 'TRAFFIC_AWARE_OPTIMAL';
+    if (!['TRAFFIC_AWARE_OPTIMAL', 'TRAFFIC_AWARE'].includes(routingPreference)) {
+      routingPreference = 'TRAFFIC_AWARE_OPTIMAL';
+    }
 
     const requestBody = {
       origin: {
@@ -182,6 +227,15 @@ class GoogleRoutingProvider {
     };
 
     if (Array.isArray(options.intermediates) && options.intermediates.length > 0) {
+      if (options.intermediates.length > 25) {
+        const error = new Error('Google Routes API supports a maximum of 25 intermediate waypoints');
+        error.status = 400;
+        error.isOperational = true;
+        throw error;
+      }
+      for (let i = 0; i < options.intermediates.length; i++) {
+        this.validateCoordinates(options.intermediates[i], `intermediate waypoint #${i + 1}`);
+      }
       requestBody.intermediates = options.intermediates.map((pt) => ({
         location: {
           latLng: {
@@ -193,7 +247,8 @@ class GoogleRoutingProvider {
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 8000;
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const startTime = Date.now();
