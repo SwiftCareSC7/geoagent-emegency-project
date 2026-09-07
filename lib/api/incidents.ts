@@ -12,12 +12,16 @@
 import { get, post, patch, del } from './client'
 import type {
   Incident,
+  IncidentSeverity,
+  IncidentStatus,
+  IncidentType,
   CreateIncidentPayload,
   UpdateIncidentPayload,
 } from './types'
 
 interface IncidentListResponse {
   success: true
+  count?: number
   data: Incident[]
 }
 
@@ -32,9 +36,13 @@ interface IncidentDeleteResponse {
 }
 
 export const incidentApi = {
-  /** List all active road incidents */
-  list(): Promise<IncidentListResponse> {
-    return get<IncidentListResponse>('/incidents')
+  /** List all active road incidents, optionally filtering by status, severity, and type */
+  list(params?: {
+    status?: IncidentStatus | string
+    severity?: IncidentSeverity | string
+    type?: IncidentType | string
+  }): Promise<IncidentListResponse> {
+    return get<IncidentListResponse>('/incidents', params)
   },
 
   /** Get a single incident by ID */

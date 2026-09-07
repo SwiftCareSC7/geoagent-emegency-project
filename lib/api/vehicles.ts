@@ -19,6 +19,7 @@ import type {
 
 interface VehicleListResponse {
   success: true
+  count?: number
   data: Vehicle[]
 }
 
@@ -34,7 +35,7 @@ interface VehicleDeleteResponse {
 
 export const vehicleApi = {
   /** List all active vehicles, optionally filtering by status */
-  list(params?: { status?: VehicleStatus }): Promise<VehicleListResponse> {
+  list(params?: { status?: VehicleStatus | string }): Promise<VehicleListResponse> {
     return get<VehicleListResponse>('/vehicles', params)
   },
 

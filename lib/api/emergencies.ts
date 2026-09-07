@@ -14,6 +14,9 @@
 import { get, post, patch } from './client'
 import type {
   Emergency,
+  EmergencyPriority,
+  EmergencyStatus,
+  EmergencyType,
   CreateEmergencyPayload,
   UpdateEmergencyPayload,
   Route,
@@ -22,6 +25,7 @@ import type {
 
 interface EmergencyListResponse {
   success: true
+  count?: number
   data: Emergency[]
 }
 
@@ -41,10 +45,11 @@ interface EmergencyDecisionsResponse {
 }
 
 export const emergencyApi = {
-  /** List all active emergencies, optionally filtering by status and priority */
+  /** List all active emergencies, optionally filtering by status, priority, and type */
   list(params?: {
-    status?: string
-    priority?: string
+    status?: EmergencyStatus | string
+    priority?: EmergencyPriority | string
+    type?: EmergencyType | string
   }): Promise<EmergencyListResponse> {
     return get<EmergencyListResponse>('/emergencies', params)
   },

@@ -55,15 +55,22 @@ export interface LoginPayload {
 // Vehicles
 // ---------------------------------------------------------------------------
 
-export type VehicleType = 'AMBULANCE' | 'FIRE_TRUCK' | 'POLICE' | 'RESCUE'
+export type VehicleType =
+  | 'AMBULANCE'
+  | 'FIRE_ENGINE'
+  | 'POLICE'
+  | 'FIRE_TRUCK'
+  | 'RESCUE'
 
 export type VehicleStatus =
   | 'AVAILABLE'
   | 'DISPATCHED'
   | 'EN_ROUTE'
   | 'AT_SCENE'
-  | 'TRANSPORTING'
+  | 'RETURNING'
+  | 'OFFLINE'
   | 'MAINTENANCE'
+  | 'TRANSPORTING'
 
 export interface Vehicle {
   id: string
@@ -73,6 +80,9 @@ export interface Vehicle {
   status: VehicleStatus
   capacity: number
   driverName: string
+  driverContact?: string
+  hospitalName?: string
+  hospitalCode?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -82,12 +92,18 @@ export interface CreateVehiclePayload {
   registrationNumber: string
   type: VehicleType
   driverName: string
+  driverContact?: string
+  hospitalName?: string
+  hospitalCode?: string
   capacity: number
 }
 
 export interface UpdateVehiclePayload {
   status?: VehicleStatus
   driverName?: string
+  driverContact?: string
+  hospitalName?: string
+  hospitalCode?: string
   capacity?: number
 }
 
@@ -96,21 +112,34 @@ export interface UpdateVehiclePayload {
 // ---------------------------------------------------------------------------
 
 export type EmergencyType =
+  | 'MEDICAL'
   | 'ACCIDENT'
-  | 'CARDIAC'
   | 'FIRE'
+  | 'POLICE'
+  | 'OTHER'
+  | 'CARDIAC'
   | 'TRAUMA'
   | 'RESPIRATORY'
-  | 'OTHER'
 
 export type EmergencyPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 
 export type EmergencyStatus =
-  | 'REPORTED'
+  | 'PENDING'
   | 'DISPATCHED'
-  | 'ON_SCENE'
+  | 'IN_PROGRESS'
+  | 'AT_SCENE'
   | 'RESOLVED'
   | 'CANCELLED'
+  | 'REPORTED'
+  | 'ON_SCENE'
+
+export interface AssignedVehicleSummary {
+  id?: string
+  _id?: string
+  vehicleId: string
+  registrationNumber: string
+  status?: VehicleStatus
+}
 
 export interface Emergency {
   id: string
@@ -123,7 +152,8 @@ export interface Emergency {
   callerContact?: string
   location: GeoJSONPoint
   destination?: GeoJSONPoint
-  assignedVehicle?: string
+  assignedVehicle?: AssignedVehicleSummary | string | null
+  createdBy?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -149,30 +179,54 @@ export interface UpdateEmergencyPayload {
 // Incidents
 // ---------------------------------------------------------------------------
 
+export type IncidentType =
+  | 'ACCIDENT'
+  | 'ROAD_CLOSURE'
+  | 'ROAD_WORK'
+  | 'TRAFFIC_JAM'
+  | 'FIRE'
+  | 'WEATHER'
+  | 'PUBLIC_EVENT'
+  | 'OTHER'
+
+export type IncidentSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
+
+export type IncidentStatus = 'ACTIVE' | 'RESOLVED' | 'DISMISSED'
+
+export type IncidentSource =
+  | 'TRAFFIC_POLICE'
+  | 'PUBLIC_REPORT'
+  | 'SENSOR'
+  | 'AUTOMATED_SYSTEM'
+  | 'OTHER'
+
 export interface Incident {
   id: string
-  incidentId?: string
-  type: string
-  severity: string
-  status?: string
+  incidentId: string
+  type: IncidentType
+  severity: IncidentSeverity
+  status: IncidentStatus
   description?: string
   location: GeoJSONPoint
+  source?: IncidentSource
+  emergency?: string | null
   createdAt?: string
   updatedAt?: string
 }
 
 export interface CreateIncidentPayload {
-  type: string
-  severity: string
+  type: IncidentType
+  severity?: IncidentSeverity
   description?: string
   location: GeoJSONPoint
+  source?: IncidentSource
 }
 
 export interface UpdateIncidentPayload {
-  type?: string
-  severity?: string
+  type?: IncidentType
+  severity?: IncidentSeverity
   description?: string
-  status?: string
+  status?: IncidentStatus
 }
 
 // ---------------------------------------------------------------------------
@@ -341,6 +395,13 @@ export interface PaginatedResponse<T> {
   success: true
   data: T[]
   pagination: PaginationMeta
+}
+
+/** Standard list response envelope returned by vehicles, emergencies, and incidents */
+export interface ListResponse<T> {
+  success: true
+  count: number
+  data: T[]
 }
 
 // ---------------------------------------------------------------------------
