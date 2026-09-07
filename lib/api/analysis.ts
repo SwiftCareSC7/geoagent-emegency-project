@@ -7,7 +7,7 @@
  */
 
 import { get } from './client'
-import type { SituationAnalysis, DeviationAnalysis } from './types'
+import type { SituationAnalysis, DeviationAnalysis, PredictionResult } from './types'
 
 export interface SituationAnalysisResponse {
   success: true
@@ -19,6 +19,12 @@ export interface DeviationAnalysisResponse {
   success: true
   message: string
   data: DeviationAnalysis
+}
+
+export interface PredictionResponse {
+  success: true
+  message: string
+  data: PredictionResult
 }
 
 export const analysisApi = {
@@ -36,6 +42,26 @@ export const analysisApi = {
   async getVehicleSituationSafe(vehicleId: string): Promise<SituationAnalysis | null> {
     try {
       const res = await this.getVehicleSituation(vehicleId)
+      return res?.data ?? null
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 404) {
+        return null
+      }
+      throw err
+    }
+  },
+
+  /** Get real-time ETA & delay prediction for a vehicle */
+  getVehiclePrediction(vehicleId: string): Promise<PredictionResponse> {
+    return get<PredictionResponse>(
+      `/analysis/vehicle/${encodeURIComponent(vehicleId)}/prediction`,
+    )
+  },
+
+  /** Safe get vehicle prediction that returns null if 404 (e.g. no active route or trajectory) */
+  async getVehiclePredictionSafe(vehicleId: string): Promise<PredictionResult | null> {
+    try {
+      const res = await this.getVehiclePrediction(vehicleId)
       return res?.data ?? null
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 404) {

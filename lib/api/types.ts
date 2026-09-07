@@ -427,6 +427,39 @@ export interface Decision {
 }
 
 // ---------------------------------------------------------------------------
+// Real-Time Predictions
+// ---------------------------------------------------------------------------
+
+export interface PredictionFactor {
+  factor: string
+  impact: string
+  epistemicType: 'OBSERVED' | 'DERIVED' | 'INFERRED' | 'UNKNOWN'
+}
+
+export interface PredictionResult {
+  predictedEta: string
+  baselineEta: string
+  predictedDurationSeconds: number
+  baselineDurationSeconds: number
+  predictedDurationMinutes: number
+  baselineDurationMinutes: number
+  predictedDelaySeconds: number
+  predictedDelayMinutes: number
+  delayRisk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  routeRisk: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN'
+  confidenceScore?: number
+  confidenceBreakdown?: string[]
+  rerouteAdvised: boolean
+  rerouteUrgency: 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'IMMEDIATE'
+  factors: PredictionFactor[]
+  inputsSummary?: Record<string, unknown>
+  modelVersion?: string
+  trafficSource?: string
+  predictedAt: string
+}
+
+// ---------------------------------------------------------------------------
 // Orchestration & Epistemic Breakdown
 // ---------------------------------------------------------------------------
 
