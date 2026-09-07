@@ -2,7 +2,23 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
-## [Unreleased] - Dashboard Data Integration & Real-Time Socket.IO
+## [Unreleased] - Real-Time Socket.IO Streaming & Interactive Map
+
+## [1.2.0] - Part 14: Live Backend REST Integration & Operations Dashboard
+
+### Added
+- **Live Dashboard REST Feeds**:
+  - Connected `/driver/dashboard` directly to live MongoDB Express endpoints (`/api/vehicles`, `/api/emergencies`, `/api/incidents`) over authenticated cookie transport.
+  - Added dual-view toggle between **Operations Live Overview** (live database feeds) and **Corridor Telemetry & Route** (active corridor map view).
+  - Built `EmergencySummaryCards` displaying real aggregated counters for Active Calls, Critical Calls, Deployed Units, Fleet Ready, and Road Hazards with skeleton loading states.
+  - Built `VehicleFleetPanel` with status badges, vehicle type icons, hospital assignment, driver contact, status filter chips, and honest empty states.
+  - Built `ActiveEmergenciesPanel` with priority badges, status badges, GeoJSON location coordinates, assigned unit summary, priority filter chips, and honest empty states.
+  - Built `RoadIncidentsPanel` with severity badges, GeoJSON coordinates, source details, severity filter chips, and honest empty states.
+- **Backend Compatibility Fix**:
+  - Updated `vehicleService.getVehicles` and `vehicle.controller.js` to accept and pass query parameters (`status`, `type`) and filter out soft-deleted records (`isDeleted: false`).
+- **Database Seeder & Test Suite**:
+  - Created `server/seed-dashboard-data.js` to seed 5 realistic vehicles, 4 emergencies, and 3 road incidents into MongoDB.
+  - Created `server/test-dashboard-e2e.js` validating route protection, operator authentication, empty database responses, query filtering, and populated references across 47 automated assertions (100% pass rate).
 
 ## [1.1.0] - Part 13: Real Frontend Authentication & Session Management
 

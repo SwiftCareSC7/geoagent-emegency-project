@@ -115,6 +115,22 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - **Role Support & Logout**: User role (`CONTROL_ROOM`, `ADMIN`) is rendered as a verified badge on the dashboard topbar with a working `Log out` button that calls `POST /api/auth/logout`.
   - **Verification**: 31 / 31 assertions passing in `server/test-auth-e2e.js` covering registration, duplicate conflicts, invalid passwords, login, cookie setting, session refresh, logout, and post-logout protection.
 
+### Part 14: Live Backend REST Integration & Operations Dashboard
+- **Goal**: Connect the driver and operator dashboard directly to real live Express REST endpoints backed by MongoDB for vehicles, emergencies, and road incidents, eliminating mock dependency for operational views while preserving telemetry views.
+- **Key Files**:
+  - `lib/api/types.ts`: Strictly typed models for `Vehicle`, `Emergency`, `Incident`, `ListResponse<T>`.
+  - `lib/api/vehicles.ts`: `vehicleApi.list({ status })`, `vehicleApi.get(id)`.
+  - `lib/api/emergencies.ts`: `emergencyApi.list({ status, priority, type })`, `emergencyApi.get(id)`.
+  - `lib/api/incidents.ts`: `incidentApi.list({ status, severity, type })`, `incidentApi.get(id)`.
+  - `components/dashboard/emergency-summary-cards.tsx`: Dynamic metric calculation for Active Calls, Critical Calls, Deployed Units, Fleet Ready, and Road Hazards.
+  - `components/dashboard/vehicle-fleet-panel.tsx`: Live fleet registry with status badges, vehicle type icons, hospital assignment, driver contact, and status filter chips.
+  - `components/dashboard/active-emergencies-panel.tsx`: Live emergency calls stream with priority badges, status badges, GeoJSON location coordinates, assigned unit summary, and priority filter chips.
+  - `components/dashboard/road-incidents-panel.tsx`: Road hazards and traffic disruptions with severity badges, GeoJSON coordinates, source details, and severity filter chips.
+  - `components/dashboard/driver-dashboard.tsx`: Dual-mode view switcher between Operations Live Overview and Corridor Telemetry, with live refetching and error handling.
+  - `server/seed-dashboard-data.js`: MongoDB demonstration seeder populating realistic vehicles, emergencies, and incidents.
+  - `server/test-dashboard-e2e.js`: Comprehensive 47-point end-to-end contract test suite.
+- **Verification**: 47 / 47 assertions passing in `server/test-dashboard-e2e.js`, 31 / 31 assertions passing in `server/test-auth-e2e.js`, 23 / 23 assertions passing in `server/test-security.js`, and clean Next.js build compilation.
+
 ---
 
 ## 3. End-to-End Emergency Operational Lifecycle
