@@ -94,7 +94,7 @@ class GeoAgentService {
           'AI generative explanation unavailable'
         ]
       },
-      reasoning: `Vehicle ${vehicleId} is currently ${deviation.status} with an estimated delay of ${eta.delayMinutes} minutes. Recommended action: ${action}.`,
+      reasoning: `Vehicle ${vehicleId} is currently ${deviation.status} with an estimated delay of ${safeEta.delayMinutes} minutes. Recommended action: ${action}.`,
       analyzedAt: new Date().toISOString(),
       fallback: true
     };

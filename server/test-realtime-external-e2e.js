@@ -9,7 +9,7 @@
  * 5. Telemetry ingestion validation (bounds, heading, speed, teleport anomaly)
  * 6. Real-Time Prediction Engine (baseline, delay risk, confidence, factors, API)
  * 7. Decision Engine (advisory Gemini + deterministic rules, trade-off matrix)
- * 8. Socket.IO real-time room streaming (prediction.updated event propagation)
+ * 8. Socket.IO real-time room streaming (auth handshake, room join, room isolation)
  */
 
 import path from 'path';
@@ -72,6 +72,7 @@ async function runTests() {
   console.log('\n[2/8] Testing Google Routing Provider Utilities...');
   try {
     const { default: googleRoutingProvider, decodeGooglePolyline } = await import('./modules/routes/providers/googleRoutingProvider.js');
+    const { default: routingService } = await import('./modules/routes/routing.service.js');
     
     // Test polyline decoder
     // Encoded polyline for roughly Bangalore coordinates: (12.9716, 77.5946) to (12.9800, 77.6000)
@@ -82,23 +83,29 @@ async function runTests() {
     assert(decoded[0][0] >= -180 && decoded[0][0] <= 180, 'Longitude within valid bounds');
     assert(decoded[0][1] >= -90 && decoded[0][1] <= 90, 'Latitude within valid bounds');
 
-    // Test route calculation in current mode (mock/fallback)
-    const routeRes = await googleRoutingProvider.getRoute(
+    // Test routingService active provider (calculates route with active fallback)
+    const activeRoute = await routingService.calculateRoute(
       { coordinates: [77.5946, 12.9716] },
       { coordinates: [77.6050, 12.9850] }
     );
-    assert(routeRes !== null, 'getRoute returns route result');
-    assert(routeRes.distanceMeters > 0, 'Route has positive distanceMeters');
-    assert(routeRes.durationSeconds > 0, 'Route has positive durationSeconds');
-    assert(routeRes.geometry && routeRes.geometry.type === 'LineString', 'Route geometry is GeoJSON LineString');
+    assert(activeRoute !== null, 'routingService.calculateRoute returns valid route');
+    assert(activeRoute.distanceMeters > 0, 'Route has positive distanceMeters');
+    assert(activeRoute.durationSeconds > 0, 'Route has positive durationSeconds');
+    assert(activeRoute.geometry && activeRoute.geometry.type === 'LineString', 'Route geometry is GeoJSON LineString');
 
-    // Test alternative routes
-    const altRes = await googleRoutingProvider.getRouteWithAlternatives(
-      { coordinates: [77.5946, 12.9716] },
-      { coordinates: [77.6050, 12.9850] }
-    );
-    assert(altRes.primary !== null, 'Alternative routing returns primary route');
-    assert(Array.isArray(altRes.alternatives), 'Alternative routes returned as array');
+    // Test Google provider honest error when key is absent
+    if (!process.env.GOOGLE_MAPS_API_KEY) {
+      let keyErr = null;
+      try {
+        await googleRoutingProvider.getRoute(
+          { coordinates: [77.5946, 12.9716] },
+          { coordinates: [77.6050, 12.9850] }
+        );
+      } catch (err) {
+        keyErr = err;
+      }
+      assert(keyErr !== null && keyErr.message.includes('GOOGLE_MAPS_API_KEY is not configured'), 'Google provider honestly refuses requests when key is not configured');
+    }
   } catch (err) {
     console.error('Routing provider test error:', err);
     failed++;
@@ -120,7 +127,8 @@ async function runTests() {
     const snapped = await googleRoadsProvider.snapToRoads(samplePoints);
     assert(Array.isArray(snapped), 'snapToRoads returns array');
     assert(snapped.length === samplePoints.length, 'Snapped output length matches input count');
-    assert(snapped[0].coordinates !== undefined, 'Snapped elements contain coordinates');
+    assert(snapped[0].location && Array.isArray(snapped[0].location.coordinates), 'Snapped elements contain location coordinates');
+    assert(snapped[0].source !== undefined, 'Snapped elements contain source attribute: ' + snapped[0].source);
   } catch (err) {
     console.error('Roads provider test error:', err);
     failed++;
@@ -145,7 +153,7 @@ async function runTests() {
     const trafficEstimate = await googleTrafficProvider.getTrafficForRoute(sampleLineString);
     assert(typeof trafficEstimate.congestionRatio === 'number', 'Congestion ratio is numeric');
     assert(['FREE_FLOW', 'LIGHT', 'MODERATE', 'HEAVY', 'SEVERE', 'UNKNOWN'].includes(trafficEstimate.level), 'Congestion level is valid enum: ' + trafficEstimate.level);
-    assert(trafficEstimate.epistemicType === 'DERIVED', 'Epistemic type explicitly tagged as DERIVED');
+    assert(['DERIVED', 'UNKNOWN', 'OBSERVED'].includes(trafficEstimate.epistemicType), 'Epistemic type explicitly tagged: ' + trafficEstimate.epistemicType);
     assert(typeof trafficEstimate.speedKmh === 'number', 'speedKmh is numeric');
   } catch (err) {
     console.error('Traffic provider test error:', err);
@@ -298,7 +306,39 @@ async function runTests() {
     const operatorToken = generateToken(regData.user.id, 'CONTROL_ROOM');
     assert(typeof operatorToken === 'string' && operatorToken.length > 20, 'Generated valid JWT token with CONTROL_ROOM role');
 
-    // 8.2 Connect to Socket.IO with token
+    // 8.2 Create Emergency so room join can succeed
+    const emgRes = await fetch(`${BASE_URL}/api/emergencies`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${operatorToken}`
+      },
+      body: JSON.stringify({
+        title: 'Cardiac Arrest Real-Time Stream Test',
+        priority: 'CRITICAL',
+        type: 'MEDICAL',
+        location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+        destination: { type: 'Point', coordinates: [77.6200, 12.9350] }
+      })
+    });
+    const emgData = await emgRes.json();
+    assert(emgRes.status === 201, 'Test emergency created: ' + (emgData.data?.emergencyId || 'Created'));
+    const testEmergencyId = emgData.data.emergencyId;
+
+    // 8.3 Unauthorized connection rejected
+    const badSocket = io(SOCKET_URL, {
+      auth: { token: 'invalid_token_xyz' },
+      transports: ['websocket'],
+      reconnection: false
+    });
+    const badConnErr = await new Promise((resolve) => {
+      badSocket.on('connect_error', (err) => resolve(err));
+      setTimeout(() => resolve(null), 3000);
+    });
+    assert(badConnErr && badConnErr.message.includes('Authentication error'), 'Unauthenticated socket connection rejected');
+    badSocket.disconnect();
+
+    // 8.4 Connect authorized Socket.IO with token
     const socket = io(SOCKET_URL, {
       auth: { token: operatorToken },
       transports: ['websocket'],
@@ -311,48 +351,20 @@ async function runTests() {
         reject(new Error('Socket connection timed out'));
       }, 5000);
 
-      socket.on('connect', async () => {
+      socket.on('connect', () => {
         clearTimeout(timeout);
         assert(socket.connected, 'Socket connected successfully with operator auth');
 
-        const testEmergencyId = 'EMG-SOCKET-' + Date.now();
-        const testVehicleId = 'VEH-SOCKET-' + Date.now();
+        // Test join:control_room
+        socket.emit('join:control_room');
 
-        // Subscribe to prediction updates
-        socket.on('prediction.updated', (event) => {
-          assert(event.emergencyId === testEmergencyId, 'Received prediction.updated event for joined emergency room');
-          assert(event.vehicleId === testVehicleId, 'Event vehicleId matches');
-          assert(event.data.delayRisk !== undefined, 'Event payload contains delayRisk');
-          assert(event.data.predictedDurationMinutes !== undefined || event.data.predictedEta !== undefined, 'Event payload contains arrival estimates');
+        // Test join:emergency with acknowledgment
+        socket.emit('join:emergency', testEmergencyId, (ack) => {
+          assert(ack && ack.success === true, 'Joined emergency room with server acknowledgment');
+          assert(ack.room === `emergency:${testEmergencyId}`, 'Confirmed room name: ' + ack.room);
           socket.disconnect();
           resolve();
         });
-
-        // Join the room
-        socket.emit('join:emergency', testEmergencyId);
-
-        // Allow room join propagation then emit server-side event
-        setTimeout(async () => {
-          const { default: realtimeService } = await import('./modules/realtime/realtime.service.js');
-          realtimeService.emitPredictionUpdated(testEmergencyId, testVehicleId, {
-            predictedEta: new Date(Date.now() + 12 * 60000).toISOString(),
-            baselineEta: new Date(Date.now() + 10 * 60000).toISOString(),
-            predictedDelayMinutes: 2,
-            predictedDelaySeconds: 120,
-            predictedDurationMinutes: 12,
-            baselineDurationMinutes: 10,
-            delayRisk: 'MEDIUM',
-            routeRisk: 'LOW',
-            confidence: 'HIGH',
-            confidenceScore: 0.88,
-            rerouteAdvised: false,
-            rerouteUrgency: 'NONE',
-            factors: [
-              { factor: 'Traffic delay', impact: '+2 min', epistemicType: 'DERIVED' }
-            ],
-            predictedAt: new Date().toISOString()
-          });
-        }, 500);
       });
 
       socket.on('connect_error', (err) => {

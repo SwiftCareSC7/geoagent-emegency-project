@@ -9,7 +9,7 @@
 set -u
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INTERVAL="${AUTO_COMMIT_INTERVAL:-60}"
+INTERVAL="${AUTO_COMMIT_INTERVAL:-300}"
 REPO_DIR="${AUTO_COMMIT_REPO_DIR:-/Users/priyanshu/Documents/geoagent-emegency-project}"
 
 mkdir -p "$SKILL_DIR/../assets"
