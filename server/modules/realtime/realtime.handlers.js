@@ -101,6 +101,52 @@ export const registerSocketHandlers = (socket) => {
   // Automatically join control room if user is CONTROL_ROOM or ADMIN
   socket.join(REALTIME_ROOMS.CONTROL_ROOM);
 
+  // Generic room join handler: { room: 'control-room' | 'emergency:ID' | 'vehicle:ID' }
+  socket.on('room:join', async (data, callback) => {
+    try {
+      const room = typeof data === 'string' ? data : data?.room;
+      if (!room || typeof room !== 'string') return;
+
+      if (room === REALTIME_ROOMS.CONTROL_ROOM) {
+        socket.join(room);
+        if (callback) callback({ success: true, room });
+        socket.emit('joined', { room });
+      } else if (room.startsWith('emergency:')) {
+        const emergencyId = room.replace('emergency:', '');
+        const emergency = await Emergency.findOne({ emergencyId, isDeleted: false });
+        if (emergency) {
+          socket.join(room);
+          if (callback) callback({ success: true, room });
+          socket.emit('joined', { room });
+        } else {
+          if (callback) callback({ success: false, message: 'Emergency not found' });
+        }
+      } else if (room.startsWith('vehicle:')) {
+        const vehicleId = room.replace('vehicle:', '');
+        const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
+        if (vehicle) {
+          socket.join(room);
+          if (callback) callback({ success: true, room });
+          socket.emit('joined', { room });
+        } else {
+          if (callback) callback({ success: false, message: 'Vehicle not found' });
+        }
+      }
+    } catch (err) {
+      if (callback) callback({ success: false, message: err.message });
+    }
+  });
+
+  // Generic room leave handler: { room: '...' }
+  socket.on('room:leave', (data, callback) => {
+    const room = typeof data === 'string' ? data : data?.room;
+    if (room && typeof room === 'string') {
+      socket.leave(room);
+      if (callback) callback({ success: true, room });
+      socket.emit('left', { room });
+    }
+  });
+
   // Client command: Join control room
   socket.on(CLIENT_COMMANDS.JOIN_CONTROL_ROOM, () => {
     socket.join(REALTIME_ROOMS.CONTROL_ROOM);

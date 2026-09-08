@@ -46,8 +46,10 @@ router.patch('/:decisionId/reject', validateDecisionIdParam, validateRejectionPa
 
 /**
  * @route PATCH /api/decisions/:decisionId/execute
+ * @route POST  /api/decisions/:decisionId/execute
  * @desc  Execute an approved decision via controlled action service
  */
 router.patch('/:decisionId/execute', validateDecisionIdParam, executeDecision);
+router.post('/:decisionId/execute', validateDecisionIdParam, executeDecision);
 
 export default router;

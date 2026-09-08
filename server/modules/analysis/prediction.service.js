@@ -471,6 +471,24 @@ class PredictionService {
       console.warn(`[PredictionService] Real-time socket emission warning: ${err.message}`);
     }
 
+    // Trigger operational decision re-evaluation if conditions warrant (reroute recommended, high risk, or deviation)
+    if (emergencyId) {
+      const warrantsDecision =
+        prediction.rerouteAdvised === true ||
+        ['HIGH', 'CRITICAL'].includes(prediction.delayRisk) ||
+        ['HIGH', 'CRITICAL'].includes(prediction.routeRisk) ||
+        (deviation && (deviation.status === 'DEVIATED' || deviation.status === 'CRITICAL_DEVIATION'));
+
+      if (warrantsDecision) {
+        // Dynamic import avoids circular dependency; decisionService uses 30s situationHash idempotency
+        import('../decisions/decision.service.js')
+          .then(({ default: decisionService }) => decisionService.analyzeEmergency(emergencyId))
+          .catch((err) => {
+            console.warn(`[PredictionService] Automated decision evaluation warning: ${err.message}`);
+          });
+      }
+    }
+
     return prediction;
   }
 

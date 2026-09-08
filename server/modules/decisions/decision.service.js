@@ -435,19 +435,28 @@ class DecisionService {
   /**
    * Approve a pending decision. Only ADMIN / CONTROL_ROOM roles may approve
    * (enforced upstream by route middleware; service still records actor).
+   * Atomically transitions state to prevent concurrent approval race conditions.
    */
   async approveDecision(decisionId, userId) {
-    const decision = await Decision.findOne({ decisionId });
+    const decision = await Decision.findOneAndUpdate(
+      { decisionId, status: DECISION_STATUS.PENDING_OPERATOR_ACTION },
+      {
+        $set: {
+          status: DECISION_STATUS.APPROVED,
+          approvedBy: userId,
+          approvedAt: new Date()
+        }
+      },
+      { new: true }
+    );
+
     if (!decision) {
-      throwOperational('Decision not found', 404);
+      const existing = await Decision.findOne({ decisionId });
+      if (!existing) {
+        throwOperational('Decision not found', 404);
+      }
+      this._assertTransition(existing.status, DECISION_STATUS.APPROVED);
     }
-
-    this._assertTransition(decision.status, DECISION_STATUS.APPROVED);
-
-    decision.status = DECISION_STATUS.APPROVED;
-    decision.approvedBy = userId;
-    decision.approvedAt = new Date();
-    await decision.save();
 
     try {
       const emergency = await Emergency.findById(decision.emergency);
@@ -473,20 +482,29 @@ class DecisionService {
 
   /**
    * Reject a pending decision. Records the rejecting operator and an optional reason.
+   * Atomically transitions state to prevent concurrent modification race conditions.
    */
   async rejectDecision(decisionId, userId, reason = null) {
-    const decision = await Decision.findOne({ decisionId });
+    const decision = await Decision.findOneAndUpdate(
+      { decisionId, status: DECISION_STATUS.PENDING_OPERATOR_ACTION },
+      {
+        $set: {
+          status: DECISION_STATUS.REJECTED,
+          rejectedBy: userId,
+          rejectedAt: new Date(),
+          rejectionReason: reason || null
+        }
+      },
+      { new: true }
+    );
+
     if (!decision) {
-      throwOperational('Decision not found', 404);
+      const existing = await Decision.findOne({ decisionId });
+      if (!existing) {
+        throwOperational('Decision not found', 404);
+      }
+      this._assertTransition(existing.status, DECISION_STATUS.REJECTED);
     }
-
-    this._assertTransition(decision.status, DECISION_STATUS.REJECTED);
-
-    decision.status = DECISION_STATUS.REJECTED;
-    decision.rejectedBy = userId;
-    decision.rejectedAt = new Date();
-    decision.rejectionReason = reason || null;
-    await decision.save();
 
     try {
       const emergency = await Emergency.findById(decision.emergency);
@@ -526,27 +544,38 @@ class DecisionService {
    * No autonomous vehicle dispatch is performed.
    */
   async executeDecision(decisionId, userId) {
-    const decision = await Decision.findOne({ decisionId });
-    if (!decision) {
+    const existing = await Decision.findOne({ decisionId });
+    if (!existing) {
       throwOperational('Decision not found', 404);
     }
 
-    this._assertTransition(decision.status, DECISION_STATUS.EXECUTED);
+    this._assertTransition(existing.status, DECISION_STATUS.EXECUTED);
 
-    const emergency = await Emergency.findById(decision.emergency);
-    const vehicle = decision.vehicle ? await Vehicle.findById(decision.vehicle) : null;
+    const emergency = await Emergency.findById(existing.emergency);
+    const vehicle = existing.vehicle ? await Vehicle.findById(existing.vehicle) : null;
 
     const executionLog = [];
 
-    for (const action of decision.actions) {
-      const sideEffect = await this._executeAction(action, decision, emergency, vehicle);
+    for (const action of existing.actions) {
+      const sideEffect = await this._executeAction(action, existing, emergency, vehicle);
       executionLog.push(sideEffect);
     }
 
-    decision.status = DECISION_STATUS.EXECUTED;
-    decision.executedAt = new Date();
-    decision.executionSummary = executionLog.join(' | ');
-    await decision.save();
+    const decision = await Decision.findOneAndUpdate(
+      { decisionId, status: DECISION_STATUS.APPROVED },
+      {
+        $set: {
+          status: DECISION_STATUS.EXECUTED,
+          executedAt: new Date(),
+          executionSummary: executionLog.join(' | ')
+        }
+      },
+      { new: true }
+    );
+
+    if (!decision) {
+      throwOperational(`${INVALID_TRANSITION_ERROR}: decision was concurrently modified`, 409);
+    }
 
     try {
       realtimeService.emitDecisionExecuted(
