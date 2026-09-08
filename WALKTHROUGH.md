@@ -331,5 +331,83 @@ Vercel (*.vercel.app)                Cloud Run (*.run.app)
 
 1. **Socket.IO**: In-memory adapter → single Cloud Run instance (`--max-instances=1`)
 2. **Cold starts**: `--min-instances=1` prevents cold start latency (costs ~$15–25/month)
-3. **Python engine**: Not deployed — standalone development tool
+3. **Python engine**: Integrated via headless CLI bridge (`v2x_corridor_bridge.py`) with automatic zero-dependency Node.js fallback (`fallbackV2XEngine`) for container environments without Python
 4. **Secrets**: GCP Secret Manager, never in code or environment files
+
+---
+
+## Part 22: 10-Tier Operational Intelligence Pipeline (V2X & Corridor Green-Wave)
+
+### Sequential Data Flow
+
+```
+Vehicle GPS
+    ↓
+Node.js Telemetry Ingestion (MongoDB + Vehicle State Update)
+    ↓
+Python Routing / V2X Engine (v2x_corridor_bridge.py + Fallback)
+    ↓
+Corridor + Green-Wave Analysis (Dynamic Preemption & Clearance)
+    ↓
+Google Traffic-Aware Routes (Real-Time Congestion Evaluation)
+    ↓
+Prediction Engine (ETA & Delay with Green-Wave Offset)
+    ↓
+Route Comparison (Deterministic What-If Matrix)
+    ↓
+Gemini Reasoning (Grounded in getCorridorGreenWaveStatus)
+    ↓
+Decision Engine (Deterministic Rules: CORRIDOR_BLOCKED / GREEN_WAVE_ACTIVE)
+    ↓
+Control Room (Socket.IO v2x.green_wave.updated + Interactive Map)
+```
+
+### Key Components
+
+1. **Python V2X Corridor Bridge (`routing-engine/v2x_corridor_bridge.py`)**:
+   - Computes point-to-polyline cross-track deviation using geodesic mathematics.
+   - Determines V2X intersection clearance distance, preemption distance thresholds, and alternative bypass routes.
+   - Headless CLI interface accepting `--json` arguments or stdin with non-blocking polling.
+
+2. **Python Routing Bridge Service (`server/modules/routes/pythonRoutingBridge.service.js`)**:
+   - Executes the Python bridge subprocess with a 1500ms safety timeout.
+   - Features a deterministic pure JavaScript fallback engine (`fallbackV2XEngine`) to guarantee full functionality in containerized environments (like Cloud Run `node:22-slim`) where Python3 is not installed.
+
+3. **Corridor & Green-Wave Analysis Service (`server/modules/routes/corridorGreenWave.service.js`)**:
+   - Computes real-time preemption states for traffic signals ahead of the vehicle:
+     - `APPROACHING` (> 750m)
+     - `PREEMPTION_REQUESTED` (500m - 750m)
+     - `FORCED_GREEN_4S` (250m - 500m)
+     - `GREEN_WAVE_ACTIVE` (< 250m)
+     - `HOLDING_RED` (cross-traffic signals)
+   - Calculates estimated emergency transit time saved (-2.5 to -4.0 min) and civilian vehicles alerted to yield.
+   - Emits `v2x.green_wave.updated` Socket.IO events to the Control Room room.
+
+4. **Prediction & Route Comparison Integration**:
+   - `prediction.service.js`: Subtracts green-wave clearance time from corridor travel duration and explicitly records `traffic_light_preemption_active` in 3-tier epistemic observed factors.
+   - `routeComparison.service.js`: Incorporates corridor green-wave feasibility into deterministic "What if we do nothing?" scenario analysis.
+
+5. **Gemini Grounding & Decision Engine**:
+   - Exposes `getCorridorGreenWaveStatus` tool to Gemini 2.5 Flash.
+   - Evaluates authoritative rules `CORRIDOR_BLOCKED` and `GREEN_WAVE_PREEMPTION_ACTIVE` in `decision.rules.js`.
+
+6. **Interactive Leaflet Map & Control Room Wiring**:
+   - `components/dashboard/real-interactive-map.tsx`: Listens to `v2x.green_wave.updated` Socket.IO events, dynamically updating traffic signal markers (emerald green, amber, red) and showing live signal counts and civilian vehicle yield alerts.
+   - `lib/socket/useRealtime.ts`: Exposes `liveGreenWave` state with live timeline event generation.
+
+### Verification
+
+```bash
+node server/test-v2x-corridor-pipeline.js
+# Output: PIPELINE TESTS COMPLETE: 11 Passed, 0 Failed
+
+node server/test-intelligence-pipeline.js
+# Output: TOTAL TESTS: 26 Passed, 0 Failed
+
+node server/test-control-room-e2e.js
+# Output: CONTROL ROOM E2E TESTS COMPLETE: 12 Passed, 0 Failed
+
+npx tsc --noEmit
+# Output: Clean (0 errors)
+```
+

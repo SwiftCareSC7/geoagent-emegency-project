@@ -31,6 +31,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import type { MapMarker } from '@/lib/mock-data'
+import { subscribeEvent, REALTIME_EVENTS } from '@/lib/socket/client'
 import { cn } from '@/lib/utils'
 
 interface RealInteractiveMapProps {
@@ -103,6 +104,14 @@ export function RealInteractiveMap({
   const [enableV2XPreemption, setEnableV2XPreemption] = useState(true)
   const [enableVirtualSiren, setEnableVirtualSiren] = useState(true)
   const [enableHospitalBedMatch, setEnableHospitalBedMatch] = useState(true)
+  const [liveV2XData, setLiveV2XData] = useState<{
+    corridorHealth?: string;
+    preemptedCount?: number;
+    totalSignals?: number;
+    civilianAlertedCount?: number;
+    timeSavedMinutes?: number;
+    signals?: any[];
+  } | null>(null)
 
   const [visibleLayers, setVisibleLayers] = useState({
     planned: true,
@@ -233,8 +242,9 @@ export function RealInteractiveMap({
         .addTo(incidentGroup)
 
       // 6. V2X Traffic Signal Markers
+      const v2xMarkerMap = new Map()
       V2X_SIGNALS.forEach((sig) => {
-        L.circleMarker(sig.coord, {
+        const marker = L.circleMarker(sig.coord, {
           radius: 8,
           color: '#10b981',
           fillColor: '#10b981',
@@ -242,7 +252,9 @@ export function RealInteractiveMap({
         })
           .bindPopup(`<b>🚦 V2X Traffic Signal: ${sig.name}</b><br>Preemption Status: <span style="color:#10b981;font-weight:bold">${sig.status}</span>`)
           .addTo(v2xGroup)
+        v2xMarkerMap.set(sig.name, marker)
       })
+      mapInstanceRef.current.v2xMarkerMap = v2xMarkerMap
 
       // 7. Virtual Siren 500m Clear Corridor Circle
       const sirenCircle = L.circle(DEVIATED_PATH[DEVIATED_PATH.length - 1], {
@@ -307,6 +319,27 @@ export function RealInteractiveMap({
     visibleLayers.incidents ? map.addLayer(incidents) : map.removeLayer(incidents)
     visibleLayers.virtualSiren && enableVirtualSiren ? map.addLayer(siren) : map.removeLayer(siren)
   }, [visibleLayers, showRecommended, enableV2XPreemption, enableVirtualSiren])
+
+  // Real-Time V2X Green-Wave Socket Listener
+  useEffect(() => {
+    const unsub = subscribeEvent<any>(REALTIME_EVENTS.V2X_GREEN_WAVE_UPDATED, (data) => {
+      if (!data) return
+      setLiveV2XData(data)
+      if (mapInstanceRef.current?.v2xMarkerMap && Array.isArray(data.signals)) {
+        data.signals.forEach((sig: any) => {
+          const marker = mapInstanceRef.current.v2xMarkerMap.get(sig.name)
+          if (marker) {
+            const isGreen = sig.state === 'GREEN_WAVE_ACTIVE' || sig.state === 'FORCED_GREEN_4S'
+            const isAmber = sig.state === 'PREEMPTION_REQUESTED' || sig.state === 'APPROACHING'
+            const color = isGreen ? '#10b981' : (isAmber ? '#f59e0b' : '#ef4444')
+            marker.setStyle({ color, fillColor: color })
+            marker.setPopupContent(`<b>🚦 V2X Traffic Signal: ${sig.name}</b><br>State: <span style="color:${color};font-weight:bold">${sig.state}</span><br>Civilian Yields: ${sig.civilianVehiclesYielding || 0}`)
+          }
+        })
+      }
+    })
+    return () => unsub()
+  }, [])
 
   // Real-Time Simulation Engine
   useEffect(() => {
@@ -580,14 +613,15 @@ export function RealInteractiveMap({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
                   <Zap className="size-4 text-emerald-400" />
-                  <span>V2X SIGNAL PREEMPTION ACTIVE</span>
+                  <span>V2X SIGNAL PREEMPTION {liveV2XData?.corridorHealth ? `(${liveV2XData.corridorHealth})` : 'ACTIVE'}</span>
                 </div>
                 <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
-                  4 Signals Green
+                  {liveV2XData?.preemptedCount ?? 4} Signals Green
                 </span>
               </div>
               <p className="mt-1 text-[11px] text-emerald-200">
-                Traffic lights along Route B forced green. <b>142 civilian cars alerted to yield.</b>
+                Traffic lights along corridor forced green. <b>{liveV2XData?.civilianAlertedCount ?? 142} civilian cars alerted to yield.</b>
+                {liveV2XData?.timeSavedMinutes ? ` Saved -${liveV2XData.timeSavedMinutes}m.` : ''}
               </p>
             </div>
           ) : null}
