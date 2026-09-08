@@ -113,6 +113,7 @@ export const routeApi = {
       preference?: 'FASTEST' | 'SHORTEST'
       steps?: any[]
       reason?: string
+      acceptedBy?: string
     },
   ): Promise<{ success: true; message: string; data: Route }> {
     return post<{ success: true; message: string; data: Route }>(

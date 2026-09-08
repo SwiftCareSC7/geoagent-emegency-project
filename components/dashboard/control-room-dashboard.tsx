@@ -36,6 +36,7 @@ import { GeoAgentCard } from './geoagent-card'
 import { MapPlaceholder } from './map-placeholder'
 import { RouteStatusCards } from './route-status-cards'
 import { TimelinePanel } from './timeline-panel'
+import { EmergencyClearanceMonitor } from './emergency-clearance-monitor'
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString([], {
@@ -387,8 +388,9 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
                 />
               </div>
 
-              {/* Right Column: Fleet Unit Registry */}
+              {/* Right Column: Fleet Unit Registry & Clearance Monitoring */}
               <div className="space-y-6 lg:col-span-2">
+                <EmergencyClearanceMonitor ambulanceId="AMB-01" />
                 <VehicleFleetPanel
                   vehicles={vehicles}
                   loading={loadingLive}
@@ -417,6 +419,7 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
             </div>
 
             <div className="space-y-6 lg:col-span-2">
+              <EmergencyClearanceMonitor ambulanceId="AMB-01" />
               {dashboardData ? <RouteStatusCards data={dashboardData} /> : null}
               {dashboardData?.explanation ? <GeoAgentCard explanation={dashboardData.explanation} /> : null}
             </div>

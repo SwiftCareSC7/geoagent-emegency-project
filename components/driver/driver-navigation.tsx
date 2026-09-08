@@ -344,12 +344,10 @@ export function DriverNavigation({
         try {
           await routeApi.acceptReroute(routeId, {
             acceptedBy: 'DRIVER',
-            selectedAlternative: {
-              geometry: alternative.geometry,
-              distanceMeters: alternative.distanceMeters,
-              durationSeconds: alternative.durationSeconds,
-              steps: alternative.steps
-            },
+            geometry: alternative.geometry,
+            distanceMeters: alternative.distanceMeters,
+            durationSeconds: alternative.durationSeconds,
+            steps: alternative.steps,
             reason: 'Accepted GeoAgent recommended Indiranagar bypass'
           })
         } catch {
