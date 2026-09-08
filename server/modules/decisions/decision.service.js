@@ -46,8 +46,20 @@ const throwOperational = (message, status = 400) => {
  * Generate a unique decision ID (DEC-0001).
  */
 const generateDecisionId = async () => {
-  const count = await Decision.countDocuments();
-  return `DEC-${String(count + 1).padStart(4, '0')}`;
+  const latest = await Decision.findOne({}, { decisionId: 1 }).sort({ createdAt: -1 });
+  let nextNum = 1;
+  if (latest && latest.decisionId) {
+    const match = latest.decisionId.match(/DEC-(\d+)/);
+    if (match) {
+      nextNum = parseInt(match[1], 10) + 1;
+    }
+  }
+  let candidate = `DEC-${String(nextNum).padStart(4, '0')}`;
+  while (await Decision.exists({ decisionId: candidate })) {
+    nextNum++;
+    candidate = `DEC-${String(nextNum).padStart(4, '0')}`;
+  }
+  return candidate;
 };
 
 /**
@@ -335,30 +347,43 @@ class DecisionService {
       return recentExisting;
     }
 
-    const decisionId = await generateDecisionId();
+    let decision;
+    let attempts = 0;
+    while (attempts < 5) {
+      try {
+        const decisionId = await generateDecisionId();
 
-    const decision = new Decision({
-      decisionId,
-      emergency: emergency._id,
-      vehicle: context.vehicle ? (await Vehicle.findOne({ vehicleId: context.vehicle.id }))._id : null,
-      route: context.route ? (await Route.findOne({ routeId: context.route.id }))._id : null,
-      severity: evaluation.severity,
-      actions: evaluation.actions,
-      primaryAction: evaluation.primaryAction,
-      backup: {
-        recommended: evaluation.backup.recommended,
-        candidateVehicleId: evaluation.backup.candidateVehicleId,
-        backupEtaMinutes: evaluation.backup.backupEtaMinutes,
-        currentEtaMinutes: evaluation.backup.currentEtaMinutes
-      },
-      reasonCodes: evaluation.reasonCodes,
-      geoAgentRecommendation: context.geoAgentRecommendation || {},
-      inputSnapshot: snapshot,
-      situationHash,
-      status: DECISION_STATUS.PENDING_OPERATOR_ACTION
-    });
+        decision = new Decision({
+          decisionId,
+          emergency: emergency._id,
+          vehicle: context.vehicle ? (await Vehicle.findOne({ vehicleId: context.vehicle.id }))._id : null,
+          route: context.route ? (await Route.findOne({ routeId: context.route.id }))._id : null,
+          severity: evaluation.severity,
+          actions: evaluation.actions,
+          primaryAction: evaluation.primaryAction,
+          backup: {
+            recommended: evaluation.backup.recommended,
+            candidateVehicleId: evaluation.backup.candidateVehicleId,
+            backupEtaMinutes: evaluation.backup.backupEtaMinutes,
+            currentEtaMinutes: evaluation.backup.currentEtaMinutes
+          },
+          reasonCodes: evaluation.reasonCodes,
+          geoAgentRecommendation: context.geoAgentRecommendation || {},
+          inputSnapshot: snapshot,
+          situationHash,
+          status: DECISION_STATUS.PENDING_OPERATOR_ACTION
+        });
 
-    await decision.save();
+        await decision.save();
+        break;
+      } catch (err) {
+        if (err.code === 11000 && attempts < 4) {
+          attempts++;
+          continue;
+        }
+        throw err;
+      }
+    }
 
     // Real-time event (best-effort, post-commit)
     try {

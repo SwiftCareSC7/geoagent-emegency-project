@@ -673,6 +673,8 @@ export interface AdminProviderStatus {
   provider?: string
   mode?: string
   details?: string
+  engine?: string
+  version?: string
 }
 
 export interface AdminSystemHealthSummary {

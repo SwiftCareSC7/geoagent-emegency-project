@@ -549,11 +549,37 @@ node server/test-auth-e2e.js
 # Output: VERIFICATION RESULTS: 31 PASSED, 0 FAILED
 
 # 9. Frontend Typecheck & Production Build
-npx tsc --noEmit
+npm run lint # runs tsc --noEmit
 # Output: Clean (0 errors)
 npm run build
 # Output: Compiled successfully, all static and dynamic routes optimized
+
+# 10. Canonical Demonstration Playback
+node server/demo-telemetry-player.js
+# Output: CANONICAL DEMONSTRATION PLAYBACK COMPLETE: 8/8 STAGES VERIFIED
 ```
+
+---
+
+## 4. Canonical Demonstration Scenario & Operator Walkthrough
+
+### 1. The Scenario (`E-DEMO-001`)
+- **Patient Condition**: Critical acute myocardial infarction reported near Mayo Hall Junction, Bengaluru.
+- **Dispatched Vehicle**: Ambulance `AMB-DEMO-01` assigned to transport patient to Manipal Hospital HAL Old Airport Rd.
+- **Initial Planned Corridor**: `ROUTE-DEMO-01` (5.5 km via MG Road → Trinity Circle → Domlur).
+- **Incident Occurrence**: Multi-vehicle collision `INC-DEMO-01` blocks Trinity Circle overpass.
+
+### 2. Live Sequence of Events
+1. **Login**: Operator logs in via `/login` with `operator@swiftcare.local` (`Operator123!`).
+2. **Control Room Overview**: Navigates to `/driver/dashboard` or `/emergencies/E-DEMO-001`. The operational Leaflet map displays `AMB-DEMO-01` operating at 45 km/h on `ROUTE-DEMO-01`.
+3. **Traffic Deterioration**: Approaching Trinity Circle, speed drops to 26 km/h, then 11 km/h as the vehicle enters the traffic queue.
+4. **Prediction Engine Alerts**: Real-time delay prediction surges from +1.7m to +8.4m (`CRITICAL` delay risk).
+5. **Driver Divergence**: The driver maneuvers off the blocked corridor onto the Indiranagar 100ft Rd bypass. Deviation Engine flags cross-track distance (`175m`, `DEVIATED`).
+6. **V2X Corridor Clearance**: Python / V2X spatial engine evaluates alternative corridor `ROUTE-DEMO-ALT`, finding that 2 out of 4 traffic signals can be preempted with green-wave clearance, saving -1.6 minutes.
+7. **Advisory AI & Rules Formulation**: Decision Engine formulates proposal `DEC-XXXX` with status `PENDING_OPERATOR_ACTION`.
+8. **Operator Approval & Execution**: The operator reviews the 3-tier epistemic evidence (Observed telemetry, Inferred delay, Unknown future congestion) and clicks **Approve & Execute**. The active route atomically switches to `ROUTE-DEMO-ALT`.
+9. **Real-Time Push**: Socket.IO broadcasts `decision.executed` and `emergency.updated` to all connected clients.
+10. **Admin Observability**: Chief Systems Administrator (`admin@swiftcare.local`) navigates to `/admin` to verify live database stats, ping latency (28ms), provider statuses, and immutable audit logs.
 
 
 

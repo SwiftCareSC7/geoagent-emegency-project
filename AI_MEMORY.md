@@ -663,3 +663,50 @@ Trajectories          Routes                     │         │
   - Step 21: Decision execution (`APPROVED` -> `EXECUTED`).
   - Step 22: Socket.IO broadcast envelopes and frontend TypeScript contract conformance.
   - Step 23: Admin observability and audit trail ledger inspection without credential leakage.
+
+---
+
+## 23. Part 12 — Final Production & Demo Readiness (Release Candidate)
+
+- **Phase Objective**: Complete final system hardening, establish a canonical and repeatable demonstration scenario, enforce truthful data labeling, audit provider health and security boundaries, and deliver a production release candidate.
+- **Canonical Demonstration Scenario**:
+  - **Emergency**: `E-DEMO-001` (Priority: `CRITICAL`, Type: `MEDICAL`, Description: Acute myocardial infarction near Mayo Hall Junction).
+  - **Vehicle**: `AMB-DEMO-01` (Registration: `KA-01-DEMO-991`, Status: `EN_ROUTE`, Assigned to `E-DEMO-001`).
+  - **Planned Route**: `ROUTE-DEMO-01` (5.5 km primary corridor via Mayo Hall → Trinity Circle → Manipal Hospital HAL).
+  - **Alternative Bypass**: `ROUTE-DEMO-ALT` (5.2 km via 100ft Rd bypass corridor with V2X signal preemption).
+  - **Road Incident**: `INC-DEMO-01` (Multi-vehicle collision blocking Trinity Overpass).
+  - **Personnel**: Operator `operator@swiftcare.local` (Password: `Operator123!`), Admin `admin@swiftcare.local` (Password: `AdminPassword123!`).
+  - **Canonical Seeder**: `node server/seed-demo-scenario.js [--clean]` (Isolated, repeatable, non-destructive to production).
+  - **Controlled Telemetry Playback Engine**: `node server/demo-telemetry-player.js`
+    - Stage 0 (`00:00`): Normal speed (45 km/h, ON_ROUTE, 0m cross-track, LOW risk).
+    - Stage 1 (`00:20`): Speed dropping approaching Trinity Circle bottleneck (26 km/h, DEVIATED, MEDIUM risk).
+    - Stage 2 (`00:40`): Severe traffic jam behind incident (11 km/h, +8.4 min delay, CRITICAL risk).
+    - Stage 3 (`01:00`): Driver diverges onto bypass link (32 km/h, DEVIATED 175m, HIGH risk).
+    - Stage 4 (`01:20`): Real-time prediction engine recalculates delay (+9.5 min projected delay).
+    - Stage 5 (`01:40`): Alternative corridor bypass & V2X green-wave evaluated (signals cleared: 2/4, -1.6m saved).
+    - Stage 6 (`02:00`): Advisory reasoning & deterministic rules propose decision (`DEC-XXXX`, `PENDING_OPERATOR_ACTION`).
+    - Stage 7 (`02:20`): Control Room operator approves decision; state atomically transitions to `APPROVED` then `EXECUTED`; active route switches to `ROUTE-DEMO-ALT`.
+- **Truth in Data Labeling**:
+  - Distinguishes `REAL DATA` (hardware GPS, verified Google Routes/Traffic) from `DEMO / SIMULATION` (`source: SIMULATOR`, `source: MOCK`).
+  - Telemetry strips and popups display explicit `SIMULATOR` badges when running playback.
+- **Provider Health Infrastructure**:
+  - Expanded `server/modules/health/providerHealth.service.js` to report all 6 services:
+    1. `mongodb`: Connection state and live latency ping.
+    2. `googleRoutes`: Google Routes API key validation and mode.
+    3. `googleRoads`: Google Roads API key validation and mode.
+    4. `gemini`: Google Gemini 2.5 Flash SDK and advisory reasoning status.
+    5. `pythonV2X`: Python 3.12 subprocess availability vs in-process JS fallback engine.
+    6. `socketIO`: Live broadcast push readiness.
+  - Admin Overview dashboard (`components/admin/admin-overview.tsx`) renders dedicated status badges for all 6 subsystems.
+- **Concurrency & Key Generation Hardening**:
+  - Replaced naive `countDocuments() + 1` ID generation with monotonic check and conflict retry loop for decisions (`DEC-XXXX`), emergencies (`EMG-XXXX`), and incidents (`INC-XXXX`).
+  - Completely eliminates MongoDB `E11000 duplicate key error` under concurrent socket/REST triggers.
+- **Data Retention & TTL Recommendations**:
+  - `trajectories`: Rolling 30–90 day TTL index on `timestamp` recommended for production scale.
+  - `predictions`: Rolling 30-day retention for resolved emergencies.
+  - `emergencies`, `vehicles`, `decisions`: Permanent audit log; soft-deletion enforced.
+- **Future Roadmap**:
+  1. Field-driver mobile app (React Native / Android).
+  2. Direct city traffic signal controller integration (NTCIP / SCATS protocol).
+  3. City-scale deep learning spatio-temporal traffic flow prediction.
+  4. Multi-region horizontal Socket.IO scaling via Redis adapter.

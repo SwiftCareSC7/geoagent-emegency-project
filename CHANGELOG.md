@@ -2,6 +2,24 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
+## [2.4.0] - Final Production & Demo Readiness (Part 12)
+
+### Added
+- **Canonical Demo Scenario Seeder** (`server/seed-demo-scenario.js`):
+  - Deterministic, repeatable, isolated seeder creating Emergency `E-DEMO-001`, Vehicle `AMB-DEMO-01`, corridor route `ROUTE-DEMO-01`, alternative bypass `ROUTE-DEMO-ALT`, road incident `INC-DEMO-01`, and demo operator/admin credentials.
+- **Controlled Telemetry Playback Engine** (`server/demo-telemetry-player.js`):
+  - Safe 8-stage playback sequence (`00:00` to `02:20`) mapping: Normal Speed → Speed Dropping → Severe Congestion → Driver Divergence → Prediction Recalculation → V2X Green-Wave Clearance → Decision Formulation (`PENDING_OPERATOR_ACTION`) → Operator Approval & Execution (`ROUTE-DEMO-ALT`).
+  - Supports `--all`, `--step <N>`, and continuous playback with `--interval <ms>`.
+- **6-Provider Health Dashboard Reporting**:
+  - Expanded `server/modules/health/providerHealth.service.js` and `components/admin/admin-overview.tsx` to surface all 6 operational providers: MongoDB, Google Routes, Google Roads, Gemini AI, Python / V2X, and Socket.IO.
+  - Added `engine` and `version` attributes to `AdminProviderStatus` in `lib/api/types.ts`.
+
+### Changed
+- **Concurrency-Safe ID Generation**:
+  - Hardened `generateDecisionId()`, `generateEmergencyId()`, and `generateIncidentId()` against race conditions using monotonic ID checks and retry loops, eliminating MongoDB `E11000 duplicate key error`.
+- **Truthful Data Labeling Enforcement**:
+  - Explicit `SIMULATOR` and `MOCK` source tags applied to synthetic telemetry fixes and mock traffic responses.
+
 ## [2.3.0] - Full System Hardening, Security & End-to-End Validation (Part 11)
 
 ### Added

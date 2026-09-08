@@ -7,8 +7,20 @@ import realtimeService from '../realtime/realtime.service.js';
  * Generate a unique emergency ID (e.g., EMG-0001)
  */
 const generateEmergencyId = async () => {
-  const count = await Emergency.countDocuments();
-  return `EMG-${String(count + 1).padStart(4, '0')}`;
+  const latest = await Emergency.findOne({}, { emergencyId: 1 }).sort({ createdAt: -1 });
+  let nextNum = 1;
+  if (latest && latest.emergencyId) {
+    const match = latest.emergencyId.match(/EMG-(\d+)/);
+    if (match) {
+      nextNum = parseInt(match[1], 10) + 1;
+    }
+  }
+  let candidate = `EMG-${String(nextNum).padStart(4, '0')}`;
+  while (await Emergency.exists({ emergencyId: candidate })) {
+    nextNum++;
+    candidate = `EMG-${String(nextNum).padStart(4, '0')}`;
+  }
+  return candidate;
 };
 
 /**

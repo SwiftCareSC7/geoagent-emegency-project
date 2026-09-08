@@ -1123,6 +1123,42 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  # --- SYSTEM HEALTH & OBSERVABILITY ---
+  /health:
+    get:
+      summary: Backend server liveness and operational health check
+      tags: [Health]
+      responses:
+        '200':
+          description: Server is online and operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: GeoAgentic backend is running }
+
+  /health/providers:
+    get:
+      summary: Multi-provider availability and integration status grid
+      tags: [Health]
+      responses:
+        '200':
+          description: Health evaluation across all 6 core providers (MongoDB, Google Routes, Google Roads, Gemini, Python/V2X, Socket.IO)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      database: { type: object }
+                      providers: { type: object }
+                      checkedAt: { type: string, format: date-time }
+
 components:
   securitySchemes:
     cookieAuth:

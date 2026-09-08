@@ -236,7 +236,7 @@ export async function seedDemoScenario(options = {}) {
     },
     speed: 45.0,
     heading: 90,
-    timestamp: new Date(),
+    timestamp: new Date(Date.now() - 160000),
     source: 'SIMULATOR',
   });
   console.log(`  ✓ Seeded Initial Telemetry for ${vehicle.vehicleId} (Speed: 45 km/h, ON_ROUTE, Source: SIMULATOR)`);

@@ -65,7 +65,7 @@ export const DEMO_STAGES = [
     stage: 1,
     timeLabel: '00:20',
     name: 'Speed Dropping Near Incident Approach',
-    coordinates: [77.6110, 12.9720], // Trinity Circle
+    coordinates: [77.6065, 12.9725], // Approaching Trinity Circle
     speed: 26.0,
     heading: 95,
     description: 'Vehicle decelerating as traffic builds near Trinity Circle approach.',
@@ -74,7 +74,7 @@ export const DEMO_STAGES = [
     stage: 2,
     timeLabel: '00:40',
     name: 'Severe Traffic Jam & Corridor Congestion',
-    coordinates: [77.6170, 12.9695], // Right before Trinity Overpass
+    coordinates: [77.6100, 12.9720], // Trinity Circle bottleneck
     speed: 11.0,
     heading: 100,
     description: 'Vehicle slowed to crawl behind multi-vehicle accident bottleneck (INC-DEMO-01).',
@@ -83,16 +83,16 @@ export const DEMO_STAGES = [
     stage: 3,
     timeLabel: '01:00',
     name: 'Driver Divergence & Route Deviation',
-    coordinates: [77.6160, 12.9740], // Diverging North onto Old Airport Bypass / 100ft Rd
+    coordinates: [77.6135, 12.9740], // Diverging North onto Old Airport Bypass / 100ft Rd
     speed: 32.0,
-    heading: 35,
+    heading: 45,
     description: 'Driver maneuvers off primary corridor onto bypass link. Cross-track divergence detected.',
   },
   {
     stage: 4,
     timeLabel: '01:20',
     name: 'Prediction Model Recalculates Delay Risk',
-    coordinates: [77.6200, 12.9760], // Moving along Indiranagar bypass
+    coordinates: [77.6175, 12.9755], // Moving along Indiranagar bypass
     speed: 38.0,
     heading: 85,
     description: 'Real-time prediction engine detects elevated delay risk (+9.5 min delay projected).',
@@ -101,7 +101,7 @@ export const DEMO_STAGES = [
     stage: 5,
     timeLabel: '01:40',
     name: 'Alternative Bypass & V2X Green-Wave Evaluated',
-    coordinates: [77.6250, 12.9750], // Indiranagar arterial
+    coordinates: [77.6215, 12.9750], // Indiranagar arterial
     speed: 42.0,
     heading: 90,
     description: 'System evaluates ROUTE-DEMO-ALT. V2X corridor engine signals green-wave clearance.',
@@ -110,7 +110,7 @@ export const DEMO_STAGES = [
     stage: 6,
     timeLabel: '02:00',
     name: 'Decision Proposal Generated for Operator Review',
-    coordinates: [77.6320, 12.9710], // Merging bypass
+    coordinates: [77.6255, 12.9730], // Rejoining corridor
     speed: 44.0,
     heading: 105,
     description: 'AI & deterministic rules formulate REROUTE_TO_ALTERNATIVE proposal awaiting operator approval.',
@@ -119,7 +119,7 @@ export const DEMO_STAGES = [
     stage: 7,
     timeLabel: '02:20',
     name: 'Operator Approval & Atomic State Execution',
-    coordinates: [77.6400, 12.9620], // En route to Manipal
+    coordinates: [77.6295, 12.9705], // En route to Manipal
     speed: 48.0,
     heading: 120,
     description: 'Operator approves decision proposal. State transitions to APPROVED then EXECUTED.',
@@ -150,6 +150,9 @@ export async function runDemoStage(stageIndex, context = {}) {
     await seedDemoScenario({ clean: false });
   }
 
+  const baseTime = context.baseTime || (Date.now() - 140000);
+  const stageTimestamp = new Date(baseTime + stage.stage * 20000);
+
   // 1. Ingest Telemetry Fix
   const trajectory = await createTrajectory({
     vehicleId: 'AMB-DEMO-01',
@@ -158,7 +161,7 @@ export async function runDemoStage(stageIndex, context = {}) {
     speed: stage.speed,
     heading: stage.heading,
     source: 'SIMULATOR', // Truthful labeling: SIMULATOR
-    timestamp: new Date(),
+    timestamp: stageTimestamp,
   });
   console.log(`  ✓ Ingested simulated telemetry: ${stage.speed} km/h (Source: SIMULATOR)`);
 
@@ -202,7 +205,7 @@ export async function runDemoStage(stageIndex, context = {}) {
   if (stage.stage === 7) {
     console.log('\n  [Executing Operator Approval & Lifecycle Transition...]');
     const existingDecision = await Decision.findOne({
-      emergencyId: emergency.emergencyId,
+      emergency: emergency._id,
       status: 'PENDING_OPERATOR_ACTION',
     }).sort({ createdAt: -1 });
 
@@ -243,9 +246,10 @@ export async function runFullDemoScenario(intervalMs = 0) {
   // Ensure fresh clean seed
   await seedDemoScenario({ clean: true });
 
+  const baseTime = Date.now() - 140000;
   const results = [];
   for (let i = 0; i < DEMO_STAGES.length; i++) {
-    const res = await runDemoStage(i);
+    const res = await runDemoStage(i, { baseTime });
     results.push(res);
 
     if (intervalMs > 0 && i < DEMO_STAGES.length - 1) {

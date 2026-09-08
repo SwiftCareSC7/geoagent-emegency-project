@@ -440,10 +440,30 @@ cd routing-engine
 python demo_member2.py
 ```
 
-### Health Check
+### 4. Canonical Demonstration Scenario (Part 12)
 ```bash
+# Seed the canonical demo mission (Emergency E-DEMO-001, Vehicle AMB-DEMO-01)
+node server/seed-demo-scenario.js --clean
+
+# Run the 8-stage controlled telemetry playback engine (00:00 to 02:20)
+node server/demo-telemetry-player.js --all
+
+# Or run with timed delay between stages for live presentation:
+node server/demo-telemetry-player.js --all --interval 3000
+
+# Demo Credentials:
+# Operator: operator@swiftcare.local / Operator123!
+# Admin:    admin@swiftcare.local    / AdminPassword123!
+```
+
+### Health & Provider Check
+```bash
+# General health check
 curl http://localhost:5000/api/health
 # Response: {"success":true,"message":"GeoAgentic backend is running"}
+
+# 6-Provider status evaluation (MongoDB, Google Routes, Google Roads, Gemini, Python/V2X, Socket.IO)
+curl http://localhost:5000/api/health/providers
 ```
 
 ---
