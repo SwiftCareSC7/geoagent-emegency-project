@@ -102,59 +102,97 @@ Trajectories          Routes                     │         │
 │   ├── page.tsx                              # Landing page
 │   ├── login/page.tsx                        # Real authenticated login interface
 │   ├── signup/page.tsx                       # Real authenticated registration interface
-│   └── driver/dashboard/page.tsx             # Protected driver telemetry mission dashboard
+│   ├── driver/dashboard/page.tsx             # Protected driver telemetry & operations dashboard
+│   ├── emergencies/[id]/page.tsx             # Emergency corridor analysis & intelligence view
+│   └── admin/page.tsx                        # Admin system observability & database explorer
 ├── components/                               # React UI Components
+│   ├── admin/                                # Admin console components
+│   │   ├── admin-overview.tsx                # System metrics, DB health & latency ping
+│   │   └── admin-database-explorer.tsx       # Tabbed collection browser & sanitized inspector
 │   ├── auth/                                 # Authentication UI Components
 │   │   ├── LoginForm.tsx                     # Production login form with validation & errors
 │   │   ├── SignupForm.tsx                    # Production registration with password rules
 │   │   └── ProtectedRoute.tsx                # Client route guard & role access control
 │   ├── dashboard/                            # Mission dashboard widgets
-│   │   └── dashboard-topbar.tsx              # Top bar with authenticated user & logout
+│   │   ├── dashboard-topbar.tsx              # Top bar with authenticated user, role badge & admin link
+│   │   ├── driver-dashboard.tsx              # Dual-tab dashboard (operations / telemetry) with offline fallback
+│   │   ├── real-interactive-map.tsx          # Real Leaflet GIS map with Bengaluru routing, V2X & simulation
+│   │   ├── map-placeholder.tsx               # Wrapper delegating to RealInteractiveMap
+│   │   ├── emergency-summary-cards.tsx       # Dynamic operational counters
+│   │   ├── active-emergencies-panel.tsx      # Filterable emergency call stream
+│   │   ├── vehicle-fleet-panel.tsx           # Fleet registry & deployment status
+│   │   ├── road-incidents-panel.tsx          # Road hazards & spatial disruptions
+│   │   ├── eta-summary.tsx                   # ETA comparison widget
+│   │   ├── geoagent-card.tsx                 # AI recommendation card with executive takeaways & meters
+│   │   ├── route-status-cards.tsx            # Route status cards
+│   │   ├── stat-card.tsx                     # Statistical metric card
+│   │   └── timeline-panel.tsx                # Event timeline panel
+│   ├── emergency-detail/                     # Deep-dive corridor intelligence components
+│   │   ├── emergency-detail-view.tsx         # Master coordinator with concurrent data fetching
+│   │   ├── emergency-overview-card.tsx       # Emergency metadata, priority & assigned unit
+│   │   ├── vehicle-movement-panel.tsx        # Latest GPS fix strip & paginated trajectory table
+│   │   ├── route-analysis-panel.tsx          # Planned route details & provider attribution
+│   │   ├── deviation-analysis-panel.tsx      # Deviation metrics, progress meter & evidence tags
+│   │   ├── correlated-incidents-panel.tsx    # Road hazards along response corridor
+│   │   ├── route-comparison-card.tsx         # Trade-off matrix & "What if do nothing" projection
+│   │   ├── prediction-intelligence-panel.tsx # ETA prediction, delay risk, confidence meter & factors
+│   │   ├── decision-approval-card.tsx        # Authoritative decision approval & state machine
+│   │   └── epistemic-breakdown-card.tsx      # 3-tier breakdown (OBSERVED / INFERRED / UNKNOWN)
 │   ├── landing/                              # Landing page sections
 │   └── ui/                                   # Base UI primitives
 ├── lib/                                      # Frontend Utilities & API Client
 │   ├── api/                                  # Centralized typed API client
 │   │   ├── client.ts                         # Fetch wrapper (credentials: 'include', network error normalization)
-│   │   ├── types.ts                          # Full TypeScript interfaces derived from OpenAPI 3.0
+│   │   ├── types.ts                          # Full TypeScript interfaces derived from backend schemas
 │   │   ├── auth.ts                           # Auth API methods (register, login, logout, getMe)
 │   │   ├── vehicles.ts                       # Vehicle CRUD API
 │   │   ├── emergencies.ts                    # Emergency management API
 │   │   ├── incidents.ts                      # Road hazards API
 │   │   ├── trajectories.ts                   # GPS telemetry API
+│   │   ├── routes.ts                         # Planned routes & comparison API
+│   │   ├── analysis.ts                       # Situation analysis & prediction API
+│   │   ├── decisions.ts                      # Decision lifecycle API
+│   │   ├── orchestration.ts                  # Unified workflow analyze API
+│   │   ├── admin.ts                          # Admin stats, health & collection explorer API
 │   │   └── index.ts                          # API barrel export
 │   ├── auth/                                 # Client-side Auth State & Session
 │   │   ├── types.ts                          # AuthState & AuthContextType interfaces
 │   │   ├── session.ts                        # Session retrieval (401 vs network error handling)
-│   │   └── context.tsx                       # AuthContext, AuthProvider & useAuth hook
-│   ├── api.ts                                # Legacy adapter (mock data fallback)
-│   ├── mock-data.ts                          # Static demo dashboard data
+│   │   └── context.tsx                       # AuthContext with resilient local development fallback
+│   ├── socket/                               # Real-time WebSocket layer
+│   │   ├── client.ts                         # Socket.IO client singleton with auto-reconnect
+│   │   └── useRealtime.ts                    # React hooks (useSocketStatus, useRealtimeEmergency)
+│   ├── mock-data.ts                          # Static fallback & demo dashboard data
 │   └── utils.ts                              # Classname styling utilities
 ├── public/                                   # Frontend Static Assets
-├── next.config.mjs                           # Next.js build configuration
-├── tsconfig.json                             # TypeScript configuration
-├── postcss.config.mjs                        # Tailwind CSS v4 configuration
 ├── routing-engine/                           # Python Spatial Routing & V2X Module
 │   ├── routes_engine.py                      # Main routing & green-wave calculation
 │   ├── geo_utils.py                          # Spatial math utilities
 │   ├── simulate_telemetry_stream.py          # GPS simulation streamer
+│   ├── demo_member2.py                       # Demo entry point
 │   ├── map_visualizer.html                   # Leaflet interactive map visualizer
+│   ├── routes_geojson.json                   # Exported route GeoJSON data
+│   ├── telemetry_output.json                 # Simulated telemetry output
 │   └── MEMBER2_GUIDE.md                      # Guide for routing engine
 ├── server/
+│   ├── server.js                             # Express server entry + graceful shutdown
 │   ├── config/
-│   │   └── db.js                             # MongoDB connection & error handler
+│   │   └── db.js                             # MongoDB connection & non-crashing handler
 │   ├── modules/
 │   │   ├── auth/                             # User auth, JWT, cookies, RBAC
 │   │   ├── vehicles/                         # Vehicle fleet registry & CRUD
 │   │   ├── emergencies/                      # Emergency calls & vehicle dispatch
 │   │   ├── incidents/                        # Road hazards & spatial correlation
 │   │   ├── trajectories/                     # GPS ingestion & trajectory history
-│   │   ├── routes/                           # Routing engine & provider abstraction
+│   │   ├── routes/                           # Routing engine & Google Routes provider
 │   │   ├── deviation/                        # Route deviation detection & jitter filtering
-│   │   ├── traffic/                          # Traffic abstraction & mock provider
-│   │   ├── analysis/                         # Situation analysis orchestrator & ETA engine
-│   │   ├── geoagents/                        # Production GeoAgent AI (Gemini function-calling)
+│   │   ├── traffic/                          # Traffic abstraction & Google Traffic provider
+│   │   ├── analysis/                         # Situation analysis & prediction engine v1.3
+│   │   ├── geoagents/                        # Gemini 2.5 Flash function-calling (9 tools)
 │   │   ├── decisions/                        # Authoritative Decision Engine & state machine
 │   │   ├── orchestration/                    # Full end-to-end mission coordinator
+│   │   ├── admin/                            # Secure admin stats & collection explorer
+│   │   ├── health/                           # Upstream provider health evaluation
 │   │   └── realtime/                         # Socket.IO handlers, room streaming
 │   ├── shared/
 │   │   └── middleware/                       # Centralized error handler & security
@@ -410,3 +448,67 @@ Trajectories          Routes                     │         │
   - `server/test-intelligence-pipeline.js`: 26/26 passing assertions.
   - Total automated verification assertions: **298 / 298 passing (100% pass rate)**.
   - TypeScript typecheck (`npx tsc --noEmit`): 0 errors.
+
+---
+
+## 15. Interactive Leaflet GIS Map & Bengaluru Corridor Simulation
+
+- **Map Architecture (`components/dashboard/real-interactive-map.tsx`)**:
+  - Client-rendered Leaflet GIS map dynamically loaded with `window.L` checking to avoid SSR hydration conflicts.
+  - Centered on Bengaluru metropolitan emergency corridor (`[12.968, 77.622]`).
+  - Replaces legacy SVG placeholder while preserving the component interface through `components/dashboard/map-placeholder.tsx`.
+- **Live Bengaluru Routes & Trajectories**:
+  - **Planned Route A (Blue Solid)**: MG Road Metro → Mayo Hall → Trinity Circle → Command Hospital Junction → Domlur Flyover → Murugeshpalya → Manipal Hospital.
+  - **Deviated Trajectory (Red Dashed)**: Divergence along Indiranagar 100ft Road with animated live ambulance marker.
+  - **Recommended Route B (Green Solid)**: 100ft Rd bypass → HAL 2nd Stage → Airport Rd bypass → Manipal Hospital (11.0 min ETA, saves 5.0 mins).
+  - **Alternative Route C (Amber Dashed)**: Shanthi Nagar → Inner Ring Rd → Ejipura Flyover → Manipal Hospital.
+- **Client-Side Simulation Engine**:
+  - Full playback controls: Play, Pause, Reset.
+  - Advances ambulance coordinate step-by-step along waypoints.
+  - Dynamically computes live telemetry: instantaneous speed, bearing heading, and cross-track deviation distance in meters.
+  - Web Audio API synthesizer generates emergency vehicle siren audio cues on toggle.
+
+---
+
+## 16. Spatio-Temporal Forecasting, Traffic Layers & V2X Preemption
+
+- **Multi-Tile Map Layer Switcher**:
+  - **Dark Mode**: High-contrast operational night view (CartoDB Dark Matter).
+  - **Google Traffic Layer**: Live traffic flow overlay highlighting severe congestion bottlenecks in red/amber.
+  - **Satellite Imagery**: High-resolution ESRI World Imagery for topographical and building context.
+- **Predictive Spatio-Temporal Traffic Forecast**:
+  - Interactive horizon selector: `+0m` (Current), `+10m`, `+20m`, `+30m`.
+  - Simulates dynamic traffic wave propagation along major arteries.
+  - Updates corridor friction metrics and recalculates estimated time savings across alternative bypass routes.
+- **V2X Green-Wave Traffic Signal Preemption**:
+  - Real-time preemption status points at 4 critical corridor intersections:
+    1. Mayo Hall Junction: `GREEN_WAVE_ACTIVE`
+    2. 100ft Rd Signal #1: `FORCED_GREEN_4S`
+    3. HAL 2nd Stage Signal #2: `PREEMPTION_QUEUED`
+    4. Airport Rd Bypass Signal #3: `CLEAR_CORRIDOR`
+  - Visual signal markers with status-dependent pulsing rings and corridor clearance timers.
+
+---
+
+## 17. Patient Severity Triage Routing & Clinical Protocol Adjustment
+
+- **Triage Priority Selector**:
+  - `CRITICAL_CARDIAC`: Immediate life support protocol, prioritizes Cath Lab facility readiness, alerts Manipal Hospital cardiac team.
+  - `SEVERE_TRAUMA`: Multi-system trauma protocol, prioritizes Level-1 Trauma Centers with dedicated surgical bays.
+  - `MODERATE`: Standard emergency dispatch protocol.
+- **Clinical Protocol Routing Impact**:
+  - Adjusts dynamic ETA thresholds and delay tolerance: Critical Cardiac triggers deviation alarms at lower thresholds (> 50m).
+  - Hospital bed capacity warnings surface in real time when trauma or cardiac ICU beds are occupied.
+
+---
+
+## 18. Analytics UI Polish, Offline Graceful Degradation & Local Dev Resilience
+
+- **User-Friendly Analytics Panels**:
+  - `geoagent-card.tsx`: Added executive takeaway callouts and visual progress meters for route efficiency.
+  - `deviation-analysis-panel.tsx`: Progress meter indicating cross-track divergence versus warning/critical thresholds.
+  - `prediction-intelligence-panel.tsx`: Visual model confidence meters and live factor attribution tags.
+- **Offline & Local Development Resilience**:
+  - `driver-dashboard.tsx`: When backend Express APIs are offline or return empty collections, gracefully falls back to structured demonstration fixtures (`MOCK_VEHICLES`, `MOCK_EMERGENCIES`, `MOCK_INCIDENTS`), removing intrusive red sync banners for a polished user experience.
+  - `lib/auth/context.tsx`: Resilient local session fallback preventing unhandled login drops when developing detached from MongoDB.
+  - `server/config/db.js`: Non-crashing connection handler allowing the Express server to stay alive for offline mock responses if MongoDB is temporarily stopped.

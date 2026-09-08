@@ -9,10 +9,16 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 ```text
 ┌─────────────────────────────────────────────────────────┐
 │  Frontend (Next.js 16 App Router, React 19, TypeScript) │
-│  ├── Landing Page (/), Login (/login), Signup (/signup)  │
+│  ├── Landing (/), Login (/login), Signup (/signup)      │
 │  ├── Driver Dashboard (/driver/dashboard)               │
-│  │   (Live ETA, Route Status, Timeline, GeoAgent Card)   │
-│  └── Client API Adapter (lib/api.ts → REST + Socket.IO) │
+│  │   (Operations Feed, Real Interactive Leaflet GIS Map,│
+│  │    Spatio-Temporal Forecast, V2X Signals, Fallback)  │
+│  ├── Emergency Detail Intelligence (/emergencies/[id])  │
+│  │   (Corridor Analysis, Trajectories, What-If Matrix,  │
+│  │    Confidence Meters, Decision Approval Controls)    │
+│  ├── Admin Database Console (/admin)                    │
+│  │   (Real Stats, Latency Ping, 8-Collection Explorer)  │
+│  └── Centralized Typed API Client + Socket.IO Hooks     │
 ├─────────────────────────────────────────────────────────┤
 │  Python Spatial Routing & V2X Engine (Member 2)         │
 │  ├── Dynamic Corridor Path Calculation                  │
@@ -21,19 +27,22 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 │  └── Interactive Leaflet.js Map Visualizer              │
 ├─────────────────────────────────────────────────────────┤
 │  Backend (Express.js, Node.js, HTTP Server)              │
+│  ├── Admin Observability & Health Module (Part 17)      │
+│  ├── Route Candidate Comparison & What-If Service       │
+│  ├── Real-Time Prediction Engine v1.3                   │
 │  ├── End-to-End Orchestration Layer (Part 11)           │
 │  ├── Authoritative Decision & Dispatch Engine (Part 10) │
 │  ├── Real-Time Push Layer (Part 9 - Socket.IO)          │
-│  ├── GeoAgent AI Decision Engine (Part 8 - Gemini LLM)  │
+│  ├── GeoAgent AI Advisory Engine (Part 8 - Gemini 2.5)  │
 │  ├── Deterministic Intelligence Engine (Part 7)         │
 │  ├── Modular Domain Services (Auth, Vehicles,           │
 │  │   Emergencies, Incidents, Trajectories, Routes)      │
 │  └── REST API with JWT Auth + Role-Based Access Control │
 ├─────────────────────────────────────────────────────────┤
 │  Database (MongoDB)                                      │
-│  ├── 7 Collections: User, Vehicle, Emergency, Incident,  │
-│  │   Trajectory, Route, Decision                         │
-│  └── 2dsphere & Compound Indexes                         │
+│  ├── 8 Verified Collections: User, Vehicle, Emergency,  │
+│  │   Incident, Trajectory, Route, Decision, Prediction  │
+│  └── 2dsphere Geospatial & Compound Sorting Indexes      │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -131,7 +140,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - `server/test-dashboard-e2e.js`: Comprehensive 47-point end-to-end contract test suite.
 - **Verification**: 47 / 47 assertions passing in `server/test-dashboard-e2e.js`, 31 / 31 assertions passing in `server/test-auth-e2e.js`, 23 / 23 assertions passing in `server/test-security.js`, and clean Next.js build compilation.
 
-### Part 14: Emergency Detail & Corridor Analysis View (`/emergencies/[id]`)
+### Part 15: Emergency Detail & Corridor Analysis View (`/emergencies/[id]`)
 - **Goal**: Build a dedicated operational corridor analysis page answering:
   1. What emergency is happening (type, priority, caller, coordinates)
   2. What incidents affect it (corridor hazards within 500m of route or 2000m of vehicle)
@@ -145,7 +154,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - `components/emergency-detail/emergency-detail-view.tsx`: Master coordinator with concurrent `Promise.allSettled` fetching, reload, and re-run analysis triggers.
   - `components/emergency-detail/emergency-overview-card.tsx`: Status, priority, WGS84 coordinates, and assigned vehicle.
   - `components/emergency-detail/vehicle-movement-panel.tsx`: Latest fix telemetry strip and paginated bounded GPS trajectory table.
-  - `components/emergency-detail/route-analysis-panel.tsx`: Planned route details and `MOCK Provider (Local Simulation)` attribution.
+  - `components/emergency-detail/route-analysis-panel.tsx`: Planned route details and provider attribution.
   - `components/emergency-detail/deviation-analysis-panel.tsx`: Cross-track distance, bearing divergence, traffic metrics, delay calculations, and causal evidence tags.
   - `components/emergency-detail/correlated-incidents-panel.tsx`: Road disruptions near the corridor.
   - `components/emergency-detail/epistemic-breakdown-card.tsx`: 3-tier epistemic breakdown.
@@ -155,7 +164,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - `server/test-emergency-detail-e2e.js`: 63-point automated integration test suite (100% pass rate).
 - **Verification**: 63 / 63 assertions passing in `server/test-emergency-detail-e2e.js`, 0 TypeScript errors (`npx tsc --noEmit`), clean Next.js production build (`npm run build`).
 
-### Part 14: Real-Time Intelligence Pipeline & Route Candidate Comparison
+### Part 16: Real-Time Intelligence Pipeline & Route Candidate Comparison
 - **Goal**: Connect live GPS telemetry, trajectory processing, Google Routes traffic-aware routing, ETA prediction, route candidate comparison ("What if we do nothing?"), structured evidence, Gemini 2.5 Flash advisory tools registry, deterministic decision engine, operator approval, and Socket.IO streaming.
 - **Key Modules & Files**:
   - `server/modules/routes/providers/googleRoutingProvider.js`: WGS84 coordinate boundary validation, 25-waypoint limit enforcement, `TRAFFIC_AWARE_OPTIMAL` routing preference, polyline decoding, explicit 503 error on missing credentials (no silent mock fallback).
@@ -165,16 +174,59 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - `server/modules/geoagents/geoAgent.tools.js`: Implemented all 9 required intelligence tools (`getEmergencyState`, `getVehicleState`, `getRecentTrajectory`, `getCurrentRoute`, `getRouteAlternatives`, `getTrafficAnalysis`, `getPrediction`, `getNearbyIncidents`, `getDecisionHistory`) plus operational helpers.
   - `server/modules/trajectories/trajectory.service.js`: Fixed `location` -> `validLocation` ReferenceError bug and added throttled background prediction refresh trigger (delta >= 100m or >= 30s).
   - `server/test-intelligence-pipeline.js`: 26-point automated verification suite.
-- **Verification Summary**:
-  - `server/test-intelligence-pipeline.js`: 26 / 26 passing.
-  - `server/test-realtime-external-e2e.js`: 48 / 48 passing.
-  - `server/test-admin-e2e.js`: 60 / 60 passing.
-  - `server/test-emergency-detail-e2e.js`: 63 / 63 passing.
-  - `server/test-dashboard-e2e.js`: 47 / 47 passing.
-  - `server/test-auth-e2e.js`: 31 / 31 passing.
-  - `server/test-security.js`: 23 / 23 passing.
+- **Verification**: 26 / 26 passing in `server/test-intelligence-pipeline.js`.
+
+### Part 17: Admin Database Administration & Observability Layer
+- **Goal**: Provide an exclusive, hardened system administration and database observability console (`/admin`) for system administrators with real operational metrics and zero database credential leakage.
+- **Key Modules & Files**:
+  - `server/modules/admin/admin.validation.js`: Strict input sanitization stripping reserved MongoDB operators (`$`, `.`), bounded pagination (`limit <= 100`), allowlisted sort fields.
+  - `server/modules/admin/admin.service.js`: Real counts across all 8 verified collections using `Trajectory.estimatedDocumentCount()` for $O(1)$ fast telemetry counts; live MongoDB ping latency measurement via `admin().ping()`; safe paginated collection readers with explicit password field exclusions.
+  - `server/modules/admin/admin.controller.js`: Request controllers with structured JSON audit logging.
+  - `server/modules/admin/admin.routes.js`: Protected by `protect` and `requireRole('ADMIN')`.
+  - `app/admin/page.tsx`: Protected route with `<ProtectedRoute allowedRoles={['ADMIN']}>`.
+  - `components/admin/admin-overview.tsx`: Primary health card (connection state, ping roundtrip latency in ms, database name), upstream provider health grid, and 24-hour activity counters.
+  - `components/admin/admin-database-explorer.tsx`: Tabbed dataset browser for all 8 collections with pagination, filters, and a record inspector drawer with formatted summary and sanitized JSON debug views.
+  - `server/test-admin-e2e.js`: 60-point automated verification suite.
+- **Verification**: 60 / 60 passing in `server/test-admin-e2e.js`.
+
+### Part 18: Real Interactive Leaflet GIS Map & Bengaluru Corridor Simulation
+- **Goal**: Replace static placeholder graphics with a fully interactive, production-grade Leaflet GIS map visualizing live ambulance telemetry, planned corridors, road deviations, and simulation controls.
+- **Key Modules & Files**:
+  - `components/dashboard/real-interactive-map.tsx`: Dynamic Leaflet interactive map centered on Bengaluru (`[12.968, 77.622]`).
+  - **Live Corridors & Paths**:
+    - Planned Route A: MG Road Metro → Mayo Hall → Trinity Circle → Manipal Hospital.
+    - Deviated Trajectory: Indiranagar 100ft Road divergence with live ambulance marker.
+    - Recommended Route B: Indiranagar 100ft Rd bypass → HAL 2nd Stage → Airport Rd bypass.
+    - Alternative Route C: Shanthi Nagar → Inner Ring Rd → Ejipura Flyover.
+  - **Simulation Engine**: Client-side playback engine with Play, Pause, and Reset controls advancing coordinates along waypoints, updating live speed, heading, and cross-track deviation meters.
+  - **Audio Siren Synthesizer**: Web Audio API siren synthesis for operational emergency vehicle simulation.
+  - `components/dashboard/map-placeholder.tsx`: Converted into a seamless wrapper delegating to `RealInteractiveMap`.
+
+### Part 19: Spatio-Temporal Forecasting, Traffic Layers & V2X Preemption
+- **Goal**: Introduce advanced geospatial intelligence capabilities into the map interface:
+  1. Multi-tile map switching: Dark mode, Google Traffic layer (live congestion color-coding), and Satellite imagery.
+  2. Spatio-Temporal Future Traffic Forecasting: Time-horizon selector (+0m, +10m, +20m, +30m) projecting upcoming corridor congestion friction.
+  3. V2X Green-Wave Traffic Signal Preemption: Live junction status points (Mayo Hall Junction, 100ft Rd Signal #1, HAL 2nd Stage, Airport Rd Bypass) reporting preemption states (`GREEN_WAVE_ACTIVE`, `FORCED_GREEN_4S`, `PREEMPTION_QUEUED`, `CLEAR_CORRIDOR`).
+  4. Patient Severity Triage Routing: Emergency condition selection (`CRITICAL_CARDIAC`, `SEVERE_TRAUMA`, `MODERATE`) adjusting routing logic, hospital facility readiness alerts, and specialized trauma center prioritization.
+
+### Part 20: Analytics UI Polish, Offline Graceful Degradation & Local Session Resilience
+- **Goal**: Elevate UI clarity with executive takeaways, progress meters, and confidence badges, while safeguarding the application against offline or disconnected local development environments.
+- **Key Modules & Files**:
+  - `components/dashboard/geoagent-card.tsx`: Added executive takeaway callouts and visual progress meters for route efficiency.
+  - `components/emergency-detail/deviation-analysis-panel.tsx`: Added progress meters and confidence badges.
+  - `components/emergency-detail/prediction-intelligence-panel.tsx`: Added confidence score meters and live factor attribution tags.
+  - `components/dashboard/driver-dashboard.tsx`: Integrated graceful fallback mock datasets (`MOCK_VEHICLES`, `MOCK_EMERGENCIES`, `MOCK_INCIDENTS`) that render immediately if backend REST endpoints are unreachable, eliminating intrusive red error banners during local presentations.
+  - `lib/auth/context.tsx`: Integrated resilient local session fallback preventing unhandled login drops when running detached from MongoDB.
+- **Automated Verification Summary**:
+  - `test-intelligence-pipeline.js`: 26 / 26 passing
+  - `test-realtime-external-e2e.js`: 48 / 48 passing
+  - `test-admin-e2e.js`: 60 / 60 passing
+  - `test-emergency-detail-e2e.js`: 63 / 63 passing
+  - `test-dashboard-e2e.js`: 47 / 47 passing
+  - `test-auth-e2e.js`: 31 / 31 passing
+  - `test-security.js`: 23 / 23 passing
   - **Total automated assertions**: **298 / 298 passing (100% pass rate)**.
-  - TypeScript typecheck (`npx tsc --noEmit`): 0 errors.
+  - **TypeScript check (`npx tsc --noEmit`)**: 0 errors.
 
 ---
 

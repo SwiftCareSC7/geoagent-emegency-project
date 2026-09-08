@@ -18,25 +18,25 @@ Welcome Member 2! As the **Maps & Routing Specialist** for the **GeoAgent Framew
 
 ## 🛠️ Code Structure
 
-All your files are located at:
-`C:\Users\Oshika Tiwari\.gemini\antigravity\scratch\geoagent-routing\`
+All files for the Python spatial routing module are located in `routing-engine/`:
 
 | File | Purpose |
 | :--- | :--- |
-| [`geo_utils.py`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/geo_utils.py) | Math functions (Haversine, Point-to-Segment projection, GeoJSON helpers). |
-| [`routes_engine.py`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/routes_engine.py) | Main engine: Planned route calculation, deviation detection, delay engine, alternative route generator, and team JSON payload builder. |
-| [`demo_member2.py`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/demo_member2.py) | Interactive CLI verification test script. |
-| [`map_visualizer.html`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/map_visualizer.html) | Standalone interactive Leaflet map dashboard visualizing routes & status. |
-| [`telemetry_output.json`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/telemetry_output.json) | Standardized telemetry JSON exported for Member 3 (Backend) & Member 1 (GeoAgent). |
-| [`routes_geojson.json`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/routes_geojson.json) | Standard GeoJSON file exported for Member 4 (React Frontend map). |
+| [`geo_utils.py`](geo_utils.py) | Math functions (Haversine, Point-to-Segment projection, GeoJSON helpers). |
+| [`routes_engine.py`](routes_engine.py) | Main engine: Planned route calculation, deviation detection, delay engine, alternative route generator, and team JSON payload builder. |
+| [`demo_member2.py`](demo_member2.py) | Interactive CLI verification test script. |
+| [`map_visualizer.html`](map_visualizer.html) | Standalone interactive Leaflet map dashboard visualizing routes & status. |
+| [`telemetry_output.json`](telemetry_output.json) | Standardized telemetry JSON exported for Backend & GeoAgent AI. |
+| [`routes_geojson.json`](routes_geojson.json) | Standard GeoJSON file exported for Frontend Leaflet maps. |
 
 ---
 
 ## 🚀 How to Run and Test Your Work
 
 ### 1. Run Terminal Verification
-Run the verification script from your workspace directory:
+Run the verification script from the `routing-engine/` directory:
 ```bash
+cd routing-engine
 python demo_member2.py
 ```
 
@@ -50,7 +50,7 @@ Expected Output:
 ```
 
 ### 2. View the Interactive Map
-Open [`map_visualizer.html`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/map_visualizer.html) in any web browser (Chrome, Edge, Firefox).
+Open [`map_visualizer.html`](map_visualizer.html) in any modern web browser (Chrome, Edge, Firefox, Safari).
 You will see:
 - 🔵 **Planned Route A** (Blue line)
 - 🔴 **Deviated Trajectory & Live Ambulance** (Red dashed line & marker)
@@ -60,22 +60,23 @@ You will see:
 
 ---
 
-## 🤝 Team Handoff (How your code connects to teammates)
+## 🤝 Team Handoff & Production Integration
 
-### 1. For Member 1 (AI GeoAgent)
-Give Member 1 the following python tools from `routes_engine.py`:
-- `engine.check_route_deviation(current_location, planned_route)`
-- `engine.calculate_incident_delay(original_eta, severity)`
-- `engine.generate_alternative_routes()`
-- `engine.score_and_select_best_route()`
+### 1. For Backend & AI Services (`server/`)
+The algorithms and concepts prototyped here have been operationalized in the Node.js backend:
+- `deviation.service.js`: Cross-track distance, bearing divergence, and rolling jitter stability window.
+- `routeComparison.service.js`: Candidate alternative scoring and "What if we do nothing?" deterministic delay projection.
+- `geoAgent.tools.js`: Exposes 9 advisory tools to Gemini 2.5 Flash including `getRecentTrajectory` and `getRouteAlternatives`.
 
-### 2. For Member 3 (Backend & Data)
-Member 3's FastAPI backend will load your generated [`telemetry_output.json`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/telemetry_output.json) to serve `GET /ambulance/A102` and `GET /routes/alternative`.
-
-### 3. For Member 4 (Frontend & Map UI)
-Member 4's React dashboard will load your [`routes_geojson.json`](file:///C:/Users/Oshika%20Tiwari/.gemini/antigravity/scratch/geoagent-routing/routes_geojson.json) into Leaflet or Google Maps to render the route polylines and live ambulance position.
+### 2. For Frontend & Interactive GIS Map (`components/dashboard/real-interactive-map.tsx`)
+Member 2's Bengaluru coordinates, corridor polylines, V2X traffic signals, and Leaflet visualizer have been fully integrated into the Next.js React application as `RealInteractiveMap`, featuring:
+- Live multi-route rendering (Planned Route A, Deviated Trajectory, Recommended Route B, Alternative Route C).
+- Real-time GPS simulation controls (Play, Pause, Reset) along coordinates.
+- Multi-horizon spatio-temporal traffic forecast (+0m, +10m, +20m, +30m).
+- V2X signal preemption clearance points (Mayo Hall Junction, 100ft Rd, HAL 2nd Stage, Airport Rd).
+- Emergency vehicle audio siren synthesis.
 
 ---
 
 > [!TIP]
-> You are fully prepared for **Day 1 & Day 2**! Your code is clean, modular, and tested.
+> The Python spatial routing prototype serves as the algorithmic foundation for the live full-stack system and remains fully runnable standalone via `python demo_member2.py`.

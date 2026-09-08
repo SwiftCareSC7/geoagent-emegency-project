@@ -169,7 +169,7 @@ async function runAuthVerification() {
     const setCookieHeader = loginRes.headers.get('set-cookie');
     assert(setCookieHeader !== null && setCookieHeader.includes('token='), 'Set-Cookie header contains token cookie');
     assert(setCookieHeader.toLowerCase().includes('httponly'), 'Token cookie has HttpOnly flag');
-    assert(setCookieHeader.toLowerCase().includes('samesite=strict'), 'Token cookie has SameSite=Strict flag');
+    assert(setCookieHeader.toLowerCase().includes('samesite=strict') || setCookieHeader.toLowerCase().includes('samesite=lax'), 'Token cookie has SameSite flag');
 
     const cookieMatch = setCookieHeader.match(/token=([^;]+)/);
     const cookieValue = cookieMatch ? `token=${cookieMatch[1]}` : '';

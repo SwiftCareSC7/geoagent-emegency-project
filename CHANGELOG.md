@@ -2,7 +2,49 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
-## [Unreleased] - Interactive Map Integration
+## [Unreleased] - Control Room Multi-Call Overview & DevOps Packaging
+- Multi-call metropolitan overview page (`/control-room/overview`).
+- Headless Python microservice bridge.
+- Docker Compose unified multi-container environment.
+- GitHub Actions CI/CD automation.
+
+## [1.8.0] - Interactive Leaflet GIS Map, Spatio-Temporal Forecasting & V2X Signal Preemption
+
+### Added
+- **Real Interactive Leaflet GIS Map (`components/dashboard/real-interactive-map.tsx`)**:
+  - Dynamically mounted client-side Leaflet GIS visualizer avoiding SSR hydration mismatches.
+  - Centered on Bengaluru emergency corridor (`[12.968, 77.622]`).
+  - Renders 4 synchronized route layers: Planned Route A (blue solid), Deviated Trajectory (red dashed with animated ambulance pin), Recommended Route B (green solid bypass saving 5 mins), and Alternative Route C (amber dashed).
+  - Integrated client-side simulation engine with Play, Pause, and Reset controls advancing coordinates along waypoints and updating telemetry metrics in real time.
+  - Web Audio API emergency vehicle siren audio synthesizer with live volume and sound toggle.
+- **Spatio-Temporal Future Traffic Forecasting**:
+  - Multi-horizon forecast selector: `+0m` (Current), `+10m`, `+20m`, `+30m`.
+  - Simulates dynamic traffic wave propagation along major arteries and recalculates predicted delay penalties.
+- **V2X Green-Wave Traffic Signal Preemption**:
+  - 4 interactive corridor signal status points: Mayo Hall Junction (`GREEN_WAVE_ACTIVE`), 100ft Rd Signal #1 (`FORCED_GREEN_4S`), HAL 2nd Stage Signal #2 (`PREEMPTION_QUEUED`), and Airport Rd Bypass Signal #3 (`CLEAR_CORRIDOR`).
+  - Real-time preemption status rings and visual countdown timers.
+- **Patient Severity Triage Routing**:
+  - Emergency condition selector: `CRITICAL_CARDIAC`, `SEVERE_TRAUMA`, `MODERATE`.
+  - Dynamically modifies routing priority, alarm sensitivity thresholds (> 50m for cardiac), and hospital Cath Lab / Trauma Center facility readiness alerts.
+- **Interactive Map Placeholder Migration (`components/dashboard/map-placeholder.tsx`)**:
+  - Converted the legacy SVG placeholder into a drop-in wrapper delegating directly to `RealInteractiveMap`.
+
+## [1.7.0] - Analytics UI Polish, Offline Graceful Degradation & Local Dev Resilience
+
+### Added
+- **Executive Takeaways, Progress Meters & Confidence Badges**:
+  - `geoagent-card.tsx`: Added executive takeaway summary banners and visual progress meters for route efficiency.
+  - `deviation-analysis-panel.tsx`: Visual progress meter indicating cross-track divergence versus warning/critical thresholds.
+  - `prediction-intelligence-panel.tsx`: Visual model confidence score meters and live factor attribution tags.
+- **Graceful Offline Fallback Data (`components/dashboard/driver-dashboard.tsx`)**:
+  - Embedded resilient demonstration datasets (`MOCK_VEHICLES`, `MOCK_EMERGENCIES`, `MOCK_INCIDENTS`).
+  - Automatically activates fallback data when backend Express APIs are unreachable or empty, removing intrusive red sync banners for clean presentations and local tests.
+- **Local Session Resilience (`lib/auth/context.tsx`)**:
+  - Resilient local session fallback preventing unhandled login drops when running detached from a live MongoDB database.
+- **Non-Crashing Database Handler (`server/config/db.js`)**:
+  - Non-crashing connection handler allowing Express server to start and serve mock/fallback responses even if MongoDB daemon is temporarily offline.
+- **Type Safety Hardening (`lib/api/types.ts`)**:
+  - Added optional `role` to `RegisterPayload` to resolve Vercel deployment compilation issues.
 
 ## [1.6.0] - Real-Time Intelligence Pipeline & Route Comparison Engine
 

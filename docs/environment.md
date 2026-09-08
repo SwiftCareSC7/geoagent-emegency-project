@@ -65,5 +65,8 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 
 | Variable | Required? | Default | Purpose |
 |---|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Optional | `http://localhost:5000/api` | Backend base REST API URL |
-| `NEXT_PUBLIC_SOCKET_URL` | Optional | `http://localhost:5000` | Backend Socket.IO server URL |
+| `NEXT_PUBLIC_API_URL` | Optional | `http://localhost:5001/api` | Backend base REST API URL (supports port 5000 or 5001) |
+| `NEXT_PUBLIC_SOCKET_URL` | Optional | `http://localhost:5001` | Backend Socket.IO server URL (supports port 5000 or 5001) |
+
+> **Local Development Note**:
+> If the backend is running on port `5000` (the default in `server/server.js`), configure `NEXT_PUBLIC_API_URL=http://localhost:5000/api` and `NEXT_PUBLIC_SOCKET_URL=http://localhost:5000` in `.env.local` to match. If unconfigured or backend is offline, the frontend gracefully falls back to demonstration data fixtures.
