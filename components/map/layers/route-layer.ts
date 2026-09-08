@@ -39,7 +39,7 @@ export class RouteLayerManager {
       const isSelected = selectedRouteId === id || route.status === 'ACTIVE'
 
       // Route styling
-      let color = '#3b82f6' // Blue (Planned)
+      let color = '#3b82f6' // Blue (Planned / Leg 1)
       let weight = isSelected ? 6 : 4
       let opacity = isSelected ? 0.95 : 0.65
       let dashArray: string | undefined = undefined
@@ -49,10 +49,10 @@ export class RouteLayerManager {
         weight = isSelected ? 7 : 5
         opacity = 0.95
       } else if (route.routeType === 'ALTERNATIVE') {
-        color = '#f59e0b' // Amber (Alternative)
+        color = '#06b6d4' // Cyan (Alternative)
         dashArray = '6, 6'
         weight = 5
-        opacity = 0.8
+        opacity = 0.85
       }
 
       const popupContent = createRoutePopupHtml(route)
@@ -81,7 +81,7 @@ export class RouteLayerManager {
         polyline.addTo(this.layerGroup)
         this.polylines.set(id, polyline)
 
-        // Add origin & destination pin markers for selected / active route
+        // Add origin, emergency scene & destination pin markers for selected / active route
         const markers: L.Marker[] = []
         if (route.origin?.coordinates) {
           const originIcon = LRef.divIcon({
@@ -99,6 +99,25 @@ export class RouteLayerManager {
           )
           origMarker.bindPopup(`<b>Dispatch Origin</b><br>Route: ${route.routeId}`)
           markers.push(origMarker)
+        }
+
+        // Emergency Scene intermediate marker if available
+        if (route.emergencyLocation?.coordinates) {
+          const emergIcon = LRef.divIcon({
+            className: 'swiftcare-route-emerg',
+            html: `
+              <div style="background:#dc2626;color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(220,38,38,0.5);border:2px solid white;font-size:13px;">
+                🚨
+              </div>
+            `,
+            iconSize: [28, 28],
+            iconAnchor: [14, 14],
+          })
+          const emergMarker = LRef.marker(toLatLng(route.emergencyLocation.coordinates), { icon: emergIcon }).addTo(
+            this.layerGroup
+          )
+          emergMarker.bindPopup(`<b>Emergency Incident Scene</b><br>Mission: ${route.emergencyId}`)
+          markers.push(emergMarker)
         }
 
         if (route.destination?.coordinates) {

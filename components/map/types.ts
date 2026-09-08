@@ -62,7 +62,6 @@ export interface MapEmergency {
   updatedAt?: string
 }
 
-/** Route polyline rendered on the map */
 export interface MapRoute {
   id: string
   routeId: string
@@ -77,6 +76,16 @@ export interface MapRoute {
   status: RouteStatus // 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
   provider?: string
   isRecommended?: boolean
+  legs?: Array<{
+    legNumber: number
+    type: 'TO_EMERGENCY' | 'TO_HOSPITAL'
+    geometry: GeoJSONLineString
+    distanceMeters: number
+    durationSeconds: number
+    status?: string
+  }>
+  emergencyLocation?: GeoJSONPoint
+  hospitalLocation?: GeoJSONPoint
 }
 
 /** Road hazard / incident on the map */

@@ -10,7 +10,8 @@ import {
   HeartPulse,
   Car,
   ShieldAlert,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react'
 
 export type EmergencyPriority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW'
@@ -106,6 +107,19 @@ export function DriverEmergencyHeader({
             </p>
           </div>
         </div>
+
+        {/* Demo Scenario Switcher Button */}
+        {onOpenScenarios && (
+          <button
+            type="button"
+            onClick={onOpenScenarios}
+            className="flex items-center gap-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 px-3 py-1.5 text-xs font-extrabold text-blue-300 transition-all shadow-md shrink-0"
+            title="Switch Demonstration Scenario"
+          >
+            <Sparkles className="size-3.5 text-blue-400 animate-pulse" />
+            <span className="max-w-[150px] truncate">{scenarioTitle || 'Scenarios (12)'}</span>
+          </button>
+        )}
 
         {/* 3. Metrics: Priority + Current ETA + Delay */}
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
