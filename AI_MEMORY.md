@@ -580,3 +580,30 @@ Trajectories          Routes                     │         │
   9. `Decision Engine`: `server/modules/decisions/decision.service.js` authoritative deterministic rules evaluating `CORRIDOR_BLOCKED` and `GREEN_WAVE_PREEMPTION_ACTIVE` reason codes.
   10. `Control Room`: Real-time Socket.IO emission (`v2x.green_wave.updated`, `orchestration.completed`) updating the Control Room operator dashboard with 3-tier epistemic breakdown and dynamic signal states.
 - **Test Suite**: `server/test-v2x-corridor-pipeline.js` (11/11 tests passing).
+
+---
+
+## 21. Part 10 — Interactive Geospatial Control Room (Operational Map Engine)
+
+- **Architecture Overview**:
+  - Transitioned the Control Room from static placeholders into a production-grade, modular geospatial engine powered by Leaflet (`1.9.4`).
+  - Strict Grounding Constraint: **Zero Fake Data**. No fake movement, no fake routes, no fake traffic, no fake incidents, no fake ETA values. Clean empty states ("No active emergency missions") when database collections are unpopulated.
+  - Performance Rule: **No Map Destruction**. Leaflet instance is instantiated once inside `MapView`. Real-time Socket.IO events update individual Leaflet layer groups incrementally via in-place `setLatLng` and polyline coordinate mutations without losing operator zoom/pan context.
+  - Security Boundary: **Frontend Visualization Only**. Google Routes/Roads server API keys remain strictly backend-only. The frontend map consumes public tile layers (CartoDB Dark Matter default, OpenStreetMap standard, ESRI World Imagery satellite) and GeoJSON geometries emitted by the Node.js backend.
+- **Component Architecture** (`components/map/`):
+  - `types.ts`: TypeScript contracts for `MapVehicle`, `MapEmergency`, `MapRoute`, `MapIncident`, `MapTrajectory`, `MapDeviation`, `MapPrediction`, `MapLayerVisibility`, `MapSelectionState`. Coordinate translation utilities `toLatLng` and `toLatLngArray` ([lng, lat] GeoJSON to [lat, lng] Leaflet). Telemetry freshness classification (`<15s` LIVE, `15s–60s` STALE, `>60s` OFFLINE).
+  - `popup-content.ts`: Sanitized, high-contrast, accessible HTML popup templates for vehicles, emergencies, routes, incidents, and deviation alerts with units, timestamps, and epistemic tags.
+  - `layers/vehicle-layer.ts`: `VehicleLayerManager` managing Leaflet markers with heading rotation, live/stale/offline pulsing halos, and smooth position updates without marker recreation.
+  - `layers/route-layer.ts`: `RouteLayerManager` rendering actual GeoJSON `LineString` paths for `PLANNED` (blue), `CURRENT`/`ACTIVE` (emerald), and `ALTERNATIVE` (amber dashed) routes with origin (🚩) and destination hospital (🏥) pin markers.
+  - `layers/incident-layer.ts`: `IncidentLayerManager` rendering road hazard markers with severity color hierarchy (`CRITICAL` rose with pulse, `HIGH` orange, `MEDIUM` amber, `LOW` slate).
+  - `layers/trajectory-layer.ts`: `TrajectoryLayerManager` rendering bounded recent GPS breadcrumbs as a cyan dashed trail.
+  - `layers/deviation-layer.ts`: `DeviationLayerManager` rendering warning circles and cross-track indicators when backend reports `DEVIATED` or `CRITICAL_DEVIATION`.
+  - `map-view.tsx`: Core Leaflet map wrapper with dynamic CSS injection, tile layers, and standard layer groups.
+  - `map-controls.tsx`: Floating operator control group (zoom in/out, fit selected corridor, layer toggles, basemap switcher, reset view).
+  - `map-legend.tsx`: Collapsible operational legend.
+  - `control-room-map.tsx`: Main map orchestrator integrating REST initial state, incremental Socket.IO event updates, corridor selection, reconnect re-sync, and honest empty states.
+  - `components/dashboard/map-placeholder.tsx`: Drop-in wrapper delegating directly to `ControlRoomMap`.
+- **Integrated Surfaces**:
+  - `components/dashboard/driver-dashboard.tsx`: Overview tab and Corridor tab now render live `ControlRoomMap` using actual backend state; all legacy mock fallback arrays removed.
+  - `components/emergency-detail/route-analysis-panel.tsx`: Emergency detail corridor map renders live `ControlRoomMap` with vehicle trajectory breadcrumbs and candidate route geometries.
+- **Verification Suite**: `server/test-part10-control-room-map.js` (9/9 criteria passing).

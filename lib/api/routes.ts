@@ -87,4 +87,9 @@ export const routeApi = {
   compare(routeId: string): Promise<{ success: true; message: string; data: any }> {
     return get<{ success: true; message: string; data: any }>(`/routes/${encodeURIComponent(routeId)}/compare`)
   },
+
+  /** Get V2X green-wave corridor and traffic signal preemption status for a route */
+  getCorridorV2X(routeId: string): Promise<{ success: true; message: string; data: any }> {
+    return get<{ success: true; message: string; data: any }>(`/routes/${encodeURIComponent(routeId)}/corridor-v2x`)
+  },
 }

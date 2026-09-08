@@ -21,7 +21,8 @@ import {
   type Vehicle,
   type Incident,
   type Route,
-} from '@/lib/api'
+  type Trajectory,
+} from '@/lib/api/index'
 import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { useSocketStatus } from '@/lib/socket/useRealtime'
 import { MapView, type MapViewHandle } from './map-view'
@@ -290,7 +291,7 @@ export function ControlRoomMap({
           setTrajectories([
             {
               vehicleId: vehId,
-              points: trajRes.data.map((t) => ({
+              points: trajRes.data.map((t: Trajectory) => ({
                 coordinates: t.location.coordinates,
                 speed: t.speed,
                 heading: t.heading,
