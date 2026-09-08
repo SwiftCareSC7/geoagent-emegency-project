@@ -1,5 +1,8 @@
 import routeService from './route.service.js';
 import analysisService from '../analysis/analysis.service.js';
+import corridorGreenWaveService from './corridorGreenWave.service.js';
+import Route from './route.model.js';
+import Vehicle from '../vehicles/vehicle.model.js';
 
 /**
  * @desc    Generate and create a new route
@@ -138,6 +141,37 @@ export const compareRoute = async (req, res, next) => {
     if (error.message === 'Route not found') {
       res.status(404);
     }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get real-time V2X corridor and green-wave analysis for a route
+ * @route   GET /api/routes/:routeId/corridor-v2x
+ * @access  Private (CONTROL_ROOM, ADMIN)
+ */
+export const getCorridorV2X = async (req, res, next) => {
+  try {
+    const { routeId } = req.params;
+    const route = await Route.findOne({ routeId });
+    if (!route) {
+      const err = new Error('Route not found');
+      err.status = 404;
+      throw err;
+    }
+    const vehicle = await Vehicle.findById(route.vehicle);
+    if (!vehicle) {
+      const err = new Error('Vehicle for route not found');
+      err.status = 404;
+      throw err;
+    }
+    const result = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicle.vehicleId);
+    res.status(200).json({
+      success: true,
+      message: 'V2X corridor and green-wave analysis generated',
+      data: result
+    });
+  } catch (error) {
     next(error);
   }
 };

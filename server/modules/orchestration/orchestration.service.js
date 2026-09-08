@@ -5,6 +5,7 @@ import Trajectory from '../trajectories/trajectory.model.js';
 import analysisService from '../analysis/analysis.service.js';
 import geoAgentService from '../geoagents/geoAgent.service.js';
 import decisionService from '../decisions/decision.service.js';
+import corridorGreenWaveService from '../routes/corridorGreenWave.service.js';
 import realtimeService from '../realtime/realtime.service.js';
 import { REALTIME_ROOMS } from '../realtime/realtime.constants.js';
 import {
@@ -19,7 +20,7 @@ class OrchestrationService {
    * Builds explicit three-tier epistemic breakdown (OBSERVED, INFERRED, UNKNOWN)
    * @private
    */
-  _buildEpistemicBreakdown(situation, geoAgentResult, decisionResult) {
+  _buildEpistemicBreakdown(situation, geoAgentResult, decisionResult, v2xCorridor = null) {
     const observed = [];
     const inferred = [];
     const unknown = [];
@@ -58,6 +59,20 @@ class OrchestrationService {
         );
       } else {
         observed.push('No active incidents detected along primary route corridor');
+      }
+    }
+
+    // Observed facts from Python / V2X Corridor & Green-Wave Analysis
+    if (v2xCorridor && v2xCorridor.corridorSummary) {
+      if (v2xCorridor.corridorSummary.corridorHealth === 'CORRIDOR_BLOCKED') {
+        observed.push('V2X Corridor status: CORRIDOR_BLOCKED due to active road obstruction');
+      } else if (v2xCorridor.corridorSummary.preemptedCount > 0) {
+        observed.push(
+          `V2X Green Wave preemption active on ${v2xCorridor.corridorSummary.preemptedCount}/${v2xCorridor.corridorSummary.totalSignals} signal(s) (${v2xCorridor.corridorSummary.civilianAlertedCount} civilian vehicles alerted to yield)`
+        );
+        observed.push(
+          `V2X preemption provides ~${v2xCorridor.corridorSummary.timeSavedMinutes} min transit advantage along corridor`
+        );
       }
     }
 
@@ -278,6 +293,14 @@ class OrchestrationService {
       spatialError = err.message;
     }
 
+    // 5b. Execute Python / V2X Corridor & Green-Wave Analysis
+    let v2xCorridor = null;
+    try {
+      v2xCorridor = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicle.vehicleId);
+    } catch (err) {
+      console.warn(`[OrchestrationService] V2X corridor analysis non-fatal warning: ${err.message}`);
+    }
+
     // 6. Execute GeoAgent AI Reasoning
     let geoAgentResult = null;
     try {
@@ -302,7 +325,7 @@ class OrchestrationService {
     }
 
     // 8. Build 3-tier Epistemic Breakdown
-    const epistemicBreakdown = this._buildEpistemicBreakdown(situation, geoAgentResult, decisionResult);
+    const epistemicBreakdown = this._buildEpistemicBreakdown(situation, geoAgentResult, decisionResult, v2xCorridor);
 
     // 9. Emit Workflow Completed Real-Time Event
     const executionTimeMs = Date.now() - startTime;
@@ -367,6 +390,7 @@ class OrchestrationService {
         : { status: 'PARTIAL', error: spatialError },
       geoAgent: geoAgentResult,
       decision: decisionResult,
+      v2xCorridor,
       epistemicBreakdown,
       executionTimeMs
     };

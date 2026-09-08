@@ -1,6 +1,7 @@
 import analysisService from '../analysis/analysis.service.js';
 import predictionService from '../analysis/prediction.service.js';
 import routingService from '../routes/routing.service.js';
+import corridorGreenWaveService from '../routes/corridorGreenWave.service.js';
 import trafficService from '../traffic/traffic.service.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Emergency from '../emergencies/emergency.model.js';
@@ -169,6 +170,20 @@ export const geoAgentToolDeclarations = [
         maxDistanceKm: { type: 'number', description: 'Maximum search radius in kilometers (default: 10)' }
       },
       required: ['longitude', 'latitude']
+    }
+  },
+  {
+    name: 'getCorridorGreenWaveStatus',
+    description: 'Retrieve real-time V2X traffic signal preemption, green-wave clearance status, and civilian vehicle yield alerts along the emergency response corridor.',
+    parameters: {
+      type: 'object',
+      properties: {
+        vehicleId: {
+          type: 'string',
+          description: 'The vehicle identifier, e.g. AMB-001'
+        }
+      },
+      required: ['vehicleId']
     }
   }
 ];
@@ -427,6 +442,21 @@ export const executeGeoAgentTool = async (name, args = {}) => {
         searchRadiusMeters: radiusMeters,
         incidentsFound: nearby.length,
         incidents: nearby
+      };
+    }
+
+    case 'getCorridorGreenWaveStatus': {
+      const { vehicleId } = args;
+      const corridor = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicleId, { silent: true });
+      return {
+        vehicleId,
+        corridorHealth: corridor.corridorSummary.corridorHealth,
+        preemptedCount: corridor.corridorSummary.preemptedCount,
+        totalSignals: corridor.corridorSummary.totalSignals,
+        civilianAlertedCount: corridor.corridorSummary.civilianAlertedCount,
+        timeSavedMinutes: corridor.corridorSummary.timeSavedMinutes,
+        preemptionActive: corridor.preemptionActive,
+        signals: corridor.v2xSignals
       };
     }
 

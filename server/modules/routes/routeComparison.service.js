@@ -151,6 +151,13 @@ class RouteComparisonService {
     if (bestAlternative && bestAlternative.timeSavedMinutes > 0) {
       whatIfReasons.push(`Forfeiting alternative corridor forfeits ${bestAlternative.timeSavedMinutes} minutes in transit savings`);
     }
+    if (v2xCorridor && v2xCorridor.corridorSummary) {
+      if (v2xCorridor.corridorSummary.corridorHealth === 'CORRIDOR_BLOCKED') {
+        whatIfReasons.push('Corridor is physically blocked; V2X green-wave preemption cannot clear path');
+      } else if (v2xCorridor.corridorSummary.preemptedCount > 0) {
+        whatIfReasons.push(`V2X Green Wave preemption active on ${v2xCorridor.corridorSummary.preemptedCount} signal(s) saving ~${v2xCorridor.corridorSummary.timeSavedMinutes} min`);
+      }
+    }
     if (whatIfReasons.length === 0) {
       whatIfReasons.push('Corridor is operating within nominal emergency transit parameters');
     }
@@ -194,6 +201,7 @@ class RouteComparisonService {
       bestAlternative,
       whatIfDoNothing,
       whyRouteChanged,
+      v2xCorridor: v2xCorridor?.corridorSummary || null,
       evaluatedAt
     };
   }

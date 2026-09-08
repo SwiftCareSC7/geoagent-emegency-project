@@ -202,6 +202,18 @@ export const evaluateDecisionRules = (context) => {
     severity = DECISION_SEVERITY.CRITICAL;
   }
 
+  // ---- 5b. V2X Green-Wave Corridor Status ----
+  const v2x = context.v2xCorridor || context.v2x;
+  if (v2x && v2x.corridorSummary) {
+    if (v2x.corridorSummary.corridorHealth === 'CORRIDOR_BLOCKED') {
+      reasonCodes.add(REASON_CODES.CORRIDOR_BLOCKED);
+      needsReroute = true;
+      severity = DECISION_SEVERITY.CRITICAL;
+    } else if (v2x.corridorSummary.preemptedCount > 0) {
+      reasonCodes.add(REASON_CODES.GREEN_WAVE_PREEMPTION_ACTIVE);
+    }
+  }
+
   // ---- 6. Alternative route viability check ----
   const scoredAlternatives = scoreAlternativeRoutes(alternativeRoutes);
   const bestAlternative = pickBestAlternative(scoredAlternatives, currentMinutes);

@@ -6,6 +6,7 @@ import Route from '../routes/route.model.js';
 import analysisService from '../analysis/analysis.service.js';
 import geoAgentService from '../geoagents/geoAgent.service.js';
 import routingService from '../routes/routing.service.js';
+import corridorGreenWaveService from '../routes/corridorGreenWave.service.js';
 import realtimeService from '../realtime/realtime.service.js';
 import {
   decisionConfig,
@@ -239,6 +240,13 @@ class DecisionService {
       geoAgentRecommendation = null;
     }
 
+    let v2xCorridor = null;
+    try {
+      v2xCorridor = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicle.vehicleId, { silent: true });
+    } catch {
+      // Non-blocking
+    }
+
     const route = await this._findActiveRoute(vehicle, emergency);
 
     return {
@@ -265,7 +273,8 @@ class DecisionService {
       correlatedIncidents: situation ? situation.incidents : [],
       alternativeRoutes,
       availableBackupVehicles: backupVehicles,
-      geoAgentRecommendation
+      geoAgentRecommendation,
+      v2xCorridor
     };
   }
 
