@@ -259,18 +259,28 @@ Subsequent deploys happen automatically on push to `main` if Vercel GitHub integ
 ## 7. GitHub Actions Setup
 
 ### 7.1 Required Secrets
-In GitHub → Repository → Settings → Secrets:
+In GitHub → Repository → **Settings** → **Secrets and variables** → **Actions**:
 
+#### Option A: Workload Identity Federation (Recommended)
 | Secret | Value |
 |---|---|
 | `GCP_PROJECT_ID` | Your GCP project ID |
-| `GCP_REGION` | `asia-south1` (or your region) |
+| `GCP_REGION` | `asia-south1` (or your preferred region) |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/<number>/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
 | `GCP_SERVICE_ACCOUNT` | `geoagent-deployer@<project>.iam.gserviceaccount.com` |
 
+#### Option B: Service Account Key JSON (Simpler alternative)
+| Secret | Value |
+|---|---|
+| `GCP_PROJECT_ID` | Your GCP project ID |
+| `GCP_REGION` | `asia-south1` (or your preferred region) |
+| `GCP_SA_KEY` *(or `GCP_CREDENTIALS_JSON`)* | Full contents of the downloaded Service Account JSON key |
+
+> **Note**: If GCP secrets are not yet configured in GitHub, the deployment workflow will gracefully skip the deploy steps and display setup guidance in the GitHub Actions summary rather than failing.
+
 ### 7.2 Workflow Behavior
 - **CI** (`.github/workflows/ci.yml`): Runs on every push/PR — lint, typecheck, build, Docker verify
-- **Deploy** (`.github/workflows/deploy.yml`): Runs on push to `main` when `server/**` changes — build, push, deploy to Cloud Run
+- **Deploy** (`.github/workflows/deploy.yml`): Runs on push to `main` when `server/**` changes, or via manual `workflow_dispatch` trigger — authenticates, builds container, pushes to Artifact Registry, and deploys to Cloud Run
 
 ---
 

@@ -1,6 +1,6 @@
 # ─────────────────────────────────────────────────────────
 # SwiftCare GeoAgent — Deploy Backend to Cloud Run
-# Runs only on push to main (after CI passes)
+# Runs on push to main (when server code changes) or manual trigger
 # ─────────────────────────────────────────────────────────
 name: Deploy Backend
 
@@ -10,6 +10,7 @@ on:
     paths:
       - 'server/**'
       - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
 # Prevent concurrent deployments
 concurrency:
@@ -19,6 +20,7 @@ concurrency:
 env:
   SERVICE_NAME: geoagent-backend
   IMAGE_NAME: geoagent-backend
+  GCP_REGION: ${{ secrets.GCP_REGION || 'asia-south1' }}
 
 jobs:
   deploy:
@@ -34,38 +36,88 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
+      - name: Check GCP Deployment Credentials
+        id: check-auth
+        env:
+          WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          WIF_SA: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          SA_KEY: ${{ secrets.GCP_SA_KEY || secrets.GCP_CREDENTIALS_JSON }}
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          if [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SA" ]; then
+            echo "auth_method=wif" >> $GITHUB_OUTPUT
+            echo "can_deploy=true" >> $GITHUB_OUTPUT
+            echo "✅ Found Workload Identity Federation secrets."
+          elif [ -n "$SA_KEY" ]; then
+            echo "auth_method=key" >> $GITHUB_OUTPUT
+            echo "can_deploy=true" >> $GITHUB_OUTPUT
+            echo "✅ Found Service Account Key JSON secrets."
+          else
+            echo "auth_method=none" >> $GITHUB_OUTPUT
+            echo "can_deploy=false" >> $GITHUB_OUTPUT
+            echo "::warning title=GCP Secrets Missing::Google Cloud deployment secrets are not configured in GitHub repository settings. Skipping Cloud Run deployment."
+            echo "### ⚠️ Google Cloud Run Deployment Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "No Google Cloud credentials were found in GitHub repository secrets." >> $GITHUB_STEP_SUMMARY
+            echo "To enable automated Cloud Run deployment, configure the required secrets in **Repository Settings → Secrets and variables → Actions**:" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Option A: Workload Identity Federation (Recommended)" >> $GITHUB_STEP_SUMMARY
+            echo "- \`GCP_PROJECT_ID\`: Your GCP Project ID" >> $GITHUB_STEP_SUMMARY
+            echo "- \`GCP_REGION\`: e.g. \`asia-south1\` (defaults to asia-south1)" >> $GITHUB_STEP_SUMMARY
+            echo "- \`GCP_WORKLOAD_IDENTITY_PROVIDER\`: \`projects/<PROJECT_NUM>/locations/global/workloadIdentityPools/<POOL>/providers/<PROVIDER>\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`GCP_SERVICE_ACCOUNT\`: \`geoagent-deployer@<PROJECT_ID>.iam.gserviceaccount.com\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "#### Option B: Service Account Key JSON (Simpler)" >> $GITHUB_STEP_SUMMARY
+            echo "- \`GCP_PROJECT_ID\`: Your GCP Project ID" >> $GITHUB_STEP_SUMMARY
+            echo "- \`GCP_REGION\`: e.g. \`asia-south1\`" >> $GITHUB_STEP_SUMMARY
+            echo "- \`GCP_SA_KEY\` (or \`GCP_CREDENTIALS_JSON\`): The full JSON contents of your downloaded service account key" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "See \`docs/deployment.md\` for complete instructions." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        if: steps.check-auth.outputs.auth_method == 'wif'
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
+      - name: Authenticate to Google Cloud (Service Account Key)
+        if: steps.check-auth.outputs.auth_method == 'key'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY || secrets.GCP_CREDENTIALS_JSON }}
+
       - name: Set up Cloud SDK
+        if: steps.check-auth.outputs.can_deploy == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+        if: steps.check-auth.outputs.can_deploy == 'true'
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
 
       - name: Build Docker image
+        if: steps.check-auth.outputs.can_deploy == 'true'
         working-directory: server
         run: |
           docker build \
             --build-arg COMMIT_SHA=${{ github.sha }} \
-            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:latest \
             .
 
       - name: Push Docker image
+        if: steps.check-auth.outputs.can_deploy == 'true'
         run: |
-          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:latest
 
       - name: Deploy to Cloud Run
+        if: steps.check-auth.outputs.can_deploy == 'true'
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
-          region: ${{ secrets.GCP_REGION }}
-          image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }}
           flags: |
             --port=8080
             --min-instances=1
@@ -78,9 +130,10 @@ jobs:
             --set-env-vars=NODE_ENV=production,COMMIT_SHA=${{ github.sha }}
 
       - name: Verify deployment health
+        if: steps.check-auth.outputs.can_deploy == 'true'
         run: |
           SERVICE_URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
-            --region=${{ secrets.GCP_REGION }} \
+            --region=${{ env.GCP_REGION }} \
             --format='value(status.url)')
           echo "Service URL: $SERVICE_URL"
           # Wait for service to be ready
