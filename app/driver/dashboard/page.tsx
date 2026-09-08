@@ -1,6 +1,6 @@
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { DriverDashboard } from '@/components/dashboard/driver-dashboard'
-import { getDashboard } from '@/lib/api'
+import { getDashboard } from '@/lib/dashboard-api'
 
 export default async function DriverDashboardPage() {
   // Loaded through the API adapter (mock data today; connected to

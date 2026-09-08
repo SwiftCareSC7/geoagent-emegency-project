@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ vehicleId: string }> }
+  { params }: { params: Promise<Record<string, string>> }
 ) {
-  const { vehicleId } = await params
+  const { vehicleId } = await params as { vehicleId: string }
   const backendUrl = process.env.BACKEND_URL
   if (backendUrl && !backendUrl.includes('localhost')) {
     try {
@@ -18,8 +18,8 @@ export async function GET(
         const data = await res.json()
         return NextResponse.json(data)
       }
-    } catch {
-      // Fall through
+    } catch (err) {
+      console.error('[BFF] prediction GET failed:', err)
     }
   }
 

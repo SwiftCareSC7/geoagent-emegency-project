@@ -2,21 +2,18 @@
 
 import {
   AlertCircle,
-  AlertTriangle,
-  Ambulance,
   Eye,
   EyeOff,
   LayoutDashboard,
   Navigation,
   PhoneCall,
   RefreshCw,
-  Siren,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { getDashboard } from '@/lib/api'
+import { getDashboard } from '@/lib/dashboard-api'
 import { vehicleApi } from '@/lib/api/vehicles'
 import { emergencyApi } from '@/lib/api/emergencies'
 import { incidentApi } from '@/lib/api/incidents'

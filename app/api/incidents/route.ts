@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
         const data = await res.json()
         return NextResponse.json(data)
       }
-    } catch {
-      // Fall through
+    } catch (err) {
+      console.error('[BFF] incidents GET failed:', err)
     }
   }
 

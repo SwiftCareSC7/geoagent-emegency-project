@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<Record<string, string>> }
 ) {
-  const { id } = await params
+  const { id } = await params as { id: string }
   const backendUrl = process.env.BACKEND_URL
   if (backendUrl && !backendUrl.includes('localhost')) {
     try {
@@ -18,8 +18,8 @@ export async function GET(
         const data = await res.json()
         return NextResponse.json(data)
       }
-    } catch {
-      // Fall through
+    } catch (err) {
+      console.error('[BFF] emergency by ID GET failed:', err)
     }
   }
 

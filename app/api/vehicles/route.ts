@@ -12,8 +12,8 @@ export async function GET() {
         const data = await res.json()
         return NextResponse.json(data)
       }
-    } catch {
-      // Fall through to demo fixtures
+    } catch (err) {
+      console.error('[BFF] vehicles GET failed:', err)
     }
   }
 

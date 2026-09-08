@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
         const data = await res.json()
         return NextResponse.json(data)
       }
-    } catch {
-      // Fall through to demo fixtures
+    } catch (err) {
+      console.error('[BFF] emergencies GET failed:', err)
     }
   }
 
@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
   const backendUrl = process.env.BACKEND_URL
   const body = await request.json().catch(() => ({}))
 
+  if (!body.type || typeof body.type !== 'string') {
+    return NextResponse.json(
+      { success: false, error: 'Missing or invalid "type" field' },
+      { status: 400 }
+    )
+  }
+
   if (backendUrl && !backendUrl.includes('localhost')) {
     try {
       const res = await fetch(`${backendUrl}/api/emergencies`, {
@@ -42,8 +49,8 @@ export async function POST(request: NextRequest) {
         const data = await res.json()
         return NextResponse.json(data, { status: 201 })
       }
-    } catch {
-      // Fall through
+    } catch (err) {
+      console.error('[BFF] emergencies POST failed:', err)
     }
   }
 
@@ -52,7 +59,7 @@ export async function POST(request: NextRequest) {
     emergencyId: `EMG-${Date.now().toString().slice(-4)}`,
     type: body.type || 'MEDICAL',
     priority: body.priority || 'HIGH',
-    status: 'PENDING_DISPATCH',
+    status: 'PENDING',
     description: body.description || 'Emergency reported via dispatch console',
     location: body.location || { type: 'Point', coordinates: [77.6030, 12.9730] },
     destination: body.destination || { type: 'Point', coordinates: [77.6483, 12.9582] },
