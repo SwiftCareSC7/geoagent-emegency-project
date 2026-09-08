@@ -1,14 +1,18 @@
 import { registerUser, loginUser } from './auth.service.js';
 import { generateToken } from './jwt.utils.js';
 
-
 // Configuration for HTTP-only cookie
-const getCookieOptions = () => ({
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
-});
+// In production, frontend (Vercel) and backend (Cloud Run) are on different domains,
+// so SameSite=None + Secure is required for cross-origin credentials: 'include'.
+const getCookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+  };
+};
 
 /**
  * Handle user registration
@@ -57,11 +61,7 @@ export const login = async (req, res, next) => {
  * Handle user logout
  */
 export const logout = (req, res) => {
-  res.clearCookie('token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax'
-  });
+  res.clearCookie('token', getCookieOptions());
   
   res.status(200).json({
     success: true,

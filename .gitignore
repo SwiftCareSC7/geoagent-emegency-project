@@ -36,3 +36,12 @@ __pycache__/
 # IDE / Editor
 .vscode/
 .idea/
+
+# Secrets & Credentials
+service-account*.json
+gcp-key*.json
+credentials*.json
+*.key
+
+# Docker
+docker-compose.override.yml

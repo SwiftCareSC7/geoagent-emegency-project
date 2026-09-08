@@ -25,9 +25,16 @@ class RealtimeService {
       'http://localhost:5173'
     ].filter(Boolean)));
 
+    // Also allow any *.vercel.app subdomain (matches Express CORS config)
+    const vercelPattern = /^https:\/\/.*\.vercel\.app$/;
+
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+          if (!origin) return callback(null, true);
+          const isAllowed = allowedOrigins.includes(origin) || vercelPattern.test(origin);
+          return callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE']
       },

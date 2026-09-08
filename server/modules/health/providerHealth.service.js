@@ -7,6 +7,8 @@
  * CRITICAL SECURITY: Never logs or exposes API keys or secrets in payloads.
  */
 
+import mongoose from 'mongoose';
+
 class ProviderHealthService {
   /**
    * Helper to check if a key is genuinely configured (not empty and not a placeholder)
@@ -66,11 +68,22 @@ class ProviderHealthService {
       geminiMessage = `Gemini reasoning layer ready (${geminiModel})`;
     }
 
+    // 4. MongoDB Health (non-invasive readyState check)
+    const mongoStateMap = { 0: 'UNAVAILABLE', 1: 'AVAILABLE', 2: 'CONNECTING', 3: 'DISCONNECTING' };
+    const mongoState = mongoose.connection.readyState;
+    const mongoStatus = mongoStateMap[mongoState] || 'UNKNOWN';
+
     return {
       timestamp: new Date().toISOString(),
       activeRoutingProvider: routingProvider,
       activeTrafficProvider: trafficProvider,
       providers: {
+        mongodb: {
+          provider: 'mongodb',
+          status: mongoStatus,
+          configured: true,
+          message: mongoStatus === 'AVAILABLE' ? 'MongoDB connected' : `MongoDB state: ${mongoStatus}`
+        },
         googleRoutes: {
           provider: 'google',
           status: googleRoutesStatus,
