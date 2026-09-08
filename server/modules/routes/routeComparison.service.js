@@ -157,6 +157,7 @@ class RouteComparisonService {
     const whatIfDoNothing = {
       scenario: 'MAINTAIN_CURRENT_CORRIDOR',
       projectedDelayMinutes: currentDelayMinutes,
+      estimatedDelayMinutes: currentDelayMinutes,
       operationalRisk,
       etaDeltaVsBestMinutes: bestAlternative ? bestAlternative.timeSavedMinutes : 0,
       summary: operationalRisk === 'CRITICAL' || operationalRisk === 'HIGH'

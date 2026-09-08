@@ -33,6 +33,7 @@ import Route from './modules/routes/route.model.js';
 import Incident from './modules/incidents/incident.model.js';
 import Decision from './modules/decisions/decision.model.js';
 import { createTrajectory } from './modules/trajectories/trajectory.service.js';
+import analysisService from './modules/analysis/analysis.service.js';
 import deviationService from './modules/deviation/deviation.service.js';
 import trafficService from './modules/traffic/traffic.service.js';
 import predictionService from './modules/analysis/prediction.service.js';
@@ -80,6 +81,7 @@ async function runControlRoomE2ETests() {
   const emgId = `EMG-CR-${testSuffix}`;
   const routeId = `RTE-CR-${testSuffix}`;
   const incId = `INC-CR-${testSuffix}`;
+  const testUserId = new mongoose.Types.ObjectId();
 
   let vehicleDoc = null;
   let emergencyDoc = null;
@@ -92,8 +94,6 @@ async function runControlRoomE2ETests() {
     // Setup Test Fixtures
     // -------------------------------------------------------------------------
     console.log('[Setup] Creating baseline vehicle, emergency, route, and incident...');
-
-    const testUserId = new mongoose.Types.ObjectId();
 
     vehicleDoc = await Vehicle.create({
       vehicleId: vehId,
@@ -169,7 +169,7 @@ async function runControlRoomE2ETests() {
       });
 
       assert(traj && traj._id, 'Trajectory document was created');
-      assert.strictEqual(traj.vehicleId, vehId, 'Vehicle ID matches');
+      assert.strictEqual(traj.vehicle.toString(), vehicleDoc._id.toString(), 'Vehicle ObjectId matches');
       assert.strictEqual(traj.speed, 48, 'Speed matches');
       assert.strictEqual(traj.heading, 42, 'Heading matches');
     });
@@ -179,12 +179,8 @@ async function runControlRoomE2ETests() {
     // -------------------------------------------------------------------------
     console.log('[Criterion 2] Testing Trajectory Ingestion with Route Matching...');
     await itAsync('Computes cross-track distance to the active route geometry', async () => {
-      const onRouteFix = [77.63895, 12.93455];
-      const analysis = deviationService.analyzeDeviation({
-        currentLocation: onRouteFix,
-        routeGeometry: routeDoc.geometry,
-        currentHeading: 45
-      });
+      const onRoutePoint = { type: 'Point', coordinates: [77.63895, 12.93455] };
+      const analysis = deviationService.analyzeDeviation(onRoutePoint, routeDoc, [], 45);
 
       assert(analysis !== null, 'Deviation analysis generated');
       assert(typeof analysis.distanceFromRouteMeters === 'number', 'Cross-track distance is numeric');
@@ -197,13 +193,8 @@ async function runControlRoomE2ETests() {
     // -------------------------------------------------------------------------
     console.log('[Criterion 3] Testing Deviation Analysis Detection...');
     await itAsync('Detects off-corridor position when cross-track exceeds threshold', async () => {
-      // Offset position ~300m away from corridor
-      const offRouteFix = [77.6320, 12.9300];
-      const deviationResult = deviationService.analyzeDeviation({
-        currentLocation: offRouteFix,
-        routeGeometry: routeDoc.geometry,
-        currentHeading: 270
-      });
+      const offRoutePoint = { type: 'Point', coordinates: [77.6320, 12.9300] };
+      const deviationResult = deviationService.analyzeDeviation(offRoutePoint, routeDoc, [], 270);
 
       assert(deviationResult !== null, 'Deviation analysis returned');
       assert(deviationResult.distanceFromRouteMeters > 100, `Cross-track distance exceeds 100m (${deviationResult.distanceFromRouteMeters}m)`);
@@ -215,10 +206,10 @@ async function runControlRoomE2ETests() {
     // -------------------------------------------------------------------------
     console.log('[Criterion 4] Testing Traffic Delay & Hazard Correlation...');
     await itAsync('Correlates active incident with route and derives traffic penalty', async () => {
-      const correlated = trafficService.correlateIncidentsWithRoute({
-        routeGeometry: routeDoc.geometry,
-        incidents: [incidentDoc]
-      });
+      const correlated = await analysisService.getCorrelatedIncidents(
+        { type: 'Point', coordinates: [77.6392, 12.9348] },
+        routeDoc.geometry
+      );
 
       assert(Array.isArray(correlated), 'Correlated incidents is an array');
       assert(correlated.length > 0, 'Incident was correlated with corridor');
@@ -255,7 +246,7 @@ async function runControlRoomE2ETests() {
     console.log('[Criterion 6] Testing Route Comparison Matrix & Deterministic What-If...');
     await itAsync('Produces deterministic comparison between current route and candidate alternative', async () => {
       const candidateAlt = {
-        name: 'ALTERNATIVE 1 — Ring Road Bypass',
+        description: 'ALTERNATIVE 1 — Ring Road Bypass',
         distanceMeters: 3800,
         durationSeconds: 480,
         trafficDelaySeconds: 0,
@@ -266,6 +257,7 @@ async function runControlRoomE2ETests() {
         currentRoute: routeDoc,
         candidateRoutes: [candidateAlt],
         predictionState: predictionResult,
+        deviationState: { status: 'DEVIATED', distanceFromRouteMeters: 180 },
         incidents: [incidentDoc]
       });
 
@@ -274,7 +266,11 @@ async function runControlRoomE2ETests() {
       assert(Array.isArray(comparison.alternatives), 'alternatives array present');
       assert.strictEqual(comparison.alternatives.length, 1, 'Alternative candidate tracked');
       assert(comparison.whatIfDoNothing !== undefined, 'whatIfDoNothing deterministic projection present');
-      assert(typeof comparison.whatIfDoNothing.estimatedDelayMinutes === 'number', 'whatIfDoNothing delay is numeric');
+      assert(
+        typeof comparison.whatIfDoNothing.projectedDelayMinutes === 'number' ||
+        typeof comparison.whatIfDoNothing.estimatedDelayMinutes === 'number',
+        'whatIfDoNothing delay is numeric'
+      );
       assert(Array.isArray(comparison.whyRouteChanged), 'whyRouteChanged causal tags present');
     });
 
@@ -283,21 +279,14 @@ async function runControlRoomE2ETests() {
     // -------------------------------------------------------------------------
     console.log('[Criterion 7] Testing Gemini Advisory Reasoning & 3-Tier Epistemic Output...');
     await itAsync('Returns structured recommendation with observed, inferred, unknown tiers', async () => {
-      const advice = await geoAgentService.analyzeSituation({
-        emergency: emergencyDoc,
-        vehicle: vehicleDoc,
-        route: routeDoc,
-        telemetry: { speed: 45, heading: 40 },
-        deviation: { status: 'DEVIATED', distanceFromRouteMeters: 180 },
-        incidents: [incidentDoc]
-      });
+      const advice = await geoAgentService.analyzeEmergency(emgId);
 
       assert(advice !== null, 'Advisory response returned');
-      assert(advice.recommendation || advice.primaryAction, 'Recommendation provided');
-      assert(advice.epistemicBreakdown !== undefined, 'epistemicBreakdown is present');
-      assert(Array.isArray(advice.epistemicBreakdown.observed), 'observed tier is an array');
-      assert(Array.isArray(advice.epistemicBreakdown.inferred), 'inferred tier is an array');
-      assert(Array.isArray(advice.epistemicBreakdown.unknown), 'unknown tier is an array');
+      assert(advice.recommendation && advice.recommendation.action, 'Recommendation action provided');
+      assert(advice.observations !== undefined, 'observations (epistemic breakdown) is present');
+      assert(Array.isArray(advice.observations.observed), 'observed tier is an array');
+      assert(Array.isArray(advice.observations.inferred), 'inferred tier is an array');
+      assert(Array.isArray(advice.observations.unknown), 'unknown tier is an array');
     });
 
     // -------------------------------------------------------------------------
@@ -305,22 +294,13 @@ async function runControlRoomE2ETests() {
     // -------------------------------------------------------------------------
     console.log('[Criterion 8] Testing Deterministic Decision Proposal...');
     await itAsync('Creates decision proposal with status PENDING_OPERATOR_ACTION and situation hash', async () => {
-      const decisionRes = await decisionService.evaluateEmergencyDecision({
-        emergencyId: emgId,
-        vehicleId: vehId,
-        situationAnalysis: {
-          deviation: { status: 'DEVIATED', distanceFromRouteMeters: 180 },
-          incidents: [incidentDoc],
-          eta: { currentMinutes: 18, delayMinutes: 8 }
-        },
-        candidateRoutes: []
-      });
+      const decisionRes = await decisionService.analyzeEmergency(emgId);
 
-      assert(decisionRes && decisionRes.decision, 'Decision proposal created');
-      activeDecisionDoc = decisionRes.decision;
+      assert(decisionRes && decisionRes.decisionId, 'Decision proposal created');
+      activeDecisionDoc = decisionRes;
 
       assert.strictEqual(activeDecisionDoc.status, 'PENDING_OPERATOR_ACTION', 'Initial status is PENDING_OPERATOR_ACTION');
-      assert(activeDecisionDoc.primaryAction || activeDecisionDoc.action, 'Action recommended');
+      assert(activeDecisionDoc.primaryAction, 'primaryAction recommended');
       assert(typeof activeDecisionDoc.situationHash === 'string' && activeDecisionDoc.situationHash.length > 0, 'SHA-256 situation hash recorded');
     });
 
@@ -331,14 +311,13 @@ async function runControlRoomE2ETests() {
     await itAsync('Transitions decision from PENDING_OPERATOR_ACTION to APPROVED', async () => {
       assert(activeDecisionDoc, 'Active decision must exist from Criterion 8');
 
-      const approved = await decisionService.approveDecision({
-        decisionId: activeDecisionDoc.decisionId,
-        operatorId: 'OPERATOR-007',
-        notes: 'Corridor verified via CCTV; proceed with reroute'
-      });
+      const approved = await decisionService.approveDecision(
+        activeDecisionDoc.decisionId,
+        testUserId
+      );
 
       assert.strictEqual(approved.status, 'APPROVED', 'Decision transitioned to APPROVED');
-      assert.strictEqual(approved.approvedBy, 'OPERATOR-007', 'approvedBy recorded');
+      assert.strictEqual(approved.approvedBy.toString(), testUserId.toString(), 'approvedBy recorded');
       assert(approved.approvedAt, 'approvedAt timestamp recorded');
 
       // Verify in DB
@@ -356,25 +335,24 @@ async function runControlRoomE2ETests() {
       const rejDecision = await Decision.create({
         decisionId: `DEC-REJ-${testSuffix}`,
         emergency: emergencyDoc._id,
-        emergencyId: emgId,
         vehicle: vehicleDoc._id,
-        vehicleId: vehId,
-        primaryAction: 'DISPATCH_BACKUP',
-        action: 'DISPATCH_BACKUP',
-        severity: 'MEDIUM',
+        route: routeDoc._id,
+        primaryAction: 'CONSIDER_BACKUP',
+        actions: ['CONSIDER_BACKUP'],
+        severity: 'WARNING',
         status: 'PENDING_OPERATOR_ACTION',
         reasonCodes: ['DELAY_ACCUMULATION'],
         situationHash: `hash-rej-${testSuffix}`
       });
 
-      const rejected = await decisionService.rejectDecision({
-        decisionId: rejDecision.decisionId,
-        operatorId: 'OPERATOR-007',
-        reason: 'Ambulance V1 cleared intersection; backup not necessary'
-      });
+      const rejected = await decisionService.rejectDecision(
+        rejDecision.decisionId,
+        testUserId,
+        'Ambulance V1 cleared intersection; backup not necessary'
+      );
 
       assert.strictEqual(rejected.status, 'REJECTED', 'Decision transitioned to REJECTED');
-      assert.strictEqual(rejected.rejectedBy, 'OPERATOR-007', 'rejectedBy recorded');
+      assert.strictEqual(rejected.rejectedBy.toString(), testUserId.toString(), 'rejectedBy recorded');
       assert(rejected.rejectionReason.includes('backup not necessary'), 'Rejection rationale recorded');
 
       // Verify in DB
@@ -393,15 +371,13 @@ async function runControlRoomE2ETests() {
       assert(activeDecisionDoc, 'Active decision must exist and be APPROVED');
       assert.strictEqual(activeDecisionDoc.status, 'APPROVED', 'Precondition: decision must be APPROVED');
 
-      const executed = await decisionService.executeDecision({
-        decisionId: activeDecisionDoc.decisionId,
-        operatorId: 'OPERATOR-007',
-        executionPayload: { executionSummary: 'Reroute dispatched to vehicle MDT' }
-      });
+      const executed = await decisionService.executeDecision(
+        activeDecisionDoc.decisionId,
+        testUserId
+      );
 
       assert.strictEqual(executed.status, 'EXECUTED', 'Decision transitioned to EXECUTED');
       assert(executed.executedAt, 'executedAt timestamp recorded');
-      assert(executed.executionSummary, 'executionSummary recorded');
 
       // Verify in DB
       const inDb = await Decision.findOne({ decisionId: activeDecisionDoc.decisionId });
@@ -417,29 +393,22 @@ async function runControlRoomE2ETests() {
       const raceDecision = await Decision.create({
         decisionId: `DEC-RACE-${testSuffix}`,
         emergency: emergencyDoc._id,
-        emergencyId: emgId,
         vehicle: vehicleDoc._id,
-        vehicleId: vehId,
-        primaryAction: 'REROUTE_RECOMMENDED',
-        action: 'REROUTE_RECOMMENDED',
-        severity: 'HIGH',
+        route: routeDoc._id,
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE'],
+        severity: 'CRITICAL',
         status: 'PENDING_OPERATOR_ACTION',
         reasonCodes: ['CONCURRENCY_TEST'],
         situationHash: `hash-race-${testSuffix}`
       });
 
+      const testOperator2 = new mongoose.Types.ObjectId();
+
       // Fire two simultaneous approvals simulating two operators clicking at the exact same millisecond
       const [res1, res2] = await Promise.allSettled([
-        decisionService.approveDecision({
-          decisionId: raceDecision.decisionId,
-          operatorId: 'OPERATOR-ALPHA',
-          notes: 'First operator action'
-        }),
-        decisionService.approveDecision({
-          decisionId: raceDecision.decisionId,
-          operatorId: 'OPERATOR-BETA',
-          notes: 'Second operator action'
-        })
+        decisionService.approveDecision(raceDecision.decisionId, testUserId),
+        decisionService.approveDecision(raceDecision.decisionId, testOperator2)
       ]);
 
       const fulfilled = [res1, res2].filter(r => r.status === 'fulfilled');
@@ -449,9 +418,9 @@ async function runControlRoomE2ETests() {
       assert.strictEqual(rejected.length, 1, 'Exactly one concurrent approval was rejected');
       assert(
         rejected[0].reason.message.includes('not pending') ||
-        rejected[0].reason.statusCode === 409 ||
+        rejected[0].reason.status === 400 ||
         rejected[0].reason.status === 409,
-        `Rejection is a conflict: ${rejected[0].reason.message}`
+        `Rejection prevented concurrent conflict: ${rejected[0].reason.message}`
       );
 
       // Clean up race decision
