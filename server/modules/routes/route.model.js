@@ -80,6 +80,50 @@ const routeSchema = new mongoose.Schema(
       enum: ['ACTIVE', 'COMPLETED', 'CANCELLED'],
       default: 'ACTIVE'
     },
+    preference: {
+      type: String,
+      enum: ['FASTEST', 'SHORTEST'],
+      default: 'FASTEST'
+    },
+    steps: [
+      {
+        maneuver: {
+          type: String,
+          enum: [
+            'DEPART',
+            'TURN_LEFT',
+            'TURN_RIGHT',
+            'CONTINUE',
+            'KEEP_RIGHT',
+            'KEEP_LEFT',
+            'U_TURN',
+            'ARRIVE'
+          ],
+          default: 'CONTINUE'
+        },
+        instruction: {
+          type: String,
+          required: true
+        },
+        distance: {
+          type: Number,
+          default: 0
+        },
+        duration: {
+          type: Number,
+          default: 0
+        },
+        startLocation: {
+          type: [Number]
+        },
+        endLocation: {
+          type: [Number]
+        },
+        stepPolyline: {
+          type: [[Number]]
+        }
+      }
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

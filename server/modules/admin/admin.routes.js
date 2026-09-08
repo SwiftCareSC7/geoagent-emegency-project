@@ -32,4 +32,9 @@ router.get('/trajectories', adminController.getTrajectories);
 router.get('/predictions', adminController.getPredictions);
 router.get('/decisions', adminController.getDecisions);
 
+// Demonstration Scenarios & Data Management
+router.get('/demo/scenarios', adminController.getDemoScenarios);
+router.post('/demo/seed', adminController.seedDemoScenarios);
+router.post('/demo/reset', adminController.resetDemoData);
+
 export default router;

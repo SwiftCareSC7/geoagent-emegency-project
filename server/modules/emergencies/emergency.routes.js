@@ -20,15 +20,15 @@ router.use(protect);
 
 router
   .route('/')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getEmergencies)
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getEmergencies)
   // POST: CONTROL_ROOM & ADMIN
   .post(requireRole('CONTROL_ROOM', 'ADMIN'), validateEmergencyCreate, createEmergency);
 
 router
   .route('/:emergencyId')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getEmergency)
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getEmergency)
   // PATCH: CONTROL_ROOM & ADMIN
   .patch(requireRole('CONTROL_ROOM', 'ADMIN'), validateEmergencyUpdate, updateEmergency)
   // DELETE: ADMIN only
@@ -41,8 +41,8 @@ router
 
 router
   .route('/:emergencyId/routes')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getEmergencyRoutes);
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getEmergencyRoutes);
 
 router
   .route('/:emergencyId/decisions')

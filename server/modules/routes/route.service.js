@@ -46,7 +46,8 @@ class RouteService {
 
     // 3. Call External Routing Service (Mock or Real)
     // The routingService throws safe errors if provider fails
-    const generatedRoute = await routingService.getRoute(origin, destination);
+    const preference = (routeData.preference || 'FASTEST').toUpperCase();
+    const generatedRoute = await routingService.getRoute(origin, destination, { preference });
 
     // 4. Generate unique immutable routeId
     const routeId = `ROUTE-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -63,6 +64,8 @@ class RouteService {
       duration: generatedRoute.durationSeconds,
       provider: generatedRoute.provider,
       routeType,
+      preference,
+      steps: generatedRoute.steps || [],
       createdBy: userId
     });
 
@@ -78,6 +81,8 @@ class RouteService {
         distanceMeters: route.distance,
         durationSeconds: route.duration,
         provider: route.provider,
+        preference: route.preference,
+        stepsCount: (route.steps || []).length,
         status: route.status
       });
     } catch (err) {
@@ -85,6 +90,59 @@ class RouteService {
     }
 
     return route;
+  }
+
+  /**
+   * Calculates a complete route plan with turn-by-turn steps without requiring pre-saved entities.
+   * Also computes candidate alternative route with complementary preference when requested.
+   * @param {Object} origin GeoJSON Point
+   * @param {Object} destination GeoJSON Point
+   * @param {Object} options { preference: 'FASTEST'|'SHORTEST', computeAlternatives: boolean }
+   * @returns {Promise<Object>} Calculated route with steps and optional alternative
+   */
+  async calculateRoutePlan(origin, destination, options = {}) {
+    const preference = (options.preference || 'FASTEST').toUpperCase();
+    const routeData = await routingService.getRoute(origin, destination, {
+      ...options,
+      preference
+    });
+
+    let alternative = null;
+    if (options.computeAlternatives !== false) {
+      // Calculate alternative with complementary preference
+      const altPreference = preference === 'FASTEST' ? 'SHORTEST' : 'FASTEST';
+      try {
+        const altRoute = await routingService.getRoute(origin, destination, {
+          ...options,
+          preference: altPreference
+        });
+        alternative = {
+          geometry: altRoute.geometry,
+          distanceMeters: altRoute.distanceMeters,
+          durationSeconds: altRoute.durationSeconds,
+          preference: altPreference,
+          description: altRoute.description,
+          steps: altRoute.steps || [],
+          trafficDelaySeconds: altRoute.trafficDelaySeconds || 0
+        };
+      } catch (err) {
+        // Non-blocking alternative calculation
+      }
+    }
+
+    return {
+      geometry: routeData.geometry,
+      distanceMeters: routeData.distanceMeters,
+      durationSeconds: routeData.durationSeconds,
+      staticDurationSeconds: routeData.staticDurationSeconds,
+      trafficDelaySeconds: routeData.trafficDelaySeconds || 0,
+      preference,
+      description: routeData.description,
+      provider: routeData.provider,
+      steps: routeData.steps || [],
+      alternative,
+      calculatedAt: new Date().toISOString()
+    };
   }
 
 

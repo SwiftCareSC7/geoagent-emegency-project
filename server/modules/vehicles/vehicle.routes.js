@@ -17,17 +17,17 @@ router.use(protect);
 
 router
   .route('/')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getVehicles)
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getVehicles)
   // POST: ADMIN only
   .post(requireRole('ADMIN'), validateVehicleCreate, createVehicle);
 
 router
   .route('/:vehicleId')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getVehicle)
-  // PATCH: CONTROL_ROOM & ADMIN
-  .patch(requireRole('CONTROL_ROOM', 'ADMIN'), validateVehicleUpdate, updateVehicle)
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getVehicle)
+  // PATCH: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .patch(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), validateVehicleUpdate, updateVehicle)
   // DELETE: ADMIN only
   .delete(requireRole('ADMIN'), deleteVehicle);
 

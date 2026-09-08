@@ -92,4 +92,14 @@ export const routeApi = {
   getCorridorV2X(routeId: string): Promise<{ success: true; message: string; data: any }> {
     return get<{ success: true; message: string; data: any }>(`/routes/${encodeURIComponent(routeId)}/corridor-v2x`)
   },
+
+  /** Calculate turn-by-turn route plan with fastest vs shortest options */
+  calculateRoutePlan(payload: {
+    origin: { type: 'Point'; coordinates: [number, number] }
+    destination: { type: 'Point'; coordinates: [number, number] }
+    preference?: 'FASTEST' | 'SHORTEST'
+    computeAlternatives?: boolean
+  }): Promise<{ success: true; message: string; data: any }> {
+    return post<{ success: true; message: string; data: any }>('/routes/calculate', payload)
+  },
 }

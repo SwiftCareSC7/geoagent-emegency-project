@@ -8,6 +8,7 @@
  */
 
 import adminService from './admin.service.js';
+import demoService from './demo.service.js';
 import { validatePaginationAndSort, sanitizeSearchString } from './admin.validation.js';
 
 function auditLog(req, resource, durationMs, statusCode = 200) {
@@ -362,6 +363,42 @@ class AdminController {
       });
     } catch (error) {
       auditLog(req, 'decisions', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
+  async getDemoScenarios(req, res, next) {
+    try {
+      const scenarios = demoService.getScenarios();
+      return res.status(200).json({
+        success: true,
+        data: scenarios
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async seedDemoScenarios(req, res, next) {
+    const start = Date.now();
+    try {
+      const result = await demoService.seedDemoScenarios({ clean: req.body?.clean !== false });
+      auditLog(req, 'demo-seed', Date.now() - start, 200);
+      return res.status(200).json(result);
+    } catch (error) {
+      auditLog(req, 'demo-seed', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
+  async resetDemoData(req, res, next) {
+    const start = Date.now();
+    try {
+      const result = await demoService.resetDemoData();
+      auditLog(req, 'demo-reset', Date.now() - start, 200);
+      return res.status(200).json(result);
+    } catch (error) {
+      auditLog(req, 'demo-reset', Date.now() - start, 500);
       next(error);
     }
   }

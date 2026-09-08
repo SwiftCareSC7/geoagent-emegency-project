@@ -14,10 +14,22 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        {/* Left: dashboard label */}
-        <p className="hidden text-sm font-medium text-muted-foreground sm:block">
-          Driver Dashboard
-        </p>
+        {/* Left: Quick links */}
+        <div className="hidden sm:flex items-center gap-3 text-xs font-semibold">
+          <Link
+            href="/driver/dashboard"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Driver Navigation
+          </Link>
+          <span className="text-muted-foreground/40">·</span>
+          <Link
+            href="/control-room"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Control Room
+          </Link>
+        </div>
 
         {/* Center: brand */}
         <Link

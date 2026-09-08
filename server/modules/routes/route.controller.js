@@ -5,9 +5,44 @@ import Route from './route.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 
 /**
+ * @desc    Calculate route plan with turn-by-turn maneuvers (Fastest vs Shortest)
+ * @route   POST /api/routes/calculate
+ * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ */
+export const calculateRoute = async (req, res, next) => {
+  try {
+    const { origin, destination, preference, computeAlternatives } = req.body;
+    if (!origin || !destination) {
+      return res.status(400).json({
+        success: false,
+        message: 'Origin and destination GeoJSON Points are required'
+      });
+    }
+
+    const plan = await routeService.calculateRoutePlan(origin, destination, {
+      preference: preference || 'FASTEST',
+      computeAlternatives: computeAlternatives !== false
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Route plan calculated successfully',
+      data: plan
+    });
+  } catch (error) {
+    if (error.message && error.message.includes('Unable to calculate route')) {
+      res.status(502);
+    } else {
+      res.status(400);
+    }
+    next(error);
+  }
+};
+
+/**
  * @desc    Generate and create a new route
  * @route   POST /api/routes
- * @access  Private (CONTROL_ROOM, ADMIN)
+ * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
  */
 export const createRoute = async (req, res, next) => {
   try {

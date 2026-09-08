@@ -13,8 +13,8 @@ const router = express.Router();
 
 // All trajectory routes require authentication
 router.use(protect);
-// Restrict to CONTROL_ROOM and ADMIN
-router.use(requireRole('CONTROL_ROOM', 'ADMIN'));
+// Restrict to CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+router.use(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'));
 
 router.post('/', validateTrajectoryCreate, createTrajectory);
 router.get('/:vehicleId', getTrajectoryHistory);

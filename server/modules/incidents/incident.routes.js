@@ -17,15 +17,15 @@ router.use(protect);
 
 router
   .route('/')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getIncidents)
-  // POST: CONTROL_ROOM & ADMIN
-  .post(requireRole('CONTROL_ROOM', 'ADMIN'), validateIncidentCreate, createIncident);
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getIncidents)
+  // POST: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .post(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), validateIncidentCreate, createIncident);
 
 router
   .route('/:incidentId')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getIncident)
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getIncident)
   // PATCH: CONTROL_ROOM & ADMIN
   .patch(requireRole('CONTROL_ROOM', 'ADMIN'), validateIncidentUpdate, updateIncident)
   // DELETE: ADMIN only

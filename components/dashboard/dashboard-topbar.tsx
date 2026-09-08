@@ -1,6 +1,6 @@
 'use client'
 
-import { LogOut, Shield, Siren, UserRound } from 'lucide-react'
+import { LogOut, Navigation, Shield, Siren, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
@@ -84,6 +84,24 @@ export function DashboardTopbar({
               <Shield className="size-3" />
               {userRole}
             </span>
+          </div>
+
+          {/* Navigation Mode Switchers */}
+          <div className="flex items-center gap-1 rounded-xl bg-white/10 p-1">
+            <Link
+              href="/driver/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-white/15 active:scale-95"
+            >
+              <Navigation className="size-3.5 text-cyan-300" />
+              <span>Navigation</span>
+            </Link>
+            <Link
+              href="/control-room"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-white/15 active:scale-95"
+            >
+              <Shield className="size-3.5 text-emerald-300" />
+              <span>Control Room</span>
+            </Link>
           </div>
 
           {/* Admin Console shortcut for ADMIN role */}

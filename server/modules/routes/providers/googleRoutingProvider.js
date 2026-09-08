@@ -83,7 +83,7 @@ class GoogleRoutingProvider {
   _getCacheKey(origin, destination, options = {}) {
     const orig = origin.coordinates.map((c) => c.toFixed(4)).join(',');
     const dest = destination.coordinates.map((c) => c.toFixed(4)).join(',');
-    const pref = options.routingPreference || 'TRAFFIC_AWARE_OPTIMAL';
+    const pref = options.routingPreference || options.preference || 'TRAFFIC_AWARE_OPTIMAL';
     const alt = Boolean(options.computeAlternativeRoutes);
     return `${orig}_${dest}_${pref}_${alt}`;
   }
@@ -110,6 +110,41 @@ class GoogleRoutingProvider {
       ? rawRoute.distanceMeters
       : 0;
 
+    // Extract navigation steps if present in legs
+    const steps = [];
+    if (Array.isArray(rawRoute.legs)) {
+      for (const leg of rawRoute.legs) {
+        if (Array.isArray(leg.steps)) {
+          for (const step of leg.steps) {
+            const stepDist = typeof step.distanceMeters === 'number' ? step.distanceMeters : 0;
+            const stepDur = parseDurationSeconds(step.staticDuration);
+            const instruction = step.navigationInstruction?.instructions || 'Continue';
+            const rawManeuver = (step.navigationInstruction?.maneuver || 'STRAIGHT').toUpperCase();
+            let maneuver = 'CONTINUE';
+            if (rawManeuver.includes('LEFT')) maneuver = 'TURN_LEFT';
+            else if (rawManeuver.includes('RIGHT')) maneuver = 'TURN_RIGHT';
+            else if (rawManeuver.includes('UTURN')) maneuver = 'U_TURN';
+            else if (rawManeuver.includes('DEPART')) maneuver = 'DEPART';
+            else if (rawManeuver.includes('ARRIVE')) maneuver = 'ARRIVE';
+
+            const stepPoly = step.polyline?.encodedPolyline ? decodeGooglePolyline(step.polyline.encodedPolyline) : [];
+            const startLocation = step.startLocation?.latLng ? [step.startLocation.latLng.longitude, step.startLocation.latLng.latitude] : undefined;
+            const endLocation = step.endLocation?.latLng ? [step.endLocation.latLng.longitude, step.endLocation.latLng.latitude] : undefined;
+
+            steps.push({
+              maneuver,
+              instruction,
+              distance: stepDist,
+              duration: stepDur,
+              startLocation,
+              endLocation,
+              stepPolyline: stepPoly
+            });
+          }
+        }
+      }
+    }
+
     return {
       geometry: {
         type: 'LineString',
@@ -122,6 +157,7 @@ class GoogleRoutingProvider {
       provider: 'GOOGLE',
       description: rawRoute.description || (index === 0 ? 'Primary Route (Optimal Traffic)' : `Alternative Route ${index}`),
       warnings: rawRoute.warnings || [],
+      steps,
       isAlternative: index > 0,
       candidateIndex: index,
       retrievedAt: new Date().toISOString()

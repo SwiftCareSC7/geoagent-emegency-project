@@ -20,6 +20,7 @@ import {
   Info,
   Map as MapIcon,
   ShieldAlert,
+  CheckCircle2,
 } from 'lucide-react'
 import { adminApi } from '@/lib/api/admin'
 import { decisionApi } from '@/lib/api/decisions'
@@ -35,6 +36,50 @@ export function AdminOverview() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [seedingDemo, setSeedingDemo] = useState(false)
+  const [resettingDemo, setResettingDemo] = useState(false)
+  const [demoFeedback, setDemoFeedback] = useState<{ success: boolean; message: string } | null>(null)
+
+  const handleSeedDemo = async () => {
+    setSeedingDemo(true)
+    setDemoFeedback(null)
+    try {
+      const res = await adminApi.seedDemoScenarios()
+      setDemoFeedback({
+        success: true,
+        message: res.message || 'Successfully seeded 5 canonical Bengaluru demo scenarios!'
+      })
+      await fetchData(true)
+    } catch (err: any) {
+      setDemoFeedback({
+        success: false,
+        message: err?.message || 'Failed to seed demo scenarios'
+      })
+    } finally {
+      setSeedingDemo(false)
+    }
+  }
+
+  const handleResetDemo = async () => {
+    if (!window.confirm('Reset all demo scenario records? Standard baseline records will remain.')) return
+    setResettingDemo(true)
+    setDemoFeedback(null)
+    try {
+      const res = await adminApi.resetDemoScenarios()
+      setDemoFeedback({
+        success: true,
+        message: res.message || 'Successfully cleared demo scenario records.'
+      })
+      await fetchData(true)
+    } catch (err: any) {
+      setDemoFeedback({
+        success: false,
+        message: err?.message || 'Failed to reset demo scenarios'
+      })
+    } finally {
+      setResettingDemo(false)
+    }
+  }
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
@@ -513,6 +558,86 @@ export function AdminOverview() {
             <span className="font-mono text-sm font-bold text-foreground">
               +{stats?.recentActivity?.incidentsLast24h || 0}
             </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Canonical Bengaluru Demo Scenarios Controller */}
+      <div className="rounded-2xl border border-primary/30 bg-card/60 p-5 backdrop-blur-sm space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="size-4 text-cyan-400" />
+              <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
+                Bengaluru Evaluation Demo Scenarios (DEMO 001 – 005)
+              </h3>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Pre-built canonical emergency runs across Bengaluru corridors with real MongoDB models, turn-by-turn routes, and traffic bottlenecks.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleSeedDemo}
+              disabled={seedingDemo || resettingDemo}
+              size="sm"
+              className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold"
+            >
+              <RefreshCw className={`size-3.5 ${seedingDemo ? 'animate-spin' : ''}`} />
+              {seedingDemo ? 'Seeding Database...' : 'Seed 5 Demo Scenarios'}
+            </Button>
+            <Button
+              onClick={handleResetDemo}
+              disabled={seedingDemo || resettingDemo}
+              variant="outline"
+              size="sm"
+              className="gap-2 text-xs border-destructive/40 text-destructive hover:bg-destructive/10"
+            >
+              <AlertTriangle className="size-3.5" />
+              {resettingDemo ? 'Clearing...' : 'Reset Demo Data'}
+            </Button>
+          </div>
+        </div>
+
+        {demoFeedback && (
+          <div
+            className={`p-3 rounded-xl border text-xs font-medium flex items-center gap-2 ${
+              demoFeedback.success
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+            }`}
+          >
+            {demoFeedback.success ? <CheckCircle2 className="size-4 shrink-0" /> : <AlertTriangle className="size-4 shrink-0" />}
+            <span>{demoFeedback.message}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+          <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-1">
+            <span className="font-mono text-[10px] font-black text-cyan-400">DEMO 001</span>
+            <p className="text-xs font-bold text-foreground">Koramangala Cardiac</p>
+            <p className="text-[11px] text-muted-foreground leading-tight">Manipal Hospital · Peak hour arterial bypass reroute</p>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-1">
+            <span className="font-mono text-[10px] font-black text-rose-400">DEMO 002</span>
+            <p className="text-xs font-bold text-foreground">Hebbal Flyover Crash</p>
+            <p className="text-[11px] text-muted-foreground leading-tight">Victoria Hospital · Multi-car crash hazard detour</p>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-1">
+            <span className="font-mono text-[10px] font-black text-amber-400">DEMO 003</span>
+            <p className="text-xs font-bold text-foreground">Whitefield IT Congestion</p>
+            <p className="text-[11px] text-muted-foreground leading-tight">Manipal Hospital · V2X green-wave signal preemption</p>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-1">
+            <span className="font-mono text-[10px] font-black text-emerald-400">DEMO 004</span>
+            <p className="text-xs font-bold text-foreground">Yelahanka Trauma</p>
+            <p className="text-[11px] text-muted-foreground leading-tight">Bowring Hospital · Fastest vs shortest tradeoff</p>
+          </div>
+          <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-1">
+            <span className="font-mono text-[10px] font-black text-indigo-400">DEMO 005</span>
+            <p className="text-xs font-bold text-foreground">Electronic City Toll</p>
+            <p className="text-[11px] text-muted-foreground leading-tight">St. John&apos;s Hospital · Elevated expressway run</p>
           </div>
         </div>
       </div>

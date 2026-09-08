@@ -15,7 +15,7 @@
  *   GET /api/admin/decisions      — Paginated decision lifecycle audit trail
  */
 
-import { get } from './client'
+import { get, post } from './client'
 import type {
   AdminSystemStats,
   AdminDatabaseHealth,
@@ -90,5 +90,20 @@ export const adminApi = {
   /** Retrieve prediction validation analytics and model governance metrics */
   getPredictionAnalytics(): Promise<{ success: boolean; data: any }> {
     return get<{ success: boolean; data: any }>('/admin/prediction-analytics')
+  },
+
+  /** Get list of 5 canonical demo scenarios */
+  getDemoScenarios(): Promise<{ success: boolean; data: any[] }> {
+    return get<{ success: boolean; data: any[] }>('/admin/demo/scenarios')
+  },
+
+  /** Seed database with 5 canonical demo scenarios */
+  seedDemoScenarios(): Promise<{ success: boolean; message: string; data: any }> {
+    return post<{ success: boolean; message: string; data: any }>('/admin/demo/seed', {})
+  },
+
+  /** Reset database demo records */
+  resetDemoScenarios(): Promise<{ success: boolean; message: string; data: any }> {
+    return post<{ success: boolean; message: string; data: any }>('/admin/demo/reset', {})
   }
 }
