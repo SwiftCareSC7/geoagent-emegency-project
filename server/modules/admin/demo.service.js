@@ -262,6 +262,126 @@ export const DEMO_SCENARIO_CONFIGS = [
     hasBackupAmbulance: true,
     expectedTimeSavedMinutes: 9,
     scenarioTag: 'Obstetric Emergency & Standby Re-allocation'
+  },
+  {
+    id: 'DEMO-013',
+    code: 'DEMO_013',
+    title: 'Demo 013: Banashankari to Sagar Hospitals',
+    subtitle: 'Aortic Dissection -> 100ft Ring Rd Bypass -> Save 5 min',
+    originName: 'Banashankari BDA Complex',
+    originCoordinates: [77.5560, 12.9250],
+    emergencyName: 'Banashankari 2nd Stage Junction',
+    emergencyCoordinates: [77.5600, 12.9300],
+    destinationName: 'Sagar Hospitals (Banashankari)',
+    destinationCoordinates: [77.5560, 12.9250],
+    vehicleId: 'AMB-17',
+    emergencyId: 'E-DEMO-013',
+    type: 'MEDICAL',
+    priority: 'CRITICAL',
+    hasReroute: true,
+    hasClearance: true,
+    expectedTimeSavedMinutes: 5,
+    scenarioTag: 'Aortic Dissection & Emergency Clearance'
+  },
+  {
+    id: 'DEMO-014',
+    code: 'DEMO_014',
+    title: 'Demo 014: BTM Layout to Jayadeva Cardiology',
+    subtitle: 'Gym Cardiac Arrest -> Central Silk Board Bypass -> Save 7 min',
+    originName: 'BTM 2nd Stage Udupi Garden',
+    originCoordinates: [77.6100, 12.9150],
+    emergencyName: 'BTM 16th Main Fitness Center',
+    emergencyCoordinates: [77.6120, 12.9180],
+    destinationName: 'Jayadeva Institute of Cardiovascular Sciences',
+    destinationCoordinates: [77.5980, 12.9180],
+    vehicleId: 'AMB-18',
+    emergencyId: 'E-DEMO-014',
+    type: 'MEDICAL',
+    priority: 'CRITICAL',
+    hasReroute: true,
+    hasClearance: true,
+    expectedTimeSavedMinutes: 7,
+    scenarioTag: 'Cardiac Arrest & Silk Board Bypass'
+  },
+  {
+    id: 'DEMO-015',
+    code: 'DEMO_015',
+    title: 'Demo 015: Vijayanagar to Victoria Hospital',
+    subtitle: 'Pedestrian Crowd Collision -> Mysore Rd Flyover Green Wave',
+    originName: 'Vijayanagar Club',
+    originCoordinates: [77.5380, 12.9710],
+    emergencyName: 'Vijayanagar Tollgate',
+    emergencyCoordinates: [77.5350, 12.9730],
+    destinationName: 'Victoria Hospital (City Market)',
+    destinationCoordinates: [77.5739, 12.9634],
+    vehicleId: 'AMB-19',
+    emergencyId: 'E-DEMO-015',
+    type: 'ACCIDENT',
+    priority: 'CRITICAL',
+    hasClearance: true,
+    hasReroute: true,
+    expectedTimeSavedMinutes: 6,
+    scenarioTag: 'Mass Casualty & Flyover Transit'
+  },
+  {
+    id: 'DEMO-016',
+    code: 'DEMO_016',
+    title: 'Demo 016: Kalyan Nagar to Specialist Hospital',
+    subtitle: 'Severe Pancreatitis -> Ring Road Flow -> Optimal Corridor',
+    originName: 'Kalyan Nagar HRBR Layout',
+    originCoordinates: [77.6480, 13.0180],
+    emergencyName: 'Kammanahalli Main Road Clinic',
+    emergencyCoordinates: [77.6420, 13.0120],
+    destinationName: 'Specialist Hospital Kalyan Nagar',
+    destinationCoordinates: [77.6480, 13.0180],
+    vehicleId: 'AMB-20',
+    emergencyId: 'E-DEMO-016',
+    type: 'MEDICAL',
+    priority: 'HIGH',
+    hasNormalTraffic: true,
+    requiresReroute: false,
+    expectedTimeSavedMinutes: 0,
+    scenarioTag: 'Optimal North-East Corridor'
+  },
+  {
+    id: 'DEMO-017',
+    code: 'DEMO_017',
+    title: 'Demo 017: Kengeri to BGS Gleneagles Global Hospital',
+    subtitle: 'Metro Construction Collapse -> Mysore Rd Expressway Bypass',
+    originName: 'Kengeri Satellite Town',
+    originCoordinates: [77.4850, 12.9150],
+    emergencyName: 'Kengeri Metro Pier Site',
+    emergencyCoordinates: [77.4900, 12.9100],
+    destinationName: 'BGS Gleneagles Global Hospital',
+    destinationCoordinates: [77.4950, 12.8950],
+    vehicleId: 'AMB-21',
+    emergencyId: 'E-DEMO-017',
+    type: 'ACCIDENT',
+    priority: 'CRITICAL',
+    hasReroute: true,
+    hasClearance: true,
+    expectedTimeSavedMinutes: 8,
+    scenarioTag: 'Industrial Collapse & Trauma Priority'
+  },
+  {
+    id: 'DEMO-018',
+    code: 'DEMO_018',
+    title: 'Demo 018: Sarjapur Road to Columbia Asia Hospital',
+    subtitle: 'Severe Asthma in Pregnancy -> Wipro Gate Congestion Bypass',
+    originName: 'Sarjapur Wipro Gate',
+    originCoordinates: [77.6820, 12.9080],
+    emergencyName: 'Kaikondrahalli Lake Enclave',
+    emergencyCoordinates: [77.6850, 12.9120],
+    destinationName: 'Columbia Asia Hospital Sarjapur',
+    destinationCoordinates: [77.6750, 12.9200],
+    vehicleId: 'AMB-24',
+    emergencyId: 'E-DEMO-018',
+    type: 'MEDICAL',
+    priority: 'HIGH',
+    hasDeviation: true,
+    hasReroute: true,
+    expectedTimeSavedMinutes: 6,
+    scenarioTag: 'Pregnancy Emergency & Smart Recalculation'
   }
 ];
 
@@ -569,6 +689,286 @@ class DemoService {
         speed: 0,
         heading: 0,
         location: { type: 'Point', coordinates: [77.6890, 12.9288] }
+      },
+      {
+        vehicleId: 'AMB-17',
+        registrationNumber: 'KA-05-EA-1717',
+        type: 'AMBULANCE',
+        status: 'AVAILABLE',
+        capacity: 2,
+        driverName: 'Raghavendra Rao',
+        driverContact: '+91 98450 17170',
+        hospitalName: 'Sagar Hospitals Banashankari',
+        hospitalCode: 'SAG-01',
+        speed: 0,
+        heading: 0,
+        location: { type: 'Point', coordinates: [77.5560, 12.9250] }
+      },
+      {
+        vehicleId: 'AMB-18',
+        registrationNumber: 'KA-01-EA-1818',
+        type: 'AMBULANCE',
+        status: 'EN_ROUTE',
+        capacity: 2,
+        driverName: 'Manjunath Gowda',
+        driverContact: '+91 98450 18180',
+        hospitalName: 'Jayadeva Institute of Cardiology',
+        hospitalCode: 'JAY-01',
+        speed: 44,
+        heading: 75,
+        location: { type: 'Point', coordinates: [77.6100, 12.9150] }
+      },
+      {
+        vehicleId: 'AMB-19',
+        registrationNumber: 'KA-02-EA-1919',
+        type: 'AMBULANCE',
+        status: 'DISPATCHED',
+        capacity: 1,
+        driverName: 'Santosh Patil',
+        driverContact: '+91 98450 19190',
+        hospitalName: 'Victoria Hospital (City Market)',
+        hospitalCode: 'VIC-01',
+        speed: 36,
+        heading: 85,
+        location: { type: 'Point', coordinates: [77.5380, 12.9710] }
+      },
+      {
+        vehicleId: 'AMB-20',
+        registrationNumber: 'KA-04-EA-2020',
+        type: 'AMBULANCE',
+        status: 'AVAILABLE',
+        capacity: 2,
+        driverName: 'Naveen Kumar',
+        driverContact: '+91 98450 20200',
+        hospitalName: 'Specialist Hospital Kalyan Nagar',
+        hospitalCode: 'SPE-01',
+        speed: 0,
+        heading: 0,
+        location: { type: 'Point', coordinates: [77.6480, 13.0180] }
+      },
+      {
+        vehicleId: 'AMB-21',
+        registrationNumber: 'KA-41-EA-2121',
+        type: 'AMBULANCE',
+        status: 'EN_ROUTE',
+        capacity: 2,
+        driverName: 'Harish Babu',
+        driverContact: '+91 98450 21210',
+        hospitalName: 'BGS Gleneagles Global Hospital',
+        hospitalCode: 'BGS-01',
+        speed: 50,
+        heading: 60,
+        location: { type: 'Point', coordinates: [77.4850, 12.9150] }
+      },
+      {
+        vehicleId: 'AMB-22',
+        registrationNumber: 'KA-02-EA-2222',
+        type: 'AMBULANCE',
+        status: 'AVAILABLE',
+        capacity: 1,
+        driverName: 'Prashanth Hegde',
+        driverContact: '+91 98450 22220',
+        hospitalName: 'Sparsh Hospital Yeshwanthpur',
+        hospitalCode: 'SPA-01',
+        speed: 0,
+        heading: 0,
+        location: { type: 'Point', coordinates: [77.5500, 13.0220] }
+      },
+      {
+        vehicleId: 'AMB-23',
+        registrationNumber: 'KA-53-EA-2323',
+        type: 'AMBULANCE',
+        status: 'DISPATCHED',
+        capacity: 2,
+        driverName: 'Vinayaka Prasad',
+        driverContact: '+91 98450 23230',
+        hospitalName: 'Manipal Hospital Whitefield',
+        hospitalCode: 'MAN-02',
+        speed: 35,
+        heading: 140,
+        location: { type: 'Point', coordinates: [77.6960, 13.0020] }
+      },
+      {
+        vehicleId: 'AMB-24',
+        registrationNumber: 'KA-51-EA-2424',
+        type: 'AMBULANCE',
+        status: 'EN_ROUTE',
+        capacity: 2,
+        driverName: 'Karthik Swamy',
+        driverContact: '+91 98450 24240',
+        hospitalName: 'Columbia Asia Hospital Sarjapur',
+        hospitalCode: 'COL-01',
+        speed: 42,
+        heading: 310,
+        location: { type: 'Point', coordinates: [77.6820, 12.9080] }
+      },
+      {
+        vehicleId: 'AMB-25',
+        registrationNumber: 'KA-05-EA-2525',
+        type: 'AMBULANCE',
+        status: 'AVAILABLE',
+        capacity: 2,
+        driverName: 'Chetan Murthy',
+        driverContact: '+91 98450 25250',
+        hospitalName: 'KIMS Hospital Basavanagudi',
+        hospitalCode: 'KIM-01',
+        speed: 0,
+        heading: 0,
+        location: { type: 'Point', coordinates: [77.5740, 12.9420] }
+      },
+      {
+        vehicleId: 'AMB-26',
+        registrationNumber: 'KA-04-EA-2626',
+        type: 'AMBULANCE',
+        status: 'EN_ROUTE',
+        capacity: 1,
+        driverName: 'Mohammed Farhan',
+        driverContact: '+91 98450 26260',
+        hospitalName: 'Bowring Hospital',
+        hospitalCode: 'BOW-01',
+        speed: 38,
+        heading: 195,
+        location: { type: 'Point', coordinates: [77.6120, 12.9980] }
+      },
+      {
+        vehicleId: 'AMB-27',
+        registrationNumber: 'KA-01-EA-2727',
+        type: 'AMBULANCE',
+        status: 'DISPATCHED',
+        capacity: 2,
+        driverName: 'Divakar Naik',
+        driverContact: '+91 98450 27270',
+        hospitalName: 'Command Hospital Air Force',
+        hospitalCode: 'CMD-01',
+        speed: 40,
+        heading: 260,
+        location: { type: 'Point', coordinates: [77.6480, 12.9550] }
+      },
+      {
+        vehicleId: 'AMB-28',
+        registrationNumber: 'KA-41-EA-2828',
+        type: 'AMBULANCE',
+        status: 'AVAILABLE',
+        capacity: 2,
+        driverName: 'Lokesh Gowda',
+        driverContact: '+91 98450 28280',
+        hospitalName: 'Fortis Hospital Rajajinagar',
+        hospitalCode: 'FOR-02',
+        speed: 0,
+        heading: 0,
+        location: { type: 'Point', coordinates: [77.5080, 12.9620] }
+      },
+      {
+        vehicleId: 'AMB-29',
+        registrationNumber: 'KA-53-EA-2929',
+        type: 'AMBULANCE',
+        status: 'EN_ROUTE',
+        capacity: 2,
+        driverName: 'Sridhar Reddy',
+        driverContact: '+91 98450 29290',
+        hospitalName: 'Rainbow Children\'s Hospital',
+        hospitalCode: 'RAI-01',
+        speed: 45,
+        heading: 230,
+        location: { type: 'Point', coordinates: [77.6950, 12.9850] }
+      },
+      {
+        vehicleId: 'AMB-30',
+        registrationNumber: 'KA-03-EA-3030',
+        type: 'AMBULANCE',
+        status: 'AVAILABLE',
+        capacity: 2,
+        driverName: 'Sunil Thomas',
+        driverContact: '+91 98450 30300',
+        hospitalName: 'Aster CMI Hospital',
+        hospitalCode: 'AST-01',
+        speed: 0,
+        heading: 0,
+        location: { type: 'Point', coordinates: [77.6400, 13.0100] }
+      },
+      {
+        vehicleId: 'AMB-31',
+        registrationNumber: 'KA-04-EA-3131',
+        type: 'AMBULANCE',
+        status: 'DISPATCHED',
+        capacity: 1,
+        driverName: 'Jagdish Chandra',
+        driverContact: '+91 98450 31310',
+        hospitalName: 'Bangalore Baptist Hospital',
+        hospitalCode: 'BBH-01',
+        speed: 46,
+        heading: 15,
+        location: { type: 'Point', coordinates: [77.5920, 13.0250] }
+      },
+      {
+        vehicleId: 'AMB-32',
+        registrationNumber: 'KA-51-EA-3232',
+        type: 'AMBULANCE',
+        status: 'EN_ROUTE',
+        capacity: 2,
+        driverName: 'Arvind Shenoy',
+        driverContact: '+91 98450 32320',
+        hospitalName: 'Narayana Institute of Cardiac Sciences',
+        hospitalCode: 'NAR-01',
+        speed: 52,
+        heading: 340,
+        location: { type: 'Point', coordinates: [77.6880, 12.8420] }
+      },
+      {
+        vehicleId: 'AMB-33',
+        registrationNumber: 'KA-50-EA-3333',
+        type: 'AMBULANCE',
+        status: 'AVAILABLE',
+        capacity: 2,
+        driverName: 'Bhaskar Rao',
+        driverContact: '+91 98450 33330',
+        hospitalName: 'Aster CMI Hospital (Hebbal)',
+        hospitalCode: 'AST-01',
+        speed: 0,
+        heading: 0,
+        location: { type: 'Point', coordinates: [77.6180, 13.0480] }
+      },
+      {
+        vehicleId: 'AMB-34',
+        registrationNumber: 'KA-05-EA-3434',
+        type: 'AMBULANCE',
+        status: 'DISPATCHED',
+        capacity: 2,
+        driverName: 'Guruprasad N',
+        driverContact: '+91 98450 34340',
+        hospitalName: 'Apollo Hospitals Bannerghatta',
+        hospitalCode: 'APO-01',
+        speed: 38,
+        heading: 110,
+        location: { type: 'Point', coordinates: [77.5650, 12.9050] }
+      },
+      {
+        vehicleId: 'AMB-35',
+        registrationNumber: 'KA-03-EA-3535',
+        type: 'AMBULANCE',
+        status: 'EN_ROUTE',
+        capacity: 1,
+        driverName: 'Rakesh Verma',
+        driverContact: '+91 98450 35350',
+        hospitalName: 'Vydehi Hospital Whitefield',
+        hospitalCode: 'VYD-01',
+        speed: 48,
+        heading: 80,
+        location: { type: 'Point', coordinates: [77.7180, 12.9660] }
+      },
+      {
+        vehicleId: 'AMB-36',
+        registrationNumber: 'KA-02-EA-3636',
+        type: 'AMBULANCE',
+        status: 'AVAILABLE',
+        capacity: 2,
+        driverName: 'Nagesh K',
+        driverContact: '+91 98450 36360',
+        hospitalName: 'Victoria Hospital (Standby)',
+        hospitalCode: 'VIC-01',
+        speed: 0,
+        heading: 0,
+        location: { type: 'Point', coordinates: [77.5450, 12.9780] }
       }
     ];
 
@@ -912,6 +1312,227 @@ class DemoService {
         callerContact: '+91 98475 02525',
         callerName: 'NH City ER Triage',
         createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-026',
+        description: 'Acute thoracic aortic dissection with ripping back pain and syncope in Banashankari.',
+        type: 'MEDICAL',
+        priority: 'CRITICAL',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.5600, 12.9300] },
+        destination: { type: 'Point', coordinates: [77.5560, 12.9250] },
+        assignedVehicle: seededVehicles['AMB-17']._id,
+        callerContact: '+91 98476 02626',
+        callerName: 'Dr. Ramesh Bellary',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-027',
+        description: 'Out-of-hospital cardiac arrest in gym facility near BTM 2nd Stage Udupi Garden.',
+        type: 'MEDICAL',
+        priority: 'CRITICAL',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6120, 12.9180] },
+        destination: { type: 'Point', coordinates: [77.5980, 12.9180] },
+        assignedVehicle: seededVehicles['AMB-18']._id,
+        callerContact: '+91 98477 02727',
+        callerName: 'Gym Manager Vinod',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-028',
+        description: 'Multiple pedestrian collision caused by brake failure at Vijayanagar Tollgate.',
+        type: 'ACCIDENT',
+        priority: 'CRITICAL',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.5350, 12.9730] },
+        destination: { type: 'Point', coordinates: [77.5739, 12.9634] },
+        assignedVehicle: seededVehicles['AMB-19']._id,
+        callerContact: '+91 98478 02828',
+        callerName: 'Traffic Constable Vijayanagar',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-029',
+        description: 'Severe acute pancreatitis with systemic inflammatory response near Kalyan Nagar HRBR.',
+        type: 'MEDICAL',
+        priority: 'HIGH',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6420, 13.0120] },
+        destination: { type: 'Point', coordinates: [77.6480, 13.0180] },
+        assignedVehicle: seededVehicles['AMB-20']._id,
+        callerContact: '+91 98479 02929',
+        callerName: 'Kammanahalli Clinic Doctor',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-030',
+        description: 'Heavy concrete block collapse onto construction laborer at Kengeri metro expansion.',
+        type: 'ACCIDENT',
+        priority: 'CRITICAL',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.4900, 12.9100] },
+        destination: { type: 'Point', coordinates: [77.4950, 12.8950] },
+        assignedVehicle: seededVehicles['AMB-21']._id,
+        callerContact: '+91 98480 03030',
+        callerName: 'BMRCL Safety Engineer',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-031',
+        description: 'Ischemic stroke with sudden onset expressive aphasia and right hemiplegia at Yeshwanthpur.',
+        type: 'MEDICAL',
+        priority: 'HIGH',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.5480, 13.0200] },
+        destination: { type: 'Point', coordinates: [77.5500, 13.0220] },
+        assignedVehicle: seededVehicles['AMB-22']._id,
+        callerContact: '+91 98481 03131',
+        callerName: 'Station Superintendent IR',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-032',
+        description: 'Tanker leak causing toxic ammonia inhalation with chemical pneumonitis near KR Puram.',
+        type: 'ACCIDENT',
+        priority: 'CRITICAL',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6980, 13.0040] },
+        destination: { type: 'Point', coordinates: [77.6960, 13.0020] },
+        assignedVehicle: seededVehicles['AMB-23']._id,
+        callerContact: '+91 98482 03232',
+        callerName: 'Fire Officer KR Puram',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-033',
+        description: 'High-speed car rollover on Sarjapur Outer Ring Road junction with bilateral femur fractures.',
+        type: 'ACCIDENT',
+        priority: 'HIGH',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6850, 12.9120] },
+        destination: { type: 'Point', coordinates: [77.6750, 12.9200] },
+        assignedVehicle: seededVehicles['AMB-24']._id,
+        callerContact: '+91 98483 03333',
+        callerName: 'Sarjapur Patrol',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-034',
+        description: 'Hypovolemic shock following ruptured ectopic pregnancy near Basavanagudi National College.',
+        type: 'MEDICAL',
+        priority: 'CRITICAL',
+        status: 'PENDING',
+        location: { type: 'Point', coordinates: [77.5720, 12.9400] },
+        destination: { type: 'Point', coordinates: [77.5740, 12.9420] },
+        assignedVehicle: seededVehicles['AMB-25']._id,
+        callerContact: '+91 98484 03434',
+        callerName: 'Dr. Savitha Murthy',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-035',
+        description: 'Pediatric scald burn injury covering 35% BSA with hot cooking oil near Fraser Town Coles Park.',
+        type: 'ACCIDENT',
+        priority: 'HIGH',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6100, 12.9960] },
+        destination: { type: 'Point', coordinates: [77.6033, 12.9833] },
+        assignedVehicle: seededVehicles['AMB-26']._id,
+        callerContact: '+91 98485 03535',
+        callerName: 'Resident Coles Road',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-036',
+        description: 'Blunt chest trauma with suspected hemothorax following scooter collision near Domlur flyover.',
+        type: 'ACCIDENT',
+        priority: 'HIGH',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6450, 12.9530] },
+        destination: { type: 'Point', coordinates: [77.6480, 12.9550] },
+        assignedVehicle: seededVehicles['AMB-27']._id,
+        callerContact: '+91 98486 03636',
+        callerName: 'Traffic Constable Domlur',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-037',
+        description: 'Industrial conveyor entanglement with traumatic arm injury at Nagarbhavi small scale unit.',
+        type: 'ACCIDENT',
+        priority: 'CRITICAL',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.5050, 12.9600] },
+        destination: { type: 'Point', coordinates: [77.5080, 12.9620] },
+        assignedVehicle: seededVehicles['AMB-28']._id,
+        callerContact: '+91 98487 03737',
+        callerName: 'Factory Owner Nagarbhavi',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-038',
+        description: 'Status asthmaticus refractory to inhaled bronchodilators in pregnant woman at Mahadevapura.',
+        type: 'MEDICAL',
+        priority: 'HIGH',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6930, 12.9820] },
+        destination: { type: 'Point', coordinates: [77.6950, 12.9850] },
+        assignedVehicle: seededVehicles['AMB-29']._id,
+        callerContact: '+91 98488 03838',
+        callerName: 'Dr. Chaitra Rao',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-039',
+        description: 'High-voltage electrical line contact with exit wound and ventricular ectopics at Banaswadi.',
+        type: 'ACCIDENT',
+        priority: 'CRITICAL',
+        status: 'PENDING',
+        location: { type: 'Point', coordinates: [77.6380, 13.0080] },
+        destination: { type: 'Point', coordinates: [77.6400, 13.0100] },
+        assignedVehicle: seededVehicles['AMB-30']._id,
+        callerContact: '+91 98489 03939',
+        callerName: 'BESCOM Line Inspector',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-040',
+        description: 'Acute massive pulmonary embolism with severe hypoxemia and hemodynamic instability at RT Nagar.',
+        type: 'MEDICAL',
+        priority: 'CRITICAL',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.5900, 13.0220] },
+        destination: { type: 'Point', coordinates: [77.5855, 13.0310] },
+        assignedVehicle: seededVehicles['AMB-31']._id,
+        callerContact: '+91 98490 04040',
+        callerName: 'RT Nagar Clinic Chief',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-041',
+        description: 'Multi-vehicle collision on Electronic City Phase 2 expressway ramp with extrication needed.',
+        type: 'ACCIDENT',
+        priority: 'CRITICAL',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6850, 12.8400] },
+        destination: { type: 'Point', coordinates: [77.6880, 12.8420] },
+        assignedVehicle: seededVehicles['AMB-32']._id,
+        callerContact: '+91 98491 04141',
+        callerName: 'Expressway Toll Authority',
+        createdBy: operator._id
+      },
+      {
+        emergencyId: 'E-DEMO-042',
+        description: 'Severe traumatic head injury from two-wheeler skid near Manyata Tech Park Gate 1.',
+        type: 'ACCIDENT',
+        priority: 'HIGH',
+        status: 'DISPATCHED',
+        location: { type: 'Point', coordinates: [77.6160, 13.0450] },
+        destination: { type: 'Point', coordinates: [77.6180, 13.0480] },
+        assignedVehicle: seededVehicles['AMB-33']._id,
+        callerContact: '+91 98492 04242',
+        callerName: 'Manyata Security Desk',
+        createdBy: operator._id
       }
     ];
 
@@ -1150,6 +1771,243 @@ class DemoService {
         source: 'TRAFFIC_POLICE',
         emergency: seededEmergencies['E-DEMO-025']._id,
         reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-021',
+        type: 'ROAD_CLOSURE',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Pipeline burst flooding underpass near Banashankari 2nd stage signal.',
+        location: { type: 'Point', coordinates: [77.5580, 12.9280] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-026']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-022',
+        type: 'ACCIDENT',
+        severity: 'CRITICAL',
+        status: 'ACTIVE',
+        description: 'Overturned sand tipper lorry at BTM Udupi Garden signal blocking 2 lanes.',
+        location: { type: 'Point', coordinates: [77.6110, 12.9160] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-027']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-023',
+        type: 'HEAVY_TRAFFIC',
+        severity: 'CRITICAL',
+        status: 'ACTIVE',
+        description: 'Massive standstill on Mysore Road approaching tollgate due to signal outage.',
+        location: { type: 'Point', coordinates: [77.5360, 12.9720] },
+        source: 'SENSOR',
+        emergency: seededEmergencies['E-DEMO-028']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-024',
+        type: 'LANE_BLOCKAGE',
+        severity: 'MEDIUM',
+        status: 'ACTIVE',
+        description: 'Tree branch collapse blocking one lane on Kalyan Nagar Ring Road service lane.',
+        location: { type: 'Point', coordinates: [77.6450, 13.0150] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-029']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-025',
+        type: 'ROAD_WORK',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Crane deployment for metro pier segment at Kengeri Satellite town road.',
+        location: { type: 'Point', coordinates: [77.4880, 12.9120] },
+        source: 'AUTOMATED_SYSTEM',
+        emergency: seededEmergencies['E-DEMO-030']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-026',
+        type: 'VEHICLE_BREAKDOWN',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Broken-down intercity bus near Yeshwanthpur flyover approach.',
+        location: { type: 'Point', coordinates: [77.5490, 13.0210] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-031']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-027',
+        type: 'ACCIDENT',
+        severity: 'CRITICAL',
+        status: 'ACTIVE',
+        description: 'Chemical tanker collision causing hazmat containment perimeter near KR Puram.',
+        location: { type: 'Point', coordinates: [77.6970, 13.0030] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-032']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-028',
+        type: 'HEAVY_TRAFFIC',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Choke point on Sarjapur road due to school bus breakdown near Kaikondrahalli.',
+        location: { type: 'Point', coordinates: [77.6840, 12.9100] },
+        source: 'SENSOR',
+        emergency: seededEmergencies['E-DEMO-033']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-029',
+        type: 'ROAD_WORK',
+        severity: 'MEDIUM',
+        status: 'ACTIVE',
+        description: 'Stormwater drain desilting on Gandhi Bazaar main road Basavanagudi.',
+        location: { type: 'Point', coordinates: [77.5730, 12.9410] },
+        source: 'AUTOMATED_SYSTEM',
+        emergency: seededEmergencies['E-DEMO-034']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-030',
+        type: 'LANE_BLOCKAGE',
+        severity: 'MEDIUM',
+        status: 'ACTIVE',
+        description: 'Religious festival pandal restricting vehicular movement in Fraser Town.',
+        location: { type: 'Point', coordinates: [77.6110, 12.9970] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-035']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-031',
+        type: 'VEHICLE_BREAKDOWN',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Cement mixer stalled on Domlur intermediate ring road flyover ramp.',
+        location: { type: 'Point', coordinates: [77.6460, 12.9540] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-036']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-032',
+        type: 'ROAD_CLOSURE',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Culvert reconstruction blocking through-traffic on Nagarbhavi main road.',
+        location: { type: 'Point', coordinates: [77.5060, 12.9610] },
+        source: 'AUTOMATED_SYSTEM',
+        emergency: seededEmergencies['E-DEMO-037']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-033',
+        type: 'HEAVY_TRAFFIC',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Ring road underpass bottleneck near Mahadevapura railway bridge.',
+        location: { type: 'Point', coordinates: [77.6940, 12.9830] },
+        source: 'SENSOR',
+        emergency: seededEmergencies['E-DEMO-038']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-034',
+        type: 'ROAD_WORK',
+        severity: 'MEDIUM',
+        status: 'ACTIVE',
+        description: 'Optical fiber trenching on Banaswadi 100ft road near sub-registrar office.',
+        location: { type: 'Point', coordinates: [77.6390, 13.0090] },
+        source: 'AUTOMATED_SYSTEM',
+        emergency: seededEmergencies['E-DEMO-039']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-035',
+        type: 'ACCIDENT',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Auto-rickshaw and bike crash causing queue on RT Nagar main road.',
+        location: { type: 'Point', coordinates: [77.5910, 13.0230] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-040']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-036',
+        type: 'ACCIDENT',
+        severity: 'CRITICAL',
+        status: 'ACTIVE',
+        description: 'Three-vehicle collision on Electronic City expressway flyover descent.',
+        location: { type: 'Point', coordinates: [77.6860, 12.8410] },
+        source: 'TRAFFIC_POLICE',
+        emergency: seededEmergencies['E-DEMO-041']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-037',
+        type: 'HEAVY_TRAFFIC',
+        severity: 'HIGH',
+        status: 'ACTIVE',
+        description: 'Severe peak hour congestion at Manyata Tech Park Gate 1 signal.',
+        location: { type: 'Point', coordinates: [77.6170, 13.0460] },
+        source: 'SENSOR',
+        emergency: seededEmergencies['E-DEMO-042']._id,
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-038',
+        type: 'ROAD_WORK',
+        severity: 'LOW',
+        status: 'ACTIVE',
+        description: 'White-topping work on Kumaraswamy Layout 50ft road.',
+        location: { type: 'Point', coordinates: [77.5640, 12.9040] },
+        source: 'AUTOMATED_SYSTEM',
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-039',
+        type: 'OTHER',
+        severity: 'LOW',
+        status: 'RESOLVED',
+        description: 'Cleared earlier vehicle stoppage on Brookefield main road.',
+        location: { type: 'Point', coordinates: [77.7170, 12.9650] },
+        source: 'TRAFFIC_POLICE',
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-040',
+        type: 'OTHER',
+        severity: 'LOW',
+        status: 'RESOLVED',
+        description: 'Magadi Road tollgate corridor free-flowing with clear lanes.',
+        location: { type: 'Point', coordinates: [77.5440, 12.9770] },
+        source: 'SENSOR',
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-041',
+        type: 'OTHER',
+        severity: 'LOW',
+        status: 'RESOLVED',
+        description: 'Hebbal flyover central spine clear with rapid green wave transit.',
+        location: { type: 'Point', coordinates: [77.5930, 13.0360] },
+        source: 'AUTOMATED_SYSTEM',
+        reportedBy: operator._id
+      },
+      {
+        incidentId: 'INC-DEMO-042',
+        type: 'OTHER',
+        severity: 'LOW',
+        status: 'RESOLVED',
+        description: 'Old Airport Road Manipal approach running clear with priority corridor active.',
+        location: { type: 'Point', coordinates: [77.6470, 12.9570] },
+        source: 'TRAFFIC_POLICE',
+        reportedBy: operator._id
       }
     ];
 
@@ -1324,8 +2182,8 @@ class DemoService {
       createdBy: operator._id
     });
 
-    // Seed Multi-Leg Routes for Scenarios 2 through 12
-    for (let i = 2; i <= 12; i++) {
+    // Seed Multi-Leg Routes for Scenarios 2 through 18
+    for (let i = 2; i <= 18; i++) {
       const pad = String(i).padStart(3, '0');
       const scConfig = DEMO_SCENARIO_CONFIGS.find(s => s.id === `DEMO-${pad}`) || DEMO_SCENARIO_CONFIGS[1];
       const emgDoc = seededEmergencies[scConfig.emergencyId] || seededEmergencies['E-DEMO-002'];
@@ -1427,8 +2285,8 @@ class DemoService {
       });
     }
 
-    // Additional historical and baseline routes to exceed 30+ total routes
-    for (let j = 13; j <= 25; j++) {
+    // Additional routes for remaining emergencies to exceed 50+ total routes
+    for (let j = 19; j <= 42; j++) {
       const pad = String(j).padStart(3, '0');
       const emg = seededEmergencies[`E-DEMO-${pad}`];
       if (emg) {
@@ -1668,6 +2526,276 @@ class DemoService {
           totalGivingWay: 1,
           totalCleared: 0
         }
+      },
+      {
+        clearanceId: 'CLR-DEMO-006',
+        vehicleId: 'AMB-07',
+        emergencyId: 'E-DEMO-006',
+        isSimulated: true,
+        simulationCorridor: 'Indiranagar 100ft Rd - Old Airport Rd',
+        connectedVehicles: [
+          {
+            vehicleId: 'CV-011',
+            label: 'KA-03-UV-4455',
+            coordinates: [77.6430, 12.9760],
+            distanceToAmbulanceMeters: 210,
+            status: 'CLEARED',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 45000),
+            acknowledgedAt: new Date(Date.now() - 30000),
+            clearedAt: new Date(Date.now() - 10000)
+          },
+          {
+            vehicleId: 'CV-012',
+            label: 'KA-04-WX-7788',
+            coordinates: [77.6450, 12.9710],
+            distanceToAmbulanceMeters: 380,
+            status: 'GIVING_WAY',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 25000),
+            acknowledgedAt: new Date(Date.now() - 15000),
+            givingWayAt: new Date(Date.now() - 5000)
+          },
+          {
+            vehicleId: 'CV-013',
+            label: 'KA-01-YZ-1122',
+            coordinates: [77.6465, 12.9650],
+            distanceToAmbulanceMeters: 510,
+            status: 'ALERT_SENT',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 12000)
+          }
+        ],
+        status: 'ACTIVE',
+        summary: { totalDetected: 3, totalAlerted: 3, totalGivingWay: 1, totalCleared: 1 }
+      },
+      {
+        clearanceId: 'CLR-DEMO-007',
+        vehicleId: 'AMB-09',
+        emergencyId: 'E-DEMO-007',
+        isSimulated: true,
+        simulationCorridor: 'HSR 27th Main - Silk Board Junction',
+        connectedVehicles: [
+          {
+            vehicleId: 'CV-014',
+            label: 'KA-51-AA-3344',
+            coordinates: [77.6410, 12.9140],
+            distanceToAmbulanceMeters: 260,
+            status: 'CLEARED',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 50000),
+            acknowledgedAt: new Date(Date.now() - 35000),
+            clearedAt: new Date(Date.now() - 15000)
+          },
+          {
+            vehicleId: 'CV-015',
+            label: 'KA-05-BB-5566',
+            coordinates: [77.6350, 12.9180],
+            distanceToAmbulanceMeters: 420,
+            status: 'GIVING_WAY',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 30000),
+            acknowledgedAt: new Date(Date.now() - 20000),
+            givingWayAt: new Date(Date.now() - 5000)
+          },
+          {
+            vehicleId: 'CV-016',
+            label: 'KA-02-CC-7788',
+            coordinates: [77.6280, 12.9220],
+            distanceToAmbulanceMeters: 550,
+            status: 'ALERT_SENT',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 15000)
+          }
+        ],
+        status: 'ACTIVE',
+        summary: { totalDetected: 3, totalAlerted: 3, totalGivingWay: 1, totalCleared: 1 }
+      },
+      {
+        clearanceId: 'CLR-DEMO-010',
+        vehicleId: 'AMB-10',
+        emergencyId: 'E-DEMO-008',
+        isSimulated: true,
+        simulationCorridor: 'Marathahalli Bridge - Outer Ring Road - Sakra',
+        connectedVehicles: [
+          {
+            vehicleId: 'CV-017',
+            label: 'KA-03-DD-9900',
+            coordinates: [77.7020, 12.9570],
+            distanceToAmbulanceMeters: 200,
+            status: 'CLEARED',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 40000),
+            acknowledgedAt: new Date(Date.now() - 25000),
+            clearedAt: new Date(Date.now() - 10000)
+          },
+          {
+            vehicleId: 'CV-018',
+            label: 'KA-53-EE-1133',
+            coordinates: [77.6970, 12.9480],
+            distanceToAmbulanceMeters: 390,
+            status: 'GIVING_WAY',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 20000),
+            acknowledgedAt: new Date(Date.now() - 10000),
+            givingWayAt: new Date(Date.now() - 3000)
+          },
+          {
+            vehicleId: 'CV-019',
+            label: 'KA-50-FF-2244',
+            coordinates: [77.6920, 12.9380],
+            distanceToAmbulanceMeters: 540,
+            status: 'ALERT_SENT',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 8000)
+          }
+        ],
+        status: 'ACTIVE',
+        summary: { totalDetected: 3, totalAlerted: 3, totalGivingWay: 1, totalCleared: 1 }
+      },
+      {
+        clearanceId: 'CLR-DEMO-013',
+        vehicleId: 'AMB-17',
+        emergencyId: 'E-DEMO-013',
+        isSimulated: true,
+        simulationCorridor: 'Banashankari 100ft Ring Road - Sagar Hospital',
+        connectedVehicles: [
+          {
+            vehicleId: 'CV-020',
+            label: 'KA-05-GG-5577',
+            coordinates: [77.5580, 12.9270],
+            distanceToAmbulanceMeters: 170,
+            status: 'CLEARED',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 45000),
+            acknowledgedAt: new Date(Date.now() - 30000),
+            clearedAt: new Date(Date.now() - 12000)
+          },
+          {
+            vehicleId: 'CV-021',
+            label: 'KA-41-HH-6688',
+            coordinates: [77.5570, 12.9260],
+            distanceToAmbulanceMeters: 310,
+            status: 'GIVING_WAY',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 22000),
+            acknowledgedAt: new Date(Date.now() - 15000),
+            givingWayAt: new Date(Date.now() - 4000)
+          },
+          {
+            vehicleId: 'CV-022',
+            label: 'KA-02-II-7799',
+            coordinates: [77.5565, 12.9255],
+            distanceToAmbulanceMeters: 450,
+            status: 'ALERT_SENT',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 10000)
+          },
+          {
+            vehicleId: 'CV-023',
+            label: 'KA-04-JJ-8800',
+            coordinates: [77.5562, 12.9252],
+            distanceToAmbulanceMeters: 580,
+            status: 'ALERT_SENT',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 5000)
+          }
+        ],
+        status: 'ACTIVE',
+        summary: { totalDetected: 4, totalAlerted: 4, totalGivingWay: 1, totalCleared: 1 }
+      },
+      {
+        clearanceId: 'CLR-DEMO-014',
+        vehicleId: 'AMB-18',
+        emergencyId: 'E-DEMO-014',
+        isSimulated: true,
+        simulationCorridor: 'BTM 2nd Stage - Bannerghatta Rd - Jayadeva',
+        connectedVehicles: [
+          {
+            vehicleId: 'CV-024',
+            label: 'KA-01-KK-1212',
+            coordinates: [77.6080, 12.9160],
+            distanceToAmbulanceMeters: 230,
+            status: 'CLEARED',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 50000),
+            acknowledgedAt: new Date(Date.now() - 32000),
+            clearedAt: new Date(Date.now() - 15000)
+          },
+          {
+            vehicleId: 'CV-025',
+            label: 'KA-03-LL-3434',
+            coordinates: [77.6030, 12.9170],
+            distanceToAmbulanceMeters: 370,
+            status: 'GIVING_WAY',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 25000),
+            acknowledgedAt: new Date(Date.now() - 15000),
+            givingWayAt: new Date(Date.now() - 5000)
+          },
+          {
+            vehicleId: 'CV-026',
+            label: 'KA-05-MM-5656',
+            coordinates: [77.6000, 12.9175],
+            distanceToAmbulanceMeters: 490,
+            status: 'ALERT_SENT',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 10000)
+          }
+        ],
+        status: 'ACTIVE',
+        summary: { totalDetected: 3, totalAlerted: 3, totalGivingWay: 1, totalCleared: 1 }
+      },
+      {
+        clearanceId: 'CLR-DEMO-017',
+        vehicleId: 'AMB-21',
+        emergencyId: 'E-DEMO-017',
+        isSimulated: true,
+        simulationCorridor: 'Kengeri Satellite Town - Mysore Rd - BGS Global',
+        connectedVehicles: [
+          {
+            vehicleId: 'CV-027',
+            label: 'KA-41-NN-7878',
+            coordinates: [77.4880, 12.9120],
+            distanceToAmbulanceMeters: 220,
+            status: 'CLEARED',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 40000),
+            acknowledgedAt: new Date(Date.now() - 28000),
+            clearedAt: new Date(Date.now() - 12000)
+          },
+          {
+            vehicleId: 'CV-028',
+            label: 'KA-02-OO-9090',
+            coordinates: [77.4910, 12.9060],
+            distanceToAmbulanceMeters: 360,
+            status: 'GIVING_WAY',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 22000),
+            acknowledgedAt: new Date(Date.now() - 12000),
+            givingWayAt: new Date(Date.now() - 4000)
+          },
+          {
+            vehicleId: 'CV-029',
+            label: 'KA-04-PP-1313',
+            coordinates: [77.4930, 12.9010],
+            distanceToAmbulanceMeters: 480,
+            status: 'ALERT_SENT',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 12000)
+          },
+          {
+            vehicleId: 'CV-030',
+            label: 'KA-51-QQ-2424',
+            coordinates: [77.4945, 12.8970],
+            distanceToAmbulanceMeters: 600,
+            status: 'ALERT_SENT',
+            alertMessage: 'AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER',
+            alertSentAt: new Date(Date.now() - 5000)
+          }
+        ],
+        status: 'ACTIVE',
+        summary: { totalDetected: 4, totalAlerted: 4, totalGivingWay: 1, totalCleared: 1 }
       }
     ];
 
@@ -1766,6 +2894,52 @@ class DemoService {
         accuracy: 4,
         timestamp: new Date(now + pt.tOffset * 1000)
       });
+    }
+
+    // Additional sequential traces across the fleet to generate 250+ breadcrumbs
+    const fleetTraceConfigs = [
+      { vId: 'AMB-04', eId: 'E-DEMO-004', start: [77.5963, 13.1007], dest: [77.5900, 13.0600], speed: 52, heading: 180 },
+      { vId: 'AMB-07', eId: 'E-DEMO-006', start: [77.6412, 12.9784], dest: [77.6483, 12.9582], speed: 38, heading: 130 },
+      { vId: 'AMB-09', eId: 'E-DEMO-007', start: [77.6389, 12.9116], dest: [77.6200, 12.9315], speed: 34, heading: 290 },
+      { vId: 'AMB-10', eId: 'E-DEMO-008', start: [77.7011, 12.9592], dest: [77.6890, 12.9288], speed: 46, heading: 215 },
+      { vId: 'AMB-11', eId: 'E-DEMO-009', start: [77.5833, 12.9298], dest: [77.5739, 12.9634], speed: 40, heading: 345 },
+      { vId: 'AMB-12', eId: 'E-DEMO-010', start: [77.5855, 12.9063], dest: [77.5980, 12.8920], speed: 42, heading: 140 },
+      { vId: 'AMB-13', eId: 'E-DEMO-011', start: [77.5550, 12.9980], dest: [77.5855, 13.0310], speed: 48, heading: 40 },
+      { vId: 'AMB-17', eId: 'E-DEMO-013', start: [77.5560, 12.9250], dest: [77.5600, 12.9300], speed: 35, heading: 60 },
+      { vId: 'AMB-18', eId: 'E-DEMO-014', start: [77.6100, 12.9150], dest: [77.5980, 12.9180], speed: 45, heading: 280 },
+      { vId: 'AMB-19', eId: 'E-DEMO-015', start: [77.5380, 12.9710], dest: [77.5739, 12.9634], speed: 38, heading: 85 },
+      { vId: 'AMB-21', eId: 'E-DEMO-017', start: [77.4850, 12.9150], dest: [77.4950, 12.8950], speed: 50, heading: 145 },
+      { vId: 'AMB-23', eId: 'E-DEMO-032', start: [77.6960, 13.0020], dest: [77.6750, 12.9980], speed: 36, heading: 260 },
+      { vId: 'AMB-24', eId: 'E-DEMO-018', start: [77.6820, 12.9080], dest: [77.6750, 12.9200], speed: 42, heading: 325 },
+      { vId: 'AMB-26', eId: 'E-DEMO-035', start: [77.6120, 12.9980], dest: [77.6033, 12.9833], speed: 38, heading: 200 },
+      { vId: 'AMB-27', eId: 'E-DEMO-036', start: [77.6480, 12.9550], dest: [77.6033, 12.9833], speed: 40, heading: 310 },
+      { vId: 'AMB-29', eId: 'E-DEMO-038', start: [77.6950, 12.9850], dest: [77.6483, 12.9582], speed: 44, heading: 220 },
+      { vId: 'AMB-31', eId: 'E-DEMO-040', start: [77.5920, 13.0250], dest: [77.5855, 13.0310], speed: 42, heading: 330 },
+      { vId: 'AMB-32', eId: 'E-DEMO-041', start: [77.6880, 12.8420], dest: [77.6200, 12.9315], speed: 54, heading: 335 },
+      { vId: 'AMB-34', eId: 'E-DEMO-034', start: [77.5650, 12.9050], dest: [77.5980, 12.8920], speed: 38, heading: 110 },
+      { vId: 'AMB-35', eId: 'E-DEMO-033', start: [77.7180, 12.9660], dest: [77.6890, 12.9288], speed: 46, heading: 235 }
+    ];
+
+    for (const cfg of fleetTraceConfigs) {
+      const veh = seededVehicles[cfg.vId];
+      const emg = seededEmergencies[cfg.eId];
+      if (!veh) continue;
+      const numSteps = 10;
+      for (let s = 0; s < numSteps; s++) {
+        const ratio = s / (numSteps - 1);
+        const lng = cfg.start[0] + (cfg.dest[0] - cfg.start[0]) * ratio + (Math.random() - 0.5) * 0.0008;
+        const lat = cfg.start[1] + (cfg.dest[1] - cfg.start[1]) * ratio + (Math.random() - 0.5) * 0.0008;
+        trajectoryDefs.push({
+          vehicle: veh._id,
+          vehicleId: cfg.vId,
+          emergency: emg?._id || seededEmergencies['E-DEMO-001']._id,
+          location: { type: 'Point', coordinates: [lng, lat] },
+          speed: Math.max(15, cfg.speed + (Math.random() - 0.5) * 10),
+          heading: (cfg.heading + (Math.random() - 0.5) * 10 + 360) % 360,
+          accuracy: 4,
+          timestamp: new Date(now - (numSteps - s) * 45 * 1000)
+        });
+      }
     }
 
     await Trajectory.insertMany(trajectoryDefs);
@@ -1897,6 +3071,48 @@ class DemoService {
         }
       },
       {
+        decisionId: 'DEC-DEMO-006',
+        emergency: seededEmergencies['E-DEMO-006']._id,
+        vehicle: seededVehicles['AMB-07']._id,
+        severity: 'HIGH',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE'],
+        reasonCodes: ['FALLEN_TREE_OBSTRUCTION', 'PEDIATRIC_SEIZURE_URGENCY'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.93, fallback: false },
+        inputSnapshot: { emergencyPriority: 'HIGH', trafficLevel: 'HEAVY', delayMinutes: 5 },
+        situationHash: 'hash-demo-006-reroute',
+        status: 'APPROVED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-007',
+        emergency: seededEmergencies['E-DEMO-007']._id,
+        vehicle: seededVehicles['AMB-09']._id,
+        severity: 'HIGH',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE'],
+        reasonCodes: ['WATERLOGGING_BYPASS', 'DEVIATION_CORRECTION'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.9, fallback: false },
+        inputSnapshot: { emergencyPriority: 'HIGH', trafficLevel: 'HEAVY', delayMinutes: 4 },
+        situationHash: 'hash-demo-007-reroute',
+        status: 'EXECUTED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-008',
+        emergency: seededEmergencies['E-DEMO-008']._id,
+        vehicle: seededVehicles['AMB-10']._id,
+        severity: 'CRITICAL',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE', 'V2X_CLEARANCE_ACTIVE'],
+        reasonCodes: ['FLYOVER_TRUCK_BREAKDOWN', 'CRITICAL_BURN_TRAUMA'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.95, fallback: false },
+        inputSnapshot: { emergencyPriority: 'CRITICAL', trafficLevel: 'SEVERE', delayMinutes: 6 },
+        situationHash: 'hash-demo-008-reroute',
+        status: 'EXECUTED',
+        backup: { recommended: false }
+      },
+      {
         decisionId: 'DEC-DEMO-009',
         emergency: seededEmergencies['E-DEMO-009']._id,
         vehicle: seededVehicles['AMB-11']._id,
@@ -1915,6 +3131,34 @@ class DemoService {
           delayMinutes: 0
         },
         situationHash: 'hash-demo-009-noaction',
+        status: 'EXECUTED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-010',
+        emergency: seededEmergencies['E-DEMO-010']._id,
+        vehicle: seededVehicles['AMB-12']._id,
+        severity: 'HIGH',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE'],
+        reasonCodes: ['SARAKKI_RING_ROAD_BYPASS'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.89, fallback: false },
+        inputSnapshot: { emergencyPriority: 'HIGH', trafficLevel: 'HEAVY', delayMinutes: 4 },
+        situationHash: 'hash-demo-010-reroute',
+        status: 'APPROVED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-011',
+        emergency: seededEmergencies['E-DEMO-011']._id,
+        vehicle: seededVehicles['AMB-13']._id,
+        severity: 'NORMAL',
+        primaryAction: 'CONTINUE',
+        actions: ['CONTINUE'],
+        reasonCodes: ['FLYOVER_TRANSIT_OPTIMAL'],
+        geoAgentRecommendation: { action: 'CONTINUE', confidence: 0.94, fallback: false },
+        inputSnapshot: { emergencyPriority: 'HIGH', trafficLevel: 'MODERATE', delayMinutes: 0 },
+        situationHash: 'hash-demo-011-continue',
         status: 'EXECUTED',
         backup: { recommended: false }
       },
@@ -1945,6 +3189,118 @@ class DemoService {
           backupEtaMinutes: 5,
           currentEtaMinutes: 14
         }
+      },
+      {
+        decisionId: 'DEC-DEMO-013',
+        emergency: seededEmergencies['E-DEMO-013']._id,
+        vehicle: seededVehicles['AMB-17']._id,
+        severity: 'CRITICAL',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE', 'V2X_CLEARANCE_ACTIVE'],
+        reasonCodes: ['AORTIC_DISSECTION_CRITICAL', 'RING_ROAD_BYPASS'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.96, fallback: false },
+        inputSnapshot: { emergencyPriority: 'CRITICAL', trafficLevel: 'HEAVY', delayMinutes: 5 },
+        situationHash: 'hash-demo-013-reroute',
+        status: 'APPROVED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-014',
+        emergency: seededEmergencies['E-DEMO-014']._id,
+        vehicle: seededVehicles['AMB-18']._id,
+        severity: 'CRITICAL',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE', 'V2X_CLEARANCE_ACTIVE'],
+        reasonCodes: ['CARDIAC_ARREST_IMMEDIATE_CATH_LAB', 'SILK_BOARD_BYPASS'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.97, fallback: false },
+        inputSnapshot: { emergencyPriority: 'CRITICAL', trafficLevel: 'SEVERE', delayMinutes: 7 },
+        situationHash: 'hash-demo-014-reroute',
+        status: 'APPROVED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-015',
+        emergency: seededEmergencies['E-DEMO-015']._id,
+        vehicle: seededVehicles['AMB-19']._id,
+        severity: 'CRITICAL',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE'],
+        reasonCodes: ['TOLLGATE_GRIDLOCK_AVOIDANCE', 'MYSORE_RD_FLYOVER_PRIORITY'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.92, fallback: false },
+        inputSnapshot: { emergencyPriority: 'CRITICAL', trafficLevel: 'HEAVY', delayMinutes: 6 },
+        situationHash: 'hash-demo-015-reroute',
+        status: 'EXECUTED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-016',
+        emergency: seededEmergencies['E-DEMO-016']._id,
+        vehicle: seededVehicles['AMB-20']._id,
+        severity: 'NORMAL',
+        primaryAction: 'CONTINUE',
+        actions: ['CONTINUE'],
+        reasonCodes: ['ARTERIAL_GREEN_WAVE_OPTIMAL'],
+        geoAgentRecommendation: { action: 'CONTINUE', confidence: 0.95, fallback: false },
+        inputSnapshot: { emergencyPriority: 'HIGH', trafficLevel: 'LIGHT', delayMinutes: 0 },
+        situationHash: 'hash-demo-016-continue',
+        status: 'EXECUTED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-017',
+        emergency: seededEmergencies['E-DEMO-017']._id,
+        vehicle: seededVehicles['AMB-21']._id,
+        severity: 'CRITICAL',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE', 'V2X_CLEARANCE_ACTIVE'],
+        reasonCodes: ['CONSTRUCTION_COLLAPSE_BYPASS', 'EXPRESSWAY_PRIORITY'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.94, fallback: false },
+        inputSnapshot: { emergencyPriority: 'CRITICAL', trafficLevel: 'SEVERE', delayMinutes: 8 },
+        situationHash: 'hash-demo-017-reroute',
+        status: 'APPROVED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-018',
+        emergency: seededEmergencies['E-DEMO-018']._id,
+        vehicle: seededVehicles['AMB-24']._id,
+        severity: 'HIGH',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE'],
+        reasonCodes: ['WIPRO_GATE_CONGESTION_BYPASS', 'DEVIATION_ALERT'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.91, fallback: false },
+        inputSnapshot: { emergencyPriority: 'HIGH', trafficLevel: 'HEAVY', delayMinutes: 6 },
+        situationHash: 'hash-demo-018-reroute',
+        status: 'APPROVED',
+        backup: { recommended: false }
+      },
+      {
+        decisionId: 'DEC-DEMO-019',
+        emergency: seededEmergencies['E-DEMO-032']._id,
+        vehicle: seededVehicles['AMB-23']._id,
+        severity: 'CRITICAL',
+        primaryAction: 'CONSIDER_BACKUP',
+        actions: ['CONSIDER_BACKUP', 'ALERT_CONTROL_ROOM'],
+        reasonCodes: ['TOXIC_HAZMAT_PERIMETER', 'TIN_FACTORY_CONSTRUCTION_DELAY'],
+        geoAgentRecommendation: { action: 'CONSIDER_BACKUP', confidence: 0.93, fallback: false },
+        inputSnapshot: { emergencyPriority: 'CRITICAL', trafficLevel: 'SEVERE', delayMinutes: 12 },
+        situationHash: 'hash-demo-019-backup',
+        status: 'PENDING_OPERATOR_ACTION',
+        backup: { recommended: true, candidateVehicleId: 'AMB-03', backupEtaMinutes: 4, currentEtaMinutes: 16 }
+      },
+      {
+        decisionId: 'DEC-DEMO-020',
+        emergency: seededEmergencies['E-DEMO-041']._id,
+        vehicle: seededVehicles['AMB-32']._id,
+        severity: 'CRITICAL',
+        primaryAction: 'REROUTE',
+        actions: ['REROUTE', 'V2X_CLEARANCE_ACTIVE'],
+        reasonCodes: ['EXPRESSWAY_RAMP_PILEUP', 'FAST_TRACK_CARDIAC_TRAUMA'],
+        geoAgentRecommendation: { action: 'REROUTE', confidence: 0.96, fallback: false },
+        inputSnapshot: { emergencyPriority: 'CRITICAL', trafficLevel: 'SEVERE', delayMinutes: 10 },
+        situationHash: 'hash-demo-020-reroute',
+        status: 'APPROVED',
+        backup: { recommended: false }
       }
     ];
 

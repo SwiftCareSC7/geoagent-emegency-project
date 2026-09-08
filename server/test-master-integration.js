@@ -46,13 +46,13 @@ async function run() {
   const decisionCount = await db.collection('decisions').countDocuments();
 
   console.log('--- Database Record Counts ---');
-  console.log(`Vehicles:           ${vehicleCount} (Target: 15+) ${vehicleCount >= 15 ? '✓ PASS' : '❌ FAIL'}`);
-  console.log(`Emergencies:        ${emergencyCount} (Target: 25+) ${emergencyCount >= 25 ? '✓ PASS' : '❌ FAIL'}`);
-  console.log(`Incidents:          ${incidentCount} (Target: 20+) ${incidentCount >= 20 ? '✓ PASS' : '❌ FAIL'}`);
-  console.log(`Routes:             ${routeCount} (Target: 25+) ${routeCount >= 25 ? '✓ PASS' : '❌ FAIL'}`);
-  console.log(`Trajectories:       ${trajectoryCount} (Target: 50+) ${trajectoryCount >= 50 ? '✓ PASS' : '❌ FAIL'}`);
-  console.log(`Clearance Sessions: ${clearanceCount} (Target: 2+) ${clearanceCount >= 2 ? '✓ PASS' : '❌ FAIL'}`);
-  console.log(`Decisions:          ${decisionCount} (Target: 5+) ${decisionCount >= 5 ? '✓ PASS' : '❌ FAIL'}`);
+  console.log(`Vehicles:           ${vehicleCount} (Target: 30+) ${vehicleCount >= 30 ? '✓ PASS' : '❌ FAIL'}`);
+  console.log(`Emergencies:        ${emergencyCount} (Target: 35+) ${emergencyCount >= 35 ? '✓ PASS' : '❌ FAIL'}`);
+  console.log(`Incidents:          ${incidentCount} (Target: 30+) ${incidentCount >= 30 ? '✓ PASS' : '❌ FAIL'}`);
+  console.log(`Routes:             ${routeCount} (Target: 40+) ${routeCount >= 40 ? '✓ PASS' : '❌ FAIL'}`);
+  console.log(`Trajectories:       ${trajectoryCount} (Target: 150+) ${trajectoryCount >= 150 ? '✓ PASS' : '❌ FAIL'}`);
+  console.log(`Clearance Sessions: ${clearanceCount} (Target: 5+) ${clearanceCount >= 5 ? '✓ PASS' : '❌ FAIL'}`);
+  console.log(`Decisions:          ${decisionCount} (Target: 10+) ${decisionCount >= 10 ? '✓ PASS' : '❌ FAIL'}`);
   console.log('------------------------------\n');
 
   // 2. Multi-Leg Route Verification
