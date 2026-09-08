@@ -35,6 +35,35 @@ export interface NavigationStep {
   stepPolyline?: [number, number][];
 }
 
+export type RouteLegType = 'TO_EMERGENCY' | 'TO_HOSPITAL';
+export type RouteLegStatus = 'ACTIVE' | 'PLANNED' | 'COMPLETED';
+
+export type EmergencyStage = 
+  | 'HEADING_TO_EMERGENCY'
+  | 'AT_EMERGENCY'
+  | 'TRANSPORTING_TO_HOSPITAL'
+  | 'ARRIVING_AT_HOSPITAL'
+  | 'ARRIVED';
+
+export interface RouteLeg {
+  legNumber: number; // 1 (To Emergency) or 2 (To Hospital)
+  type: RouteLegType;
+  title: string;
+  originName?: string;
+  destinationName?: string;
+  originCoordinates: [number, number]; // [lng, lat]
+  destinationCoordinates: [number, number]; // [lng, lat]
+  geometry: {
+    type: 'LineString';
+    coordinates: [number, number][]; // [lng, lat]
+  };
+  distanceMeters: number;
+  durationSeconds: number;
+  steps: NavigationStep[];
+  status: RouteLegStatus;
+  trafficDelaySeconds?: number;
+}
+
 export interface RoutePlan {
   geometry: {
     type: 'LineString';
@@ -48,7 +77,13 @@ export interface RoutePlan {
   description?: string;
   provider: string;
   steps: NavigationStep[];
+  // Multi-leg journey support
+  legs?: RouteLeg[];
+  activeLegIndex?: number; // 0 = Leg 1 (To Emergency), 1 = Leg 2 (To Hospital)
+  emergencyLocation?: [number, number];
+  hospitalLocation?: [number, number];
   alternative?: {
+    affectedLegNumber?: number; // 1 or 2
     geometry: {
       type: 'LineString';
       coordinates: [number, number][];
@@ -130,6 +165,48 @@ export const BENGALURU_HOSPITALS: DestinationOption[] = [
     address: '14 Cunningham Rd, Vasanth Nagar, Bengaluru',
     coordinates: [77.5985, 12.9860],
     hospitalCode: 'FOR-01'
+  },
+  {
+    id: 'hosp-sakra',
+    name: 'Sakra World Hospital',
+    address: 'Devarabeesanahalli, Bellandur, Bengaluru',
+    coordinates: [77.6890, 12.9288],
+    hospitalCode: 'SAK-01'
+  },
+  {
+    id: 'hosp-narayana',
+    name: 'Narayana Health City',
+    address: 'Bommasandra Industrial Area, Anekal Taluk, Bengaluru',
+    coordinates: [77.6912, 12.8123],
+    hospitalCode: 'NHC-01'
+  },
+  {
+    id: 'hosp-aster',
+    name: 'Aster CMI Hospital',
+    address: 'No. 43/42, NH 44, Sahakar Nagar, Hebbal, Bengaluru',
+    coordinates: [77.5906, 13.0560],
+    hospitalCode: 'AST-01'
+  },
+  {
+    id: 'hosp-baptist',
+    name: 'Bangalore Baptist Hospital',
+    address: 'Bellary Rd, Vinayakanagar, Hebbal, Bengaluru',
+    coordinates: [77.5855, 13.0310],
+    hospitalCode: 'BBH-01'
+  },
+  {
+    id: 'hosp-ramaiah',
+    name: 'Ramaiah Memorial Hospital',
+    address: 'MSR Nagar, Gnanabharathi, Bengaluru',
+    coordinates: [77.5684, 13.0305],
+    hospitalCode: 'RMH-01'
+  },
+  {
+    id: 'hosp-vydehi',
+    name: 'Vydehi Hospital',
+    address: '82, EPIP Area, Whitefield, Bengaluru',
+    coordinates: [77.7289, 12.9760],
+    hospitalCode: 'VYD-01'
   }
 ];
 
@@ -175,5 +252,65 @@ export const BENGALURU_LANDMARKS: LandmarkOption[] = [
     name: '100ft Road Indiranagar',
     area: 'East Bengaluru',
     coordinates: [77.6412, 12.9784]
+  },
+  {
+    id: 'lm-hsr',
+    name: 'HSR Layout Sector 1 BDA Complex',
+    area: 'South-East Bengaluru',
+    coordinates: [77.6389, 12.9116]
+  },
+  {
+    id: 'lm-marathahalli',
+    name: 'Marathahalli Bridge Junction',
+    area: 'East Bengaluru',
+    coordinates: [77.7011, 12.9592]
+  },
+  {
+    id: 'lm-jayanagar',
+    name: 'Jayanagar 4th Block Complex',
+    area: 'South Bengaluru',
+    coordinates: [77.5833, 12.9298]
+  },
+  {
+    id: 'lm-jpnagar',
+    name: 'JP Nagar 6th Phase Circle',
+    area: 'South Bengaluru',
+    coordinates: [77.5855, 12.9063]
+  },
+  {
+    id: 'lm-bellandur',
+    name: 'Bellandur Central Mall Ring Rd',
+    area: 'South-East Bengaluru',
+    coordinates: [77.6744, 12.9260]
+  },
+  {
+    id: 'lm-sarjapur',
+    name: 'Sarjapur Signal Wipro Gate',
+    area: 'South-East Bengaluru',
+    coordinates: [77.6850, 12.9100]
+  },
+  {
+    id: 'lm-domlur',
+    name: 'Domlur Intermediate Ring Rd',
+    area: 'East Bengaluru',
+    coordinates: [77.6380, 12.9610]
+  },
+  {
+    id: 'lm-rajajinagar',
+    name: 'Rajajinagar 1st Block Metro',
+    area: 'West Bengaluru',
+    coordinates: [77.5550, 12.9980]
+  },
+  {
+    id: 'lm-peenya',
+    name: 'Peenya 1st Stage Industrial Area',
+    area: 'North-West Bengaluru',
+    coordinates: [77.5180, 13.0280]
+  },
+  {
+    id: 'lm-krpuram',
+    name: 'KR Puram Hanging Bridge',
+    area: 'East Bengaluru',
+    coordinates: [77.6950, 13.0075]
   }
 ];

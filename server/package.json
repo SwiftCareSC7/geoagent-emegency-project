@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed:demo": "node seed-demo-scenarios.js",
+    "seed:demo:reset": "node seed-demo-scenarios.js --reset"
   },
   "dependencies": {
     "@google/genai": "^2.19.0",
