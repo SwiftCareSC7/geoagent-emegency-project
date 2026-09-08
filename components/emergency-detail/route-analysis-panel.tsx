@@ -14,7 +14,7 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import type { Route } from '@/lib/api/types'
-import { RealInteractiveMap } from '@/components/dashboard/real-interactive-map'
+import { ControlRoomMap } from '@/components/map'
 import { cn } from '@/lib/utils'
 
 interface RouteAnalysisPanelProps {
@@ -196,7 +196,16 @@ export function RouteAnalysisPanel({ route, loading = false, error = null }: Rou
 
       {/* Real Interactive Map View */}
       <div className="mt-4">
-        <RealInteractiveMap height="340px" />
+        <ControlRoomMap
+          selectedEmergencyId={
+            route?.emergency
+              ? typeof route.emergency === 'object' && 'emergencyId' in route.emergency
+                ? route.emergency.emergencyId
+                : String(route.emergency)
+              : null
+          }
+          height="340px"
+        />
       </div>
     </div>
   )
