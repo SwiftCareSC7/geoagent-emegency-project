@@ -20,7 +20,9 @@ interface RouteComparisonCardProps {
   whatIfDoNothing?: {
     estimatedDelayMinutes?: number;
     riskLevel?: string;
+    operationalRisk?: string;
     summary?: string;
+    [key: string]: any;
   };
   currentEtaMinutes?: number | null;
   plannedEtaMinutes?: number | null;

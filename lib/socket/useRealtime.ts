@@ -63,12 +63,19 @@ export interface RealtimeDecisionUpdate {
   decisionId: string;
   emergencyId?: string;
   vehicleId?: string;
-  primaryAction: string;
-  severity: string;
+  primaryAction?: string;
+  action?: string;
+  severity?: string;
   status: string;
   reasonCodes?: string[];
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
   rejectionReason?: string;
+  executedAt?: string;
   executionSummary?: string;
+  timestamp?: string;
   updatedAt?: string;
 }
 

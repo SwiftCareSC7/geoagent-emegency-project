@@ -122,16 +122,23 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
       setDecision((prev) => {
         if (!prev) {
           return {
+            id: liveDecision.decisionId,
             decisionId: liveDecision.decisionId,
+            emergency: liveDecision.emergencyId || '',
             emergencyId: liveDecision.emergencyId,
-            action: liveDecision.action as any,
+            vehicle: assignedVehId || '',
+            vehicleId: assignedVehId || '',
+            primaryAction: (liveDecision.primaryAction || liveDecision.action || 'MAINTAIN_ROUTE') as any,
+            action: (liveDecision.action || liveDecision.primaryAction || 'MAINTAIN_ROUTE') as any,
+            severity: (liveDecision.severity || 'INFO') as any,
             status: liveDecision.status as any,
-            targetEntity: 'ROUTE',
+            reasonCodes: liveDecision.reasonCodes || [],
+            situationHash: '',
             details: {
-              summary: liveDecision.action,
+              summary: liveDecision.action || liveDecision.primaryAction || '',
               reasoning: []
             },
-            evaluatedAt: new Date().toISOString()
+            evaluatedAt: liveDecision.timestamp || new Date().toISOString()
           } as Decision;
         }
         return {
@@ -139,11 +146,13 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
           status: liveDecision.status as any,
           approvedBy: liveDecision.approvedBy || prev.approvedBy,
           approvedAt: liveDecision.approvedAt || prev.approvedAt,
-          rejectionReason: liveDecision.rejectionReason || (prev as any).rejectionReason
+          rejectionReason: liveDecision.rejectionReason || (prev as any).rejectionReason,
+          executedAt: liveDecision.executedAt || (prev as any).executedAt,
+          executionSummary: liveDecision.executionSummary || (prev as any).executionSummary
         };
       });
     }
-  }, [liveDecision]);
+  }, [liveDecision, assignedVehId]);
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -177,6 +186,8 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
       }
 
       // 3. Concurrent sub-resource requests
+      const promises: Promise<unknown>[] = []
+
       // Route for emergency & authoritative route comparison
       const routePromise = routeApi
         .getForEmergency(emergencyId)
