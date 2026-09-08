@@ -24,6 +24,8 @@ export type DataFreshness = 'LIVE' | 'STALE' | 'OFFLINE' | 'UNKNOWN'
 
 export type TileLayerProvider = 'carto_dark' | 'osm' | 'esri_satellite'
 
+export type MapProviderHealth = 'AVAILABLE' | 'DEGRADED' | 'UNAVAILABLE' | 'NOT_CONFIGURED'
+
 /** Single vehicle represented on the map */
 export interface MapVehicle {
   id: string

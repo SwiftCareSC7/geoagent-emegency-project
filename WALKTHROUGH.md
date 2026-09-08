@@ -581,5 +581,33 @@ node server/demo-telemetry-player.js
 9. **Real-Time Push**: Socket.IO broadcasts `decision.executed` and `emergency.updated` to all connected clients.
 10. **Admin Observability**: Chief Systems Administrator (`admin@swiftcare.local`) navigates to `/admin` to verify live database stats, ping latency (28ms), provider statuses, and immutable audit logs.
 
+---
+
+## 5. Part 18: Map Basemap Auth, Ground-Truth Validation & Production Hardening
+
+### 1. Leaflet + CARTO Basemap Authentication Repair
+- **Root Cause Diagnosed**: CARTO raster tile endpoints (`https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png`) require an API key parameter (`?key=...` or `?api_key=...`) to avoid rate watermarking ("API KEY REQUIRED").
+- **Fix Implemented**:
+  - Added `NEXT_PUBLIC_CARTO_API_KEY` to public frontend configuration without leaking any backend secrets (`JWT_SECRET`, `MONGO_URI`, `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`).
+  - Added automatic tile error listener `darkTiles.on('tileerror')` to detect dropouts and notify map components.
+  - Implemented non-intrusive fallback banner with instant 1-click fallback to OpenStreetMap (`osm`) if CARTO key is missing or tiles fail.
+  - Preserved existing high-contrast dark operational styling, subdomains `abcd`, maxZoom 19, and full OSM/CARTO attribution.
+
+### 2. Real-World Prediction Ground-Truth & Performance Analytics
+- **Ground-Truth Measurement**: Compares predicted ETA against actual completion timestamp (`updatedAt - createdAt`) for completed emergencies (`RESOLVED`, `AT_SCENE`).
+- **Statistical Integrity**:
+  - Sample size protection: $N < 5$ is strictly surfaced as `INSUFFICIENT_DATA`.
+  - Calculates Mean Absolute Error (MAE), Median Absolute Error, Max Absolute Error, and tolerance accuracy ($\le 1$m, $\le 3$m, $\le 5$m).
+  - Categorizes risk alignment, false positives, and severe-delay misses (`CRITICAL` delay vs `LOW` risk prediction).
+  - Explicitly labels alternative routes as `ESTIMATED / COUNTERFACTUAL` to prevent counterfactual overclaiming.
+
+### 3. Verification Suite
+```bash
+# Final Integration Audit (37 checks across Map, Secrets, RBAC, Data, Prediction, & Fallbacks)
+node server/test-final-integration-audit.js
+# Result: 37 PASSED, 0 FAILED (100% Passing)
+```
+
+
 
 

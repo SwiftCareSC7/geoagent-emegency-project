@@ -23,6 +23,10 @@ export async function GET() {
       google_routes: { status: 'healthy', latencyMs: 42 },
       v2x_signal: { status: 'healthy', latencyMs: 18 },
       gemini_reasoning: { status: 'healthy', latencyMs: 110 },
+      carto_basemap: {
+        status: process.env.NEXT_PUBLIC_CARTO_API_KEY ? 'AVAILABLE' : 'NOT_CONFIGURED',
+        provider: 'carto_dark',
+      },
     },
   })
 }

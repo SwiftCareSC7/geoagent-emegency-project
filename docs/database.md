@@ -382,7 +382,7 @@ Quantitative ETA and delay prediction snapshots produced by the prediction engin
     }
   }],
   inputsSummary: { type: mongoose.Schema.Types.Mixed },
-  modelVersion: { type: String, default: 'v1.2-exponential-traffic-blend' },
+  modelVersion: { type: String, default: 'v1.3-exponential-traffic-blend' },
   trafficSource: { type: String, default: 'UNKNOWN' },
   createdAt: Date,
   updatedAt: Date
@@ -392,6 +392,9 @@ Quantitative ETA and delay prediction snapshots produced by the prediction engin
   - `{ vehicle: 1, createdAt: -1 }`
   - `{ emergency: 1, createdAt: -1 }`
   - `{ delayRisk: 1 }`
+- **Ground-Truth Validation**:
+  Prediction accuracy is evaluated against completed emergency records (`status: 'RESOLVED'` or `status: 'AT_SCENE'`).
+  Ground truth arrival timestamps from `emergency.updatedAt` / `trajectories.timestamp` are compared against `predictedEta` to compute MAE, Median Absolute Error, tolerance buckets, and severe-delay miss counts with explicit sample size $N$ protection ($N \ge 5$ required for certified claims).
 
 ---
 

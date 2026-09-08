@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react'
 import type L from 'leaflet'
-import type { TileLayerProvider } from './types'
+import type { MapProviderHealth, TileLayerProvider } from './types'
 
 export interface MapViewHandle {
   getMap: () => L.Map | null
@@ -27,6 +27,7 @@ interface MapViewProps {
   height?: string
   className?: string
   onMapReady?: () => void
+  onBasemapHealthChange?: (status: MapProviderHealth, message?: string) => void
 }
 
 export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
@@ -36,6 +37,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     height = '100%',
     className = '',
     onMapReady,
+    onBasemapHealthChange,
   },
   ref
 ) {
@@ -82,19 +84,44 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         .attribution({ position: 'bottomright', prefix: '&copy; Leaflet & CARTO' })
         .addTo(map)
 
-      // 4. Create Tile Layers
-      const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      // 4. Create Tile Layers with CARTO API Key authentication
+      const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim()
+      const cartoDarkUrl = cartoKey
+        ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoKey)}`
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+
+      if (onBasemapHealthChange) {
+        onBasemapHealthChange(
+          cartoKey ? 'AVAILABLE' : 'NOT_CONFIGURED',
+          cartoKey ? 'CARTO authenticated tile layer active' : 'CARTO API key not configured'
+        )
+      }
+
+      const darkTiles = L.tileLayer(cartoDarkUrl, {
         maxZoom: 19,
         subdomains: 'abcd',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+      })
+
+      darkTiles.on('tileerror', () => {
+        if (onBasemapHealthChange) {
+          onBasemapHealthChange('DEGRADED', 'Map tiles encountered loading errors')
+        }
       })
 
       const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
       })
 
       const satelliteTiles = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { maxZoom: 19 }
+        {
+          maxZoom: 19,
+          attribution: '&copy; ESRI, Maxar, Earthstar Geographics',
+        }
       )
 
       tileLayersRef.current = {

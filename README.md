@@ -425,7 +425,17 @@ TRAFFIC_PROVIDER=mock
 ```
 *(For complete environment reference, see [`docs/environment.md`](docs/environment.md)).*
 
-### 3. Run Applications
+### 3. Configure Frontend Map Basemap (`.env.local`)
+To eliminate the CARTO "API KEY REQUIRED" raster tile watermark:
+1. Obtain a free basemap API key at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey) (free up to 5M requests/month).
+2. Add to `.env.local`:
+```env
+NEXT_PUBLIC_CARTO_API_KEY=your_carto_basemap_key
+```
+3. For production on Vercel: Add `NEXT_PUBLIC_CARTO_API_KEY` under **Vercel Project Dashboard → Settings → Environment Variables**, then trigger a redeploy.
+4. *Security boundary*: `NEXT_PUBLIC_CARTO_API_KEY` is strictly for browser raster tiles. Never expose backend secrets (`GOOGLE_MAPS_API_KEY`, `GEMINI_API_KEY`, `MONGO_URI`, `JWT_SECRET`) in frontend variables.
+
+### 4. Run Applications
 
 ```bash
 # Terminal 1: Run Frontend (Port 3000)
@@ -440,7 +450,7 @@ cd routing-engine
 python demo_member2.py
 ```
 
-### 4. Canonical Demonstration Scenario (Part 12)
+### 5. Canonical Demonstration Scenario (Part 12)
 ```bash
 # Seed the canonical demo mission (Emergency E-DEMO-001, Vehicle AMB-DEMO-01)
 node server/seed-demo-scenario.js --clean
@@ -475,6 +485,10 @@ The automated test suites validate the complete system across integration, secur
 ```bash
 cd server
 
+# Final Integration, Audits & Full Spectrum Suites:
+node test-final-integration-audit.js  # 37-point final integration, prediction ground-truth & security audit
+node test-part12.js                   # Part 12 final hardening, orchestration & edge case verification
+
 # Full System Hardening & Resilience Suites (Part 11):
 node test-part11-system-hardening.js   # Canonical 23-step emergency integration test (E1/V1 lifecycle)
 node test-part11-security-hardening.js # 14-domain security, RBAC matrix, anomaly & failure matrix suite
@@ -487,8 +501,8 @@ node test-control-room-e2e.js         # Control room workflow, concurrency safet
 node test-admin-e2e.js                # Admin RBAC, real system statistics, database ping latency, explorer
 node test-auth-e2e.js                 # Authentication contract, registration, login, cookies, persistence
 ```
-**Audit Result**: **100% passing across all test suites with zero failures**.
-**TypeScript Verification**: `npx tsc --noEmit` — 0 errors.
+**Audit Result**: **100% passing across all test suites with zero failures (37/37 final audit passed)**.
+**TypeScript Verification**: `npm run lint` (`tsc --noEmit`) — 0 errors.
 **Production Build**: `npm run build` — 100% optimized without build warnings.
 
 ---

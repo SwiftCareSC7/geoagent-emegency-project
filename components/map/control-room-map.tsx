@@ -42,10 +42,12 @@ import { RouteLayerManager } from './layers/route-layer'
 import { IncidentLayerManager } from './layers/incident-layer'
 import { TrajectoryLayerManager } from './layers/trajectory-layer'
 import { DeviationLayerManager } from './layers/deviation-layer'
+import { AlertTriangle } from 'lucide-react'
 import type {
   MapEmergency,
   MapIncident,
   MapLayerVisibility,
+  MapProviderHealth,
   MapRoute,
   MapTrajectory,
   MapVehicle,
@@ -104,6 +106,10 @@ export function ControlRoomMap({
 
   // Display Controls State
   const [activeTile, setActiveTile] = useState<TileLayerProvider>('carto_dark')
+  const [basemapHealth, setBasemapHealth] = useState<MapProviderHealth>(
+    process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim() ? 'AVAILABLE' : 'NOT_CONFIGURED'
+  )
+  const [basemapNoticeDismissed, setBasemapNoticeDismissed] = useState(false)
   const [visibility, setVisibility] = useState<MapLayerVisibility>({
     vehicles: true,
     emergencies: true,
@@ -660,6 +666,7 @@ export function ControlRoomMap({
         ref={mapViewRef}
         height={height}
         onMapReady={handleMapReady}
+        onBasemapHealthChange={setBasemapHealth}
       />
 
       {/* Floating Map Controls */}
@@ -715,6 +722,53 @@ export function ControlRoomMap({
                 Unit: <strong>{selectedVehicleId}</strong>
               </span>
             ) : null}
+          </div>
+        ) : null}
+
+        {/* Basemap Configuration / Degradation Notice */}
+        {activeTile === 'carto_dark' && basemapHealth === 'NOT_CONFIGURED' && !basemapNoticeDismissed ? (
+          <div className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-slate-900/95 px-3 py-1.5 text-xs text-amber-200 shadow-xl backdrop-blur-md">
+            <AlertTriangle className="size-3.5 shrink-0 text-amber-400" />
+            <span className="text-[11px] leading-tight flex-1">
+              <strong>Basemap:</strong> CARTO key unconfigured (preview watermark may show).
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTile('osm')
+                mapViewRef.current?.setTileLayer('osm')
+              }}
+              className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-500/30 transition-colors"
+            >
+              Use OSM
+            </button>
+            <button
+              type="button"
+              onClick={() => setBasemapNoticeDismissed(true)}
+              className="text-slate-400 hover:text-white text-xs px-1"
+              aria-label="Dismiss notice"
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
+
+        {basemapHealth === 'DEGRADED' ? (
+          <div className="flex items-center gap-2 rounded-xl border border-rose-500/40 bg-slate-900/95 px-3 py-1.5 text-xs text-rose-200 shadow-xl backdrop-blur-md">
+            <AlertTriangle className="size-3.5 shrink-0 text-rose-400" />
+            <span className="text-[11px] leading-tight flex-1">
+              <strong>Basemap:</strong> Tile error. Operational overlays remain active.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTile('osm')
+                mapViewRef.current?.setTileLayer('osm')
+              }}
+              className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold text-rose-300 hover:bg-rose-500/30 transition-colors"
+            >
+              Switch OSM
+            </button>
           </div>
         ) : null}
       </div>

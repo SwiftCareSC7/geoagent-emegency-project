@@ -67,6 +67,13 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 |---|---|---|---|
 | `NEXT_PUBLIC_API_URL` | Optional | `http://localhost:5001/api` | Backend base REST API URL (supports port 5000 or 5001) |
 | `NEXT_PUBLIC_SOCKET_URL` | Optional | `http://localhost:5001` | Backend Socket.IO server URL (supports port 5000 or 5001) |
+| `NEXT_PUBLIC_CARTO_API_KEY` | Optional | None | CARTO basemap API key for browser raster tile loading without watermark |
+
+> **Map Basemap Key Note**:
+> CARTO provides free browser basemap API keys for development and operational dispatch (up to 5 million tile requests/month) at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey).
+> Set `NEXT_PUBLIC_CARTO_API_KEY` in `.env.local` for local development and in the **Vercel Project Dashboard → Settings → Environment Variables** for production.
+>
+> **Security Rule**: `NEXT_PUBLIC_CARTO_API_KEY` is strictly a public browser client credential for rendering raster map tiles. **Never** prefix backend secrets (`GOOGLE_MAPS_API_KEY`, `GEMINI_API_KEY`, `MONGO_URI`, `JWT_SECRET`) with `NEXT_PUBLIC_`.
 
 > **Local Development Note**:
 > If the backend is running on port `5000` (the default in `server/server.js`), configure `NEXT_PUBLIC_API_URL=http://localhost:5000/api` and `NEXT_PUBLIC_SOCKET_URL=http://localhost:5000` in `.env.local` to match. If unconfigured or backend is offline, the frontend gracefully falls back to demonstration data fixtures.

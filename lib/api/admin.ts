@@ -85,5 +85,10 @@ export const adminApi = {
   /** List operational decision lifecycle audit records */
   getDecisions(params?: AdminQueryParams): Promise<AdminPaginatedResponse<Decision>> {
     return get<AdminPaginatedResponse<Decision>>('/admin/decisions', params)
+  },
+
+  /** Retrieve prediction validation analytics and model governance metrics */
+  getPredictionAnalytics(): Promise<{ success: boolean; data: any }> {
+    return get<{ success: boolean; data: any }>('/admin/prediction-analytics')
   }
 }

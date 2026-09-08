@@ -15,7 +15,11 @@ import {
   Clock,
   Radio,
   Server,
-  Sparkles
+  Sparkles,
+  Gauge,
+  Info,
+  Map as MapIcon,
+  ShieldAlert,
 } from 'lucide-react'
 import { adminApi } from '@/lib/api/admin'
 import { decisionApi } from '@/lib/api/decisions'
@@ -26,6 +30,7 @@ export function AdminOverview() {
   const [stats, setStats] = useState<AdminSystemStats | null>(null)
   const [dbHealth, setDbHealth] = useState<AdminDatabaseHealth | null>(null)
   const [providers, setProviders] = useState<AdminSystemHealthSummary | null>(null)
+  const [predictionAnalytics, setPredictionAnalytics] = useState<any>(null)
   const [recentDecisions, setRecentDecisions] = useState<Decision[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -37,15 +42,19 @@ export function AdminOverview() {
     setError(null)
 
     try {
-      const [statsRes, healthRes, provRes, decRes] = await Promise.all([
+      const [statsRes, healthRes, provRes, decRes, predAnalyticsRes] = await Promise.all([
         adminApi.getStats(),
         adminApi.getHealth(),
         adminApi.getProviders(),
-        decisionApi.list().catch(() => ({ data: [] }))
+        decisionApi.list().catch(() => ({ data: [] })),
+        adminApi.getPredictionAnalytics().catch(() => null),
       ])
       setStats(statsRes.data)
       setDbHealth(healthRes.data)
       setProviders(provRes.data)
+      if (predAnalyticsRes && predAnalyticsRes.data) {
+        setPredictionAnalytics(predAnalyticsRes.data)
+      }
       if (decRes && Array.isArray(decRes.data)) {
         setRecentDecisions(decRes.data.slice(0, 5))
       }
@@ -209,7 +218,7 @@ export function AdminOverview() {
             <span className="text-xs text-muted-foreground">Advisory & Telemetry Ingestion</span>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <RouteIcon className="size-3.5 text-blue-400" /> Google Routes
@@ -257,6 +266,21 @@ export function AdminOverview() {
               <div className="mt-2">{getStatusBadge(providers?.providers?.socketIO?.status || 'AVAILABLE')}</div>
               <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
                 Live Broadcast
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <MapIcon className="size-3.5 text-slate-400" /> CARTO Basemap
+              </div>
+              <div className="mt-2">
+                {getStatusBadge(
+                  providers?.providers?.cartoBasemap?.status ||
+                  (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_CARTO_API_KEY ? 'AVAILABLE' : 'NOT_CONFIGURED')
+                )}
+              </div>
+              <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
+                Dark Matter Tiles
               </p>
             </div>
           </div>
@@ -345,6 +369,124 @@ export function AdminOverview() {
           <p className="text-xs font-medium text-muted-foreground">
             Decisions <span className="text-amber-400">({counts.pendingDecisions} pending)</span>
           </p>
+        </div>
+      </div>
+
+      {/* Real-World Prediction Model Performance & Ground-Truth Validation Dashboard */}
+      <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-card/90 to-card/50 p-5 shadow-sm backdrop-blur-md space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border/40 gap-2">
+          <div className="flex items-center gap-2">
+            <Gauge className="size-4 text-cyan-400" />
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Prediction Model Performance & Ground-Truth Validation
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Observed corridor arrival outcomes vs predicted ETAs & delay risk categories
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-mono font-semibold bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/20">
+              <span className="size-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              <span>{predictionAnalytics?.model?.version || 'v1.3-exponential-traffic-blend'}</span>
+            </span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono bg-muted text-muted-foreground">
+              {predictionAnalytics?.model?.type ? 'Non-ML Heuristic' : 'Deterministic Kinematic'}
+            </span>
+          </div>
+        </div>
+
+        {/* Statistical Sample Size Integrity Banner */}
+        <div className="flex items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-900/60 p-3 text-xs">
+          <Info className="size-4 shrink-0 text-cyan-400" />
+          <div className="flex-1 text-[11px] text-slate-300">
+            <strong>Sample Size Integrity (N = {predictionAnalytics?.evaluation?.evaluatedGroundTruthSamples ?? 0}):</strong>{' '}
+            {predictionAnalytics?.evaluation?.sampleSizeMessage ||
+              'Awaiting completed emergency mission ground truth. Metric claims require meaningful sample size.'}
+          </div>
+          <span className="font-mono text-[10px] uppercase font-bold text-slate-400">
+            Status: {predictionAnalytics?.evaluation?.sampleSizeStatus || 'INSUFFICIENT_DATA'}
+          </span>
+        </div>
+
+        {/* Prediction Metrics Grid */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+            <span className="text-[11px] text-muted-foreground font-medium">ETA MAE (Mean Error)</span>
+            <p className="mt-1 text-xl font-bold font-mono text-foreground">
+              {predictionAnalytics?.evaluation?.maeMinutes !== null && predictionAnalytics?.evaluation?.maeMinutes !== undefined
+                ? `${predictionAnalytics.evaluation.maeMinutes}m`
+                : '—'}
+            </p>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              N = {predictionAnalytics?.evaluation?.evaluatedGroundTruthSamples ?? 0} samples
+            </span>
+          </div>
+
+          <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+            <span className="text-[11px] text-muted-foreground font-medium">Median Absolute Error</span>
+            <p className="mt-1 text-xl font-bold font-mono text-foreground">
+              {predictionAnalytics?.evaluation?.medianErrorMinutes !== null && predictionAnalytics?.evaluation?.medianErrorMinutes !== undefined
+                ? `${predictionAnalytics.evaluation.medianErrorMinutes}m`
+                : '—'}
+            </p>
+            <span className="text-[10px] text-muted-foreground font-mono">50th percentile</span>
+          </div>
+
+          <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+            <span className="text-[11px] text-muted-foreground font-medium">Within 3-Min Window</span>
+            <p className="mt-1 text-xl font-bold font-mono text-emerald-400">
+              {predictionAnalytics?.evaluation?.toleranceBuckets?.within3MinutesPercent !== null &&
+              predictionAnalytics?.evaluation?.toleranceBuckets?.within3MinutesPercent !== undefined
+                ? `${predictionAnalytics.evaluation.toleranceBuckets.within3MinutesPercent}%`
+                : 'N < 5 (Pending)'}
+            </p>
+            <span className="text-[10px] text-muted-foreground font-mono">Operational dispatch tolerance</span>
+          </div>
+
+          <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+            <span className="text-[11px] text-muted-foreground font-medium">Severe-Delay Misses</span>
+            <p className="mt-1 text-xl font-bold font-mono text-emerald-400">
+              {predictionAnalytics?.evaluation?.riskClassification?.severeDelayMisses ?? 0}
+            </p>
+            <span className="text-[10px] text-muted-foreground font-mono">False negative risk safety check</span>
+          </div>
+        </div>
+
+        {/* Counterfactual Routing & AI Governance Details */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-xs">
+          <div className="rounded-xl border border-border/30 bg-muted/10 p-3 space-y-1">
+            <div className="font-semibold text-foreground flex items-center justify-between">
+              <span>Route Recommendations & Counterfactuals</span>
+              <span className="font-mono text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                ESTIMATED / COUNTERFACTUAL
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Alternative route time savings are tracked as model estimates. Counterfactual projections are never
+              claimed as physical facts unless the alternate corridor was actually traveled.
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-border/30 bg-muted/10 p-3 space-y-1">
+            <div className="font-semibold text-foreground flex items-center justify-between">
+              <span>Gemini Advisory vs Deterministic Policy</span>
+              <span className="font-mono text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded">
+                ADVISORY ONLY
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              AI agreement rate:{' '}
+              <strong className="text-foreground">
+                {predictionAnalytics?.aiGovernance?.geminiAgreementRatePercent !== null &&
+                predictionAnalytics?.aiGovernance?.geminiAgreementRatePercent !== undefined
+                  ? `${predictionAnalytics.aiGovernance.geminiAgreementRatePercent}%`
+                  : 'N/A'}
+              </strong>{' '}
+              · Note: Agreement with deterministic rules reflects operational alignment, not ground-truth physical accuracy.
+            </p>
+          </div>
         </div>
       </div>
 

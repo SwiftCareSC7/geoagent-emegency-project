@@ -2,6 +2,33 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
+## [2.5.0] - Combined Final Integration & Prediction Validation Phase
+
+### Added
+- **CARTO Basemap Authentication & Provider Health**:
+  - Configured `NEXT_PUBLIC_CARTO_API_KEY` in `components/map/map-view.tsx`, `components/dashboard/real-interactive-map.tsx`, `.env.example`, and `docs/environment.md`.
+  - Tile endpoint switched to authenticated CARTO template (`https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=...`) to eliminate "API KEY REQUIRED" watermarks.
+  - Added map tile error event listeners (`darkTiles.on('tileerror')`) and graceful provider health state reporting (`AVAILABLE`, `DEGRADED`, `NOT_CONFIGURED`).
+  - Added non-blocking operational notice banner in `components/map/control-room-map.tsx` with one-click fallback to OpenStreetMap when key is unconfigured.
+  - Added `cartoBasemap` to `server/modules/health/providerHealth.service.js` and `app/api/health/providers/route.ts`.
+- **Real-World Prediction Ground-Truth Validation**:
+  - Added `getPredictionAnalytics()` in `server/modules/admin/admin.service.js`, `server/modules/admin/admin.controller.js`, and `lib/api/admin.ts`.
+  - Evaluates historical predictions against completed emergency arrival outcomes.
+  - Computes Mean Absolute Error (MAE), Median Absolute Error, Max Error, and tolerance buckets ($\le 1$m, $\le 3$m, $\le 5$m).
+  - Enforces small-sample protection: flags `INSUFFICIENT_DATA` when $N < 5$ to prevent misleading accuracy claims.
+  - Evaluates delay-risk matrix and tracks critical false negatives (severe-delay misses).
+  - Enforces explicit model labeling: `Heuristic / Statistical-Kinematic (Deterministic Rule-Based, Non-ML)`, model version `v1.3-exponential-traffic-blend`.
+- **Counterfactual Route Recommendation Validation**:
+  - Explicitly labels unselected alternative route savings as `ESTIMATED / COUNTERFACTUAL`.
+- **AI Advisory Governance**:
+  - Tracks Gemini advisory recommendations separately from deterministic policy actions and human operator approvals.
+  - Clarifies that alignment reflects operational agreement with safety policies, not physical ground-truth accuracy.
+- **Admin Observability Expansion**:
+  - Integrated 6-provider health grid (including CARTO Basemap) in `components/admin/admin-overview.tsx`.
+  - Added real-time Prediction Model Performance & Ground-Truth Validation Dashboard in Admin Overview.
+- **Final Integration Audit Test Suite** (`server/test-final-integration-audit.js`):
+  - 37/37 automated checks passing across map provider health, ground-truth metrics, counterfactual labeling, AI governance, security boundaries, status codes, and error resilience.
+
 ## [2.4.0] - Final Production & Demo Readiness (Part 12)
 
 ### Added

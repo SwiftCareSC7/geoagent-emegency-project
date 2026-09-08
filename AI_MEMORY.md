@@ -705,6 +705,62 @@ Trajectories          Routes                     │         │
   - `trajectories`: Rolling 30–90 day TTL index on `timestamp` recommended for production scale.
   - `predictions`: Rolling 30-day retention for resolved emergencies.
   - `emergencies`, `vehicles`, `decisions`: Permanent audit log; soft-deletion enforced.
+
+---
+
+## 24. Part 13 — Combined Final Integration, CARTO Map Fix & Prediction Validation
+
+- **Critical Map Fix (CARTO Dark Matter Authentication)**:
+  - **Mapping Library**: Leaflet 1.9.4 (client-only dynamic import, `components/map/map-view.tsx`, `components/dashboard/real-interactive-map.tsx`).
+  - **Tile Provider**: CARTO Dark Matter raster basemap (`carto_dark`).
+  - **Root Cause of Watermark**: CARTO instituted mandatory API key enforcement on hosted raster basemaps (`basemaps.cartocdn.com`). Unauthenticated tile requests return tiles stamped with "API KEY REQUIRED" watermark.
+  - **Configuration**: Added `NEXT_PUBLIC_CARTO_API_KEY` environment variable. Authenticated tile template: `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoKey)}` (subdomains `abcd`, maxZoom 19).
+  - **Provider Health & Error Handling**:
+    - Added `MapProviderHealth` type (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`).
+    - Added `darkTiles.on('tileerror')` listener in `map-view.tsx` to detect tile load dropouts and report `DEGRADED`.
+    - Added non-intrusive operational notice banner in `components/map/control-room-map.tsx` when unconfigured, allowing one-click instant switch to OpenStreetMap (`osm`).
+    - Overlays (vehicles, emergencies, routes, incidents, trajectories, deviations, V2X signals) remain architecturally isolated and fully interactive regardless of basemap tile availability.
+  - **Separation of Architectural Responsibilities**:
+    - *Visualization*: Leaflet + CARTO basemap tiles (browser client).
+    - *Routing*: Google Routes API (strictly backend-only via `GOOGLE_MAPS_API_KEY`).
+    - *Spatial Computation*: Turf.js (backend geodesic projection & corridor deviation).
+    - *V2X Clearance*: Python spatial engine (`routing-engine/corridor_green_wave.py`) with JS fallback.
+
+- **Real-World Prediction Ground-Truth Validation**:
+  - **Model Version**: `v1.3-exponential-traffic-blend`.
+  - **Model Classification**: Truthfully categorized as **Heuristic / Statistical-Kinematic (Deterministic Rule-Based, Non-ML)**. It is not an artificial neural network or black-box ML model.
+  - **Ground-Truth Evaluation Methodology**: Historical predictions are evaluated against completed emergencies (`status: 'RESOLVED'` or `status: 'AT_SCENE'`).
+    - Compares `predictedEta` against actual arrival timestamp (`emergency.updatedAt` / trajectory completion).
+    - Calculates Mean Absolute Error (MAE), Median Absolute Error, and Maximum Error.
+    - Calculates tolerance buckets: percentage within $\le 1$ min, $\le 3$ min, $\le 5$ min.
+  - **Small-Sample Size Protection**:
+    - Requires $N \ge 5$ completed ground-truth cases before computing tolerance percentages.
+    - If $N < 5$, explicitly flags `INSUFFICIENT_DATA` with message: *"Sample size (N) is insufficient for certified accuracy claims (< 5 completed ground-truth cases). Baseline calibration in progress."* Never reports misleading $0\%$ or $100\%$ claims from 1–2 emergencies.
+  - **Delay-Risk Matrix & Safety Priority**:
+    - Evaluates predicted risk (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) vs actual delay.
+    - Prioritizes severe-delay misses: situations where model predicted LOW/MEDIUM risk but actual delay became severe ($\ge 10$ min). Surfaces these prominently.
+  - **Counterfactual Route Recommendation Honesty**:
+    - Alternative route time savings are explicitly marked `ESTIMATED / COUNTERFACTUAL`.
+    - Untraversed alternative routes are never claimed as observed physical facts.
+  - **AI Governance & Epistemic Separation**:
+    - Explicitly decouples: (1) Gemini advisory recommendation, (2) Deterministic safety policy action, (3) Human operator decision (`APPROVED`/`REJECTED`), and (4) Actual physical outcome.
+    - Tracks agreement rates while emphasizing that agreement with deterministic safety rules reflects policy alignment, not ground-truth physical accuracy.
+  - **Model Governance**:
+    - Model weights are frozen and deterministic. Live emergency data is never used for automatic uncontrolled model retraining.
+
+- **Admin Observability & Prediction Dashboard**:
+  - `components/admin/admin-overview.tsx` now renders:
+    - 6-provider health grid including CARTO Basemap tile status.
+    - Dedicated **Prediction Model Performance & Ground-Truth Validation** dashboard card showing model name, version, type, sample size $N$, MAE, median error, 3-minute tolerance, high-risk miss count, and AI governance stats.
+  - Backend API: `GET /api/admin/prediction-analytics` powered by `admin.service.js` `getPredictionAnalytics()`.
+
+- **Security & Secret Scan**:
+  - Scanned repository for secret leaks: 0 real credentials committed.
+  - Verified no backend secrets (`GOOGLE_MAPS_API_KEY`, `GEMINI_API_KEY`, `JWT_SECRET`, `MONGO_URI`) exist in client-side code or under `NEXT_PUBLIC_*`.
+  - Only `NEXT_PUBLIC_CARTO_API_KEY` is permitted client-side for raster basemap tiles.
+
+- **Verification**: `server/test-final-integration-audit.js` (37/37 passed, 100%).
+
 - **Future Roadmap**:
   1. Field-driver mobile app (React Native / Android).
   2. Direct city traffic signal controller integration (NTCIP / SCATS protocol).

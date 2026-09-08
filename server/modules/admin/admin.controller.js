@@ -75,6 +75,21 @@ class AdminController {
     }
   }
 
+  async getPredictionAnalytics(req, res, next) {
+    const start = Date.now();
+    try {
+      const analytics = await adminService.getPredictionAnalytics();
+      auditLog(req, 'prediction-analytics', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        data: analytics
+      });
+    } catch (error) {
+      auditLog(req, 'prediction-analytics', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
   async getUsers(req, res, next) {
     const start = Date.now();
     try {

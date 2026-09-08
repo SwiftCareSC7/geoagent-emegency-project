@@ -741,6 +741,133 @@ class AdminService {
     };
   }
 
+  /**
+   * Prediction Validation Analytics & Ground-Truth Performance Metrics
+   * Evaluates historical predictions against completed emergency outcomes.
+   */
+  async getPredictionAnalytics() {
+    const predictions = await Prediction.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate('emergency', 'emergencyId status createdAt updatedAt')
+      .populate('vehicle', 'vehicleId status')
+      .lean();
+
+    const sampleCount = predictions.length;
+    const errors = [];
+    let severeDelayMisses = 0;
+    let truePositives = 0;
+    let falsePositives = 0;
+    let falseNegatives = 0;
+    let within1MinCount = 0;
+    let within3MinCount = 0;
+    let within5MinCount = 0;
+
+    for (const p of predictions) {
+      if (!p.emergency) continue;
+      if (['RESOLVED', 'AT_SCENE'].includes(p.emergency.status) && p.emergency.updatedAt && p.predictedEta) {
+        const actualArrival = new Date(p.emergency.updatedAt).getTime();
+        const predEta = new Date(p.predictedEta).getTime();
+        const diffMinutes = Math.abs(predEta - actualArrival) / 60000;
+        errors.push(diffMinutes);
+
+        if (diffMinutes <= 1.0) within1MinCount++;
+        if (diffMinutes <= 3.0) within3MinCount++;
+        if (diffMinutes <= 5.0) within5MinCount++;
+
+        const actualDelayMinutes = Math.max(0, (actualArrival - new Date(p.baselineEta || p.createdAt).getTime()) / 60000);
+        const predictedHighRisk = ['HIGH', 'CRITICAL'].includes(p.delayRisk);
+        const actualHighRisk = actualDelayMinutes >= 8.0;
+
+        if (predictedHighRisk && actualHighRisk) truePositives++;
+        else if (predictedHighRisk && !actualHighRisk) falsePositives++;
+        else if (!predictedHighRisk && actualHighRisk) {
+          falseNegatives++;
+          if (actualDelayMinutes >= 12.0) severeDelayMisses++;
+        }
+      }
+    }
+
+    const evaluatedCount = errors.length;
+    let mae = null;
+    let medianError = null;
+    let maxError = null;
+
+    if (evaluatedCount > 0) {
+      mae = Number((errors.reduce((a, b) => a + b, 0) / evaluatedCount).toFixed(2));
+      const sorted = [...errors].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      medianError = sorted.length % 2 !== 0 ? sorted[mid] : Number(((sorted[mid - 1] + sorted[mid]) / 2).toFixed(2));
+      maxError = Number(Math.max(...errors).toFixed(2));
+    }
+
+    const decisions = await Decision.find().sort({ createdAt: -1 }).limit(100).lean();
+    const totalDecisions = decisions.length;
+    let geminiAgreedWithDeterministic = 0;
+    let operatorApproved = 0;
+    let operatorRejected = 0;
+    let counterfactualAnalysesCount = 0;
+
+    for (const d of decisions) {
+      if (d.geoAgentRecommendation?.action && d.primaryAction) {
+        if (d.geoAgentRecommendation.action === d.primaryAction) geminiAgreedWithDeterministic++;
+      }
+      if (d.status === 'APPROVED' || d.status === 'EXECUTED') operatorApproved++;
+      if (d.status === 'REJECTED') operatorRejected++;
+      if (d.primaryAction === 'REROUTE') counterfactualAnalysesCount++;
+    }
+
+    return {
+      model: {
+        name: 'Kinematic-Traffic Exponential Blend',
+        version: 'v1.3-exponential-traffic-blend',
+        type: 'Heuristic / Statistical-Kinematic (Deterministic Rule-Based, Non-ML)',
+        trafficIntegration: 'Real-time Google Routes durationInTraffic vs Static baseline',
+        deviationIntegration: 'Cross-track geodesic distance & bearing offset penalty',
+        v2xIntegration: 'Green-wave corridor signal preemption time advantage',
+        autoRetraining: false,
+        governance: 'Model weights are deterministic and frozen. Changes require explicit versioning and validation.'
+      },
+      evaluation: {
+        totalPredictions: sampleCount,
+        evaluatedGroundTruthSamples: evaluatedCount,
+        sampleSizeStatus: evaluatedCount >= 5 ? 'SUFFICIENT' : 'INSUFFICIENT_DATA',
+        sampleSizeMessage: evaluatedCount >= 5
+          ? `Sample size (N=${evaluatedCount}) meets statistical benchmark threshold.`
+          : `Sample size (N=${evaluatedCount}) is insufficient for certified accuracy claims (< 5 completed ground-truth cases). Baseline calibration in progress.`,
+        maeMinutes: mae,
+        medianErrorMinutes: medianError,
+        maxErrorMinutes: maxError,
+        toleranceBuckets: evaluatedCount >= 5 ? {
+          within1MinutePercent: Number(((within1MinCount / evaluatedCount) * 100).toFixed(1)),
+          within3MinutesPercent: Number(((within3MinCount / evaluatedCount) * 100).toFixed(1)),
+          within5MinutesPercent: Number(((within5MinCount / evaluatedCount) * 100).toFixed(1))
+        } : null,
+        riskClassification: {
+          truePositives,
+          falsePositives,
+          falseNegatives,
+          severeDelayMisses,
+          safetyNote: severeDelayMisses === 0
+            ? 'Zero dangerous severe-delay false negatives observed in current sample window.'
+            : `${severeDelayMisses} severe-delay misses surfaced for model tuning.`
+        }
+      },
+      routingAndCounterfactuals: {
+        totalEvaluatedReroutes: counterfactualAnalysesCount,
+        counterfactualLabel: 'ESTIMATED / COUNTERFACTUAL',
+        counterfactualDisclaimer: 'Alternative route time savings represent model-projected counterfactual estimates and are never claimed as observed facts unless alternative was physically traversed.'
+      },
+      aiGovernance: {
+        totalDecisionsEvaluated: totalDecisions,
+        geminiAgreementRatePercent: totalDecisions > 0 ? Number(((geminiAgreedWithDeterministic / totalDecisions) * 100).toFixed(1)) : null,
+        operatorApprovalRatePercent: totalDecisions > 0 ? Number(((operatorApproved / totalDecisions) * 100).toFixed(1)) : null,
+        operatorRejections: operatorRejected,
+        agreementDisclaimer: 'AI and operator agreement reflects operational alignment with deterministic safety policy, not independent physical correctness.'
+      }
+    };
+  }
+
   // =========================================================================
   // HELPER METHODS
   // =========================================================================

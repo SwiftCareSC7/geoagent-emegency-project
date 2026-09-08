@@ -151,9 +151,15 @@ export function RealInteractiveMap({
       mapInstanceRef.current = map
 
       // Base Tile Layer Providers (including Google & CARTO & OpenStreetMap)
-      const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim()
+      const cartoDarkUrl = cartoKey
+        ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoKey)}`
+        : 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+
+      const darkTiles = L.tileLayer(cartoDarkUrl, {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         maxZoom: 19,
+        subdomains: 'abcd',
       })
 
       const googleTrafficTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

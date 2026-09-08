@@ -20,6 +20,7 @@ router.use(requireRole('ADMIN'));
 router.get('/stats', adminController.getStats);
 router.get('/health', adminController.getHealth);
 router.get('/providers', adminController.getProviders);
+router.get('/prediction-analytics', adminController.getPredictionAnalytics);
 
 // Approved Operational Records (Paginated & Sanitized)
 router.get('/users', adminController.getUsers);
