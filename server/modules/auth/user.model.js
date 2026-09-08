@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['CONTROL_ROOM', 'ADMIN'],
+      enum: ['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'],
       default: 'CONTROL_ROOM'
     }
   },
