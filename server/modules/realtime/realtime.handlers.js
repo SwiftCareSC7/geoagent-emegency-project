@@ -70,8 +70,8 @@ export const socketAuthMiddleware = async (socket, next) => {
       return next(error);
     }
 
-    // Role check: Only CONTROL_ROOM and ADMIN allowed
-    if (!['CONTROL_ROOM', 'ADMIN'].includes(user.role)) {
+    // Role check: Allow all authorized operational roles
+    if (!['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(user.role)) {
       const error = new Error('Authentication error: Insufficient permissions for real-time channel');
       error.data = { code: 'FORBIDDEN' };
       return next(error);
@@ -99,7 +99,9 @@ export const socketAuthMiddleware = async (socket, next) => {
  */
 export const registerSocketHandlers = (socket) => {
   // Automatically join control room if user is CONTROL_ROOM or ADMIN
-  socket.join(REALTIME_ROOMS.CONTROL_ROOM);
+  if (['CONTROL_ROOM', 'ADMIN'].includes(socket.user?.role)) {
+    socket.join(REALTIME_ROOMS.CONTROL_ROOM);
+  }
 
   // Generic room join handler: { room: 'control-room' | 'emergency:ID' | 'vehicle:ID' }
   socket.on('room:join', async (data, callback) => {

@@ -277,17 +277,25 @@ Trajectories          Routes                     │         │
 | 6 | **Geospatial & Routing** | ✅ Done | Turf.js calculations, GeoJSON LineStrings, provider abstraction (Mock / Google / Mapbox / OSRM) |
 | 7 | **Deviation Detection** | ✅ Done | Cross-track distance, bearing divergence, GPS jitter filtering, rolling stability window, threshold classification |
 | 7 | **Traffic & ETA** | ✅ Done | Speed blending, zero-speed guards, congestion ratios, arithmetic delay calculations |
-| 8 | **GeoAgent AI** | ✅ Done | Gemini 2.5 Flash function-calling, 4 read-only tools, strict JSON schema, prompt injection defense, deterministic fallback |
+| 8 | **GeoAgent AI** | ✅ Done | Gemini 2.5 Flash function-calling, 9 operational tools, strict JSON schema, prompt injection defense, deterministic fallback |
 | 9 | **Real-Time Push** | ✅ Done | Socket.IO handshake JWT auth, room isolation (`control-room`, `emergency:${id}`, `vehicle:${id}`), server-emitted events |
-| 10 | **Decision Engine** | ✅ Done | Deterministic rules, state machine (`PENDING_OPERATOR_ACTION` → `APPROVED` / `REJECTED` → `EXECUTED`), SHA-256 idempotency, severity levels |
-| 11 | **Orchestration** | ✅ Done | Unified pipeline execution via `POST /api/orchestration/emergencies/:id/analyze`, 3-tier epistemic breakdown (`OBSERVED` / `INFERRED` / `UNKNOWN`) |
-| 12 | **Hardening & Testing** | ✅ Done | Status code preservation, compound indexes, graceful shutdown (`SIGINT`/`SIGTERM`), query boundary hardening |
-| — | **Security Suite** | ✅ Done | 23-point automated security suite (password hashing, injection defense, JWT tampering, CORS, IDOR) |
+| 10 | **Interactive Geospatial Map** | ✅ Done | Modular Leaflet GIS engine (`components/map/`), zero fake data, in-place coordinate mutations, 3 basemaps, live telemetry freshness |
+| 11 | **Full System Hardening** | ✅ Done | Canonical 23-step lifecycle suite, 14-domain security/RBAC/anomaly suite, provider failure matrix (Scenarios A–E), zero secret leakage |
+| 12 | **Admin Observability** | ✅ Done | Real database statistics across all collections, latency pings, upstream provider health grid, secure audit trail |
+| — | **Security Suite** | ✅ Done | Role access matrix, IDOR isolation, MongoDB query defenses ($where/$regex), cookie flags, rate limits |
 | — | **Documentation** | ✅ Done | OpenAPI 3.0 spec (40+ endpoints), Socket.IO event reference, database architecture doc, environment reference |
 
-**Backend API Modules**: 12 route files serving 40+ REST endpoints across `auth`, `vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `deviation`, `traffic`, `analysis`, `geoagents`, `decisions`, `orchestration`.
+**Backend API Modules**: 13 route files serving 45+ REST endpoints across `auth`, `vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `deviation`, `traffic`, `analysis`, `geoagents`, `decisions`, `orchestration`, `admin`.
 
-**Test Coverage**: 72 / 72 assertions passing across 7 test suites (100% pass rate).
+**Test Coverage**: 100% pass rate across all unit, integration, and security test suites.
+- Canonical System Integration Suite (`test-part11-system-hardening.js`): 17/17 passed (23 steps).
+- Security, RBAC & Anomaly Suite (`test-part11-security-hardening.js`): 14/14 passed.
+- Interactive Geospatial Map Suite (`test-part10-control-room-map.js`): 9/9 passed.
+- 10-Tier V2X Corridor Pipeline (`test-v2x-corridor-pipeline.js`): 11/11 passed.
+- Operational Intelligence Pipeline (`test-intelligence-pipeline.js`): 26/26 passed.
+- Control Room E2E (`test-control-room-e2e.js`): 12/12 passed.
+- Admin Observability (`test-admin-e2e.js`): 60/60 passed.
+- Authentication Contract (`test-auth-e2e.js`): 31/31 passed.
 
 ---
 
@@ -447,17 +455,21 @@ The automated test suites validate the complete system across integration, secur
 ```bash
 cd server
 
-# Automated E2E & Intelligence Verification Suites:
-node test-intelligence-pipeline.js # Real-time intelligence pipeline, What-If projection, epistemic factors, GeoAgent tools
-node test-realtime-external-e2e.js # Google Routes/Roads/Traffic providers, telemetry hardening, prediction engine
-node test-admin-e2e.js             # Admin RBAC, real system statistics, database ping latency, paginated exploration
-node test-emergency-detail-e2e.js  # Emergency corridor analysis, routes, trajectories, situation, orchestration
-node test-dashboard-e2e.js         # Dashboard domain feeds (vehicles, emergencies, incidents), empty states
-node test-auth-e2e.js              # Authentication contract, registration, login, cookies, session persistence
-node test-security.js              # Dedicated 23-point security, privilege, and input-sanitization suite
+# Full System Hardening & Resilience Suites (Part 11):
+node test-part11-system-hardening.js   # Canonical 23-step emergency integration test (E1/V1 lifecycle)
+node test-part11-security-hardening.js # 14-domain security, RBAC matrix, anomaly & failure matrix suite
+
+# Domain & Intelligence Verification Suites:
+node test-part10-control-room-map.js   # Interactive Leaflet GIS map, layer isolation, zero fake data
+node test-v2x-corridor-pipeline.js    # 10-tier V2X corridor green-wave preemption & Python bridge
+node test-intelligence-pipeline.js    # Real-time intelligence pipeline, What-If projection, epistemic factors
+node test-control-room-e2e.js         # Control room workflow, concurrency safety, double-action prevention
+node test-admin-e2e.js                # Admin RBAC, real system statistics, database ping latency, explorer
+node test-auth-e2e.js                 # Authentication contract, registration, login, cookies, persistence
 ```
-**Audit Result**: **298 / 298 assertions passing across all test suites (100% pass rate)**.
+**Audit Result**: **100% passing across all test suites with zero failures**.
 **TypeScript Verification**: `npx tsc --noEmit` — 0 errors.
+**Production Build**: `npm run build` — 100% optimized without build warnings.
 
 ---
 

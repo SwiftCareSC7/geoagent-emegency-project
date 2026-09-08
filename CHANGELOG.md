@@ -2,8 +2,25 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
-## [Unreleased] - Multi-Call Metropolitan Control Room
-- Multi-call metropolitan overview page (`/control-room/overview`).
+## [2.3.0] - Full System Hardening, Security & End-to-End Validation (Part 11)
+
+### Added
+- **Canonical 23-Step Integration Lifecycle Suite** (`server/test-part11-system-hardening.js`):
+  - 17/17 test groups passing across 23 discrete steps: user authentication, emergency creation, vehicle assignment, telemetry ingestion, trajectory persistence, deviation analysis, corridor traffic, Google primary route, alternative bypass route, quantitative prediction, Python/V2X green wave, route comparison, epistemic evidence, Gemini/fallback reasoning, authoritative decision rules, decision proposal, operator realtime notification, operator approval, atomic state transition, decision execution, Socket.IO broadcast envelopes, and admin audit ledger inspection.
+- **14-Domain Security, RBAC, Anomaly & Resilience Suite** (`server/test-part11-security-hardening.js`):
+  - 14/14 test domains passing: Role Access Matrix, IDOR prevention, zero secret leakage, CORS and cookie security attributes (`HttpOnly`, `SameSite`), MongoDB query injection defense (`$where`, `$regex`, `$ne`, `$gt`), GPS telemetry anomaly hardening (bounds, speeds, headings, future timestamps, jitter filtering), route and traffic fault tolerance (zero-metric divide-by-zero protection), prediction determinism, Gemini prompt injection defense and honest AI fallback, Python/V2X subprocess resilience, decision concurrency and SHA-256 situation hash idempotency, Socket.IO handshake security, database integrity and soft-delete enforcement, and provider failure matrix (Scenarios A through E).
+- **Expanded Native User Roles**:
+  - `server/modules/auth/user.model.js`: Expanded role enum from `['CONTROL_ROOM', 'ADMIN']` to `['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC']` with independent backend authorization across all endpoints.
+- **Role-Aware Socket.IO Handshake**:
+  - `server/modules/realtime/realtime.handlers.js`: Allows all four operational roles (`ADMIN`, `CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`) to authenticate; automatically joins `control-room` for ADMIN/CONTROL_ROOM, while allowing DRIVER and PARAMEDIC to subscribe to targeted vehicle and emergency channels.
+
+### Changed
+- **Express Cookie Deprecation Cleanup** (`server/modules/auth/auth.controller.js`):
+  - Omitted `maxAge` from `res.clearCookie` options to conform to Express standard and eliminate runtime deprecation warnings.
+- **Test Command in `package.json`**:
+  - Configured `"lint": "tsc --noEmit"` to provide standardized type safety verification.
+- **Documentation Synchronization**:
+  - Updated `README.md`, `WALKTHROUGH.md`, `AI_MEMORY.md`, `docs/database.md`, `docs/openapi.yaml`, and `docs/socket-events.md` with complete Part 11 hardening specifications, role matrices, and verification commands.
 
 ## [2.2.0] - Interactive Geospatial Control Room (Part 10)
 

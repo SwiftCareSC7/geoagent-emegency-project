@@ -30,7 +30,8 @@ const socket = io('http://localhost:5000', {
 
 ### Authorization Rules
 - Handshake verifies the user's role.
-- Sockets without a valid JWT or belonging to non-operational roles (outside `CONTROL_ROOM` or `ADMIN`) are rejected with `Authentication error`.
+- Sockets without a valid JWT or belonging to unrecognized roles (outside `ADMIN`, `CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`) are rejected with `Authentication error`.
+- Sockets with `ADMIN` or `CONTROL_ROOM` automatically join the `control-room` channel upon connect; `DRIVER` and `PARAMEDIC` join designated `vehicle:${vehicleId}` and `emergency:${emergencyId}` channels via `room:join`.
 
 ---
 
