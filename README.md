@@ -87,6 +87,7 @@ Trajectories          Routes                     │         │
 | Styling | Tailwind CSS v4 | PostCSS pipeline, custom design tokens |
 | Icons | Lucide React | SVG icon library |
 | UI Primitives | Base UI, CVA | class-variance-authority + tailwind-merge |
+| Interactive Maps | Leaflet 1.9.4 | Custom layer managers, CartoDB/OSM/ESRI tiles |
 | Language | TypeScript | `@/*` path aliasing |
 | Analytics | Vercel Analytics | `@vercel/analytics` |
 | Dev Port | `http://localhost:3000` | — |
@@ -165,6 +166,20 @@ Trajectories          Routes                     │         │
 │   │   ├── feature-cards.tsx                 # Feature showcase cards
 │   │   ├── contact-section.tsx               # Contact info section
 │   │   └── site-header.tsx                   # Navigation header
+│   ├── map/                                  # Interactive Geospatial Control Room Map Engine
+│   │   ├── types.ts                          # Map types, lat/lng converters, freshness evaluation
+│   │   ├── popup-content.ts                  # Sanitized HTML templates for vehicles/routes/incidents
+│   │   ├── map-view.tsx                      # Leaflet core instance & tile layer manager
+│   │   ├── map-controls.tsx                  # Floating layer toggles & basemap switcher
+│   │   ├── map-legend.tsx                    # Collapsible status & severity legend
+│   │   ├── control-room-map.tsx              # Main map orchestrator with Socket.IO incremental sync
+│   │   ├── layers/                           # Dedicated Leaflet layer managers
+│   │   │   ├── vehicle-layer.ts              # Vehicle markers with heading & live/stale halos
+│   │   │   ├── route-layer.ts                # Planned/active/alternative LineString polylines
+│   │   │   ├── incident-layer.ts             # Road hazards with severity styling
+│   │   │   ├── trajectory-layer.ts           # Bounded GPS breadcrumbs trail
+│   │   │   └── deviation-layer.ts            # Visual deviation & cross-track indicators
+│   │   └── index.ts                          # Barrel export
 │   └── ui/                                   # Base UI primitives
 │       ├── button.tsx                        # Button component (CVA)
 │       └── modal.tsx                         # Modal dialog component

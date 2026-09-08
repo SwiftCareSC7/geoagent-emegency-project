@@ -583,6 +583,45 @@ paths:
                       evaluatedAt: { type: string, format: date-time }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /routes/{routeId}/corridor-v2x:
+    get:
+      summary: Get live V2X traffic signal preemption and green-wave status for a route corridor
+      tags: [Routes]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+          description: Route identifier
+      responses:
+        '200':
+          description: V2X Green-Wave preemption analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      corridorSummary:
+                        type: object
+                        properties:
+                          corridorHealth: { type: string, example: PREEMPTION_ACTIVE }
+                          preemptedCount: { type: integer, example: 3 }
+                          totalSignals: { type: integer, example: 4 }
+                          civilianAlertedCount: { type: integer, example: 112 }
+                          timeSavedMinutes: { type: number, example: 3.5 }
+                      v2xSignals:
+                        type: array
+                        items:
+                          type: object
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # --- DEVIATION & SITUATION ANALYSIS ---
   /deviation/vehicle/{vehicleId}:
     get:

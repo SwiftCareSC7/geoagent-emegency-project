@@ -250,7 +250,39 @@ All server-emitted events are authoritative and emitted only after state changes
 
 ---
 
+### 3.6 V2X Green-Wave & Corridor Clearance Events
+
+#### `v2x.green_wave.updated`
+- **Room**: `control-room`, `emergency:${emergencyId}`, `vehicle:${vehicleId}`
+- **Trigger**: Dynamic corridor evaluation updates traffic signal preemption status
+- **Payload**:
+  ```json
+  {
+    "vehicleId": "AMB-101",
+    "routeId": "ROUTE-001",
+    "corridorHealth": "PREEMPTION_ACTIVE",
+    "preemptedCount": 3,
+    "totalSignals": 4,
+    "civilianAlertedCount": 112,
+    "timeSavedMinutes": 3.5,
+    "signals": [
+      {
+        "signalId": "SIG-MG-01",
+        "name": "MG Road / Brigade Rd Junction",
+        "distanceToAmbulanceMeters": 180,
+        "currentState": "FORCED_GREEN_4S",
+        "preemptionActive": true,
+        "secondsToClear": 12
+      }
+    ],
+    "timestamp": "2026-08-30T01:06:25.000Z"
+  }
+  ```
+
+---
+
 ## 4. Reconnection & Cleanup
 
 - **Heartbeats**: Socket.IO default ping interval is 25s with 20s timeout.
 - **Cleanup**: When a socket disconnects, its room memberships are automatically released by the engine, preventing stale socket references.
+

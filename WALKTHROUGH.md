@@ -411,3 +411,54 @@ npx tsc --noEmit
 # Output: Clean (0 errors)
 ```
 
+---
+
+## Part 23: Interactive Geospatial Control Room (Operational Map Engine)
+
+### Objective
+
+Transition the Control Room map from hardcoded demonstration mockups into a modular, production-grade geospatial engine powered by Leaflet (`1.9.4`) that strictly reflects actual backend state without fake data, fake routes, or simulated movement.
+
+### Changes Implemented
+
+1. **Modular Map Component Architecture (`components/map/`)**:
+   - `types.ts`: TypeScript contracts for `MapVehicle`, `MapEmergency`, `MapRoute`, `MapIncident`, `MapTrajectory`, `MapDeviation`, `MapPrediction`, `MapLayerVisibility`, and `MapSelectionState`. Geodesic coordinate converters `toLatLng` and `toLatLngArray` ([lng, lat] GeoJSON to [lat, lng] Leaflet). Telemetry freshness classification (`<15s` LIVE, `15s–60s` STALE, `>60s` OFFLINE).
+   - `popup-content.ts`: Sanitized, high-contrast, accessible HTML popup templates for vehicles, emergencies, routes, incidents, and deviation alerts with units, timestamps, and epistemic tags.
+   - `layers/vehicle-layer.ts`: `VehicleLayerManager` managing Leaflet markers with heading rotation, live/stale/offline pulsing halos, and smooth position updates without marker recreation.
+   - `layers/route-layer.ts`: `RouteLayerManager` rendering actual GeoJSON `LineString` paths for `PLANNED` (blue), `CURRENT`/`ACTIVE` (emerald), and `ALTERNATIVE` (amber dashed) routes with origin (🚩) and destination hospital (🏥) pin markers.
+   - `layers/incident-layer.ts`: `IncidentLayerManager` rendering road hazard markers with severity color hierarchy (`CRITICAL` rose with pulse, `HIGH` orange, `MEDIUM` amber, `LOW` slate).
+   - `layers/trajectory-layer.ts`: `TrajectoryLayerManager` rendering bounded recent GPS breadcrumbs as a cyan dashed trail.
+   - `layers/deviation-layer.ts`: `DeviationLayerManager` rendering warning circles and cross-track indicators when backend reports `DEVIATED` or `CRITICAL_DEVIATION`.
+   - `map-view.tsx`: Core Leaflet map wrapper with dynamic CSS injection, tile layers (CartoDB Dark Matter, OpenStreetMap, ESRI World Imagery), and standard layer groups.
+   - `map-controls.tsx`: Floating operator control group (zoom in/out, fit selected corridor, layer toggles, basemap switcher, reset view).
+   - `map-legend.tsx`: Collapsible operational legend.
+   - `control-room-map.tsx`: Main map orchestrator integrating REST initial state, incremental Socket.IO event updates, corridor selection, reconnect re-sync, and honest empty states.
+   - `components/dashboard/map-placeholder.tsx`: Converted into a drop-in wrapper delegating directly to `ControlRoomMap`.
+
+2. **Dashboard & Emergency Detail Integration**:
+   - `components/dashboard/driver-dashboard.tsx`: Overview tab and Corridor tab now render live `ControlRoomMap` using actual backend state; all legacy mock fallback arrays removed so that an empty database displays an honest empty state.
+   - `components/emergency-detail/route-analysis-panel.tsx`: Emergency detail corridor map renders live `ControlRoomMap` with vehicle trajectory breadcrumbs and candidate route geometries.
+
+3. **Backend Route API Client Extension**:
+   - `lib/api/routes.ts`: Added `getCorridorV2X(routeId)` for querying corridor green-wave preemption status.
+
+### Verification Results
+
+```bash
+node server/test-part10-control-room-map.js
+# Output: PART 10 MAP TESTS COMPLETE: 9 Passed, 0 Failed
+
+node server/test-v2x-corridor-pipeline.js
+# Output: PIPELINE TESTS COMPLETE: 11 Passed, 0 Failed
+
+node server/test-intelligence-pipeline.js
+# Output: TOTAL TESTS: 26 Passed, 0 Failed
+
+node server/test-control-room-e2e.js
+# Output: CONTROL ROOM E2E TESTS COMPLETE: 12 Passed, 0 Failed
+
+npx tsc --noEmit
+# Output: Clean (0 errors)
+```
+
+

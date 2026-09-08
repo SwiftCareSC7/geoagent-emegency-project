@@ -5,6 +5,31 @@ All notable changes to the GeoAgentic Emergency Response System will be document
 ## [Unreleased] - Multi-Call Metropolitan Control Room
 - Multi-call metropolitan overview page (`/control-room/overview`).
 
+## [2.2.0] - Interactive Geospatial Control Room (Part 10)
+
+### Added
+- **Modular Control Room Map Engine** (`components/map/`):
+  - Leaflet 1.9.4 integration with dynamic CSS injection and CartoDB Dark Matter / OSM / ESRI Satellite basemaps.
+  - Layer Managers: `VehicleLayerManager`, `RouteLayerManager`, `IncidentLayerManager`, `TrajectoryLayerManager`, `DeviationLayerManager`.
+  - Incremental update architecture: updates layer groups in-place without destroying or recreating the Leaflet map instance on incoming Socket.IO events.
+  - Floating Operator Controls: Basemap selector, layer toggles, corridor auto-fit, and view reset.
+  - Collapsible Map Legend: Visual indicators for active/planned/alternative routes, telemetry freshness (LIVE, STALE, OFFLINE), and incident severity hierarchy.
+  - Accessible sanitized HTML popup content templates with units, timestamps, and epistemic tags.
+- **Corridor V2X API Method** (`lib/api/routes.ts`):
+  - `getCorridorV2X(routeId)` for querying live corridor green-wave preemption status.
+- **Control Room Map Test Suite** (`server/test-part10-control-room-map.js`):
+  - 9/9 automated criteria verifying GeoJSON schemas, honest empty states, bounded GPS breadcrumbs, deviation detection, route comparison, prediction delay factors, V2X preemption, human-in-the-loop decision lifecycle, and socket payload contracts.
+
+### Changed
+- **Driver Dashboard Integration** (`components/dashboard/driver-dashboard.tsx`):
+  - Replaced mock vehicle/emergency/incident fallbacks with authentic backend state.
+  - Empty database states now honestly report "No active emergency missions" rather than fabricating mock coordinates.
+  - Wired live `ControlRoomMap` into Tab 1 Overview and Tab 2 Active Corridor views.
+- **Map Placeholder Replacement** (`components/dashboard/map-placeholder.tsx`):
+  - Converted legacy static placeholder into a drop-in wrapper rendering `ControlRoomMap`.
+- **Emergency Detail Route Panel** (`components/emergency-detail/route-analysis-panel.tsx`):
+  - Integrated `ControlRoomMap` with vehicle trajectory breadcrumbs, active corridor line, and candidate bypass routes.
+
 ## [2.1.0] - 10-Tier Operational Intelligence Pipeline (V2X & Corridor Green-Wave)
 
 ### Added
