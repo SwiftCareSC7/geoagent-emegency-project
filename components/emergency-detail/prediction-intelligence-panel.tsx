@@ -11,17 +11,19 @@ import {
   Gauge
 } from 'lucide-react';
 import type { PredictionResult } from '@/lib/api/types';
-import type { RealtimePredictionUpdate } from '@/lib/socket/useRealtime';
+import type { RealtimePredictionUpdate, PredictionChangeDelta } from '@/lib/socket/useRealtime';
 
 interface PredictionIntelligencePanelProps {
   prediction: PredictionResult | null;
   livePrediction?: RealtimePredictionUpdate | null;
+  predictionDelta?: PredictionChangeDelta | null;
   isLoading?: boolean;
 }
 
 export function PredictionIntelligencePanel({
   prediction,
   livePrediction,
+  predictionDelta,
   isLoading = false
 }: PredictionIntelligencePanelProps) {
   // Merge REST baseline with live socket push if available
@@ -134,6 +136,49 @@ export function PredictionIntelligencePanel({
           </div>
         )}
       </div>
+
+      {/* Prediction Change Visualization (when prediction changed from previous fix) */}
+      {predictionDelta && (
+        <div className="mt-4 p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-xs text-indigo-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-bold text-indigo-300">
+              <TrendingDown className="h-4 w-4 text-indigo-400" />
+              <span>Prediction Shift Detected</span>
+            </div>
+            <span className="font-mono text-[11px] bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300">
+              Updated Live
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono text-[11px]">
+            <div className="p-2 rounded bg-zinc-950/40 border border-indigo-500/20">
+              <span className="text-zinc-400 block text-[10px]">Predicted Transit:</span>
+              <span className="font-bold text-zinc-100">
+                {predictionDelta.previousDurationMinutes !== undefined ? `${predictionDelta.previousDurationMinutes}m` : '—'} → {predictionDelta.newDurationMinutes}m
+              </span>
+            </div>
+            <div className="p-2 rounded bg-zinc-950/40 border border-indigo-500/20">
+              <span className="text-zinc-400 block text-[10px]">Accumulated Delay:</span>
+              <span className={`font-bold ${predictionDelta.delayDeltaMinutes > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                {predictionDelta.delayDeltaMinutes > 0 ? `+${predictionDelta.delayDeltaMinutes} min` : `${predictionDelta.delayDeltaMinutes} min`}
+              </span>
+            </div>
+            <div className="p-2 rounded bg-zinc-950/40 border border-indigo-500/20">
+              <span className="text-zinc-400 block text-[10px]">Risk Tier Shift:</span>
+              <span className="font-bold text-zinc-200">
+                {predictionDelta.previousDelayRisk || 'LOW'} → <strong className="text-amber-400">{predictionDelta.newDelayRisk}</strong>
+              </span>
+            </div>
+          </div>
+
+          {predictionDelta.reasons.length > 0 && (
+            <div className="text-[11px] text-zinc-300 pt-1 flex items-start gap-1.5">
+              <span className="text-indigo-400 font-bold">•</span>
+              <span>Causal Trigger: {predictionDelta.reasons.join('; ')}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* User-Friendly Takeaway Callout Box */}
       <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-200 space-y-1">

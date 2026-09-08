@@ -26,6 +26,8 @@ interface VehicleMovementPanelProps {
   error?: string | null
   page?: number
   limit?: number
+  freshness?: 'LIVE' | 'STALE' | 'OFFLINE' | 'UNKNOWN'
+  ageString?: string
   onPageChange?: (newPage: number) => void
   onRefresh?: () => void
 }
@@ -63,6 +65,8 @@ export function VehicleMovementPanel({
   error = null,
   page = 1,
   limit = 5,
+  freshness = 'UNKNOWN',
+  ageString = '',
   onPageChange,
   onRefresh,
 }: VehicleMovementPanelProps) {
