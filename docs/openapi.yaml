@@ -935,7 +935,7 @@ paths:
           schema: { type: integer, default: 20, maximum: 100 }
         - name: role
           in: query
-          schema: { type: string, enum: [CONTROL_ROOM, ADMIN] }
+          schema: { type: string, enum: [ADMIN, CONTROL_ROOM, DRIVER, PARAMEDIC] }
         - name: search
           in: query
           schema: { type: string }

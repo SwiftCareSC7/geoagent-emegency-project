@@ -607,3 +607,59 @@ Trajectories          Routes                     │         │
   - `components/dashboard/driver-dashboard.tsx`: Overview tab and Corridor tab now render live `ControlRoomMap` using actual backend state; all legacy mock fallback arrays removed.
   - `components/emergency-detail/route-analysis-panel.tsx`: Emergency detail corridor map renders live `ControlRoomMap` with vehicle trajectory breadcrumbs and candidate route geometries.
 - **Verification Suite**: `server/test-part10-control-room-map.js` (9/9 criteria passing).
+
+---
+
+## 22. Part 11 — Full System Hardening, Security & End-to-End Validation
+
+- **System Objectives**: Proved that the complete SwiftCare GeoAgent system operates safely, correctly, securely, and predictably under real conditions, attacks, anomalies, edge cases, and external provider failures without fake data or ungrounded assertions.
+- **Role Architecture**: Expanded native backend user roles to four independently verified personas:
+  - `ADMIN`: Full platform oversight, user management, fleet provisioning, audit log inspection, system stats.
+  - `CONTROL_ROOM`: Emergency mission creation, vehicle dispatch, decision proposal reviews, route approval/rejection.
+  - `DRIVER`: Assigned vehicle telemetry ingestion, turn-by-turn waypoint tracking, navigation guidance.
+  - `PARAMEDIC`: Clinical triage priority updates, patient status transmission, hospital bay readiness monitoring.
+- **Role Access Matrix**:
+  | Resource / Endpoint | ADMIN | CONTROL_ROOM | DRIVER | PARAMEDIC | Unauthenticated |
+  | :--- | :--- | :--- | :--- | :--- | :--- |
+  | `GET /api/admin/*` | READ | 403 Forbidden | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/vehicles` | CREATE | 403 Forbidden | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `GET /api/vehicles` | READ | READ | READ | READ | 401 Unauthorized |
+  | `POST /api/emergencies` | CREATE | CREATE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `GET /api/emergencies/:id` | READ | READ | READ | READ | 401 Unauthorized |
+  | `POST /api/trajectories` | CREATE | CREATE | CREATE | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/decisions/:id/approve`| APPROVE | APPROVE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/decisions/:id/reject` | REJECT | REJECT | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/decisions/:id/execute`| EXECUTE | EXECUTE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+- **Security & Reliability Domains Verified** (`server/test-part11-security-hardening.js` — 14/14 Passed):
+  1. *Role Access Matrix & Independent Backend Authorization*: Strict endpoint-level middleware enforcement blocks privilege escalation.
+  2. *IDOR Prevention & Resource Isolation*: Non-existent/unowned entities return 404; path traversal/SQL/Mongo injection payloads safely rejected.
+  3. *Zero Secret Leakage*: Audit confirmed zero exposure of `AIzaSy`, `sk-ant-`, `mongodb+srv://`, `JWT_SECRET`, or `NEXT_PUBLIC_*` sensitive tokens across client bundles.
+  4. *Cookie Security Attributes*: Authentication tokens set with `HttpOnly=true`, `SameSite=Lax` (dev) / `SameSite=None` (prod), `Secure=true` (prod).
+  5. *MongoDB Query Injection Defense*: Operators `$where`, `$regex`, `$ne`, `$gt`, and unauthorized sort fields rejected with 400 Bad Request.
+  6. *GPS Telemetry Anomaly Hardening*: Rejects out-of-bound coordinates (`lat < -90` or `> 90`, `lng < -180` or `> 180`), negative speeds (`< 0`), impossible speeds (`> 250 km/h`), invalid headings (`< 0` or `>= 360`), and future timestamps (`> 2 min`). GPS jitter analyzed via temporal windowing.
+  7. *Route & Traffic Fault Tolerance*: Zero-distance and zero-speed edge conditions calculate gracefully without divide-by-zero or NaN bugs.
+  8. *Prediction Determinism*: Identical telemetry, route, and traffic inputs produce deterministic delay projections and confidence metrics.
+  9. *Prompt Injection Defense & Transparent AI Fallback*: `sanitizeText` strips executable scripts/markup; untrusted descriptions encapsulated in `untrustedCallerDescription`; offline Gemini triggers explicit `AI_ANALYSIS_UNAVAILABLE` status without spoofing AI reasoning.
+  10. *Python / V2X Subprocess Security & Status*: In-process JS fallback engine guarantees zero shell injection vectors while matching Python schema.
+  11. *Concurrency & Idempotency*: `situationHash` prevents duplicate proposal generation; atomic state transitions reject concurrent double-approvals.
+  12. *Socket.IO Handshake Security & Payload Integrity*: Unauthenticated socket handshakes rejected; payloads strictly typed without leaking internal DB hashes.
+  13. *Database Integrity & Soft-Delete Enforcement*: Soft-deleted vehicles (`isDeleted: true`) strictly excluded from active dispatch queries.
+  14. *Provider Failure Matrix*: Verified degradation paths across all 5 operational configurations (Scenarios A through E).
+- **Canonical 23-Step System Integration Test** (`server/test-part11-system-hardening.js` — 17/17 Passed):
+  - Step 1: User authentication and JWT issuance.
+  - Step 2: Emergency E1 creation with GeoJSON coordinates.
+  - Step 3: Vehicle V1 assignment to Emergency E1.
+  - Steps 4 & 5: Telemetry ingestion & trajectory persistence.
+  - Step 6: Route matching and geodesic deviation analysis.
+  - Step 7: Corridor traffic analysis and congestion penalty calculation.
+  - Steps 8 & 9: Google primary route and alternative bypass candidate lookup.
+  - Step 10: Quantitative prediction engine ETA & delay projection.
+  - Step 11: Python / V2X corridor green-wave preemption calculation.
+  - Steps 12 & 13: Deterministic route candidate comparison & 3-tier epistemic evidence.
+  - Step 14: Gemini advisory reasoning / honest fallback generation.
+  - Steps 15 & 16: Deterministic decision engine proposal generation & situation hash validation.
+  - Step 17: Real-time operator notification contract emission.
+  - Steps 18, 19 & 20: Operator approval & atomic state transition (`PENDING_OPERATOR_ACTION` -> `APPROVED`).
+  - Step 21: Decision execution (`APPROVED` -> `EXECUTED`).
+  - Step 22: Socket.IO broadcast envelopes and frontend TypeScript contract conformance.
+  - Step 23: Admin observability and audit trail ledger inspection without credential leakage.

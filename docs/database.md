@@ -41,7 +41,7 @@ Represents dispatchers, supervisors, and administrative personnel.
   password: { type: String, required: true }, // bcrypt hash (salt rounds: 12)
   role: {
     type: String,
-    enum: ['CONTROL_ROOM', 'ADMIN'],
+    enum: ['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'],
     default: 'CONTROL_ROOM'
   },
   createdAt: Date,
