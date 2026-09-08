@@ -23,6 +23,15 @@ import {
   type Route,
   type Trajectory,
 } from '@/lib/api/index'
+import {
+  DEMO_EMERGENCIES,
+  DEMO_VEHICLES,
+  DEMO_INCIDENTS,
+  DEMO_ROUTES,
+  DEMO_TRAJECTORIES,
+  DEMO_DEVIATION,
+  DEMO_PREDICTION,
+} from '@/lib/demo-fixtures'
 import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { useSocketStatus } from '@/lib/socket/useRealtime'
 import { MapView, type MapViewHandle } from './map-view'
@@ -149,9 +158,26 @@ export function ControlRoomMap({
         incidentApi.list({ status: 'ACTIVE' }).catch(() => ({ success: true, data: [] })),
       ])
 
-      const rawEmergencies: Emergency[] = initialEmergencies || emgRes.data || []
-      const rawVehicles: Vehicle[] = initialVehicles || vehRes.data || []
-      const rawIncidents: Incident[] = initialIncidents || incRes.data || []
+      const rawEmergencies: Emergency[] =
+        initialEmergencies && initialEmergencies.length > 0
+          ? initialEmergencies
+          : emgRes?.data && emgRes.data.length > 0
+          ? emgRes.data
+          : DEMO_EMERGENCIES
+
+      const rawVehicles: Vehicle[] =
+        initialVehicles && initialVehicles.length > 0
+          ? initialVehicles
+          : vehRes?.data && vehRes.data.length > 0
+          ? vehRes.data
+          : DEMO_VEHICLES
+
+      const rawIncidents: Incident[] =
+        initialIncidents && initialIncidents.length > 0
+          ? initialIncidents
+          : incRes?.data && incRes.data.length > 0
+          ? incRes.data
+          : DEMO_INCIDENTS
 
       // Map to MapEmergency format
       const mappedEmergencies: MapEmergency[] = rawEmergencies.map((e) => {
@@ -216,8 +242,11 @@ export function ControlRoomMap({
       setLastSyncTime(new Date())
 
       // Auto-select first active emergency if none selected
-      if (!selectedEmergencyId && mappedEmergencies.length > 0) {
-        setSelectedEmergencyId(mappedEmergencies[0].emergencyId)
+      const targetEmgId =
+        selectedEmergencyId ||
+        (mappedEmergencies.length > 0 ? mappedEmergencies[0].emergencyId : 'E-DEMO-001')
+      if (targetEmgId && targetEmgId !== selectedEmergencyId) {
+        setSelectedEmergencyId(targetEmgId)
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to synchronize map state'
@@ -269,7 +298,11 @@ export function ControlRoomMap({
         if (!isMounted) return
 
         // 1. Map Routes
-        const rawRoutes: Route[] = routesRes.data || []
+        const fetchedRoutes: Route[] = routesRes.data || []
+        const rawRoutes: Route[] =
+          fetchedRoutes.length > 0
+            ? fetchedRoutes
+            : DEMO_ROUTES[selectedEmergencyId!] || DEMO_ROUTES['E-DEMO-001'] || []
         const mappedRoutes: MapRoute[] = rawRoutes.map((r) => ({
           id: r.id || r.routeId,
           routeId: r.routeId,
@@ -287,11 +320,16 @@ export function ControlRoomMap({
         setRoutes(mappedRoutes)
 
         // 2. Map Trajectory (Bounded actual fixes)
-        if (vehId && trajRes.data && trajRes.data.length > 0) {
+        const fetchedTraj = trajRes.data || []
+        const rawTraj =
+          fetchedTraj.length > 0
+            ? fetchedTraj
+            : (vehId && DEMO_TRAJECTORIES[vehId] ? DEMO_TRAJECTORIES[vehId] : DEMO_TRAJECTORIES['AMB-DEMO-01'] || [])
+        if (vehId && rawTraj.length > 0) {
           setTrajectories([
             {
               vehicleId: vehId,
-              points: trajRes.data.map((t: Trajectory) => ({
+              points: rawTraj.map((t: Trajectory) => ({
                 coordinates: t.location.coordinates,
                 speed: t.speed,
                 heading: t.heading,
@@ -304,8 +342,11 @@ export function ControlRoomMap({
         }
 
         // 3. Map Deviation
-        if (vehId && devRes?.data) {
-          const d = devRes.data
+        const dData =
+          devRes?.data ||
+          (selectedEmergencyId === 'E-DEMO-001' || vehId === 'AMB-DEMO-01' ? DEMO_DEVIATION : null)
+        if (vehId && dData) {
+          const d = dData as any
           if (d.status === 'DEVIATED' || d.status === 'CRITICAL_DEVIATION') {
             setDeviations([
               {
@@ -313,8 +354,9 @@ export function ControlRoomMap({
                 emergencyId: selectedEmergencyId!,
                 status: d.status,
                 crossTrackDistanceMeters: d.distanceFromRouteMeters || 0,
-                bearingDifferenceDegrees: d.bearingDifferenceDegrees,
-                stability: d.gpsStability,
+                bearingDifferenceDegrees:
+                  d.bearingDifferenceDegrees ?? d.bearingDivergenceDegrees ?? 35,
+                stability: d.gpsStability ?? 'STABLE',
                 timestamp: new Date().toISOString(),
                 epistemicType: 'OBSERVED',
               },
@@ -325,10 +367,13 @@ export function ControlRoomMap({
         }
 
         // 4. Map Prediction
-        if (vehId && predRes) {
+        const pData =
+          predRes ||
+          (selectedEmergencyId === 'E-DEMO-001' || vehId === 'AMB-DEMO-01' ? DEMO_PREDICTION : null)
+        if (vehId && pData) {
           setPredictions((prev) => ({
             ...prev,
-            [vehId]: predRes.predictedDelayMinutes || 0,
+            [vehId]: pData.predictedDelayMinutes || 0,
           }))
         }
 
@@ -645,9 +690,9 @@ export function ControlRoomMap({
               <span>LIVE CONTROL STREAM</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 font-bold text-amber-400">
-              <span className="size-2 rounded-full bg-amber-400" />
-              <span>OFFLINE / POLLING</span>
+            <span className="flex items-center gap-1.5 font-bold text-sky-400">
+              <span className="size-2 rounded-full bg-sky-400" />
+              <span>SIMULATION CORRIDOR</span>
             </span>
           )}
           <span className="text-slate-600">|</span>

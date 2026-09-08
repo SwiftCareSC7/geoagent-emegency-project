@@ -12,8 +12,18 @@ import { io, Socket } from 'socket.io-client';
 
 let socketInstance: Socket | null = null;
 
-export const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5001';
+export function getSocketUrl(): string {
+  if (typeof window !== 'undefined') {
+    const env = process.env.NEXT_PUBLIC_SOCKET_URL;
+    if (env && !env.includes('localhost') && !env.includes('127.0.0.1')) return env;
+    if (window.location.protocol === 'https:') {
+      return window.location.origin;
+    }
+  }
+  return process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5001';
+}
+
+export const SOCKET_URL = getSocketUrl();
 
 export const REALTIME_EVENTS = {
   VEHICLE_LOCATION_UPDATED: 'vehicle.location.updated',
@@ -49,12 +59,13 @@ export function getSocket(): Socket {
   }
 
   if (!socketInstance) {
-    socketInstance = io(SOCKET_URL, {
+    const targetUrl = getSocketUrl();
+    socketInstance = io(targetUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 15,
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000
     });
