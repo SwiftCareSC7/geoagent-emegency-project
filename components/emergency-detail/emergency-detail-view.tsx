@@ -19,6 +19,8 @@ import {
   Siren,
   TrafficCone,
   Truck,
+  Wifi,
+  WifiOff,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
@@ -50,6 +52,7 @@ import { EpistemicBreakdownCard } from './epistemic-breakdown-card'
 import { PredictionIntelligencePanel } from './prediction-intelligence-panel'
 import { RouteComparisonCard } from './route-comparison-card'
 import { DecisionApprovalCard } from './decision-approval-card'
+import { EventTimelineCard } from './event-timeline-card'
 import { cn } from '@/lib/utils'
 
 interface EmergencyDetailViewProps {
@@ -67,6 +70,7 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
   const [situationAnalysis, setSituationAnalysis] = useState<SituationAnalysis | null>(null)
   const [prediction, setPrediction] = useState<PredictionResult | null>(null)
   const [decision, setDecision] = useState<Decision | null>(null)
+  const [comparisonData, setComparisonData] = useState<any>(null)
   const [orchestrationResult, setOrchestrationResult] = useState<OrchestrationWorkflowResult | null>(null)
 
   const [loading, setLoading] = useState(true)
@@ -88,7 +92,11 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
     liveLocation,
     liveDeviation,
     livePrediction,
+    predictionDelta,
     liveDecision,
+    liveEvents,
+    reconnected,
+    acknowledgeReconnect,
     getAgeString
   } = useRealtimeEmergency(emergencyId, assignedVehId);
 
@@ -107,6 +115,35 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
       });
     }
   }, [liveLocation]);
+
+  // Reflect live decision updates into state
+  useEffect(() => {
+    if (liveDecision) {
+      setDecision((prev) => {
+        if (!prev) {
+          return {
+            decisionId: liveDecision.decisionId,
+            emergencyId: liveDecision.emergencyId,
+            action: liveDecision.action as any,
+            status: liveDecision.status as any,
+            targetEntity: 'ROUTE',
+            details: {
+              summary: liveDecision.action,
+              reasoning: []
+            },
+            evaluatedAt: new Date().toISOString()
+          } as Decision;
+        }
+        return {
+          ...prev,
+          status: liveDecision.status as any,
+          approvedBy: liveDecision.approvedBy || prev.approvedBy,
+          approvedAt: liveDecision.approvedAt || prev.approvedAt,
+          rejectionReason: liveDecision.rejectionReason || (prev as any).rejectionReason
+        };
+      });
+    }
+  }, [liveDecision]);
 
   const loadData = useCallback(async () => {
     setLoading(true)
