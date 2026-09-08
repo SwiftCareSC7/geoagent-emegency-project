@@ -4,7 +4,24 @@ All notable changes to the GeoAgentic Emergency Response System will be document
 
 ## [Unreleased] - Multi-Call Metropolitan Control Room
 - Multi-call metropolitan overview page (`/control-room/overview`).
-- Headless Python microservice bridge.
+
+## [2.1.0] - 10-Tier Operational Intelligence Pipeline (V2X & Corridor Green-Wave)
+
+### Added
+- **Python V2X Corridor Bridge** (`routing-engine/v2x_corridor_bridge.py`):
+  - Headless CLI spatial routing bridge computing point-to-polyline cross-track deviation, V2X intersection clearance, and alternative bypass routes.
+- **Python Routing Bridge Service** (`server/modules/routes/pythonRoutingBridge.service.js`):
+  - Subprocess bridge with timeout and pure JavaScript deterministic fallback (`fallbackV2XEngine`) for container portability.
+- **Corridor & Green-Wave Analysis Service** (`server/modules/routes/corridorGreenWave.service.js`):
+  - Evaluates dynamic signal preemption states (`APPROACHING`, `PREEMPTION_REQUESTED`, `FORCED_GREEN_4S`, `GREEN_WAVE_ACTIVE`, `HOLDING_RED`).
+  - Estimates civilian vehicles alerted to yield and emergency transit time savings (-2.5 to -4 min).
+  - Emits real-time `v2x.green_wave.updated` Socket.IO events to Control Room.
+- **Gemini Grounding Tool** (`server/modules/geoagents/geoAgent.tools.js`):
+  - New `getCorridorGreenWaveStatus` tool exposing live V2X signal preemption to Gemini 2.5 Flash.
+- **Decision Engine Rules** (`server/modules/decisions/decision.rules.js`):
+  - `CORRIDOR_BLOCKED` and `GREEN_WAVE_PREEMPTION_ACTIVE` reason codes.
+- **10-Tier Integration Test Suite** (`server/test-v2x-corridor-pipeline.js`):
+  - 11/11 automated tests verifying the full sequential workflow from Vehicle GPS to Control Room.
 
 ## [2.0.0] - Production Deployment Architecture (Phase 8)
 

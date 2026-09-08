@@ -562,4 +562,21 @@ Trajectories          Routes                     │         │
   - `docs/deployment.md`: Full deployment guide (Atlas, Cloud Run, Vercel, WIF, rollback)
   - `docs/deployment-checklist.md`: Pre/post-deployment operator checklists
 - **Socket.IO Scaling Constraint**: Cloud Run must use `--max-instances=1` because the in-memory adapter does not support multi-instance broadcasting. Future work: add `@socket.io/redis-adapter`.
-- **Python Routing Engine**: Not containerized. Standalone analysis tool, not a runtime dependency.
+- **Python Routing Engine**: Standalone spatial tool now integrated via headless CLI bridge (`v2x_corridor_bridge.py`) with zero-dependency Node.js fallback (`fallbackV2XEngine`).
+
+---
+
+## 20. 10-Tier Operational Intelligence Pipeline (V2X & Corridor Green-Wave)
+
+- **Target Pipeline Architecture**:
+  1. `Vehicle GPS`: Live telemetry coordinate fixes (`lat`, `lng`, `speed`, `heading`, `timestamp`).
+  2. `Node.js Telemetry`: `server/modules/trajectories/trajectory.service.js` ingests, validates, writes to MongoDB, updates vehicle state, and triggers throttled background prediction & V2X corridor analysis.
+  3. `Python Routing / V2X Engine`: `routing-engine/v2x_corridor_bridge.py` + `server/modules/routes/pythonRoutingBridge.service.js`. Runs high-precision Python spatial engine for cross-track deviation and V2X intersection calculations. Includes seamless in-process JS fallback (`fallbackV2XEngine`) for container environments without Python.
+  4. `Corridor + Green-Wave Analysis`: `server/modules/routes/corridorGreenWave.service.js`. Evaluates dynamic signal preemption states (`APPROACHING`, `PREEMPTION_REQUESTED`, `FORCED_GREEN_4S`, `GREEN_WAVE_ACTIVE`, `HOLDING_RED`), civilian vehicle yield alerts, and minutes saved by traffic light clearance.
+  5. `Google Traffic-Aware Routes`: `server/modules/routes/providers/googleRoutingProvider.js` evaluates live congestion on primary corridor vs alternative bypass routes.
+  6. `Prediction Engine`: `server/modules/analysis/prediction.service.js` incorporates V2X green-wave delay reductions into ETA calculations.
+  7. `Route Comparison`: `server/modules/routes/routeComparison.service.js` factors corridor clearance and green-wave feasibility into deterministic "What if we do nothing?" scenario analysis.
+  8. `Gemini Reasoning`: Gemini 2.5 Flash grounded with tools including `getCorridorGreenWaveStatus`.
+  9. `Decision Engine`: `server/modules/decisions/decision.service.js` authoritative deterministic rules evaluating `CORRIDOR_BLOCKED` and `GREEN_WAVE_PREEMPTION_ACTIVE` reason codes.
+  10. `Control Room`: Real-time Socket.IO emission (`v2x.green_wave.updated`, `orchestration.completed`) updating the Control Room operator dashboard with 3-tier epistemic breakdown and dynamic signal states.
+- **Test Suite**: `server/test-v2x-corridor-pipeline.js` (11/11 tests passing).

@@ -79,6 +79,27 @@ export interface RealtimeDecisionUpdate {
   updatedAt?: string;
 }
 
+export interface RealtimeGreenWaveUpdate {
+  vehicleId: string;
+  routeId?: string;
+  corridorHealth: 'OPTIMAL_FLOW' | 'PREEMPTION_ACTIVE' | 'CONGESTED_FLOW' | 'IMPEDED_FLOW' | string;
+  preemptedCount: number;
+  totalSignals: number;
+  civilianAlertedCount: number;
+  timeSavedMinutes: number;
+  signals?: Array<{
+    id: string;
+    name: string;
+    coordinates?: [number, number];
+    distanceMeters?: number;
+    state: string;
+    preemptionActive?: boolean;
+    clearanceSec?: number;
+    civilianVehiclesYielding?: number;
+  }>;
+  timestamp: string;
+}
+
 export interface PredictionChangeDelta {
   previousEtaIso?: string;
   newEtaIso: string;
@@ -175,6 +196,7 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
   const [livePrediction, setLivePrediction] = useState<RealtimePredictionUpdate | null>(null);
   const [predictionDelta, setPredictionDelta] = useState<PredictionChangeDelta | null>(null);
   const [liveDecision, setLiveDecision] = useState<RealtimeDecisionUpdate | null>(null);
+  const [liveGreenWave, setLiveGreenWave] = useState<RealtimeGreenWaveUpdate | null>(null);
   const [liveEvents, setLiveEvents] = useState<LiveTimelineEvent[]>([]);
   const [lastEventTime, setLastEventTime] = useState<Date | null>(null);
   const [freshness, setFreshness] = useState<DataFreshness>('UNKNOWN');
@@ -390,6 +412,26 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       }
     );
 
+    const unsubGreenWave = subscribeEvent<RealtimeGreenWaveUpdate>(
+      REALTIME_EVENTS.V2X_GREEN_WAVE_UPDATED,
+      (data) => {
+        if (!vehicleId || data.vehicleId === vehicleId) {
+          setLiveGreenWave(data);
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `v2x-${now.getTime()}`,
+            type: 'V2X_GREEN_WAVE_UPDATED',
+            label: 'V2X Green-Wave Corridor Active',
+            detail: `${data.preemptedCount}/${data.totalSignals} signals preempted (${data.corridorHealth}), saving -${data.timeSavedMinutes} min (${data.civilianAlertedCount} civilian yields)`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: data.corridorHealth === 'OPTIMAL_FLOW' || data.corridorHealth === 'PREEMPTION_ACTIVE' ? 'success' : 'info'
+          });
+        }
+      }
+    );
+
     return () => {
       unsubLocation();
       unsubDeviation();
@@ -398,6 +440,7 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       unsubDecisionApproved();
       unsubDecisionRejected();
       unsubDecisionExecuted();
+      unsubGreenWave();
     };
   }, [emergencyId, vehicleId, addTimelineEvent]);
 
@@ -442,6 +485,7 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
     livePrediction,
     predictionDelta,
     liveDecision,
+    liveGreenWave,
     liveEvents,
     lastEventTime,
     freshness,

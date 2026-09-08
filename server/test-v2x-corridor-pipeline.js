@@ -96,35 +96,44 @@ async function runPipelineTests() {
     vehicleDoc = await Vehicle.create({
       vehicleId: testVehicleId,
       registrationNumber: `KA-01-V2X-${testSuffix.toString().slice(-4)}`,
-      type: 'ADVANCED_LIFE_SUPPORT',
+      type: 'AMBULANCE',
+      capacity: 1,
+      driverName: 'Ramesh Kumar',
       status: 'EN_ROUTE',
       currentLocation: { type: 'Point', coordinates: [77.6030, 12.9730] }, // Near Mayo Hall
       speed: 45,
       heading: 85
     });
 
+    const testUserId = new mongoose.Types.ObjectId();
+
     emergencyDoc = await Emergency.create({
       emergencyId: testEmergencyId,
-      type: 'CARDIAC_ARREST',
+      type: 'MEDICAL',
       priority: 'CRITICAL',
-      status: 'IN_PROGRESS',
+      status: 'DISPATCHED',
+      description: 'Corridor V2X Simulation Emergency',
       location: { type: 'Point', coordinates: [77.5946, 12.9716] }, // MG Road
       destination: {
-        name: 'Manipal Hospital HAL',
+        type: 'Point',
         coordinates: [77.6483, 12.9582]
       },
-      assignedVehicle: vehicleDoc._id
+      assignedVehicle: vehicleDoc._id,
+      createdBy: testUserId
     });
 
     routeDoc = await Route.create({
       routeId: testRouteId,
       vehicle: vehicleDoc._id,
       emergency: emergencyDoc._id,
-      origin: { name: 'MG Road', coordinates: [77.5946, 12.9716] },
-      destination: { name: 'Manipal Hospital', coordinates: [77.6483, 12.9582] },
+      origin: { type: 'Point', coordinates: [77.5946, 12.9716] },
+      destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
       distance: 5400,
       duration: 600,
+      provider: 'MOCK',
+      routeType: 'PLANNED',
       status: 'ACTIVE',
+      createdBy: testUserId,
       geometry: {
         type: 'LineString',
         coordinates: [
@@ -147,7 +156,7 @@ async function runPipelineTests() {
         longitude: 77.6030,
         speed: 42.5,
         heading: 85,
-        source: 'GPS_DEVICE'
+        source: 'DEVICE'
       });
       assert(traj, 'Trajectory should be created');
       assert.strictEqual(traj.location.coordinates[0], 77.603);

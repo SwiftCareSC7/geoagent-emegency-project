@@ -32,7 +32,9 @@ export const REALTIME_EVENTS = {
   DECISION_CREATED: 'decision.created',
   DECISION_APPROVED: 'decision.approved',
   DECISION_REJECTED: 'decision.rejected',
-  DECISION_EXECUTED: 'decision.executed'
+  DECISION_EXECUTED: 'decision.executed',
+  V2X_GREEN_WAVE_UPDATED: 'v2x.green_wave.updated',
+  ORCHESTRATION_COMPLETED: 'orchestration.completed'
 } as const;
 
 export type RealtimeEventName = (typeof REALTIME_EVENTS)[keyof typeof REALTIME_EVENTS];
