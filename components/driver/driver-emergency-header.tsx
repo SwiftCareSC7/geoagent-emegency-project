@@ -23,6 +23,8 @@ interface DriverEmergencyHeaderProps {
   etaMinutes?: number
   delayMinutes?: number
   emergencyActive?: boolean
+  scenarioTitle?: string
+  onOpenScenarios?: () => void
   className?: string
 }
 
@@ -34,6 +36,8 @@ export function DriverEmergencyHeader({
   etaMinutes = 12,
   delayMinutes = 3,
   emergencyActive = true,
+  scenarioTitle,
+  onOpenScenarios,
   className = ''
 }: DriverEmergencyHeaderProps) {
   // Visual & text styling for Priority

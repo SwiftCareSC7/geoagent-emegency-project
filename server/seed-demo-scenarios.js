@@ -59,7 +59,9 @@ async function run() {
   console.log(`  Emergencies:  ${result.stats.emergenciesCount}`);
   console.log(`  Incidents:    ${result.stats.incidentsCount}`);
   console.log(`  Routes:       ${result.stats.routesCount}`);
-  console.log(`  Trajectories: ${result.stats.trajectoriesCount}`);
+  console.log(`  Trajectories:       ${result.stats.trajectoriesCount}`);
+  console.log(`  Clearance Sessions: ${result.stats.clearanceSessionsCount}`);
+  console.log(`  Decisions:          ${result.stats.decisionsCount}`);
 
   console.log('================================================================\n');
   await mongoose.disconnect();

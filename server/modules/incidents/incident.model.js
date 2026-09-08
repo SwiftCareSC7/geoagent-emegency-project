@@ -23,7 +23,7 @@ const incidentSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['ACCIDENT', 'ROAD_CLOSURE', 'ROAD_WORK', 'TRAFFIC_JAM', 'FIRE', 'WEATHER', 'PUBLIC_EVENT', 'OTHER'],
+      enum: ['ACCIDENT', 'ROAD_CLOSURE', 'ROAD_WORK', 'TRAFFIC_JAM', 'HEAVY_TRAFFIC', 'VEHICLE_BREAKDOWN', 'LANE_BLOCKAGE', 'FIRE', 'WEATHER', 'PUBLIC_EVENT', 'OTHER'],
       required: true
     },
     severity: {
