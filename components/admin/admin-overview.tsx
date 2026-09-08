@@ -18,13 +18,15 @@ import {
   Sparkles
 } from 'lucide-react'
 import { adminApi } from '@/lib/api/admin'
-import type { AdminSystemStats, AdminDatabaseHealth, AdminSystemHealthSummary } from '@/lib/api/types'
+import { decisionApi } from '@/lib/api/decisions'
+import type { AdminSystemStats, AdminDatabaseHealth, AdminSystemHealthSummary, Decision } from '@/lib/api/types'
 import { Button } from '@/components/ui/button'
 
 export function AdminOverview() {
   const [stats, setStats] = useState<AdminSystemStats | null>(null)
   const [dbHealth, setDbHealth] = useState<AdminDatabaseHealth | null>(null)
   const [providers, setProviders] = useState<AdminSystemHealthSummary | null>(null)
+  const [recentDecisions, setRecentDecisions] = useState<Decision[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -35,14 +37,18 @@ export function AdminOverview() {
     setError(null)
 
     try {
-      const [statsRes, healthRes, provRes] = await Promise.all([
+      const [statsRes, healthRes, provRes, decRes] = await Promise.all([
         adminApi.getStats(),
         adminApi.getHealth(),
-        adminApi.getProviders()
+        adminApi.getProviders(),
+        decisionApi.list().catch(() => ({ data: [] }))
       ])
       setStats(statsRes.data)
       setDbHealth(healthRes.data)
       setProviders(provRes.data)
+      if (decRes && Array.isArray(decRes.data)) {
+        setRecentDecisions(decRes.data.slice(0, 5))
+      }
     } catch (err: any) {
       setError(err?.message || 'Failed to load system overview telemetry')
     } finally {
@@ -358,6 +364,76 @@ export function AdminOverview() {
           </div>
         </div>
       </div>
+
+      {/* Recent Authoritative Operational Decisions */}
+      {recentDecisions.length > 0 && (
+        <div className="rounded-2xl border border-border/40 bg-card/40 p-5 backdrop-blur-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <BrainCircuit className="size-4 text-amber-500" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Recent Operational Decisions & Approvals
+              </h4>
+            </div>
+            <span className="text-xs text-muted-foreground font-mono">
+              Deterministic Engine & Human Operator
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-border/40 text-muted-foreground font-mono uppercase text-[10px]">
+                <tr>
+                  <th className="py-2 px-3">Decision ID</th>
+                  <th className="py-2 px-3">Emergency</th>
+                  <th className="py-2 px-3">Action</th>
+                  <th className="py-2 px-3">Status</th>
+                  <th className="py-2 px-3">Summary Rationale</th>
+                  <th className="py-2 px-3">Evaluated At</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/20">
+                {recentDecisions.map((dec) => (
+                  <tr key={dec.id || dec.decisionId} className="hover:bg-muted/10 transition-colors">
+                    <td className="py-2.5 px-3 font-mono text-foreground font-medium">
+                      {dec.decisionId}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-muted-foreground">
+                      {dec.emergencyId}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span className="font-mono font-semibold text-primary">
+                        {dec.action}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-[10px] font-semibold ${
+                          dec.status === 'APPROVED'
+                            ? 'bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/20'
+                            : dec.status === 'REJECTED'
+                            ? 'bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/20'
+                            : dec.status === 'EXECUTED'
+                            ? 'bg-blue-500/10 text-blue-500 ring-1 ring-blue-500/20'
+                            : 'bg-amber-500/10 text-amber-500 ring-1 ring-amber-500/20'
+                        }`}
+                      >
+                        {dec.status}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-muted-foreground max-w-xs truncate" title={dec.details?.summary || ''}>
+                      {dec.details?.summary || '—'}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-muted-foreground">
+                      {dec.evaluatedAt ? new Date(dec.evaluatedAt).toLocaleTimeString() : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

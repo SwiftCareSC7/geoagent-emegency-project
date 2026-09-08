@@ -177,19 +177,31 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
       }
 
       // 3. Concurrent sub-resource requests
-      const promises: Promise<unknown>[] = []
-
-      // Route for emergency
+      // Route for emergency & authoritative route comparison
       const routePromise = routeApi
         .getForEmergency(emergencyId)
-        .then((res) => {
+        .then(async (res) => {
           if (res.data && res.data.length > 0) {
-            setRoute(res.data[0])
+            const activeRoute = res.data[0]
+            setRoute(activeRoute)
+            try {
+              const compRes = await routeApi.compare(activeRoute.routeId)
+              if (compRes && compRes.data) {
+                setComparisonData(compRes.data)
+              }
+            } catch {
+              // Fallback to orchestration comparison
+              setComparisonData(null)
+            }
           } else {
             setRoute(null)
+            setComparisonData(null)
           }
         })
-        .catch(() => setRoute(null))
+        .catch(() => {
+          setRoute(null)
+          setComparisonData(null)
+        })
       promises.push(routePromise)
 
       // Vehicle details if assigned
@@ -272,6 +284,17 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Handle Socket.IO reconnection — auto re-sync state
+  useEffect(() => {
+    if (reconnected) {
+      loadData();
+      const timer = setTimeout(() => {
+        acknowledgeReconnect();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [reconnected, acknowledgeReconnect, loadData]);
 
   // Handle Trajectory pagination change
   const handlePageChange = async (newPage: number) => {
@@ -421,6 +444,39 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         </div>
       </div>
 
+      {/* Realtime Connection Status Alerts */}
+      {!socketConnected && (
+        <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs flex items-center justify-between gap-2 shadow-sm animate-pulse">
+          <div className="flex items-center gap-2">
+            <WifiOff className="h-4 w-4 shrink-0 text-amber-500" />
+            <span className="font-medium">
+              REALTIME CONNECTION LOST — Operating in Polling Fallback mode. Retrying websocket connection...
+            </span>
+          </div>
+          <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-300">
+            Auto-reconnecting
+          </span>
+        </div>
+      )}
+
+      {reconnected && (
+        <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs flex items-center justify-between gap-2 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Wifi className="h-4 w-4 shrink-0 text-emerald-500" />
+            <span className="font-medium">
+              REALTIME CONNECTION RESTORED — Emergency stream resynchronized with backend state.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={acknowledgeReconnect}
+            className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-300 transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Global error banner */}
       {error && (
         <div className="p-4 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
@@ -438,24 +494,25 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         </div>
       )}
 
-      {/* Section 2: Real-Time Arrival & Delay Prediction */}
+      {/* Section 2: Real-Time Arrival & Delay Prediction (with Prediction Change Visualization) */}
       <PredictionIntelligencePanel
         prediction={prediction}
         livePrediction={livePrediction}
+        predictionDelta={predictionDelta}
         isLoading={loading}
       />
 
-      {/* Section 3: "Why did the route change?" & "What if we do nothing?" Comparison */}
+      {/* Section 3 & 4: Route Comparison & Deterministic What-If Analysis */}
       <RouteComparisonCard
         currentRoute={route}
-        alternatives={(orchestrationResult?.geoAgent as any)?.comparison?.alternatives || []}
-        whyRouteChanged={(orchestrationResult?.geoAgent as any)?.whyRouteChanged || []}
-        whatIfDoNothing={(orchestrationResult?.geoAgent as any)?.comparison?.whatIfDoNothing}
-        currentEtaMinutes={situationAnalysis?.eta?.currentMinutes}
-        plannedEtaMinutes={situationAnalysis?.eta?.originalMinutes}
+        alternatives={comparisonData?.alternatives || (orchestrationResult?.geoAgent as any)?.comparison?.alternatives || []}
+        whyRouteChanged={comparisonData?.whyRouteChanged || (orchestrationResult?.geoAgent as any)?.whyRouteChanged || []}
+        whatIfDoNothing={comparisonData?.whatIfDoNothing || (orchestrationResult?.geoAgent as any)?.comparison?.whatIfDoNothing}
+        currentEtaMinutes={comparisonData?.currentRoute?.etaMinutes || prediction?.predictedDurationMinutes || situationAnalysis?.eta?.currentMinutes}
+        plannedEtaMinutes={comparisonData?.currentRoute?.plannedEtaMinutes || situationAnalysis?.eta?.originalMinutes}
       />
 
-      {/* Section 4: Authoritative Decision Engine & Operator Approval Card */}
+      {/* Section 5: Authoritative Decision Engine & Operator Approval Card */}
       <DecisionApprovalCard
         decision={decision}
         liveDecision={liveDecision}
@@ -463,39 +520,54 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         onDecisionUpdated={(updated) => setDecision(updated)}
       />
 
-      {/* Section 5: Expected Route Corridor */}
+      {/* Section 6: Expected Route Corridor */}
       <RouteAnalysisPanel route={route} loading={loading} />
 
-      {/* Section 6: Vehicle Movement & GPS Telemetry Table */}
+      {/* Section 7: Vehicle Movement & GPS Telemetry Table (with LIVE / STALE / UNKNOWN badges) */}
       <VehicleMovementPanel
         vehicle={vehicle}
         latestFix={latestTrajectory}
         history={trajectoryHistory}
         totalFixes={trajectoryTotal}
         loading={loading}
+        freshness={freshness}
+        ageString={getAgeString()}
         page={trajectoryPage}
         limit={5}
         onPageChange={handlePageChange}
         onRefresh={loadData}
       />
 
-      {/* Section 7: Corridor Deviation & Traffic Intelligence */}
+      {/* Section 8: Corridor Deviation & Traffic Intelligence */}
       <DeviationAnalysisPanel
         analysis={situationAnalysis}
         loading={loading}
       />
 
-      {/* Section 8: Corridor Hazards & Correlated Incidents */}
+      {/* Section 9: Corridor Hazards & Correlated Incidents */}
       <CorrelatedIncidentsPanel
         correlatedIncidents={situationAnalysis?.incidents || []}
         loading={loading}
       />
 
-      {/* Section 9: 3-Tier Epistemic Analysis */}
+      {/* Section 10: 3-Tier Epistemic Analysis (Gemini Advisory Reasoning vs Deterministic Rules) */}
       <EpistemicBreakdownCard
         breakdown={orchestrationResult?.epistemicBreakdown}
         executionTimeMs={orchestrationResult?.executionTimeMs}
         loading={loading}
+      />
+
+      {/* Section 11: Unified Chronological Event & Audit Timeline */}
+      <EventTimelineCard
+        emergency={emergency}
+        vehicle={vehicle}
+        route={route}
+        latestFix={latestTrajectory}
+        prediction={prediction}
+        decision={decision}
+        liveDecision={liveDecision}
+        situation={situationAnalysis}
+        liveEvents={liveEvents}
       />
     </div>
   )

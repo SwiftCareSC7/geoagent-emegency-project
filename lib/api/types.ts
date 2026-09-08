@@ -84,6 +84,9 @@ export interface Vehicle {
   driverContact?: string
   hospitalName?: string
   hospitalCode?: string
+  speed?: number
+  heading?: number
+  location?: GeoJSONPoint
   createdAt?: string
   updatedAt?: string
 }
@@ -292,6 +295,9 @@ export interface Route {
   geometry: GeoJSONLineString
   distance: number // meters
   duration: number // seconds
+  distanceMeters?: number
+  durationSeconds?: number
+  description?: string
   provider?: RouteProvider
   status: RouteStatus
   routeType?: RouteType
@@ -414,15 +420,32 @@ export type DecisionStatus =
   | 'AUTO_APPLIED'
 
 export interface Decision {
-  id: string
+  id?: string
+  _id?: string
   decisionId: string
-  emergency: string
-  vehicle: string
-  primaryAction: DecisionAction
-  severity: DecisionSeverity
+  emergency?: string
+  emergencyId?: string
+  vehicle?: string
+  vehicleId?: string
+  primaryAction?: DecisionAction
+  action?: string | DecisionAction
+  severity?: DecisionSeverity
   status: DecisionStatus
-  reasonCodes: string[]
-  situationHash: string
+  reasonCodes?: string[]
+  situationHash?: string
+  details?: {
+    summary?: string
+    reasoning?: string[]
+    [key: string]: any
+  }
+  evaluatedAt?: string
+  approvedBy?: string
+  approvedAt?: string
+  rejectedBy?: string
+  rejectedAt?: string
+  rejectionReason?: string
+  executedAt?: string
+  executionSummary?: string
   createdAt?: string
   updatedAt?: string
 }

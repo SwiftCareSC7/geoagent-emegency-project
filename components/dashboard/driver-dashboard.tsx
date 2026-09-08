@@ -22,6 +22,7 @@ import { emergencyApi } from '@/lib/api/emergencies'
 import { incidentApi } from '@/lib/api/incidents'
 import type { Emergency, Vehicle, Incident } from '@/lib/api/types'
 import type { DashboardData } from '@/lib/mock-data'
+import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { cn } from '@/lib/utils'
 
 import { DashboardTopbar } from './dashboard-topbar'
@@ -179,6 +180,103 @@ export function DriverDashboard({ data }: { data: DashboardData }) {
     fetchLiveData()
   }, [fetchLiveData])
 
+  // Real-time Socket.IO subscriptions for Control Room fleet and emergency updates
+  const [socketConnected, setSocketConnected] = useState(false)
+
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+
+    const onConnect = () => {
+      setSocketConnected(true)
+      socket.emit('room:join', { room: 'control-room' })
+    }
+    const onDisconnect = () => setSocketConnected(false)
+
+    if (socket.connected) {
+      setSocketConnected(true)
+      socket.emit('room:join', { room: 'control-room' })
+    }
+
+    socket.on('connect', onConnect)
+    socket.on('disconnect', onDisconnect)
+
+    // Real-time Vehicle Location / Telemetry
+    const onLocationUpdated = (envelope: any) => {
+      const payload = envelope?.data || envelope
+      if (!payload?.vehicleId) return
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.vehicleId === payload.vehicleId
+            ? {
+                ...v,
+                speed: payload.speed ?? v.speed,
+                heading: payload.heading ?? v.heading,
+                location: payload.location
+                  ? { type: 'Point', coordinates: payload.location.coordinates }
+                  : v.location,
+              }
+            : v
+        )
+      )
+    }
+
+    // Real-time Vehicle Status
+    const onStatusUpdated = (envelope: any) => {
+      const payload = envelope?.data || envelope
+      if (!payload?.vehicleId) return
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v.vehicleId === payload.vehicleId
+            ? { ...v, status: payload.status }
+            : v
+        )
+      )
+    }
+
+    // Real-time Emergency Updates
+    const onEmergencyUpdated = (envelope: any) => {
+      const payload = envelope?.data || envelope
+      if (!payload?.emergencyId) return
+      setEmergencies((prev) => {
+        const idx = prev.findIndex((e) => e.emergencyId === payload.emergencyId)
+        if (idx >= 0) {
+          const updated = [...prev]
+          updated[idx] = { ...updated[idx], ...payload }
+          return updated
+        }
+        return [payload, ...prev]
+      })
+    }
+
+    // Real-time Decision Changes
+    const onDecisionEvent = () => {
+      // Refresh emergencies non-blockingly to reflect updated routes / decisions
+      fetchLiveData()
+    }
+
+    socket.on(REALTIME_EVENTS.VEHICLE_LOCATION_UPDATED, onLocationUpdated)
+    socket.on(REALTIME_EVENTS.VEHICLE_STATUS_UPDATED, onStatusUpdated)
+    socket.on(REALTIME_EVENTS.EMERGENCY_UPDATED, onEmergencyUpdated)
+    socket.on(REALTIME_EVENTS.EMERGENCY_CREATED, onEmergencyUpdated)
+    socket.on(REALTIME_EVENTS.DECISION_CREATED, onDecisionEvent)
+    socket.on(REALTIME_EVENTS.DECISION_APPROVED, onDecisionEvent)
+    socket.on(REALTIME_EVENTS.DECISION_EXECUTED, onDecisionEvent)
+
+    return () => {
+      socket.off('connect', onConnect)
+      socket.off('disconnect', onDisconnect)
+      socket.off(REALTIME_EVENTS.VEHICLE_LOCATION_UPDATED, onLocationUpdated)
+      socket.off(REALTIME_EVENTS.VEHICLE_STATUS_UPDATED, onStatusUpdated)
+      socket.off(REALTIME_EVENTS.EMERGENCY_UPDATED, onEmergencyUpdated)
+      socket.off(REALTIME_EVENTS.EMERGENCY_CREATED, onEmergencyUpdated)
+      socket.off(REALTIME_EVENTS.DECISION_CREATED, onDecisionEvent)
+      socket.off(REALTIME_EVENTS.DECISION_APPROVED, onDecisionEvent)
+      socket.off(REALTIME_EVENTS.DECISION_EXECUTED, onDecisionEvent)
+      socket.emit('room:leave', { room: 'control-room' })
+    }
+  }, [fetchLiveData])
+
   const handleRefresh = async () => {
     setRefreshing(true)
     await Promise.all([
@@ -241,6 +339,20 @@ export function DriverDashboard({ data }: { data: DashboardData }) {
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono border border-border bg-card shadow-xs">
+              {socketConnected ? (
+                <span className="flex items-center gap-1.5 text-emerald-500 font-bold">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>CONTROL STREAM LIVE</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                  <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
+                  <span>POLLING</span>
+                </span>
+              )}
+            </div>
+
             <Button
               onClick={handleRefresh}
               disabled={refreshing || loadingLive}
