@@ -43,6 +43,10 @@ export const REALTIME_EVENTS = {
   DECISION_APPROVED: 'decision.approved',
   DECISION_REJECTED: 'decision.rejected',
   DECISION_EXECUTED: 'decision.executed',
+  CLEARANCE_DETECTED: 'clearance.detected',
+  CLEARANCE_ALERT_SENT: 'clearance.alert_sent',
+  CLEARANCE_STATUS_UPDATED: 'clearance.status_updated',
+  CLEARANCE_CLEARED: 'clearance.cleared',
   V2X_GREEN_WAVE_UPDATED: 'v2x.green_wave.updated',
   ORCHESTRATION_COMPLETED: 'orchestration.completed'
 } as const;

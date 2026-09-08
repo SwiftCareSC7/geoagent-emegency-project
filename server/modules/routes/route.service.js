@@ -271,6 +271,73 @@ class RouteService {
       incidents
     });
   }
+
+  /**
+   * Accepts and activates a recommended reroute
+   * @param {String} routeId
+   * @param {Object} rerouteData { geometry, distanceMeters, durationSeconds, preference, steps, reason }
+   * @param {String} userId
+   * @returns {Promise<Object>} Updated route
+   */
+  async acceptReroute(routeId, rerouteData = {}, userId = null) {
+    const route = await Route.findOne({ routeId });
+    if (!route) {
+      const error = new Error('Route not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    if (rerouteData.geometry) {
+      route.geometry = rerouteData.geometry;
+    }
+    if (rerouteData.distanceMeters) {
+      route.distance = rerouteData.distanceMeters;
+    }
+    if (rerouteData.durationSeconds) {
+      route.duration = rerouteData.durationSeconds;
+    }
+    if (rerouteData.preference) {
+      route.preference = rerouteData.preference;
+    }
+    if (Array.isArray(rerouteData.steps) && rerouteData.steps.length > 0) {
+      route.steps = rerouteData.steps;
+    }
+
+    route.routeType = 'RECOMMENDED';
+    route.status = 'ACTIVE';
+    route.updatedBy = userId;
+    await route.save();
+
+    // Broadcast over Socket.IO
+    try {
+      const emergency = await Emergency.findById(route.emergency);
+      const vehicle = await Vehicle.findById(route.vehicle);
+      const payload = {
+        routeId: route.routeId,
+        emergencyId: emergency?.emergencyId || null,
+        vehicleId: vehicle?.vehicleId || null,
+        routeType: route.routeType,
+        status: 'REROUTE_ACCEPTED',
+        distanceMeters: route.distance,
+        durationSeconds: route.duration,
+        preference: route.preference,
+        stepsCount: (route.steps || []).length,
+        reason: rerouteData.reason || 'GeoAgent recommended faster bypass accepted by driver',
+        timestamp: new Date().toISOString()
+      };
+
+      realtimeService.emitRouteUpdated(
+        emergency?.emergencyId || 'ALL',
+        vehicle?.vehicleId || 'ALL',
+        payload
+      );
+    } catch (err) {
+      console.error(`[RouteService] Reroute socket broadcast error: ${err.message}`);
+    }
+
+    return route;
+  }
 }
 
 export default new RouteService();

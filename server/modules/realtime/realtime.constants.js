@@ -19,7 +19,11 @@ export const REALTIME_EVENTS = {
   DECISION_CREATED: 'decision.created',
   DECISION_APPROVED: 'decision.approved',
   DECISION_REJECTED: 'decision.rejected',
-  DECISION_EXECUTED: 'decision.executed'
+  DECISION_EXECUTED: 'decision.executed',
+  CLEARANCE_DETECTED: 'clearance.detected',
+  CLEARANCE_ALERT_SENT: 'clearance.alert_sent',
+  CLEARANCE_STATUS_UPDATED: 'clearance.status_updated',
+  CLEARANCE_CLEARED: 'clearance.cleared'
 };
 
 export const CLIENT_COMMANDS = {

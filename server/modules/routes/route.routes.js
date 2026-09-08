@@ -2,7 +2,7 @@ import express from 'express';
 import { protect } from '../auth/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/roleMiddleware.js';
 import { validateRouteCreate } from './route.validation.js';
-import { createRoute, getRoutes, getRoute, getRouteAnalysis, compareRoute, getCorridorV2X, calculateRoute } from './route.controller.js';
+import { createRoute, getRoutes, getRoute, getRouteAnalysis, compareRoute, getCorridorV2X, calculateRoute, acceptReroute } from './route.controller.js';
 
 const router = express.Router();
 
@@ -11,6 +11,7 @@ router.use(protect);
 router.use(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'));
 
 router.post('/calculate', calculateRoute);
+router.post('/:routeId/accept-reroute', acceptReroute);
 
 router.route('/')
   .post(validateRouteCreate, createRoute)

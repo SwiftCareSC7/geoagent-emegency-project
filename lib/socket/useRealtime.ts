@@ -197,6 +197,7 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
   const [predictionDelta, setPredictionDelta] = useState<PredictionChangeDelta | null>(null);
   const [liveDecision, setLiveDecision] = useState<RealtimeDecisionUpdate | null>(null);
   const [liveGreenWave, setLiveGreenWave] = useState<RealtimeGreenWaveUpdate | null>(null);
+  const [liveClearance, setLiveClearance] = useState<any | null>(null);
   const [liveEvents, setLiveEvents] = useState<LiveTimelineEvent[]>([]);
   const [lastEventTime, setLastEventTime] = useState<Date | null>(null);
   const [freshness, setFreshness] = useState<DataFreshness>('UNKNOWN');
@@ -432,6 +433,26 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       }
     );
 
+    const unsubClearance = subscribeEvent<any>(
+      REALTIME_EVENTS.CLEARANCE_STATUS_UPDATED,
+      (data) => {
+        if (!vehicleId || data.vehicleId === vehicleId) {
+          setLiveClearance(data);
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `clearance-${now.getTime()}`,
+            type: 'CLEARANCE_STATUS_UPDATED',
+            label: 'Emergency Clearance Updated',
+            detail: `${data.summary?.totalCleared || 0}/${data.connectedVehicles?.length || 3} vehicles cleared path (Simulated V2X)`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: 'success'
+          });
+        }
+      }
+    );
+
     return () => {
       unsubLocation();
       unsubDeviation();
@@ -441,6 +462,7 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       unsubDecisionRejected();
       unsubDecisionExecuted();
       unsubGreenWave();
+      unsubClearance();
     };
   }, [emergencyId, vehicleId, addTimelineEvent]);
 
@@ -486,6 +508,7 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
     predictionDelta,
     liveDecision,
     liveGreenWave,
+    liveClearance,
     liveEvents,
     lastEventTime,
     freshness,

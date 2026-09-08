@@ -211,3 +211,26 @@ export const getCorridorV2X = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Accept and activate a recommended reroute
+ * @route   POST /api/routes/:routeId/accept-reroute
+ * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ */
+export const acceptReroute = async (req, res, next) => {
+  try {
+    const { routeId } = req.params;
+    const rerouteData = req.body;
+    const userId = req.user._id;
+
+    const route = await routeService.acceptReroute(routeId, rerouteData, userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Reroute accepted and activated successfully',
+      data: route.toSafeObject()
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+

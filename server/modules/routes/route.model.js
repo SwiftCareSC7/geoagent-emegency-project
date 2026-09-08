@@ -72,7 +72,7 @@ const routeSchema = new mongoose.Schema(
     },
     routeType: {
       type: String,
-      enum: ['PLANNED', 'ALTERNATIVE', 'CURRENT'],
+      enum: ['PLANNED', 'ALTERNATIVE', 'CURRENT', 'RECOMMENDED', 'HISTORICAL'],
       default: 'PLANNED'
     },
     status: {

@@ -102,4 +102,22 @@ export const routeApi = {
   }): Promise<{ success: true; message: string; data: any }> {
     return post<{ success: true; message: string; data: any }>('/routes/calculate', payload)
   },
+
+  /** Accept and activate recommended reroute */
+  acceptReroute(
+    routeId: string,
+    payload: {
+      geometry?: { type: 'LineString'; coordinates: [number, number][] }
+      distanceMeters?: number
+      durationSeconds?: number
+      preference?: 'FASTEST' | 'SHORTEST'
+      steps?: any[]
+      reason?: string
+    },
+  ): Promise<{ success: true; message: string; data: Route }> {
+    return post<{ success: true; message: string; data: Route }>(
+      `/routes/${encodeURIComponent(routeId)}/accept-reroute`,
+      payload,
+    )
+  },
 }
