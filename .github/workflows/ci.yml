@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────
+# SwiftCare GeoAgent — CI Pipeline
+# Runs on every push and pull request
+# ─────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-build:
+    name: Lint, Typecheck & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # ── Frontend ──
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Build Next.js frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://placeholder.run.app/api
+          NEXT_PUBLIC_SOCKET_URL: https://placeholder.run.app
+
+      # ── Backend ──
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      # ── Docker ──
+      - name: Verify Docker build
+        working-directory: server
+        run: docker build -t geoagent-backend-ci-test .

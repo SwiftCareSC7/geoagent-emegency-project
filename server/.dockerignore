@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────
+# SwiftCare GeoAgent — Docker Ignore
+# Keeps the Docker build context minimal and secure
+# ─────────────────────────────────────────────────────────
+
+# Dependencies (rebuilt inside container)
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Tests and development tooling
+test-*.js
+seed-*.js
+nodemon.json
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor and OS files
+.DS_Store
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
