@@ -37,7 +37,8 @@ class RouteComparisonService {
     currentVehicleState = null,
     predictionState = null,
     deviationState = null,
-    incidents = []
+    incidents = [],
+    v2xCorridor = null
   }) {
     const evaluatedAt = new Date().toISOString();
 

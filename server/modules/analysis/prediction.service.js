@@ -17,6 +17,7 @@ import Trajectory from '../trajectories/trajectory.model.js';
 import deviationService from '../deviation/deviation.service.js';
 import trafficService from '../traffic/traffic.service.js';
 import analysisService from './analysis.service.js';
+import corridorGreenWaveService from '../routes/corridorGreenWave.service.js';
 import { calculateRouteProgress } from '../../shared/services/geospatial.service.js';
 import realtimeService from '../realtime/realtime.service.js';
 
@@ -162,7 +163,8 @@ class PredictionService {
     deviation,
     traffic,
     incidents = [],
-    historicalSpeedKmh = null
+    historicalSpeedKmh = null,
+    v2x = null
   }) {
     const factors = [];
     const now = Date.now();
@@ -267,6 +269,20 @@ class PredictionService {
         impact: 'REROUTING_OVERHEAD',
         epistemicType: 'OBSERVED'
       });
+    }
+
+    // 6b. V2X Green-Wave Preemption Benefit
+    let greenWaveSavingsSec = 0;
+    if (v2x && v2x.corridorSummary && v2x.corridorSummary.preemptedCount > 0) {
+      greenWaveSavingsSec = Math.min(predictedRemainingSeconds - 60, Math.round(v2x.corridorSummary.preemptedCount * 45));
+      if (greenWaveSavingsSec > 0) {
+        predictedRemainingSeconds = Math.max(60, predictedRemainingSeconds - greenWaveSavingsSec);
+        factors.push({
+          factor: `V2X Green-Wave preemption active across ${v2x.corridorSummary.preemptedCount} signal(s) (-${(greenWaveSavingsSec / 60).toFixed(1)} min savings)`,
+          impact: 'PREEMPTION_ADVANTAGE',
+          epistemicType: 'OBSERVED'
+        });
+      }
     }
 
     // 7. Compute Delay & Risk
@@ -413,6 +429,13 @@ class PredictionService {
       // Non-blocking query
     }
 
+    let v2x = null;
+    try {
+      v2x = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicleId, { silent: true });
+    } catch {
+      // Non-blocking if corridor cannot be evaluated
+    }
+
     const prediction = this.calculatePrediction({
       latestTrajectory,
       recentTrajectories,
@@ -421,7 +444,8 @@ class PredictionService {
       deviation,
       traffic,
       incidents,
-      historicalSpeedKmh
+      historicalSpeedKmh,
+      v2x
     });
 
     const emergencyId = route && route.emergency ? route.emergency.emergencyId : null;

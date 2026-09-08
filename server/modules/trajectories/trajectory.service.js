@@ -2,6 +2,7 @@ import Trajectory from './trajectory.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import realtimeService from '../realtime/realtime.service.js';
 import predictionService from '../analysis/prediction.service.js';
+import corridorGreenWaveService from '../routes/corridorGreenWave.service.js';
 import { formatVehicleLocationPayload } from '../realtime/realtime.events.js';
 import { calculateDistance } from '../../shared/services/geospatial.service.js';
 
@@ -151,9 +152,12 @@ export const createTrajectory = async (trajectoryData) => {
   if (timeSinceLast >= 30000 || distMeters >= 100) {
     vehicleLastPredictionTimes.set(vehicle.vehicleId, now);
     vehicleLastPredictionLocations.set(vehicle.vehicleId, validLocation);
-    // Fire-and-forget background prediction refresh so ingestion stays fast (< 20ms)
+    // Fire-and-forget background prediction & V2X corridor refresh so ingestion stays fast (< 20ms)
     predictionService.predictForVehicle(vehicle.vehicleId).catch(() => {
       // Non-fatal if vehicle is not currently assigned to an active route
+    });
+    corridorGreenWaveService.analyzeCorridorForVehicle(vehicle.vehicleId).catch(() => {
+      // Non-fatal if vehicle is not currently assigned to an active corridor
     });
   }
 
