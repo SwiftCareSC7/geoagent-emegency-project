@@ -194,6 +194,50 @@ class PythonRoutingBridgeService {
   }
 
   /**
+   * Checks whether the Python3 runtime and script are available
+   * @returns {Object} { available, engine, message, version }
+   */
+  checkAvailability() {
+    if (!fs.existsSync(this.scriptPath)) {
+      return {
+        available: true,
+        engine: 'javascript-fallback',
+        status: 'DEGRADED',
+        message: 'Python script not found; using in-process JS fallback V2X engine'
+      };
+    }
+    try {
+      const proc = spawnSync(this.pythonExecutable, ['--version'], {
+        timeout: 1000,
+        encoding: 'utf8'
+      });
+      if (proc.status === 0) {
+        const version = (proc.stdout || proc.stderr || '').trim();
+        return {
+          available: true,
+          engine: 'python',
+          status: 'AVAILABLE',
+          version,
+          message: `Native Python V2X engine active (${version})`
+        };
+      }
+      return {
+        available: true,
+        engine: 'javascript-fallback',
+        status: 'DEGRADED',
+        message: 'Python process unavailable; running in Node.js fallback V2X engine'
+      };
+    } catch (err) {
+      return {
+        available: true,
+        engine: 'javascript-fallback',
+        status: 'DEGRADED',
+        message: `Running in Node.js fallback V2X engine (${err.message})`
+      };
+    }
+  }
+
+  /**
    * Executes the Python spatial V2X bridge or falls back to JS implementation
    * @param {Object} params
    * @returns {Object} V2X Corridor analysis result

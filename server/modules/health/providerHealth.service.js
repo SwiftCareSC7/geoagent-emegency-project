@@ -8,6 +8,8 @@
  */
 
 import mongoose from 'mongoose';
+import realtimeService from '../realtime/realtime.service.js';
+import pythonRoutingBridge from '../routes/pythonRoutingBridge.service.js';
 
 class ProviderHealthService {
   /**
@@ -73,6 +75,16 @@ class ProviderHealthService {
     const mongoState = mongoose.connection.readyState;
     const mongoStatus = mongoStateMap[mongoState] || 'UNKNOWN';
 
+    // 5. Python / V2X Engine Health
+    const pythonCheck = pythonRoutingBridge.checkAvailability();
+
+    // 6. Socket.IO Gateway Health
+    const socketReady = realtimeService.isReady();
+    const socketStatus = socketReady ? 'AVAILABLE' : 'UNAVAILABLE';
+    const socketMessage = socketReady
+      ? 'Socket.IO gateway initialized and accepting real-time connections'
+      : 'Socket.IO server instance not yet attached';
+
     return {
       timestamp: new Date().toISOString(),
       activeRoutingProvider: routingProvider,
@@ -103,6 +115,19 @@ class ProviderHealthService {
           status: geminiStatus,
           configured: geminiConfigured,
           message: geminiMessage
+        },
+        pythonV2X: {
+          provider: 'python-v2x',
+          status: pythonCheck.status,
+          engine: pythonCheck.engine,
+          configured: true,
+          message: pythonCheck.message
+        },
+        socketIO: {
+          provider: 'socket.io',
+          status: socketStatus,
+          configured: true,
+          message: socketMessage
         }
       }
     };
