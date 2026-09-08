@@ -512,3 +512,54 @@ Trajectories          Routes                     │         │
   - `driver-dashboard.tsx`: When backend Express APIs are offline or return empty collections, gracefully falls back to structured demonstration fixtures (`MOCK_VEHICLES`, `MOCK_EMERGENCIES`, `MOCK_INCIDENTS`), removing intrusive red sync banners for a polished user experience.
   - `lib/auth/context.tsx`: Resilient local session fallback preventing unhandled login drops when developing detached from MongoDB.
   - `server/config/db.js`: Non-crashing connection handler allowing the Express server to stay alive for offline mock responses if MongoDB is temporarily stopped.
+
+---
+
+## 19. Production Deployment Architecture (Phase 8)
+
+- **Target Stack**:
+  - Backend: Google Cloud Run (containerized Node.js/Express/Socket.IO)
+  - Frontend: Vercel (Next.js)
+  - Database: MongoDB Atlas (managed)
+  - CI/CD: GitHub Actions (lint, typecheck, build, Docker, deploy)
+- **Dockerfile** (`server/Dockerfile`):
+  - Multi-stage build: `node:22-slim` builder → slim runner
+  - Non-root user (`node`), production-only dependencies
+  - Health check built into container definition
+- **CI Pipeline** (`.github/workflows/ci.yml`):
+  - Runs on every push/PR: TypeScript typecheck, Next.js build, Docker build verification
+- **Deploy Pipeline** (`.github/workflows/deploy.yml`):
+  - Runs on push to `main` (server changes only)
+  - Workload Identity Federation authentication (no long-lived keys)
+  - Build → Artifact Registry → Cloud Run deployment
+  - Post-deploy health verification
+- **Server Hardening** (`server/server.js`):
+  - Environment validation: `JWT_SECRET` and `MONGO_URI` required in production (fatal if missing)
+  - Bind `0.0.0.0` for Cloud Run container networking
+  - Liveness probe: `GET /api/health/live` (no external deps)
+  - Readiness probe: `GET /api/health/ready` (checks MongoDB)
+  - Version/uptime metadata in `GET /api/health`
+  - Production error suppression (no stack traces)
+- **Database Security** (`server/config/db.js`):
+  - Connection string redacted from logs (masks credentials)
+  - Production fail-fast: crashes if MongoDB unreachable (no silent fallback)
+- **Cross-Domain Auth** (`server/modules/auth/auth.controller.js`):
+  - `SameSite=None; Secure; HttpOnly` in production (Vercel → Cloud Run)
+  - `SameSite=Lax` in development (localhost same-origin)
+  - Logout uses same cookie options for consistent clearing
+- **Socket.IO CORS** (`server/modules/realtime/realtime.service.js`):
+  - Dynamic origin check function matching Express CORS pattern
+  - Vercel subdomain regex: `/^https:\/\/.*\.vercel\.app$/`
+  - Single-instance constraint documented (no Redis adapter)
+- **Provider Health** (`server/modules/health/providerHealth.service.js`):
+  - MongoDB health via `mongoose.connection.readyState`
+  - Non-invasive check (no ping query)
+- **Security Hardening**:
+  - `.gitignore`: blocks `service-account*.json`, `gcp-key*.json`, `credentials*.json`, `*.key`
+  - No secrets in committed code
+  - Credential separation: GCP Secret Manager for production, `.env` for development
+- **Documentation**:
+  - `docs/deployment.md`: Full deployment guide (Atlas, Cloud Run, Vercel, WIF, rollback)
+  - `docs/deployment-checklist.md`: Pre/post-deployment operator checklists
+- **Socket.IO Scaling Constraint**: Cloud Run must use `--max-instances=1` because the in-memory adapter does not support multi-instance broadcasting. Future work: add `@socket.io/redis-adapter`.
+- **Python Routing Engine**: Not containerized. Standalone analysis tool, not a runtime dependency.

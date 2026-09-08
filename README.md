@@ -548,8 +548,25 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 ✅ Emergency Detail Corridor Intelligence        → COMPLETE (Routes, trajectories, deviations, epistemic breakdown, "What-If" analysis)
 ✅ Admin Database & Observability Console        → COMPLETE (/admin, real system stats, MongoDB ping latency, collection explorer)
 ✅ Real-Time Socket.IO Streaming & Hooks         → COMPLETE (Live room push, useSocketStatus, useRealtimeEmergency)
+✅ Docker / CI-CD / Cloud Run                    → COMPLETE (Dockerfile, GitHub Actions CI+Deploy, Cloud Run config)
+✅ Production Deployment Architecture            → COMPLETE (Cloud Run + Vercel + MongoDB Atlas + WIF)
 ⏳ Multi-Call Metropolitan Control Room View     → NEXT SPRINT FOCUS
-❌ Docker / CI-CD                                → NOT CONFIGURED
 ```
 
-> **Current sprint focus**: Multi-call metropolitan control room overview and enterprise deployment packaging.
+---
+
+## 12. Production Deployment
+
+| Component | Target | Configuration |
+|---|---|---|
+| Backend | Google Cloud Run | `server/Dockerfile`, `--min-instances=1 --max-instances=1` |
+| Frontend | Vercel | `.vercelignore`, auto-deploy on push |
+| Database | MongoDB Atlas | Managed, connection via Secret Manager |
+| CI/CD | GitHub Actions | `.github/workflows/ci.yml` + `deploy.yml` |
+| Auth (WIF) | Workload Identity Federation | No long-lived service account keys |
+| Secrets | GCP Secret Manager | `MONGO_URI`, `JWT_SECRET`, API keys |
+| Health | Liveness + Readiness probes | `/api/health/live`, `/api/health/ready` |
+
+See [docs/deployment.md](docs/deployment.md) and [docs/deployment-checklist.md](docs/deployment-checklist.md) for full guides.
+
+> **Current sprint focus**: Multi-call metropolitan control room overview.
