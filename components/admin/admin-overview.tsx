@@ -209,7 +209,7 @@ export function AdminOverview() {
             <span className="text-xs text-muted-foreground">Advisory & Telemetry Ingestion</span>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <RouteIcon className="size-3.5 text-blue-400" /> Google Routes
@@ -234,7 +234,7 @@ export function AdminOverview() {
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Sparkles className="size-3.5 text-purple-400" /> Gemini 2.5 Flash
               </div>
-              <div className="mt-2">{getStatusBadge(providers?.providers?.geminiAi?.status)}</div>
+              <div className="mt-2">{getStatusBadge(providers?.providers?.gemini?.status || providers?.providers?.geminiAi?.status)}</div>
               <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
                 Advisory Reasoning
               </p>
@@ -242,9 +242,19 @@ export function AdminOverview() {
 
             <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Cpu className="size-3.5 text-amber-400" /> Python / V2X
+              </div>
+              <div className="mt-2">{getStatusBadge(providers?.providers?.pythonV2X?.status || 'AVAILABLE')}</div>
+              <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
+                {providers?.providers?.pythonV2X?.engine === 'python' ? 'Native Python 3.12' : 'JS Fallback Engine'}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Radio className="size-3.5 text-cyan-400" /> Socket.IO
               </div>
-              <div className="mt-2">{getStatusBadge('AVAILABLE')}</div>
+              <div className="mt-2">{getStatusBadge(providers?.providers?.socketIO?.status || 'AVAILABLE')}</div>
               <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
                 Live Broadcast
               </p>
