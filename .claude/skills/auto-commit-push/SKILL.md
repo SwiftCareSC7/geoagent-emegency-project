@@ -7,7 +7,7 @@ description: Auto-commit and push local changes to GitHub every 3 minutes with d
 
 This skill keeps your local repository continuously synced with GitHub by:
 
-1. Polling the working tree every **3 minutes** (180 seconds).
+1. Polling the working tree every **5 minutes** (300 seconds).
 2. Detecting any tracked or untracked changes.
 3. Auto-staging, auto-committing with a **detailed multi-line message**, and pushing to the configured remote.
 4. Generating commit messages that describe **what changed, where it changed, and the significance** of the change.
@@ -16,7 +16,7 @@ Default target: `https://github.com/SwiftCareSC7/geoagent-emegency-project.git` 
 
 ## When to use
 
-- User says "commit every 3 min", "auto commit", "push to github automatically", "watch and commit", "background git sync"
+- User says "commit every 5 min", "auto commit", "push to github automatically", "watch and commit", "background git sync"
 - User wants a background process that continuously mirrors local edits to a remote
 - User wants detailed, human-friendly commit messages (not just "auto commit")
 
@@ -87,7 +87,7 @@ cat /Users/priyanshu/Documents/geoagent-emegency-project/.claude/skills/auto-com
 ## How It Works
 
 ```
-                   every 180s (3 min)
+                   every 300s (5 min)
        ┌────────────────────────────────┐
        ▼                                │
   start.sh / auto-commit-loop.sh        │
@@ -150,7 +150,7 @@ Environment variables (all optional, have defaults):
 | `AUTO_COMMIT_REPO_DIR` | `/Users/priyanshu/Documents/geoagent-emegency-project` | Repository root |
 | `AUTO_COMMIT_BRANCH` | `main` | Branch to push to |
 | `AUTO_COMMIT_REMOTE` | `origin` | Remote name |
-| `AUTO_COMMIT_INTERVAL` | `180` | Seconds between ticks |
+| `AUTO_COMMIT_INTERVAL` | `300` | Seconds between ticks |
 | `AUTO_COMMIT_LOG_FILE` | `assets/auto-commit.log` | Log file path |
 | `AUTO_COMMIT_MAX_DIFF_KB` | `50` | Max diff size to analyze |
 

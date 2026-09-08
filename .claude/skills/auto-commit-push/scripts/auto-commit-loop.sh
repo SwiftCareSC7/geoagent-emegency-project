@@ -4,7 +4,7 @@
 # Press Ctrl+C to stop.
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INTERVAL="${AUTO_COMMIT_INTERVAL:-180}"
+INTERVAL="${AUTO_COMMIT_INTERVAL:-300}"
 LOG_FILE="${AUTO_COMMIT_LOG_FILE:-$SKILL_DIR/assets/auto-commit.log}"
 
 mkdir -p "$(dirname "$LOG_FILE")"

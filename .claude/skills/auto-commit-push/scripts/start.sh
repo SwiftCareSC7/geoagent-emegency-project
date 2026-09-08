@@ -26,6 +26,6 @@ NEW_PID=$!
 echo "$NEW_PID" > "$PID_FILE"
 
 echo "Auto-commit loop started in background (PID $NEW_PID)."
-echo "Interval: ${AUTO_COMMIT_INTERVAL:-180}s (3 min)"
+echo "Interval: ${AUTO_COMMIT_INTERVAL:-300}s (5 min)"
 echo "Log: $LOG_FILE"
 echo "Stop with: stop.sh"
