@@ -2,11 +2,56 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
-## [Unreleased] - Control Room Multi-Call Overview & DevOps Packaging
+## [Unreleased] - Multi-Call Metropolitan Control Room
 - Multi-call metropolitan overview page (`/control-room/overview`).
 - Headless Python microservice bridge.
-- Docker Compose unified multi-container environment.
-- GitHub Actions CI/CD automation.
+
+## [2.0.0] - Production Deployment Architecture (Phase 8)
+
+### Added
+- **Docker Containerization** (`server/Dockerfile`):
+  - Multi-stage build with `node:22-slim` base
+  - Non-root `node` user for security
+  - Production-only dependencies, minimal image size
+  - Built-in container health check
+- **Docker Ignore** (`server/.dockerignore`):
+  - Excludes secrets, dev tooling, and test files from build context
+- **GitHub Actions CI** (`.github/workflows/ci.yml`):
+  - Runs on every push/PR: TypeScript typecheck, Next.js build, Docker build verification
+  - Node.js 22, npm cache for fast installs
+- **GitHub Actions Deploy** (`.github/workflows/deploy.yml`):
+  - Runs on push to `main` (server path changes only)
+  - Workload Identity Federation authentication (no long-lived service account keys)
+  - Build → Artifact Registry → Cloud Run deployment
+  - Post-deploy health verification with `curl`
+  - Concurrency control prevents overlapping deployments
+- **Liveness Probe** (`GET /api/health/live`):
+  - Always returns 200, no external dependencies
+  - Used by Cloud Run to detect crashed containers
+- **Readiness Probe** (`GET /api/health/ready`):
+  - Checks MongoDB connection state via `mongoose.connection.readyState`
+  - Returns 503 when database is disconnected
+- **Enhanced Health Endpoint** (`GET /api/health`):
+  - Reports version (`2.0.0`), commit SHA, environment, uptime, and start time
+- **MongoDB Health** in Provider Health:
+  - `providerHealth.service.js` now reports MongoDB connection status alongside Google/Gemini
+- **Deployment Documentation** (`docs/deployment.md`):
+  - Full guide: Atlas setup, GCP project, Cloud Run, Vercel, WIF, rollback, cost control
+- **Deployment Checklist** (`docs/deployment-checklist.md`):
+  - Pre/post-deployment operator checklists with health verification steps
+
+### Changed
+- **Server Bind Address**: Changed from default (localhost) to `0.0.0.0` for Cloud Run container networking
+- **Environment Validation**: `JWT_SECRET` and `MONGO_URI` are fatal-required in production (process exits)
+- **Database Connection Logging**: MongoDB URI is now redacted in logs to prevent credential leaks
+- **Database Production Behavior**: Production mode crashes if MongoDB is unreachable (no silent localhost fallback)
+- **Cross-Domain Cookie Auth**: `SameSite=None; Secure; HttpOnly` in production for Vercel→Cloud Run
+- **Logout Cookie**: Now uses same `getCookieOptions()` as login for consistent cross-domain clearing
+- **Socket.IO CORS**: Dynamic origin check function with Vercel subdomain regex pattern
+- **Provider Health Error Response**: Removed `error.message` leak from 500 responses
+- **`.gitignore`**: Added `service-account*.json`, `gcp-key*.json`, `credentials*.json`, `*.key`
+- **`.env.example` (root)**: Added production Cloud Run URL placeholders
+- **`server/.env.example`**: Reorganized with labeled sections and production guidance
 
 ## [1.8.0] - Interactive Leaflet GIS Map, Spatio-Temporal Forecasting & V2X Signal Preemption
 

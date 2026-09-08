@@ -273,3 +273,63 @@ Here is the exact step-by-step lifecycle of an emergency mission from intake to 
    MongoDB: Sets decision.status="APPROVED", approvedBy="USR-101"
    Socket.IO: Emits "decision.updated" to ambulance driver and control room
 ```
+
+---
+
+## Part 21: Production Deployment Architecture
+
+### Deployment Flow
+
+```
+Developer pushes to main
+   ↓
+GitHub Actions CI (.github/workflows/ci.yml)
+   ├── npm ci (frontend)
+   ├── npx tsc --noEmit
+   ├── npm run build (Next.js)
+   ├── npm ci (backend)
+   └── docker build (verification)
+   ↓ CI passes
+GitHub Actions Deploy (.github/workflows/deploy.yml)
+   ├── Authenticate via Workload Identity Federation
+   ├── docker build → tag with SHA
+   ├── docker push → Artifact Registry
+   └── gcloud run deploy
+   ↓
+Cloud Run Service
+   ├── Container starts
+   ├── Environment validation (JWT_SECRET, MONGO_URI required)
+   ├── MongoDB Atlas connection (redacted logs)
+   ├── Express + Socket.IO server on 0.0.0.0:$PORT
+   └── Health probes active
+```
+
+### Health Endpoint Hierarchy
+
+| Endpoint | Purpose | Dependencies | Cloud Run Use |
+|---|---|---|---|
+| `GET /api/health/live` | Process alive | None | Liveness probe |
+| `GET /api/health/ready` | Can serve traffic | MongoDB | Readiness probe |
+| `GET /api/health` | Version, uptime, commit | None | Status dashboard |
+| `GET /api/health/providers` | Google, Gemini, MongoDB | All | Ops monitoring |
+
+### Cross-Domain Authentication
+
+```
+Vercel (*.vercel.app)                Cloud Run (*.run.app)
+   ↓ POST /api/auth/login              ↓
+   ←── Set-Cookie: token=JWT ──────────┘
+       HttpOnly=true
+       Secure=true
+       SameSite=None
+   ↓ credentials: 'include'
+   ──→ GET /api/vehicles ──────────────→
+       Cookie: token=JWT
+```
+
+### Key Constraints
+
+1. **Socket.IO**: In-memory adapter → single Cloud Run instance (`--max-instances=1`)
+2. **Cold starts**: `--min-instances=1` prevents cold start latency (costs ~$15–25/month)
+3. **Python engine**: Not deployed — standalone development tool
+4. **Secrets**: GCP Secret Manager, never in code or environment files
