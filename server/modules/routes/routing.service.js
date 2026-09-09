@@ -41,19 +41,60 @@ class RoutingService {
    * @param {Object} options Routing options
    * @returns {Promise<Object>} { geometry, distanceMeters, durationSeconds, provider, ... }
    */
+  /**
+   * Validates route geometry quality to ensure real road-following route
+   * Rejects straight-line fallbacks and sparse geometry
+   */
+  validateRouteGeometry(routeData) {
+    if (!routeData.geometry || routeData.geometry.type !== 'LineString') {
+      throw new Error('Routing provider returned invalid geometry type');
+    }
+    if (typeof routeData.distanceMeters !== 'number' || typeof routeData.durationSeconds !== 'number') {
+      throw new Error('Routing provider returned invalid distance or duration');
+    }
+
+    const coords = routeData.geometry.coordinates;
+    if (!Array.isArray(coords) || coords.length < 2) {
+      throw new Error('Route geometry has insufficient coordinates (minimum 2 required)');
+    }
+
+    // Reject straight-line fallbacks: a real road route for any meaningful distance
+    // should have significantly more points than just origin + destination
+    if (routeData.distanceMeters > 500 && coords.length < 5) {
+      throw new Error(
+        `Route geometry has only ${coords.length} points for a ${routeData.distanceMeters}m route. ` +
+        'This appears to be a straight-line fallback, not real road geometry. Refusing to display.'
+      );
+    }
+
+    // Reject suspiciously sparse geometry for urban routes
+    if (routeData.distanceMeters > 1000 && coords.length < 10) {
+      console.warn(
+        `[RoutingService] WARNING: Route has only ${coords.length} points for ${routeData.distanceMeters}m. ` +
+        'Geometry may be insufficiently detailed for navigation.'
+      );
+    }
+
+    return true;
+  }
+
   async getRoute(origin, destination, options = {}) {
     const providerInstance = this.getProvider();
     
     try {
       const routeData = await providerInstance.getRoute(origin, destination, options);
       
-      // Safety check: ensure provider returned valid structure
-      if (!routeData.geometry || routeData.geometry.type !== 'LineString') {
-        throw new Error('Routing provider returned invalid geometry');
-      }
-      if (typeof routeData.distanceMeters !== 'number' || typeof routeData.durationSeconds !== 'number') {
-        throw new Error('Routing provider returned invalid distance or duration');
-      }
+      // Validate geometry quality
+      this.validateRouteGeometry(routeData);
+
+      // Tag the route with the actual provider used
+      routeData.dataSource = routeData.dataSource || `${(routeData.provider || 'UNKNOWN').toUpperCase()}_ROUTES_API`;
+      
+      console.log(
+        `[RoutingService] Route calculated: ${routeData.distanceMeters}m, ${routeData.durationSeconds}s, ` +
+        `${routeData.geometry.coordinates.length} coordinates, provider=${routeData.provider}, ` +
+        `source=${routeData.dataSource}`
+      );
 
       return routeData;
     } catch (error) {

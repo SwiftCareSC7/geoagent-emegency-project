@@ -1243,7 +1243,7 @@ export const DEMO_ROUTES: Record<string, Route[]> = {
       status: 'ACTIVE',
       geometry: {
         type: 'LineString',
-        coordinates: CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.coordinates,
+        coordinates: [...CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.coordinates] as [number, number][],
       },
     },
     {
@@ -1262,7 +1262,7 @@ export const DEMO_ROUTES: Record<string, Route[]> = {
       status: 'ACTIVE',
       geometry: {
         type: 'LineString',
-        coordinates: CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.alternative?.coordinates || CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.coordinates,
+        coordinates: [...(CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.alternative?.coordinates || CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.coordinates)] as [number, number][],
       },
     },
   ],
@@ -1286,7 +1286,7 @@ export const DEMO_ROUTES: Record<string, Route[]> = {
         coordinates: [
           ...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.coordinates,
           ...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.coordinates.slice(1)
-        ],
+        ] as [number, number][],
       },
     },
   ],

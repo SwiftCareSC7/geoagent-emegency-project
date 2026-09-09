@@ -19,6 +19,8 @@ services:
       - key: CLIENT_URL
         sync: false
       - key: ROUTING_PROVIDER
-        value: mock
+        value: google
       - key: TRAFFIC_PROVIDER
         value: mock
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false

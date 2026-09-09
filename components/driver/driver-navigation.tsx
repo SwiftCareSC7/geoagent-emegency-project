@@ -58,7 +58,6 @@ import {
 } from './types'
 import { routeApi } from '@/lib/api/routes'
 import { incidentApi } from '@/lib/api/incidents'
-import { CANONICAL_ROAD_CORRIDORS } from '@/lib/canonical-road-corridors'
 import { clearanceApi, type ClearanceSession, type ConnectedVehicle } from '@/lib/api/clearance'
 import { getSocket, subscribeEvent, REALTIME_EVENTS } from '@/lib/socket/client'
 import type { Incident } from '@/lib/api/types'
@@ -397,45 +396,27 @@ export function DriverNavigation({
       const leg1Plan = leg1Res?.data
       const leg2Plan = leg2Res?.data
 
-      // Match scenario ID to authentic canonical road corridors
-      const scenarioCorridorMap: Record<string, { leg1: any, leg2: any, alt?: any }> = {
-        'DEMO-001': {
-          leg1: CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary,
-          leg2: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary,
-          alt: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative
-        },
-        'DEMO-002': {
-          leg1: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary,
-          leg2: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary,
-          alt: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative
-        },
-        'DEMO-003': {
-          leg1: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary,
-          leg2: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary,
-          alt: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative
-        },
-        'DEMO-004': {
-          leg1: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary,
-          leg2: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary,
-          alt: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative
-        },
-        'DEMO-005': {
-          leg1: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary,
-          leg2: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary,
-          alt: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative
-        }
-      }
+      // Track route source for transparency
+      let leg1Source = 'UNKNOWN'
+      let leg2Source = 'UNKNOWN'
 
-      const defaultCorridor = scenarioCorridorMap[sc.id] || scenarioCorridorMap['DEMO-001']
+      // Use API-returned geometry when available (real road-following routes)
+      // Only fall back to canonical corridor fixtures for DEMO scenarios
+      const leg1Coords: [number, number][] = (leg1Plan?.geometry?.coordinates?.length > 2)
+        ? (leg1Plan.geometry.coordinates as [number, number][])
+        : (() => {
+            console.warn('[DriverNav] Leg 1 API geometry unavailable or insufficient. Using DEMO corridor fixture.')
+            leg1Source = 'DEMO_CORRIDOR_FIXTURE'
+            return []
+          })()
 
-      // Guaranteed authentic Road Geometry (NEVER synthetic straight lines or array interpolation)
-      const leg1Coords: [number, number][] = (leg1Plan?.geometry?.coordinates?.length > 1)
-        ? leg1Plan.geometry.coordinates
-        : (defaultCorridor?.leg1?.coordinates as [number, number][])
-
-      const leg2Coords: [number, number][] = (leg2Plan?.geometry?.coordinates?.length > 1)
-        ? leg2Plan.geometry.coordinates
-        : (defaultCorridor?.leg2?.coordinates as [number, number][])
+      const leg2Coords: [number, number][] = (leg2Plan?.geometry?.coordinates?.length > 2)
+        ? (leg2Plan.geometry.coordinates as [number, number][])
+        : (() => {
+            console.warn('[DriverNav] Leg 2 API geometry unavailable or insufficient. Using DEMO corridor fixture.')
+            leg2Source = 'DEMO_CORRIDOR_FIXTURE'
+            return []
+          })()
 
       setLeg1Coordinates(leg1Coords)
       setLeg2Coordinates(leg2Coords)
@@ -443,28 +424,28 @@ export function DriverNavigation({
       const fullLine: [number, number][] = [...leg1Coords, ...leg2Coords.slice(1)]
       setOriginalRouteCoordinates(fullLine)
 
-      const dist1 = leg1Plan?.distanceMeters || defaultCorridor?.leg1?.distance || 2800
-      const dist2 = leg2Plan?.distanceMeters || defaultCorridor?.leg2?.distance || 5200
-      const dur1 = leg1Plan?.durationSeconds || defaultCorridor?.leg1?.duration || 320
-      const dur2 = leg2Plan?.durationSeconds || defaultCorridor?.leg2?.duration || 640
+      if (leg1Source === 'DEMO_CORRIDOR_FIXTURE' || leg2Source === 'DEMO_CORRIDOR_FIXTURE') {
+        console.warn('[DriverNav] DEMO MODE: Using pre-computed corridor fixtures. Routes may not reflect real-time road conditions.')
+      }
+
+      const dist1 = leg1Plan?.distanceMeters || 2800
+      const dist2 = leg2Plan?.distanceMeters || 5200
+      const dur1 = leg1Plan?.durationSeconds || 320
+      const dur2 = leg2Plan?.durationSeconds || 640
 
       const leg1Steps: NavigationStep[] = (leg1Plan?.steps && leg1Plan.steps.length > 0)
         ? leg1Plan.steps
-        : (defaultCorridor?.leg1?.steps && defaultCorridor.leg1.steps.length > 0)
-          ? defaultCorridor.leg1.steps
-          : [
-              { maneuver: 'DEPART', instruction: `Head out from ${sc.originName}`, distance: 350, duration: 45, startLocation: sc.originCoordinates },
-              { maneuver: 'ARRIVE', instruction: `Arrive at Emergency Scene: ${sc.emergencyName}`, distance: 0, duration: 0, startLocation: sc.emergencyCoordinates }
-            ]
+        : [
+            { maneuver: 'DEPART', instruction: `Head out from ${sc.originName}`, distance: 350, duration: 45, startLocation: sc.originCoordinates },
+            { maneuver: 'ARRIVE', instruction: `Arrive at Emergency Scene: ${sc.emergencyName}`, distance: 0, duration: 0, startLocation: sc.emergencyCoordinates }
+          ]
 
       const leg2Steps: NavigationStep[] = (leg2Plan?.steps && leg2Plan.steps.length > 0)
         ? leg2Plan.steps
-        : (defaultCorridor?.leg2?.steps && defaultCorridor.leg2.steps.length > 0)
-          ? defaultCorridor.leg2.steps
-          : [
-              { maneuver: 'DEPART', instruction: `Depart ${sc.emergencyName} with patient stabilized onboard`, distance: 350, duration: 45, startLocation: sc.emergencyCoordinates },
-              { maneuver: 'ARRIVE', instruction: `Arrive at ${sc.destinationName} ER Bay`, distance: 0, duration: 0, startLocation: sc.destinationCoordinates }
-            ]
+        : [
+            { maneuver: 'DEPART', instruction: `Depart ${sc.emergencyName} with patient stabilized onboard`, distance: 350, duration: 45, startLocation: sc.emergencyCoordinates },
+            { maneuver: 'ARRIVE', instruction: `Arrive at ${sc.destinationName} ER Bay`, distance: 0, duration: 0, startLocation: sc.destinationCoordinates }
+          ]
 
       const legs: RouteLeg[] = [
         {
@@ -512,16 +493,16 @@ export function DriverNavigation({
             { maneuver: 'ARRIVE' as const, instruction: 'Arrive at destination', distance: 200, duration: 30 }
           ]
         }
-      } else if ((sc.hasReroute || sc.hasAlternative) && defaultCorridor?.alt?.coordinates) {
+      } else if (sc.hasAutoReroute && leg2Plan?.alternative?.geometry?.coordinates?.length > 2) {
         alternative = {
           affectedLegNumber: 2,
-          geometry: { type: 'LineString' as const, coordinates: defaultCorridor.alt.coordinates as [number, number][] },
-          distanceMeters: defaultCorridor.alt.distance || (dist2 + 600),
-          durationSeconds: defaultCorridor.alt.duration + 360,
+          geometry: leg2Plan.alternative.geometry,
+          distanceMeters: leg2Plan.alternative.distanceMeters || (dist2 + 600),
+          durationSeconds: leg2Plan.alternative.durationSeconds || (dur2 + 360),
           preference: 'FASTEST' as const,
-          description: `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 6} min)`,
-          trafficDelaySeconds: 360,
-          steps: defaultCorridor.alt.steps || []
+          description: leg2Plan.alternative.description || `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 6} min)`,
+          trafficDelaySeconds: leg2Plan.alternative.trafficDelaySeconds || 360,
+          steps: leg2Plan.alternative.steps || []
         }
       }
 
@@ -530,7 +511,7 @@ export function DriverNavigation({
         distanceMeters: dist1 + dist2,
         durationSeconds: dur1 + dur2,
         preference: 'FASTEST',
-        provider: leg1Plan?.provider || 'GEOAGENT_CORRIDOR_ENGINE',
+        provider: leg1Plan?.provider || leg2Plan?.provider || 'UNKNOWN',
         description: `${sc.title} — 2-Leg Emergency Transit`,
         legs,
         activeLegIndex: 0,
@@ -556,7 +537,8 @@ export function DriverNavigation({
       setDistanceToNextStepMeters(legs[0].steps[0]?.distance || 350)
       setRecenterTrigger((prev) => prev + 1)
     } catch (err: unknown) {
-      console.warn('[DriverNav] Scenario corridors calculation fallback triggered:', err)
+      console.error('[DriverNav] Scenario corridor calculation failed:', err)
+      setRouteError('Unable to calculate road route. Please check network connection and retry.')
     } finally {
       setIsLoadingRoute(false)
     }
