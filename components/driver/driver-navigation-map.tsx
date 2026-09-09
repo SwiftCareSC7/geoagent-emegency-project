@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import type L from 'leaflet'
 import type { Incident } from '@/lib/api/types'
 import type { ConnectedVehicle } from '@/lib/api/clearance'
-import { AlertTriangle, Layers, ChevronDown, ChevronUp, MapPin, Building2, Car, Radio } from 'lucide-react'
+import { AlertTriangle, Layers, ChevronDown, ChevronUp, MapPin, Building2, Car, Radio, LocateFixed } from 'lucide-react'
 
 interface DriverNavigationMapProps {
   activeRouteCoordinates?: [number, number][] // [lng, lat]
@@ -72,6 +72,7 @@ export function DriverNavigationMap({
 
   const [mapInitialized, setMapInitialized] = useState(false)
   const [legendOpen, setLegendOpen] = useState(false)
+  const [isUserPanning, setIsUserPanning] = useState(false)
 
   // 1. Initialize Leaflet Map
   useEffect(() => {
@@ -122,6 +123,10 @@ export function DriverNavigationMap({
       })
 
       tileLayer.addTo(map)
+
+      map.on('dragstart', () => {
+        setIsUserPanning(true)
+      })
 
       // Custom non-intrusive zoom controls in top-right
       L.control.zoom({ position: 'topright' }).addTo(map)
@@ -482,17 +487,49 @@ export function DriverNavigationMap({
     }
   }, [clearanceVehicles, mapInitialized])
 
-  // 8. Handle Re-center Trigger
+  // 8. Handle Re-center & Auto-Follow Camera
   useEffect(() => {
-    if (!mapRef.current || !driverLocation || recenterTrigger === 0) return
+    if (!mapRef.current || !driverLocation) return
+    setIsUserPanning(false)
     mapRef.current.setView([driverLocation[1], driverLocation[0]], 16, {
       animate: true,
       duration: 0.8
     })
-  }, [recenterTrigger, driverLocation])
+  }, [recenterTrigger])
+
+  // Smoothly pan to follow driver when live tracking or simulated driving (unless user panned away)
+  useEffect(() => {
+    if (!mapRef.current || !driverLocation || isUserPanning) return
+    mapRef.current.panTo([driverLocation[1], driverLocation[0]], {
+      animate: true,
+      duration: 0.5
+    })
+  }, [driverLocation, isUserPanning])
 
   return (
     <div className="relative w-full h-full">
+      {/* Floating Recenter / Return to Vehicle Button when user panned away */}
+      {isUserPanning && driverLocation && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => {
+              setIsUserPanning(false)
+              if (mapRef.current && driverLocation) {
+                mapRef.current.setView([driverLocation[1], driverLocation[0]], 16, {
+                  animate: true,
+                  duration: 0.6
+                })
+              }
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-2xl border-2 border-white/60 backdrop-blur-xl animate-bounce tracking-wide transition-all cursor-pointer"
+            aria-label="Return to live vehicle location"
+          >
+            <LocateFixed className="size-4 text-cyan-300 animate-spin" />
+            <span>RETURN TO VEHICLE</span>
+          </button>
+        </div>
+      )}
       {/* Route Deviation In-Map Alert Overlay */}
       {isDeviated && (
         <div className="absolute top-3 inset-x-3 sm:inset-x-6 z-[500] pointer-events-none">

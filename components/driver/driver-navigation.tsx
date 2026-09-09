@@ -96,14 +96,63 @@ function calculateBearing(start: [number, number], end: [number, number]): numbe
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
 }
 
-/** Interpolate intermediate road-like coordinates between 2 points */
-function buildSegmentCoordinates(start: [number, number], end: [number, number], intermediateDeltas: [number, number][] = []): [number, number][] {
-  const result: [number, number][] = [start]
-  for (const delta of intermediateDeltas) {
-    result.push([start[0] + delta[0], start[1] + delta[1]])
+/**
+ * Snap a GPS coordinate to the closest point along a route polyline.
+ * Also returns orthogonal cross-track deviation distance in meters.
+ */
+function snapToRoute(
+  point: [number, number],
+  routeCoords: [number, number][]
+): {
+  snappedPoint: [number, number]
+  deviationMeters: number
+  nearestSegmentIndex: number
+} {
+  if (!routeCoords || routeCoords.length === 0) {
+    return { snappedPoint: point, deviationMeters: 0, nearestSegmentIndex: 0 }
   }
-  result.push(end)
-  return result
+  if (routeCoords.length === 1) {
+    const d = haversineMeters(point, routeCoords[0])
+    return { snappedPoint: routeCoords[0], deviationMeters: d, nearestSegmentIndex: 0 }
+  }
+
+  let minDistance = Infinity
+  let bestPoint = routeCoords[0]
+  let bestSegIndex = 0
+
+  const [px, py] = point
+
+  for (let i = 0; i < routeCoords.length - 1; i++) {
+    const [ax, ay] = routeCoords[i]
+    const [bx, by] = routeCoords[i + 1]
+
+    const dx = bx - ax
+    const dy = by - ay
+    const lenSq = dx * dx + dy * dy
+
+    let t = 0
+    if (lenSq > 0) {
+      t = ((px - ax) * dx + (py - ay) * dy) / lenSq
+      t = Math.max(0, Math.min(1, t))
+    }
+
+    const projX = ax + t * dx
+    const projY = ay + t * dy
+    const projPoint: [number, number] = [projX, projY]
+
+    const dist = haversineMeters(point, projPoint)
+    if (dist < minDistance) {
+      minDistance = dist
+      bestPoint = projPoint
+      bestSegIndex = i
+    }
+  }
+
+  return {
+    snappedPoint: bestPoint,
+    deviationMeters: minDistance,
+    nearestSegmentIndex: bestSegIndex
+  }
 }
 
 export function DriverNavigation({
@@ -188,6 +237,8 @@ export function DriverNavigation({
   const [routeIncidents, setRouteIncidents] = useState<Incident[]>([])
   const [voiceMuted, setVoiceMuted] = useState<boolean>(false)
   const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(false)
+  const [routeError, setRouteError] = useState<string | null>(null)
+  const [gpsMode, setGpsMode] = useState<'SIMULATION' | 'LIVE_GPS'>('SIMULATION')
 
   // 1. Browser Geolocation (Part 3 & 15: "USE MY LOCATION")
   const handleRequestGps = () => {
@@ -249,6 +300,7 @@ export function DriverNavigation({
     preference: 'FASTEST' | 'SHORTEST'
   }) => {
     setIsLoadingRoute(true)
+    setRouteError(null)
     try {
       const res = await routeApi.calculateRoutePlan({
         origin: { type: 'Point', coordinates: params.originCoordinates },
@@ -257,7 +309,7 @@ export function DriverNavigation({
         computeAlternatives: true
       })
 
-      if (res && res.success && res.data) {
+      if (res && res.success && res.data && res.data.geometry?.coordinates?.length > 1) {
         const plan: RoutePlan = res.data
         setRoutePlan(plan)
         setOriginalRouteCoordinates(plan.geometry.coordinates)
@@ -265,6 +317,7 @@ export function DriverNavigation({
         setLeg2Coordinates([])
         setActiveLegNumber(1)
         setCurrentStepIndex(0)
+        setDistanceToNextStepMeters(plan.steps?.[0]?.distance || 350)
         setTotalDistanceRemainingMeters(plan.distanceMeters)
         setTotalDurationRemainingSeconds(plan.durationSeconds)
         setNavigationMode('MANUAL_ROUTE')
@@ -274,65 +327,19 @@ export function DriverNavigation({
         setDestinationName(params.destinationName)
         setCurrentLocation((prev) => ({
           ...prev,
-          coordinates: params.originCoordinates,
-          heading: calculateBearing(params.originCoordinates, params.destinationCoordinates)
+          coordinates: plan.geometry.coordinates[0],
+          heading: calculateBearing(plan.geometry.coordinates[0], plan.geometry.coordinates[1] || params.destinationCoordinates)
         }))
         setIsDeviated(false)
         setDeviationDistance(0)
         setGeoAgentState('MONITOR')
         setRecenterTrigger((prev) => prev + 1)
       } else {
-        throw new Error('Fallback')
+        throw new Error(res?.message || 'Unable to calculate road route')
       }
-    } catch {
-      // Build robust backend-aligned geometry between origin and destination
-      const coords = buildSegmentCoordinates(params.originCoordinates, params.destinationCoordinates, [
-        [(params.destinationCoordinates[0] - params.originCoordinates[0]) * 0.35, (params.destinationCoordinates[1] - params.originCoordinates[1]) * 0.2],
-        [(params.destinationCoordinates[0] - params.originCoordinates[0]) * 0.7, (params.destinationCoordinates[1] - params.originCoordinates[1]) * 0.8]
-      ])
-      let dist = 0
-      for (let i = 0; i < coords.length - 1; i++) {
-        dist += haversineMeters(coords[i], coords[i + 1])
-      }
-      const dur = Math.round(dist / 10)
-
-      const fallbackPlan: RoutePlan = {
-        geometry: { type: 'LineString', coordinates: coords },
-        distanceMeters: Math.round(dist),
-        durationSeconds: dur,
-        preference: params.preference,
-        provider: 'GEOAGENT_BENGALURU_ENGINE',
-        description: `${params.originName} → ${params.destinationName}`,
-        steps: [
-          { maneuver: 'DEPART', instruction: `Depart from ${params.originName}`, distance: 300, duration: 40 },
-          { maneuver: 'CONTINUE', instruction: 'Follow primary arterial corridor with sirens active', distance: Math.round(dist * 0.7), duration: Math.round(dur * 0.7) },
-          { maneuver: 'ARRIVE', instruction: `Arrive at ${params.destinationName}`, distance: 200, duration: 30 }
-        ],
-        calculatedAt: new Date().toISOString()
-      }
-
-      setRoutePlan(fallbackPlan)
-      setOriginalRouteCoordinates(coords)
-      setLeg1Coordinates([])
-      setLeg2Coordinates([])
-      setActiveLegNumber(1)
-      setCurrentStepIndex(0)
-      setTotalDistanceRemainingMeters(fallbackPlan.distanceMeters)
-      setTotalDurationRemainingSeconds(fallbackPlan.durationSeconds)
-      setNavigationMode('MANUAL_ROUTE')
-      setNavState('NAVIGATING')
-      setIsRoutePlannerVisible(false)
-      setDestinationLocation(params.destinationCoordinates)
-      setDestinationName(params.destinationName)
-      setCurrentLocation((prev) => ({
-        ...prev,
-        coordinates: params.originCoordinates,
-        heading: calculateBearing(params.originCoordinates, params.destinationCoordinates)
-      }))
-      setIsDeviated(false)
-      setDeviationDistance(0)
-      setGeoAgentState('MONITOR')
-      setRecenterTrigger((prev) => prev + 1)
+    } catch (err: unknown) {
+      console.error('[DriverNav] Custom route calculation error:', err)
+      setRouteError('Road route unavailable between selected points. Please choose valid street locations.')
     } finally {
       setIsLoadingRoute(false)
     }
@@ -347,7 +354,7 @@ export function DriverNavigation({
   }
 
   // 4. Initialize Multi-Leg Emergency Corridors for the Active Scenario (Mode A)
-  const initializeScenarioCorridors = useCallback((sc: ScenarioDefinition) => {
+  const initializeScenarioCorridors = useCallback(async (sc: ScenarioDefinition) => {
     setNavigationMode('EMERGENCY_MISSION')
     setIsRoutePlannerVisible(false)
     setActiveAmbulanceId(sc.vehicleId)
@@ -357,133 +364,147 @@ export function DriverNavigation({
     setDestinationName(sc.destinationName)
     setActiveLegNumber(1)
     setCurrentStage('HEADING_TO_EMERGENCY')
+    setCurrentStepIndex(0)
+    setIsSimulating(false)
+    setSimCoordIndex(0)
+    setIsLoadingRoute(true)
+    setRouteError(null)
 
-    // Generate road-following intermediate vertices for Leg 1 (Current -> Emergency)
-    const leg1Coords = buildSegmentCoordinates(sc.originCoordinates, sc.emergencyCoordinates, [
-      [(sc.emergencyCoordinates[0] - sc.originCoordinates[0]) * 0.35, (sc.emergencyCoordinates[1] - sc.originCoordinates[1]) * 0.2],
-      [(sc.emergencyCoordinates[0] - sc.originCoordinates[0]) * 0.7, (sc.emergencyCoordinates[1] - sc.originCoordinates[1]) * 0.8]
-    ])
-    setLeg1Coordinates(leg1Coords)
-
-    // Generate road-following intermediate vertices for Leg 2 (Emergency -> Hospital)
-    const leg2Coords = buildSegmentCoordinates(sc.emergencyCoordinates, sc.destinationCoordinates, [
-      [(sc.destinationCoordinates[0] - sc.emergencyCoordinates[0]) * 0.4, (sc.destinationCoordinates[1] - sc.emergencyCoordinates[1]) * 0.25],
-      [(sc.destinationCoordinates[0] - sc.emergencyCoordinates[0]) * 0.75, (sc.destinationCoordinates[1] - sc.emergencyCoordinates[1]) * 0.85]
-    ])
-    setLeg2Coordinates(leg2Coords)
-
-    // Combined active line for baseline
-    const fullLine = [...leg1Coords, ...leg2Coords.slice(1)]
-    setOriginalRouteCoordinates(fullLine)
-
-    // Calculate distances
-    let dist1 = 0
-    for (let i = 0; i < leg1Coords.length - 1; i++) {
-      dist1 += haversineMeters(leg1Coords[i], leg1Coords[i + 1])
-    }
-    let dist2 = 0
-    for (let i = 0; i < leg2Coords.length - 1; i++) {
-      dist2 += haversineMeters(leg2Coords[i], leg2Coords[i + 1])
-    }
-
-    const dur1 = Math.round(dist1 / 10) // ~36 km/h
-    const dur2 = Math.round(dist2 / 9)
-
-    // Build RoutePlan with structured legs
-    const legs: RouteLeg[] = [
-      {
-        legNumber: 1,
-        type: 'TO_EMERGENCY',
-        title: `Leg 1: ${sc.originName} → ${sc.emergencyName}`,
-        originName: sc.originName,
-        destinationName: sc.emergencyName,
-        originCoordinates: sc.originCoordinates,
-        destinationCoordinates: sc.emergencyCoordinates,
-        geometry: { type: 'LineString', coordinates: leg1Coords },
-        distanceMeters: Math.round(dist1),
-        durationSeconds: dur1,
-        status: 'ACTIVE',
-        steps: [
-          { maneuver: 'DEPART', instruction: `Head out from ${sc.originName}`, distance: 350, duration: 45 },
-          { maneuver: 'TURN_LEFT', instruction: 'Turn left onto primary arterial corridor', distance: 850, duration: 110 },
-          { maneuver: 'CONTINUE', instruction: 'Proceed through traffic signal with sirens active', distance: 1200, duration: 160 },
-          { maneuver: 'ARRIVE', instruction: `Arrive at Emergency Scene: ${sc.emergencyName}`, distance: 200, duration: 30 }
-        ]
-      },
-      {
-        legNumber: 2,
-        type: 'TO_HOSPITAL',
-        title: `Leg 2: ${sc.emergencyName} → ${sc.destinationName}`,
-        originName: sc.emergencyName,
-        destinationName: sc.destinationName,
-        originCoordinates: sc.emergencyCoordinates,
-        destinationCoordinates: sc.destinationCoordinates,
-        geometry: { type: 'LineString', coordinates: leg2Coords },
-        distanceMeters: Math.round(dist2),
-        durationSeconds: dur2,
-        status: 'PLANNED',
-        steps: [
-          { maneuver: 'DEPART', instruction: `Depart ${sc.emergencyName} with patient onboard`, distance: 400, duration: 50 },
-          { maneuver: 'TURN_RIGHT', instruction: 'Turn right onto highway approach', distance: 1600, duration: 210 },
-          { maneuver: 'CONTINUE', instruction: `Continue toward ${sc.destinationName} Emergency Bay`, distance: 1800, duration: 240 },
-          { maneuver: 'ARRIVE', instruction: `Arrive at ${sc.destinationName} ER Bay`, distance: 250, duration: 40 }
-        ]
-      }
-    ]
-
-    // Alternative Route (Bypass corridor saving expected time)
-    const hasAlt = sc.hasAutoReroute || sc.hasDeviation || sc.expectedTimeSavedMinutes > 0
-    let alternative = null
-
-    if (hasAlt) {
-      const altLeg1Coords = buildSegmentCoordinates(sc.originCoordinates, sc.emergencyCoordinates, [
-        [(sc.emergencyCoordinates[0] - sc.originCoordinates[0]) * 0.25 + 0.005, (sc.emergencyCoordinates[1] - sc.originCoordinates[1]) * 0.45 + 0.004],
-        [(sc.emergencyCoordinates[0] - sc.originCoordinates[0]) * 0.65 + 0.003, (sc.emergencyCoordinates[1] - sc.originCoordinates[1]) * 0.85 + 0.002]
+    try {
+      // Fetch real drivable road networks for Leg 1 and Leg 2 in parallel
+      const [leg1Res, leg2Res] = await Promise.all([
+        routeApi.calculateRoutePlan({
+          origin: { type: 'Point', coordinates: sc.originCoordinates },
+          destination: { type: 'Point', coordinates: sc.emergencyCoordinates },
+          preference: 'FASTEST',
+          computeAlternatives: sc.hasAutoReroute || sc.hasDeviation || sc.expectedTimeSavedMinutes > 0
+        }).catch((err) => {
+          console.warn('[DriverNav] Leg 1 calculation error:', err)
+          return null
+        }),
+        routeApi.calculateRoutePlan({
+          origin: { type: 'Point', coordinates: sc.emergencyCoordinates },
+          destination: { type: 'Point', coordinates: sc.destinationCoordinates },
+          preference: 'FASTEST'
+        }).catch((err) => {
+          console.warn('[DriverNav] Leg 2 calculation error:', err)
+          return null
+        })
       ])
-      alternative = {
-        affectedLegNumber: 1,
-        geometry: { type: 'LineString' as const, coordinates: altLeg1Coords },
-        distanceMeters: Math.round(dist1 * 0.92),
-        durationSeconds: Math.max(120, dur1 - sc.expectedTimeSavedMinutes * 60),
-        preference: 'FASTEST' as const,
-        description: `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes} min)`,
-        trafficDelaySeconds: 20,
-        steps: [
-          { maneuver: 'CONTINUE' as const, instruction: 'Bypass bottleneck via high-speed arterial corridor', distance: 1200, duration: 140 },
-          { maneuver: 'TURN_RIGHT' as const, instruction: 'Re-join main approach with green wave', distance: 900, duration: 110 }
+
+      const leg1Plan = leg1Res?.data
+      const leg2Plan = leg2Res?.data
+
+      if (leg1Plan?.geometry?.coordinates?.length > 1 && leg2Plan?.geometry?.coordinates?.length > 1) {
+        const leg1Coords: [number, number][] = leg1Plan.geometry.coordinates
+        const leg2Coords: [number, number][] = leg2Plan.geometry.coordinates
+
+        setLeg1Coordinates(leg1Coords)
+        setLeg2Coordinates(leg2Coords)
+
+        const fullLine: [number, number][] = [...leg1Coords, ...leg2Coords.slice(1)]
+        setOriginalRouteCoordinates(fullLine)
+
+        const dist1 = leg1Plan.distanceMeters
+        const dist2 = leg2Plan.distanceMeters
+        const dur1 = leg1Plan.durationSeconds
+        const dur2 = leg2Plan.durationSeconds
+
+        const legs: RouteLeg[] = [
+          {
+            legNumber: 1,
+            type: 'TO_EMERGENCY',
+            title: `Leg 1: ${sc.originName} → ${sc.emergencyName}`,
+            originName: sc.originName,
+            destinationName: sc.emergencyName,
+            originCoordinates: sc.originCoordinates,
+            destinationCoordinates: sc.emergencyCoordinates,
+            geometry: leg1Plan.geometry,
+            distanceMeters: dist1,
+            durationSeconds: dur1,
+            status: 'ACTIVE',
+            steps: leg1Plan.steps && leg1Plan.steps.length > 0 ? leg1Plan.steps : [
+              { maneuver: 'DEPART', instruction: `Head out from ${sc.originName}`, distance: 350, duration: 45 },
+              { maneuver: 'CONTINUE', instruction: 'Follow primary arterial corridor with sirens active', distance: Math.round(dist1 * 0.7), duration: Math.round(dur1 * 0.7) },
+              { maneuver: 'ARRIVE', instruction: `Arrive at Emergency Scene: ${sc.emergencyName}`, distance: 200, duration: 30 }
+            ]
+          },
+          {
+            legNumber: 2,
+            type: 'TO_HOSPITAL',
+            title: `Leg 2: ${sc.emergencyName} → ${sc.destinationName}`,
+            originName: sc.emergencyName,
+            destinationName: sc.destinationName,
+            originCoordinates: sc.emergencyCoordinates,
+            destinationCoordinates: sc.destinationCoordinates,
+            geometry: leg2Plan.geometry,
+            distanceMeters: dist2,
+            durationSeconds: dur2,
+            status: 'PLANNED',
+            steps: leg2Plan.steps && leg2Plan.steps.length > 0 ? leg2Plan.steps : [
+              { maneuver: 'DEPART', instruction: `Depart ${sc.emergencyName} with patient onboard`, distance: 400, duration: 50 },
+              { maneuver: 'CONTINUE', instruction: `Continue toward ${sc.destinationName} Emergency Bay`, distance: Math.round(dist2 * 0.7), duration: Math.round(dur2 * 0.7) },
+              { maneuver: 'ARRIVE', instruction: `Arrive at ${sc.destinationName} ER Bay`, distance: 250, duration: 40 }
+            ]
+          }
         ]
+
+        let alternative = null
+        if (leg1Plan.alternative && leg1Plan.alternative.geometry?.coordinates?.length > 1) {
+          alternative = {
+            affectedLegNumber: 1,
+            geometry: leg1Plan.alternative.geometry,
+            distanceMeters: leg1Plan.alternative.distanceMeters,
+            durationSeconds: leg1Plan.alternative.durationSeconds,
+            preference: 'FASTEST' as const,
+            description: leg1Plan.alternative.description || `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes} min)`,
+            trafficDelaySeconds: 20,
+            steps: leg1Plan.alternative.steps || [
+              { maneuver: 'CONTINUE' as const, instruction: 'Bypass bottleneck via arterial corridor', distance: 1200, duration: 140 },
+              { maneuver: 'ARRIVE' as const, instruction: 'Arrive at destination', distance: 200, duration: 30 }
+            ]
+          }
+        }
+
+        const plan: RoutePlan = {
+          geometry: { type: 'LineString', coordinates: fullLine },
+          distanceMeters: dist1 + dist2,
+          durationSeconds: dur1 + dur2,
+          preference: 'FASTEST',
+          provider: leg1Plan.provider || 'GOOGLE_ROUTES_API',
+          description: `${sc.title} — 2-Leg Emergency Transit`,
+          legs,
+          activeLegIndex: 0,
+          emergencyLocation: sc.emergencyCoordinates,
+          hospitalLocation: sc.destinationCoordinates,
+          alternative,
+          steps: legs[0].steps,
+          calculatedAt: new Date().toISOString()
+        }
+
+        setRoutePlan(plan)
+        setTotalDistanceRemainingMeters(plan.distanceMeters)
+        setTotalDurationRemainingSeconds(plan.durationSeconds)
+
+        setCurrentLocation({
+          coordinates: leg1Coords[0],
+          heading: calculateBearing(leg1Coords[0], leg1Coords[1] || sc.emergencyCoordinates),
+          speed: 36,
+          accuracy: 3,
+          timestamp: Date.now(),
+          isSimulated: true
+        })
+        setDistanceToNextStepMeters(legs[0].steps[0]?.distance || 350)
+        setRecenterTrigger((prev) => prev + 1)
+      } else {
+        throw new Error('Unable to compute real road geometry for scenario')
       }
+    } catch (err: unknown) {
+      console.error('[DriverNav] Scenario corridors calculation failed:', err)
+      setRouteError('Road network calculation failed for active scenario. Please retry.')
+    } finally {
+      setIsLoadingRoute(false)
     }
-
-    const plan: RoutePlan = {
-      geometry: { type: 'LineString', coordinates: fullLine },
-      distanceMeters: Math.round(dist1 + dist2),
-      durationSeconds: dur1 + dur2,
-      preference: 'FASTEST',
-      provider: 'GEOAGENT_BENGALURU_ENGINE',
-      description: `${sc.title} — 2-Leg Emergency Transit`,
-      legs,
-      activeLegIndex: 0,
-      emergencyLocation: sc.emergencyCoordinates,
-      hospitalLocation: sc.destinationCoordinates,
-      alternative,
-      steps: legs[0].steps,
-      calculatedAt: new Date().toISOString()
-    }
-
-    setRoutePlan(plan)
-    setTotalDistanceRemainingMeters(plan.distanceMeters)
-    setTotalDurationRemainingSeconds(plan.durationSeconds)
-
-    // Set Driver Position at Origin
-    setCurrentLocation({
-      coordinates: sc.originCoordinates,
-      heading: calculateBearing(sc.originCoordinates, sc.emergencyCoordinates),
-      speed: 36,
-      accuracy: 3,
-      timestamp: Date.now(),
-      isSimulated: true
-    })
 
     // Set Decision State according to scenario
     if (sc.requiresReroute === false) {
@@ -727,7 +748,7 @@ export function DriverNavigation({
     }
   }
 
-  // 10. Automated Drive Simulation
+  // 10. Automated Drive Simulation (Road-snapped along real street geometry)
   useEffect(() => {
     const activeCoords =
       navigationMode === 'MANUAL_ROUTE'
@@ -736,7 +757,7 @@ export function DriverNavigation({
         ? leg1Coordinates
         : leg2Coordinates
 
-    if (!isSimulating || !activeCoords || activeCoords.length < 2) {
+    if (!isSimulating || gpsMode === 'LIVE_GPS' || !activeCoords || activeCoords.length < 2) {
       if (simulationTimerRef.current) {
         clearInterval(simulationTimerRef.current)
         simulationTimerRef.current = null
@@ -765,19 +786,29 @@ export function DriverNavigation({
         const prevPt = activeCoords[prevIndex]
         const heading = calculateBearing(prevPt, currentPt)
 
+        // Road-snapping ensures vehicle stays precisely centered on road centerline
+        const snap = snapToRoute(currentPt, activeCoords)
+        const displayPt = snap.deviationMeters <= 50 ? snap.snappedPoint : currentPt
+
         setCurrentLocation({
-          coordinates: currentPt,
+          coordinates: displayPt,
           heading,
-          speed: 44,
+          speed: 46,
           accuracy: 3,
           timestamp: Date.now(),
           isSimulated: true
         })
 
         const pctDone = nextIndex / activeCoords.length
-        const totalDist = routePlan?.distanceMeters || 5000
+        const totalDist =
+          navigationMode === 'MANUAL_ROUTE'
+            ? (routePlan?.distanceMeters || 4000)
+            : activeLegNumber === 1
+            ? (routePlan?.legs?.[0]?.distanceMeters || 3000)
+            : (routePlan?.legs?.[1]?.distanceMeters || 3000)
+
         const distRemaining = Math.max(0, Math.round(totalDist * (1 - pctDone)))
-        const durRemaining = Math.max(0, Math.round((totalDist / 11) * (1 - pctDone)))
+        const durRemaining = Math.max(0, Math.round((totalDist / 12) * (1 - pctDone)))
 
         setTotalDistanceRemainingMeters(distRemaining)
         setTotalDurationRemainingSeconds(durRemaining)
@@ -790,13 +821,21 @@ export function DriverNavigation({
             : (routePlan?.legs?.[1]?.steps || [])
 
         if (activeSteps.length > 0) {
-          const stepIndex = Math.min(activeSteps.length - 1, Math.floor(pctDone * activeSteps.length))
+          const stepCount = activeSteps.length
+          const stepIndex = Math.min(stepCount - 1, Math.floor(pctDone * stepCount))
           setCurrentStepIndex(stepIndex)
+
+          // Smoothly decrease distance countdown to next maneuver
+          const stepSlice = 1 / stepCount
+          const progressInStep = Math.max(0, Math.min(1, (pctDone - stepIndex * stepSlice) / stepSlice))
+          const currentStepDist = activeSteps[stepIndex]?.distance || 400
+          const distToManeuver = Math.max(20, Math.round(currentStepDist * (1 - progressInStep)))
+          setDistanceToNextStepMeters(distToManeuver)
         }
 
         return nextIndex
       })
-    }, 1200)
+    }, 700)
 
     return () => {
       if (simulationTimerRef.current) {
@@ -804,9 +843,67 @@ export function DriverNavigation({
         simulationTimerRef.current = null
       }
     }
-  }, [isSimulating, activeLegNumber, navigationMode, leg1Coordinates, leg2Coordinates, routePlan])
+  }, [isSimulating, gpsMode, activeLegNumber, navigationMode, leg1Coordinates, leg2Coordinates, routePlan])
+
+  // 11. Continuous Live GPS Tracking (watchPosition)
+  useEffect(() => {
+    if (gpsMode !== 'LIVE_GPS') return
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setGpsStatusMessage('Geolocation not supported on this browser')
+      setGpsMode('SIMULATION')
+      return
+    }
+
+    const activeCoords =
+      navigationMode === 'MANUAL_ROUTE'
+        ? (routePlan?.geometry?.coordinates || [])
+        : activeLegNumber === 1
+        ? leg1Coordinates
+        : leg2Coordinates
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const rawCoords: [number, number] = [pos.coords.longitude, pos.coords.latitude]
+        const snap = snapToRoute(rawCoords, activeCoords)
+        const displayCoords = snap.deviationMeters <= 50 ? snap.snappedPoint : rawCoords
+        const heading = pos.coords.heading ?? calculateBearing(currentLocation.coordinates, displayCoords)
+
+        setCurrentLocation({
+          coordinates: displayCoords,
+          heading: heading || 0,
+          speed: Math.round(pos.coords.speed ? pos.coords.speed * 3.6 : 32),
+          accuracy: Math.round(pos.coords.accuracy || 4),
+          timestamp: pos.timestamp || Date.now(),
+          isSimulated: false
+        })
+
+        const isOff = snap.deviationMeters > 50
+        setIsDeviated(isOff)
+        setDeviationDistance(Math.round(snap.deviationMeters))
+        if (isOff) {
+          setGeoAgentState('REROUTE_RECOMMENDED')
+        }
+      },
+      (err) => {
+        console.warn('[DriverNav] Geolocation watchPosition error:', err)
+        setGpsStatusMessage('GPS signal lost or permission denied')
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 1000,
+        timeout: 10000
+      }
+    )
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+    }
+  }, [gpsMode, activeLegNumber, navigationMode, leg1Coordinates, leg2Coordinates, routePlan, currentLocation.coordinates])
 
   const toggleSimulation = () => {
+    if (gpsMode === 'LIVE_GPS') {
+      setGpsMode('SIMULATION')
+    }
     if (isSimulating) {
       setIsSimulating(false)
     } else {
@@ -888,9 +985,37 @@ export function DriverNavigation({
               <RouteIcon className="size-3.5" />
               <span>🗺️ Route Planner (My Location → Dest)</span>
             </button>
+
+            {/* GPS Tracking Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                if (gpsMode === 'SIMULATION') {
+                  setIsSimulating(false)
+                  setGpsMode('LIVE_GPS')
+                } else {
+                  setGpsMode('SIMULATION')
+                }
+              }}
+              className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                gpsMode === 'LIVE_GPS'
+                  ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400'
+                  : 'bg-slate-800 text-slate-300 hover:text-white'
+              }`}
+              title={gpsMode === 'LIVE_GPS' ? 'Switch to simulation mode' : 'Track live browser GPS'}
+            >
+              <Radio className={`size-3.5 ${gpsMode === 'LIVE_GPS' ? 'text-white animate-pulse' : 'text-slate-400'}`} />
+              <span>{gpsMode === 'LIVE_GPS' ? 'Live GPS Active' : 'Live GPS'}</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2 text-xs">
+            {isLoadingRoute && (
+              <span className="flex items-center gap-1.5 text-xs text-cyan-400 font-bold animate-pulse">
+                <RefreshCw className="size-3.5 animate-spin" />
+                <span>Routing Roads...</span>
+              </span>
+            )}
             {navigationMode === 'MANUAL_ROUTE' && (
               <button
                 type="button"
@@ -917,6 +1042,25 @@ export function DriverNavigation({
         </div>
       )}
 
+      {/* Route Error Notification Toast */}
+      {routeError && !isRoutePlannerVisible && (
+        <div className="absolute top-28 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-50 animate-in slide-in-from-top duration-300">
+          <div className="px-4 py-2.5 rounded-xl bg-rose-600 text-white font-bold text-xs sm:text-sm shadow-2xl border border-rose-400 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-200 shrink-0 animate-pulse" />
+              <span>{routeError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setRouteError(null)}
+              className="px-2 py-0.5 rounded bg-rose-800 text-xs text-rose-200 hover:text-white"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 2. MAIN COCKPIT: Split View on Desktop, Tabbed on Mobile */}
       <div className="flex-1 relative w-full flex flex-col lg:flex-row overflow-hidden">
         
@@ -936,6 +1080,7 @@ export function DriverNavigation({
                 onCalculateRoute={handleCalculateRoute}
                 onCancel={() => setIsRoutePlannerVisible(false)}
                 isLoading={isLoadingRoute}
+                errorMessage={routeError}
                 initialEmergencyDestination={
                   navigationMode === 'EMERGENCY_MISSION'
                     ? {

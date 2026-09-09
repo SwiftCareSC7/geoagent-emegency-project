@@ -41,6 +41,7 @@ interface DriverRoutePlannerProps {
   }) => void
   onCancel?: () => void
   isLoading?: boolean
+  errorMessage?: string | null
   initialEmergencyDestination?: DestinationOption | null
   className?: string
 }
@@ -53,6 +54,7 @@ export function DriverRoutePlanner({
   onCalculateRoute,
   onCancel,
   isLoading = false,
+  errorMessage = null,
   initialEmergencyDestination = null,
   className = ''
 }: DriverRoutePlannerProps) {
@@ -377,6 +379,14 @@ export function DriverRoutePlanner({
             </button>
           </div>
         </div>
+
+        {/* Error notification if calculation fails */}
+        {errorMessage && (
+          <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/60 text-rose-200 text-xs flex items-center gap-2">
+            <AlertCircle className="size-4 text-rose-400 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
 
         {/* 4. SUBMIT ACTION: START ROUTE */}
         <div className="pt-2">
