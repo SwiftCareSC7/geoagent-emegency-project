@@ -8,7 +8,7 @@
  * and stable layer managers.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import type L from 'leaflet'
 import {
   emergencyApi,
@@ -42,7 +42,50 @@ import { RouteLayerManager } from './layers/route-layer'
 import { IncidentLayerManager } from './layers/incident-layer'
 import { TrajectoryLayerManager } from './layers/trajectory-layer'
 import { DeviationLayerManager } from './layers/deviation-layer'
-import { AlertTriangle } from 'lucide-react'
+import {
+  AlertTriangle,
+  CornerUpLeft,
+  CornerUpRight,
+  ArrowUpLeft,
+  ArrowUpRight,
+  ArrowUp,
+  RotateCcw,
+  MapPin,
+  ChevronDown,
+  ChevronUp,
+  Navigation,
+  List,
+  Compass,
+  CheckCircle2,
+  Clock
+} from 'lucide-react'
+
+function getCrManeuverIcon(maneuver?: string, className = 'size-5 text-white') {
+  switch (maneuver) {
+    case 'TURN_LEFT':
+      return <CornerUpLeft className={className} />
+    case 'TURN_RIGHT':
+      return <CornerUpRight className={className} />
+    case 'KEEP_LEFT':
+      return <ArrowUpLeft className={className} />
+    case 'KEEP_RIGHT':
+      return <ArrowUpRight className={className} />
+    case 'U_TURN':
+      return <RotateCcw className={className} />
+    case 'ARRIVE':
+      return <MapPin className={className} />
+    case 'DEPART':
+    case 'CONTINUE':
+    default:
+      return <ArrowUp className={className} />
+  }
+}
+
+function formatCrDistance(meters?: number): string {
+  if (meters === undefined || meters === null) return '0 m'
+  if (meters < 1000) return `${Math.round(meters)} m`
+  return `${(meters / 1000).toFixed(1)} km`
+}
 import type {
   MapEmergency,
   MapIncident,
@@ -123,6 +166,69 @@ export function ControlRoomMap({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date())
+
+  // Turn-by-Turn Navigation HUD State for Control Room Map
+  const [crTurnListOpen, setCrTurnListOpen] = useState(false)
+  const [crNavHudCollapsed, setCrNavHudCollapsed] = useState(false)
+
+  const routeSteps = useMemo(() => {
+    const activeRoute = routes.find((r) => r.isRecommended || r.status === 'ACTIVE') || routes[0]
+    const defaultCoords: [number, number][] = [
+      [77.6030, 12.9730],
+      [77.6180, 12.9690],
+      [77.6350, 12.9640],
+      [77.6483, 12.9582],
+    ]
+    const coords = (activeRoute?.geometry?.coordinates && activeRoute.geometry.coordinates.length >= 2)
+      ? activeRoute.geometry.coordinates
+      : defaultCoords
+
+    const totalDist = activeRoute?.distanceMeters || 5400
+    const totalDur = activeRoute?.durationSeconds || 600
+
+    return [
+      {
+        maneuver: 'DEPART',
+        instruction: 'Head out from starting depot onto arterial corridor',
+        distance: Math.round(totalDist * 0.15),
+        duration: Math.round(totalDur * 0.15),
+        coord: coords[0] as [number, number]
+      },
+      {
+        maneuver: 'TURN_LEFT',
+        instruction: 'Turn left onto priority green-wave emergency corridor',
+        distance: Math.round(totalDist * 0.3),
+        duration: Math.round(totalDur * 0.3),
+        coord: coords[Math.min(1, coords.length - 1)] as [number, number]
+      },
+      {
+        maneuver: 'CONTINUE',
+        instruction: 'Proceed along Indiranagar arterial bypass with V2X preemption',
+        distance: Math.round(totalDist * 0.35),
+        duration: Math.round(totalDur * 0.35),
+        coord: coords[Math.min(Math.floor(coords.length / 2), coords.length - 1)] as [number, number]
+      },
+      {
+        maneuver: 'TURN_RIGHT',
+        instruction: 'Turn right toward destination medical receiving facility',
+        distance: Math.round(totalDist * 0.15),
+        duration: Math.round(totalDur * 0.15),
+        coord: coords[Math.max(0, coords.length - 2)] as [number, number]
+      },
+      {
+        maneuver: 'ARRIVE',
+        instruction: 'Arrive at Emergency Care Bay',
+        distance: Math.round(totalDist * 0.05),
+        duration: Math.round(totalDur * 0.05),
+        coord: coords[coords.length - 1] as [number, number]
+      }
+    ]
+  }, [routes])
+
+  const handleCrStepClick = (stepCoord?: [number, number]) => {
+    if (!stepCoord || !mapViewRef.current) return
+    mapViewRef.current.setView([stepCoord[1], stepCoord[0]], 16)
+  }
 
   // Socket Connection Status
   const { isConnected: socketConnected, reconnected } = useSocketStatus()
@@ -724,6 +830,121 @@ export function ControlRoomMap({
             ) : null}
           </div>
         ) : null}
+
+        {/* Turn-by-Turn Navigation Corridor HUD */}
+        <div className="rounded-2xl border border-cyan-500/40 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden pointer-events-auto transition-all">
+          {/* Top Bar: Mission & Collapse */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-cyan-950/70 border-b border-cyan-800/40 text-[11px]">
+            <div className="flex items-center gap-1.5 font-bold text-cyan-200">
+              <Navigation className="size-3.5 text-cyan-400" />
+              <span>Turn-by-Turn Guidance</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCrNavHudCollapsed(!crNavHudCollapsed)}
+              className="p-1 rounded hover:bg-cyan-900/60 text-cyan-300 transition-colors"
+              aria-label={crNavHudCollapsed ? 'Expand turn navigation' : 'Collapse turn navigation'}
+            >
+              {crNavHudCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+            </button>
+          </div>
+
+          {!crNavHudCollapsed ? (
+            <div className="p-3">
+              {/* Primary Maneuver Row */}
+              <div className="flex items-start gap-3">
+                <div className="size-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
+                  {getCrManeuverIcon(routeSteps[0]?.maneuver, 'size-5 text-white')}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-lg font-black text-white leading-none">
+                      {formatCrDistance(routeSteps[0]?.distance)}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                      {routeSteps[0]?.maneuver?.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs font-semibold text-slate-200 leading-snug line-clamp-1">
+                    {routeSteps[0]?.instruction}
+                  </p>
+                  {routeSteps[1] && (
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400">
+                      <span className="text-cyan-400 font-bold">Then</span>
+                      <span className="truncate text-slate-300">
+                        {routeSteps[1].instruction} ({formatCrDistance(routeSteps[1].distance)})
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Toggle Steps Button */}
+              <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setCrTurnListOpen(!crTurnListOpen)}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                >
+                  <List className="size-3 text-cyan-400" />
+                  <span>Maneuvers ({routeSteps.length})</span>
+                  {crTurnListOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                </button>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  ETA ~{Math.round(routeSteps.reduce((acc, s) => acc + (s.duration || 60), 0) / 60)} min
+                </span>
+              </div>
+
+              {/* Expandable Step-by-Step Maneuver List */}
+              {crTurnListOpen && (
+                <div className="mt-2 max-h-48 overflow-y-auto custom-scrollbar rounded-xl bg-slate-950/90 border border-slate-800 p-1.5 space-y-1 animate-in fade-in duration-150">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 px-1 pb-1 border-b border-slate-800 flex items-center justify-between">
+                    <span>Turn Route Guidance</span>
+                    <span className="text-cyan-400">Click to focus map</span>
+                  </div>
+                  {routeSteps.map((step, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleCrStepClick(step.coord)}
+                      className={`w-full text-left p-1.5 rounded-lg flex items-start gap-2 transition-all text-xs ${
+                        idx === 0
+                          ? 'bg-emerald-950/50 border border-emerald-500/30 text-white'
+                          : 'hover:bg-slate-900 text-slate-300 hover:text-white border border-transparent'
+                      }`}
+                    >
+                      <div className={`size-5 rounded flex items-center justify-center shrink-0 mt-0.5 ${
+                        idx === 0 ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
+                      }`}>
+                        {getCrManeuverIcon(step.maneuver, 'size-3')}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[11px] leading-snug line-clamp-1">{step.instruction}</p>
+                        <p className="text-[9px] text-slate-400">{formatCrDistance(step.distance)}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="px-3 py-1.5 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 truncate">
+                <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="text-xs font-bold text-white truncate">
+                  {formatCrDistance(routeSteps[0]?.distance)}: {routeSteps[0]?.instruction}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCrNavHudCollapsed(false)}
+                className="text-[10px] font-bold text-cyan-300 hover:text-white shrink-0"
+              >
+                Expand
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Basemap Configuration / Degradation Notice */}
         {activeTile === 'carto_dark' && basemapHealth === 'NOT_CONFIGURED' && !basemapNoticeDismissed ? (

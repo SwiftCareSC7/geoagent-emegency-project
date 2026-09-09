@@ -630,7 +630,7 @@ export function DriverNavigationMap({
               }`}>
                 {activeLegNumber === 1 ? '🔵 Leg 1 · To Scene' : '🟢 Leg 2 · To Hospital'}
               </span>
-              {speed !== undefined && (
+              {speed != null && (
                 <span className="flex items-center gap-1 font-mono font-bold text-slate-300">
                   <Gauge className="size-3 text-cyan-400" />
                   {Math.round(speed)} km/h

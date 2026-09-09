@@ -6,7 +6,8 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
-  const { emergencyId } = await params as { emergencyId: string }
+  const resolvedParams = await params
+  const emergencyId = resolvedParams.id || resolvedParams.emergencyId || ''
   const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001'
 
   try {
