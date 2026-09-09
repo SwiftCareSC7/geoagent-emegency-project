@@ -1,5 +1,31 @@
 import { calculateDistance } from '../../../shared/services/geospatial.service.js';
 import osrmRoutingProvider from './osrmRoutingProvider.js';
+import { CANONICAL_ROAD_CORRIDORS } from '../canonicalRoadCorridors.js';
+
+const KORAMANGALA_FULL_ROAD_COORDS = [
+  ...CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary.coordinates,
+  ...CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary.coordinates.slice(1)
+];
+
+const HEBBAL_FULL_ROAD_COORDS = [
+  ...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.coordinates,
+  ...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.coordinates.slice(1)
+];
+
+const WHITEFIELD_FULL_ROAD_COORDS = [
+  ...CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.coordinates,
+  ...CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.coordinates.slice(1)
+];
+
+const YELAHANKA_FULL_ROAD_COORDS = [
+  ...CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.coordinates,
+  ...CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.coordinates.slice(1)
+];
+
+const ECITY_FULL_ROAD_COORDS = [
+  ...CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.coordinates,
+  ...CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.coordinates.slice(1)
+];
 
 /**
  * Predefined realistic Bengaluru Navigation Corridors
@@ -574,10 +600,23 @@ class MockRoutingProvider {
     for (const corridor of BENGALURU_CORRIDORS) {
       if (corridor.match(origCoords, destCoords)) {
         const selected = preference === 'SHORTEST' ? corridor.shortest : corridor.fastest;
+        let routeCoordinates = selected.coordinates;
+        if (corridor.id === 'KORAMANGALA_MANIPAL') {
+          routeCoordinates = KORAMANGALA_FULL_ROAD_COORDS;
+        } else if (corridor.id === 'HEBBAL_VICTORIA') {
+          routeCoordinates = HEBBAL_FULL_ROAD_COORDS;
+        } else if (corridor.id === 'WHITEFIELD_SAKRA') {
+          routeCoordinates = WHITEFIELD_FULL_ROAD_COORDS;
+        } else if (corridor.id === 'YELAHANKA_BOWRING') {
+          routeCoordinates = YELAHANKA_FULL_ROAD_COORDS;
+        } else if (corridor.id === 'ECITY_STJOHNS') {
+          routeCoordinates = ECITY_FULL_ROAD_COORDS;
+        }
+
         return {
           geometry: {
             type: 'LineString',
-            coordinates: selected.coordinates
+            coordinates: routeCoordinates
           },
           distanceMeters: selected.distanceMeters,
           durationSeconds: selected.durationSeconds,

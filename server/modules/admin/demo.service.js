@@ -20,6 +20,7 @@ import Decision from '../decisions/decision.model.js';
 import Prediction from '../analysis/prediction.model.js';
 import ClearanceSession from '../clearance/clearance.model.js';
 import realtimeService from '../realtime/realtime.service.js';
+import { CANONICAL_ROAD_CORRIDORS } from '../routes/canonicalRoadCorridors.js';
 
 export const DEMO_SCENARIO_CONFIGS = [
   {
@@ -2031,26 +2032,30 @@ class DemoService {
     // --- SCENARIO 001: Koramangala -> Manipal Hospital ---
     // Leg 1: Ambulance (80ft Depot) -> Emergency (Koramangala 4th Block)
     // Leg 2: Emergency -> Manipal Hospital (Old Airport Rd)
+    const koraCorridor = CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary;
+    const manipalCorridor = CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary;
+    const manipalAltCorridor = CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative;
+
+    // --- SCENARIO 001: Koramangala -> Manipal Hospital ---
+    // Leg 1: Ambulance (80ft Depot) -> Emergency (Koramangala 4th Block)
+    // Leg 2: Emergency -> Manipal Hospital (Old Airport Rd)
     const leg001_1 = {
       legNumber: 1,
       type: 'TO_EMERGENCY',
       title: 'Leg 1: To Emergency Location',
       originName: 'Koramangala 80ft Depot',
       destinationName: 'Koramangala 4th Block Emergency',
-      origin: { type: 'Point', coordinates: [77.6271, 12.9352] },
-      destination: { type: 'Point', coordinates: [77.6320, 12.9410] },
+      origin: { type: 'Point', coordinates: koraCorridor.coordinates[0] },
+      destination: { type: 'Point', coordinates: koraCorridor.coordinates[koraCorridor.coordinates.length - 1] },
       geometry: {
         type: 'LineString',
-        coordinates: [
-          [77.6271, 12.9352],
-          [77.6290, 12.9375],
-          [77.6320, 12.9410]
-        ]
+        coordinates: koraCorridor.coordinates
       },
-      distance: 950,
-      duration: 140,
+      polyline: koraCorridor.polyline,
+      distance: koraCorridor.distance || 950,
+      duration: koraCorridor.duration || 140,
       status: 'ACTIVE',
-      steps: [
+      steps: koraCorridor.steps || [
         { maneuver: 'DEPART', instruction: 'Head north on 80ft Road toward 4th Block', distance: 450, duration: 60 },
         { maneuver: 'TURN_RIGHT', instruction: 'Turn right into 4th Block residential gate', distance: 500, duration: 80 },
         { maneuver: 'ARRIVE', instruction: 'Arrive at patient location', distance: 0, duration: 0 }
@@ -2064,23 +2069,18 @@ class DemoService {
       title: 'Leg 2: To Hospital (Congested Corridor)',
       originName: 'Koramangala 4th Block Emergency',
       destinationName: 'Manipal Hospital (Old Airport Rd)',
-      origin: { type: 'Point', coordinates: [77.6320, 12.9410] },
-      destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
+      origin: { type: 'Point', coordinates: manipalAltCorridor.coordinates[0] },
+      destination: { type: 'Point', coordinates: manipalAltCorridor.coordinates[manipalAltCorridor.coordinates.length - 1] },
       geometry: {
         type: 'LineString',
-        coordinates: [
-          [77.6320, 12.9410],
-          [77.6385, 12.9490],
-          [77.6395, 12.9510], // Bottleneck
-          [77.6440, 12.9565],
-          [77.6483, 12.9582]
-        ]
+        coordinates: manipalAltCorridor.coordinates
       },
-      distance: 4200,
-      duration: 960, // 16 min delay
+      polyline: manipalAltCorridor.polyline,
+      distance: manipalAltCorridor.distance || 4200,
+      duration: (manipalAltCorridor.duration || 600) + 360, // 16 min delay
       trafficDelay: 360,
       status: 'PLANNED',
-      steps: [
+      steps: manipalAltCorridor.steps || [
         { maneuver: 'DEPART', instruction: 'Head northeast toward Intermediate Ring Road', distance: 800, duration: 120 },
         { maneuver: 'CONTINUE', instruction: 'Continue on Intermediate Ring Road (ACCIDENT DELAY +6m)', distance: 2200, duration: 620 },
         { maneuver: 'ARRIVE', instruction: 'Arrive at Manipal Hospital Emergency Bay', distance: 1200, duration: 220 }
@@ -2094,23 +2094,18 @@ class DemoService {
       title: 'Leg 2: To Hospital (Indiranagar Bypass Corridor)',
       originName: 'Koramangala 4th Block Emergency',
       destinationName: 'Manipal Hospital (Old Airport Rd)',
-      origin: { type: 'Point', coordinates: [77.6320, 12.9410] },
-      destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
+      origin: { type: 'Point', coordinates: manipalCorridor.coordinates[0] },
+      destination: { type: 'Point', coordinates: manipalCorridor.coordinates[manipalCorridor.coordinates.length - 1] },
       geometry: {
         type: 'LineString',
-        coordinates: [
-          [77.6320, 12.9410],
-          [77.6340, 12.9450],
-          [77.6390, 12.9540],
-          [77.6435, 12.9570],
-          [77.6483, 12.9582]
-        ]
+        coordinates: manipalCorridor.coordinates
       },
-      distance: 3800,
-      duration: 540, // 9 min -> Saves 7 min!
+      polyline: manipalCorridor.polyline,
+      distance: manipalCorridor.distance || 3800,
+      duration: manipalCorridor.duration || 540, // 9 min -> Saves 7 min!
       trafficDelay: 30,
       status: 'ACTIVE',
-      steps: [
+      steps: manipalCorridor.steps || [
         { maneuver: 'DEPART', instruction: 'Depart emergency scene toward Indiranagar 100ft corridor', distance: 600, duration: 80 },
         { maneuver: 'CONTINUE', instruction: 'Proceed north on 100ft road bypass with green light corridor', distance: 2100, duration: 280 },
         { maneuver: 'TURN_RIGHT', instruction: 'Turn right onto Old Airport Road clear lane', distance: 1100, duration: 180 },
@@ -2123,10 +2118,10 @@ class DemoService {
       routeId: 'ROUTE-DEMO-001-ORIGINAL',
       emergency: seededEmergencies['E-DEMO-001']._id,
       vehicle: seededVehicles['AMB-01']._id,
-      origin: { type: 'Point', coordinates: [77.6271, 12.9352] },
-      destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
-      emergencyLocation: { type: 'Point', coordinates: [77.6320, 12.9410] },
-      hospitalLocation: { type: 'Point', coordinates: [77.6483, 12.9582] },
+      origin: { type: 'Point', coordinates: leg001_1.origin.coordinates },
+      destination: { type: 'Point', coordinates: leg001_2_congested.destination.coordinates },
+      emergencyLocation: { type: 'Point', coordinates: leg001_1.destination.coordinates },
+      hospitalLocation: { type: 'Point', coordinates: leg001_2_congested.destination.coordinates },
       legs: [leg001_1, leg001_2_congested],
       activeLegIndex: 0,
       geometry: {
@@ -2136,8 +2131,8 @@ class DemoService {
           ...leg001_2_congested.geometry.coordinates.slice(1)
         ]
       },
-      distance: 5150,
-      duration: 1100, // 18m
+      distance: leg001_1.distance + leg001_2_congested.distance,
+      duration: leg001_1.duration + leg001_2_congested.duration,
       provider: 'OSRM',
       routeType: 'PLANNED',
       preference: 'FASTEST',
@@ -2151,10 +2146,10 @@ class DemoService {
       routeId: 'ROUTE-DEMO-001-ACTIVE',
       emergency: seededEmergencies['E-DEMO-001']._id,
       vehicle: seededVehicles['AMB-01']._id,
-      origin: { type: 'Point', coordinates: [77.6271, 12.9352] },
-      destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
-      emergencyLocation: { type: 'Point', coordinates: [77.6320, 12.9410] },
-      hospitalLocation: { type: 'Point', coordinates: [77.6483, 12.9582] },
+      origin: { type: 'Point', coordinates: leg001_1.origin.coordinates },
+      destination: { type: 'Point', coordinates: leg001_2_recommended.destination.coordinates },
+      emergencyLocation: { type: 'Point', coordinates: leg001_1.destination.coordinates },
+      hospitalLocation: { type: 'Point', coordinates: leg001_2_recommended.destination.coordinates },
       legs: [leg001_1, leg001_2_recommended],
       activeLegIndex: 0,
       geometry: {
@@ -2164,8 +2159,8 @@ class DemoService {
           ...leg001_2_recommended.geometry.coordinates.slice(1)
         ]
       },
-      distance: 4750,
-      duration: 680, // ~11m -> Saves 7m!
+      distance: leg001_1.distance + leg001_2_recommended.distance,
+      duration: leg001_1.duration + leg001_2_recommended.duration,
       provider: 'OSRM',
       routeType: 'RECOMMENDED',
       preference: 'FASTEST',
@@ -2182,6 +2177,14 @@ class DemoService {
       createdBy: operator._id
     });
 
+    // Scenario corridor mappings for realistic road geometry
+    const scenarioCorridorMap = {
+      2: { leg1: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary, leg2: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary, alt: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative },
+      3: { leg1: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary, leg2: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary, alt: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative },
+      4: { leg1: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary, leg2: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary, alt: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative },
+      5: { leg1: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary, leg2: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary, alt: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative }
+    };
+
     // Seed Multi-Leg Routes for Scenarios 2 through 18
     for (let i = 2; i <= 18; i++) {
       const pad = String(i).padStart(3, '0');
@@ -2189,23 +2192,11 @@ class DemoService {
       const emgDoc = seededEmergencies[scConfig.emergencyId] || seededEmergencies['E-DEMO-002'];
       const vehDoc = seededVehicles[scConfig.vehicleId] || seededVehicles['AMB-02'];
 
-      const leg1Coords = [
-        scConfig.originCoordinates,
-        [
-          (scConfig.originCoordinates[0] + scConfig.emergencyCoordinates[0]) / 2,
-          (scConfig.originCoordinates[1] + scConfig.emergencyCoordinates[1]) / 2
-        ],
-        scConfig.emergencyCoordinates
-      ];
+      const cycleKey = ((i - 2) % 4) + 2;
+      const activeCorridor = scenarioCorridorMap[i] || scenarioCorridorMap[cycleKey];
 
-      const leg2Coords = [
-        scConfig.emergencyCoordinates,
-        [
-          (scConfig.emergencyCoordinates[0] + scConfig.destinationCoordinates[0]) / 2,
-          (scConfig.emergencyCoordinates[1] + scConfig.destinationCoordinates[1]) / 2
-        ],
-        scConfig.destinationCoordinates
-      ];
+      const leg1Coords = activeCorridor.leg1.coordinates;
+      const leg2Coords = activeCorridor.leg2.coordinates;
 
       const leg1Obj = {
         legNumber: 1,
@@ -2213,13 +2204,13 @@ class DemoService {
         title: `Leg 1: ${scConfig.originName} -> ${scConfig.emergencyName}`,
         originName: scConfig.originName,
         destinationName: scConfig.emergencyName,
-        origin: { type: 'Point', coordinates: scConfig.originCoordinates },
-        destination: { type: 'Point', coordinates: scConfig.emergencyCoordinates },
+        origin: { type: 'Point', coordinates: leg1Coords[0] },
+        destination: { type: 'Point', coordinates: leg1Coords[leg1Coords.length - 1] },
         geometry: { type: 'LineString', coordinates: leg1Coords },
-        distance: 2800 + i * 200,
-        duration: 320 + i * 30,
+        distance: activeCorridor.leg1.distance || (2800 + i * 200),
+        duration: activeCorridor.leg1.duration || (320 + i * 30),
         status: i === 7 ? 'COMPLETED' : 'ACTIVE',
-        steps: [
+        steps: activeCorridor.leg1.steps || [
           { maneuver: 'DEPART', instruction: `Head toward ${scConfig.emergencyName}`, distance: 1200, duration: 150 },
           { maneuver: 'CONTINUE', instruction: 'Follow main corridor lane', distance: 1600, duration: 200 },
           { maneuver: 'ARRIVE', instruction: `Arrive at emergency site: ${scConfig.emergencyName}`, distance: 0, duration: 0 }
@@ -2232,13 +2223,13 @@ class DemoService {
         title: `Leg 2: ${scConfig.emergencyName} -> ${scConfig.destinationName}`,
         originName: scConfig.emergencyName,
         destinationName: scConfig.destinationName,
-        origin: { type: 'Point', coordinates: scConfig.emergencyCoordinates },
-        destination: { type: 'Point', coordinates: scConfig.destinationCoordinates },
+        origin: { type: 'Point', coordinates: leg2Coords[0] },
+        destination: { type: 'Point', coordinates: leg2Coords[leg2Coords.length - 1] },
         geometry: { type: 'LineString', coordinates: leg2Coords },
-        distance: 5200 + i * 400,
-        duration: 640 + i * 60,
+        distance: activeCorridor.leg2.distance || (5200 + i * 400),
+        duration: activeCorridor.leg2.duration || (640 + i * 60),
         status: i === 7 ? 'ACTIVE' : 'PLANNED',
-        steps: [
+        steps: activeCorridor.leg2.steps || [
           { maneuver: 'DEPART', instruction: `Depart scene toward ${scConfig.destinationName}`, distance: 1500, duration: 180 },
           { maneuver: 'CONTINUE', instruction: 'Proceed via arterial hospital green wave', distance: 3200, duration: 380 },
           { maneuver: 'ARRIVE', instruction: `Arrive at ${scConfig.destinationName} Emergency Bay`, distance: 500, duration: 80 }
@@ -2249,10 +2240,10 @@ class DemoService {
         routeId: `ROUTE-DEMO-${pad}-ACTIVE`,
         emergency: emgDoc._id,
         vehicle: vehDoc._id,
-        origin: { type: 'Point', coordinates: scConfig.originCoordinates },
-        destination: { type: 'Point', coordinates: scConfig.destinationCoordinates },
-        emergencyLocation: { type: 'Point', coordinates: scConfig.emergencyCoordinates },
-        hospitalLocation: { type: 'Point', coordinates: scConfig.destinationCoordinates },
+        origin: { type: 'Point', coordinates: leg1Coords[0] },
+        destination: { type: 'Point', coordinates: leg2Coords[leg2Coords.length - 1] },
+        emergencyLocation: { type: 'Point', coordinates: leg1Coords[leg1Coords.length - 1] },
+        hospitalLocation: { type: 'Point', coordinates: leg2Coords[leg2Coords.length - 1] },
         legs: [leg1Obj, leg2Obj],
         activeLegIndex: i === 7 ? 1 : 0,
         geometry: {
@@ -2266,18 +2257,14 @@ class DemoService {
         preference: 'FASTEST',
         status: 'ACTIVE',
         steps: [...leg1Obj.steps, ...leg2Obj.steps],
-        alternative: scConfig.hasReroute || scConfig.hasAlternative ? {
+        alternative: (scConfig.hasReroute || scConfig.hasAlternative) && activeCorridor.alt ? {
           affectedLegNumber: 2,
           geometry: {
             type: 'LineString',
-            coordinates: [
-              scConfig.emergencyCoordinates,
-              [scConfig.emergencyCoordinates[0] + 0.008, scConfig.emergencyCoordinates[1] + 0.006],
-              scConfig.destinationCoordinates
-            ]
+            coordinates: activeCorridor.alt.coordinates
           },
-          distanceMeters: leg2Obj.distance + 800,
-          durationSeconds: leg2Obj.duration + 360,
+          distanceMeters: activeCorridor.alt.distance,
+          durationSeconds: activeCorridor.alt.duration + 360,
           preference: 'FASTEST',
           description: `Slower congested corridor (+${scConfig.expectedTimeSavedMinutes || 4} min delay)`
         } : null,
@@ -2286,6 +2273,7 @@ class DemoService {
     }
 
     // Additional routes for remaining emergencies to exceed 50+ total routes
+    const defaultCorridor = CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary;
     for (let j = 19; j <= 42; j++) {
       const pad = String(j).padStart(3, '0');
       const emg = seededEmergencies[`E-DEMO-${pad}`];
@@ -2294,55 +2282,48 @@ class DemoService {
           routeId: `ROUTE-DEMO-${pad}-ACTIVE`,
           emergency: emg._id,
           vehicle: emg.assignedVehicle || seededVehicles['AMB-01']._id,
-          origin: emg.location,
-          destination: emg.destination || emg.location,
+          origin: { type: 'Point', coordinates: defaultCorridor.coordinates[0] },
+          destination: { type: 'Point', coordinates: defaultCorridor.coordinates[defaultCorridor.coordinates.length - 1] },
           emergencyLocation: emg.location,
-          hospitalLocation: emg.destination,
+          hospitalLocation: emg.destination || emg.location,
           legs: [
             {
               legNumber: 1,
               type: 'TO_EMERGENCY',
               title: 'Leg 1: En-Route',
-              origin: emg.location,
-              destination: emg.location,
-              geometry: { type: 'LineString', coordinates: [emg.location.coordinates, emg.location.coordinates] },
-              distance: 2500,
-              duration: 300,
+              origin: { type: 'Point', coordinates: defaultCorridor.coordinates[0] },
+              destination: { type: 'Point', coordinates: defaultCorridor.coordinates[Math.floor(defaultCorridor.coordinates.length / 2)] },
+              geometry: { type: 'LineString', coordinates: defaultCorridor.coordinates.slice(0, Math.floor(defaultCorridor.coordinates.length / 2) + 1) },
+              distance: Math.round(defaultCorridor.distance / 2),
+              duration: Math.round(defaultCorridor.duration / 2),
               status: 'COMPLETED',
-              steps: [{ maneuver: 'ARRIVE', instruction: 'Arrive at location', distance: 0, duration: 0 }]
+              steps: defaultCorridor.steps ? defaultCorridor.steps.slice(0, Math.ceil(defaultCorridor.steps.length / 2)) : [{ maneuver: 'ARRIVE', instruction: 'Arrive at location', distance: 0, duration: 0 }]
             },
             {
               legNumber: 2,
               type: 'TO_HOSPITAL',
               title: 'Leg 2: Transfer',
-              origin: emg.location,
-              destination: emg.destination || emg.location,
-              geometry: { type: 'LineString', coordinates: [emg.location.coordinates, emg.destination?.coordinates || emg.location.coordinates] },
-              distance: 4500,
-              duration: 540,
+              origin: { type: 'Point', coordinates: defaultCorridor.coordinates[Math.floor(defaultCorridor.coordinates.length / 2)] },
+              destination: { type: 'Point', coordinates: defaultCorridor.coordinates[defaultCorridor.coordinates.length - 1] },
+              geometry: { type: 'LineString', coordinates: defaultCorridor.coordinates.slice(Math.floor(defaultCorridor.coordinates.length / 2)) },
+              distance: Math.round(defaultCorridor.distance / 2),
+              duration: Math.round(defaultCorridor.duration / 2),
               status: 'ACTIVE',
-              steps: [{ maneuver: 'ARRIVE', instruction: 'Arrive at destination', distance: 0, duration: 0 }]
+              steps: defaultCorridor.steps ? defaultCorridor.steps.slice(Math.floor(defaultCorridor.steps.length / 2)) : [{ maneuver: 'ARRIVE', instruction: 'Arrive at destination', distance: 0, duration: 0 }]
             }
           ],
           activeLegIndex: 1,
           geometry: {
             type: 'LineString',
-            coordinates: [
-              emg.location.coordinates,
-              [
-                (emg.location.coordinates[0] + (emg.destination?.coordinates[0] || emg.location.coordinates[0])) / 2,
-                (emg.location.coordinates[1] + (emg.destination?.coordinates[1] || emg.location.coordinates[1])) / 2
-              ],
-              emg.destination?.coordinates || emg.location.coordinates
-            ]
+            coordinates: defaultCorridor.coordinates
           },
-          distance: 7000,
-          duration: 840,
+          distance: defaultCorridor.distance,
+          duration: defaultCorridor.duration,
           provider: 'OSRM',
           routeType: 'CURRENT',
           preference: 'FASTEST',
           status: 'ACTIVE',
-          steps: [
+          steps: defaultCorridor.steps || [
             { maneuver: 'DEPART', instruction: 'Depart scene', distance: 1000, duration: 120 },
             { maneuver: 'ARRIVE', instruction: 'Arrive at hospital', distance: 0, duration: 0 }
           ],

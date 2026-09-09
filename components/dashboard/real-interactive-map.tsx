@@ -43,6 +43,7 @@ import { subscribeEvent, REALTIME_EVENTS } from '@/lib/socket/client'
 import { cn } from '@/lib/utils'
 import { NavigationManeuverHUD } from '@/components/navigation/NavigationManeuverHUD'
 import { formatDistance, formatDuration, formatArrivalTime } from '@/lib/navigation/geometry'
+import { CANONICAL_ROAD_CORRIDORS } from '@/lib/canonical-road-corridors'
 
 interface RealInteractiveMapProps {
   markers?: MapMarker[]
@@ -54,38 +55,22 @@ interface RealInteractiveMapProps {
 // Preset Bengaluru Coordinates for Emergency Telemetry
 const BANGALORE_CENTER: [number, number] = [12.968, 77.622]
 
-const PLANNED_ROUTE_A: [number, number][] = [
-  [12.9716, 77.5946], // MG Road Metro (Start)
-  [12.9730, 77.6030], // Mayo Hall
-  [12.9735, 77.6110], // Trinity Circle
-  [12.9725, 77.6180], // Command Hospital Junction (ACCIDENT ZONE)
-  [12.9660, 77.6300], // Domlur Flyover
-  [12.9610, 77.6400], // Murugeshpalya
-  [12.9582, 77.6483], // Manipal Hospital (Destination)
-]
+// High-Density Authentic Road Coordinates from Road Engine (No Straight Lines, No Building Crossings)
+const PLANNED_ROUTE_A: [number, number][] = CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.coordinates.map(
+  ([lng, lat]) => [lat, lng] as [number, number]
+)
 
-const DEVIATED_PATH: [number, number][] = [
-  [12.9716, 77.5946],
-  [12.9730, 77.6030],
-  [12.9745, 77.6120],
-  [12.9760, 77.6200], // Indiranagar 100ft Rd (Current Position)
-]
+const RECOMMENDED_ROUTE_B: [number, number][] = (
+  CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.alternative?.coordinates ||
+  CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.coordinates
+).map(([lng, lat]) => [lat, lng] as [number, number])
 
-const RECOMMENDED_ROUTE_B: [number, number][] = [
-  [12.9716, 77.5946],
-  [12.9760, 77.6200], // 100ft Rd Bypass
-  [12.9690, 77.6350], // HAL 2nd Stage
-  [12.9620, 77.6430], // Airport Rd bypass
-  [12.9582, 77.6483], // Manipal Hospital
-]
+const ALTERNATIVE_ROUTE_C: [number, number][] = (
+  CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary.coordinates
+).map(([lng, lat]) => [lat, lng] as [number, number])
 
-const ALTERNATIVE_ROUTE_C: [number, number][] = [
-  [12.9716, 77.5946],
-  [12.9600, 77.6080], // Shanthi Nagar
-  [12.9500, 77.6250], // Inner Ring Rd
-  [12.9540, 77.6400], // Ejipura Flyover
-  [12.9582, 77.6483], // Manipal Hospital
-]
+const DEVIATED_PATH: [number, number][] = PLANNED_ROUTE_A.slice(0, Math.floor(PLANNED_ROUTE_A.length * 0.45))
+
 
 const V2X_SIGNALS = [
   { coord: [12.9730, 77.6030] as [number, number], name: 'Mayo Hall Junction', status: 'GREEN_WAVE_ACTIVE' },
