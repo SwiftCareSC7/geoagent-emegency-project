@@ -134,16 +134,6 @@ const routeSchema = new mongoose.Schema(
       {
         maneuver: {
           type: String,
-          enum: [
-            'DEPART',
-            'TURN_LEFT',
-            'TURN_RIGHT',
-            'CONTINUE',
-            'KEEP_RIGHT',
-            'KEEP_LEFT',
-            'U_TURN',
-            'ARRIVE'
-          ],
           default: 'CONTINUE'
         },
         instruction: {

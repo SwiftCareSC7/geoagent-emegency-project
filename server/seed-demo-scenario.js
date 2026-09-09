@@ -22,6 +22,7 @@ import Route from './modules/routes/route.model.js';
 import Trajectory from './modules/trajectories/trajectory.model.js';
 import Decision from './modules/decisions/decision.model.js';
 import Prediction from './modules/analysis/prediction.model.js';
+import { CANONICAL_ROAD_CORRIDORS } from './modules/routes/canonicalRoadCorridors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -145,15 +146,9 @@ export async function seedDemoScenario(options = {}) {
   }
 
   // 5. Demo Primary Route & Bypass Alternative Route
-  console.log('\n[4/6] Provisioning Corridor Routes...');
-  const plannedCoordinates = [
-    [77.6030, 12.9730], // Mayo Hall
-    [77.6110, 12.9720], // Trinity Circle
-    [77.6180, 12.9690], // Incident bottleneck zone
-    [77.6300, 12.9640], // Domlur Flyover
-    [77.6400, 12.9600], // HAL Main Rd
-    [77.6483, 12.9582], // Manipal Hospital
-  ];
+  console.log('\n[4/6] Provisioning Corridor Routes with Canonical Road Network Geometries...');
+  const mgCorridor = CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary;
+  const mgAltCorridor = CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.alternative;
 
   let primaryRoute = await Route.findOne({ routeId: 'ROUTE-DEMO-01' });
   if (!primaryRoute) {
@@ -161,20 +156,30 @@ export async function seedDemoScenario(options = {}) {
       routeId: 'ROUTE-DEMO-01',
       emergency: emergency._id,
       vehicle: vehicle._id,
-      origin: { type: 'Point', coordinates: [77.6030, 12.9730] },
-      destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
-      distance: 5500,
-      duration: 600,
+      origin: { type: 'Point', coordinates: mgCorridor.coordinates[0] },
+      destination: { type: 'Point', coordinates: mgCorridor.coordinates[mgCorridor.coordinates.length - 1] },
+      distance: mgCorridor.distance || 5500,
+      duration: mgCorridor.duration || 600,
       provider: 'GOOGLE',
       routeType: 'PLANNED',
       status: 'ACTIVE',
       geometry: {
         type: 'LineString',
-        coordinates: plannedCoordinates,
+        coordinates: mgCorridor.coordinates,
       },
+      polyline: mgCorridor.polyline,
+      steps: mgCorridor.steps,
       createdBy: operator._id,
     });
-    console.log('  ✓ Created Primary Corridor Route: ROUTE-DEMO-01 (5.5 km, 10 min base)');
+    console.log(`  ✓ Created Primary Corridor Route: ROUTE-DEMO-01 (${mgCorridor.coordinates.length} authentic road points)`);
+  } else {
+    primaryRoute.geometry = { type: 'LineString', coordinates: mgCorridor.coordinates };
+    primaryRoute.polyline = mgCorridor.polyline;
+    primaryRoute.steps = mgCorridor.steps;
+    primaryRoute.distance = mgCorridor.distance || primaryRoute.distance;
+    primaryRoute.duration = mgCorridor.duration || primaryRoute.duration;
+    await primaryRoute.save();
+    console.log(`  ✓ Updated Primary Corridor Route: ROUTE-DEMO-01 with ${mgCorridor.coordinates.length} authentic road points`);
   }
 
   let altRoute = await Route.findOne({ routeId: 'ROUTE-DEMO-ALT' });
@@ -183,26 +188,30 @@ export async function seedDemoScenario(options = {}) {
       routeId: 'ROUTE-DEMO-ALT',
       emergency: emergency._id,
       vehicle: vehicle._id,
-      origin: { type: 'Point', coordinates: [77.6030, 12.9730] },
-      destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
-      distance: 5200,
-      duration: 520,
+      origin: { type: 'Point', coordinates: mgAltCorridor.coordinates[0] },
+      destination: { type: 'Point', coordinates: mgAltCorridor.coordinates[mgAltCorridor.coordinates.length - 1] },
+      distance: mgAltCorridor.distance || 5200,
+      duration: mgAltCorridor.duration || 520,
       provider: 'GOOGLE',
       routeType: 'ALTERNATIVE',
       status: 'ACTIVE',
       geometry: {
         type: 'LineString',
-        coordinates: [
-          [77.6030, 12.9730],
-          [77.6150, 12.9760], // 100ft Rd bypass
-          [77.6320, 12.9710], // Indiranagar arterial
-          [77.6420, 12.9620], // Bypass junction
-          [77.6483, 12.9582], // Manipal Hospital
-        ],
+        coordinates: mgAltCorridor.coordinates,
       },
+      polyline: mgAltCorridor.polyline,
+      steps: mgAltCorridor.steps,
       createdBy: operator._id,
     });
-    console.log('  ✓ Created Alternative Corridor Bypass: ROUTE-DEMO-ALT (5.2 km, saves ~2 min)');
+    console.log(`  ✓ Created Alternative Corridor Bypass: ROUTE-DEMO-ALT (${mgAltCorridor.coordinates.length} authentic road points)`);
+  } else {
+    altRoute.geometry = { type: 'LineString', coordinates: mgAltCorridor.coordinates };
+    altRoute.polyline = mgAltCorridor.polyline;
+    altRoute.steps = mgAltCorridor.steps;
+    altRoute.distance = mgAltCorridor.distance || altRoute.distance;
+    altRoute.duration = mgAltCorridor.duration || altRoute.duration;
+    await altRoute.save();
+    console.log(`  ✓ Updated Alternative Corridor Bypass: ROUTE-DEMO-ALT with ${mgAltCorridor.coordinates.length} authentic road points`);
   }
 
   // 6. Demo Incident

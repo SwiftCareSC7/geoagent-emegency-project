@@ -58,6 +58,7 @@ import {
 } from './types'
 import { routeApi } from '@/lib/api/routes'
 import { incidentApi } from '@/lib/api/incidents'
+import { CANONICAL_ROAD_CORRIDORS } from '@/lib/canonical-road-corridors'
 import { clearanceApi, type ClearanceSession, type ConnectedVehicle } from '@/lib/api/clearance'
 import { getSocket, subscribeEvent, REALTIME_EVENTS } from '@/lib/socket/client'
 import type { Incident } from '@/lib/api/types'
@@ -396,30 +397,45 @@ export function DriverNavigation({
       const leg1Plan = leg1Res?.data
       const leg2Plan = leg2Res?.data
 
-      // Guaranteed Road Geometry: Use calculated API coords or canonical road waypoints
-      const dx1 = sc.emergencyCoordinates[0] - sc.originCoordinates[0]
-      const dy1 = sc.emergencyCoordinates[1] - sc.originCoordinates[1]
+      // Match scenario ID to authentic canonical road corridors
+      const scenarioCorridorMap: Record<string, { leg1: any, leg2: any, alt?: any }> = {
+        'DEMO-001': {
+          leg1: CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary,
+          leg2: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary,
+          alt: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative
+        },
+        'DEMO-002': {
+          leg1: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary,
+          leg2: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary,
+          alt: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative
+        },
+        'DEMO-003': {
+          leg1: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary,
+          leg2: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary,
+          alt: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative
+        },
+        'DEMO-004': {
+          leg1: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary,
+          leg2: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary,
+          alt: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative
+        },
+        'DEMO-005': {
+          leg1: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary,
+          leg2: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary,
+          alt: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative
+        }
+      }
+
+      const defaultCorridor = scenarioCorridorMap[sc.id] || scenarioCorridorMap['DEMO-001']
+
+      // Guaranteed authentic Road Geometry (NEVER synthetic straight lines or array interpolation)
       const leg1Coords: [number, number][] = (leg1Plan?.geometry?.coordinates?.length > 1)
         ? leg1Plan.geometry.coordinates
-        : [
-            sc.originCoordinates,
-            [sc.originCoordinates[0] + dx1 * 0.25 + 0.0012, sc.originCoordinates[1] + dy1 * 0.2 - 0.0006],
-            [sc.originCoordinates[0] + dx1 * 0.5 - 0.0009, sc.originCoordinates[1] + dy1 * 0.52 + 0.0011],
-            [sc.originCoordinates[0] + dx1 * 0.75 + 0.0007, sc.originCoordinates[1] + dy1 * 0.76 - 0.0005],
-            sc.emergencyCoordinates
-          ]
+        : (defaultCorridor?.leg1?.coordinates as [number, number][])
 
-      const dx2 = sc.destinationCoordinates[0] - sc.emergencyCoordinates[0]
-      const dy2 = sc.destinationCoordinates[1] - sc.emergencyCoordinates[1]
       const leg2Coords: [number, number][] = (leg2Plan?.geometry?.coordinates?.length > 1)
         ? leg2Plan.geometry.coordinates
-        : [
-            sc.emergencyCoordinates,
-            [sc.emergencyCoordinates[0] + dx2 * 0.3 - 0.0011, sc.emergencyCoordinates[1] + dy2 * 0.28 + 0.0008],
-            [sc.emergencyCoordinates[0] + dx2 * 0.6 + 0.0009, sc.emergencyCoordinates[1] + dy2 * 0.62 - 0.001],
-            [sc.emergencyCoordinates[0] + dx2 * 0.85 - 0.0005, sc.emergencyCoordinates[1] + dy2 * 0.88 + 0.0007],
-            sc.destinationCoordinates
-          ]
+        : (defaultCorridor?.leg2?.coordinates as [number, number][])
 
       setLeg1Coordinates(leg1Coords)
       setLeg2Coordinates(leg2Coords)
@@ -427,24 +443,28 @@ export function DriverNavigation({
       const fullLine: [number, number][] = [...leg1Coords, ...leg2Coords.slice(1)]
       setOriginalRouteCoordinates(fullLine)
 
-      const dist1 = leg1Plan?.distanceMeters || Math.round(Math.hypot(dx1 * 111000, dy1 * 111000) * 1.25)
-      const dist2 = leg2Plan?.distanceMeters || Math.round(Math.hypot(dx2 * 111000, dy2 * 111000) * 1.25)
-      const dur1 = leg1Plan?.durationSeconds || Math.round(dist1 / 11)
-      const dur2 = leg2Plan?.durationSeconds || Math.round(dist2 / 11)
+      const dist1 = leg1Plan?.distanceMeters || defaultCorridor?.leg1?.distance || 2800
+      const dist2 = leg2Plan?.distanceMeters || defaultCorridor?.leg2?.distance || 5200
+      const dur1 = leg1Plan?.durationSeconds || defaultCorridor?.leg1?.duration || 320
+      const dur2 = leg2Plan?.durationSeconds || defaultCorridor?.leg2?.duration || 640
 
-      const leg1Steps: NavigationStep[] = (leg1Plan?.steps && leg1Plan.steps.length > 0) ? leg1Plan.steps : [
-        { maneuver: 'DEPART', instruction: `Head out from ${sc.originName}`, distance: 350, duration: 45, startLocation: sc.originCoordinates },
-        { maneuver: 'TURN_RIGHT', instruction: `Turn right onto primary arterial corridor toward ${sc.emergencyName}`, distance: Math.round(dist1 * 0.35), duration: Math.round(dur1 * 0.35), startLocation: leg1Coords[1] },
-        { maneuver: 'CONTINUE', instruction: 'Follow green-wave cleared transit corridor with sirens active', distance: Math.round(dist1 * 0.45), duration: Math.round(dur1 * 0.45), startLocation: leg1Coords[2] },
-        { maneuver: 'ARRIVE', instruction: `Arrive at Emergency Scene: ${sc.emergencyName}`, distance: 200, duration: 30, startLocation: sc.emergencyCoordinates }
-      ]
+      const leg1Steps: NavigationStep[] = (leg1Plan?.steps && leg1Plan.steps.length > 0)
+        ? leg1Plan.steps
+        : (defaultCorridor?.leg1?.steps && defaultCorridor.leg1.steps.length > 0)
+          ? defaultCorridor.leg1.steps
+          : [
+              { maneuver: 'DEPART', instruction: `Head out from ${sc.originName}`, distance: 350, duration: 45, startLocation: sc.originCoordinates },
+              { maneuver: 'ARRIVE', instruction: `Arrive at Emergency Scene: ${sc.emergencyName}`, distance: 0, duration: 0, startLocation: sc.emergencyCoordinates }
+            ]
 
-      const leg2Steps: NavigationStep[] = (leg2Plan?.steps && leg2Plan.steps.length > 0) ? leg2Plan.steps : [
-        { maneuver: 'DEPART', instruction: `Depart ${sc.emergencyName} with patient stabilized onboard`, distance: 350, duration: 45, startLocation: sc.emergencyCoordinates },
-        { maneuver: 'TURN_LEFT', instruction: `Turn left onto main hospital access corridor`, distance: Math.round(dist2 * 0.3), duration: Math.round(dur2 * 0.3), startLocation: leg2Coords[1] },
-        { maneuver: 'CONTINUE', instruction: `Continue toward ${sc.destinationName} Emergency Bay`, distance: Math.round(dist2 * 0.55), duration: Math.round(dur2 * 0.55), startLocation: leg2Coords[2] },
-        { maneuver: 'ARRIVE', instruction: `Arrive at ${sc.destinationName} ER Bay`, distance: 250, duration: 40, startLocation: sc.destinationCoordinates }
-      ]
+      const leg2Steps: NavigationStep[] = (leg2Plan?.steps && leg2Plan.steps.length > 0)
+        ? leg2Plan.steps
+        : (defaultCorridor?.leg2?.steps && defaultCorridor.leg2.steps.length > 0)
+          ? defaultCorridor.leg2.steps
+          : [
+              { maneuver: 'DEPART', instruction: `Depart ${sc.emergencyName} with patient stabilized onboard`, distance: 350, duration: 45, startLocation: sc.emergencyCoordinates },
+              { maneuver: 'ARRIVE', instruction: `Arrive at ${sc.destinationName} ER Bay`, distance: 0, duration: 0, startLocation: sc.destinationCoordinates }
+            ]
 
       const legs: RouteLeg[] = [
         {
@@ -491,6 +511,17 @@ export function DriverNavigation({
             { maneuver: 'CONTINUE' as const, instruction: 'Bypass bottleneck via arterial corridor', distance: 1200, duration: 140 },
             { maneuver: 'ARRIVE' as const, instruction: 'Arrive at destination', distance: 200, duration: 30 }
           ]
+        }
+      } else if ((sc.hasReroute || sc.hasAlternative) && defaultCorridor?.alt?.coordinates) {
+        alternative = {
+          affectedLegNumber: 2,
+          geometry: { type: 'LineString' as const, coordinates: defaultCorridor.alt.coordinates as [number, number][] },
+          distanceMeters: defaultCorridor.alt.distance || (dist2 + 600),
+          durationSeconds: defaultCorridor.alt.duration + 360,
+          preference: 'FASTEST' as const,
+          description: `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 6} min)`,
+          trafficDelaySeconds: 360,
+          steps: defaultCorridor.alt.steps || []
         }
       }
 
