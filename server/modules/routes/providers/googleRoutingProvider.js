@@ -66,14 +66,33 @@ class GoogleRoutingProvider {
       'routes.staticDuration',
       'routes.distanceMeters',
       'routes.polyline.encodedPolyline',
-      'routes.legs',
+      'routes.description',
       'routes.warnings',
-      'routes.description'
+      'routes.legs.distanceMeters',
+      'routes.legs.duration',
+      'routes.legs.staticDuration',
+      'routes.legs.startLocation',
+      'routes.legs.endLocation',
+      'routes.legs.steps.navigationInstruction',
+      'routes.legs.steps.distanceMeters',
+      'routes.legs.steps.staticDuration',
+      'routes.legs.steps.polyline.encodedPolyline',
+      'routes.legs.steps.startLocation',
+      'routes.legs.steps.endLocation'
     ].join(',');
     
     // In-memory route cache with 60-second TTL to avoid duplicate billing
     this.cache = new Map();
     this.cacheTtlMs = 60 * 1000;
+  }
+
+  /**
+   * Safe check for whether Google API key is configured without exposing it
+   * @returns {boolean}
+   */
+  isAvailable() {
+    const key = process.env.GOOGLE_MAPS_API_KEY;
+    return Boolean(key && typeof key === 'string' && key.trim().length > 10);
   }
 
   /**
@@ -118,12 +137,21 @@ class GoogleRoutingProvider {
           for (const step of leg.steps) {
             const stepDist = typeof step.distanceMeters === 'number' ? step.distanceMeters : 0;
             const stepDur = parseDurationSeconds(step.staticDuration);
-            const instruction = step.navigationInstruction?.instructions || 'Continue';
+            const instruction = step.navigationInstruction?.instructions || 'Continue straight';
             const rawManeuver = (step.navigationInstruction?.maneuver || 'STRAIGHT').toUpperCase();
+            
             let maneuver = 'CONTINUE';
-            if (rawManeuver.includes('LEFT')) maneuver = 'TURN_LEFT';
+            if (rawManeuver.includes('SHARP_LEFT')) maneuver = 'SHARP_LEFT';
+            else if (rawManeuver.includes('SHARP_RIGHT')) maneuver = 'SHARP_RIGHT';
+            else if (rawManeuver.includes('SLIGHT_LEFT')) maneuver = 'SLIGHT_LEFT';
+            else if (rawManeuver.includes('SLIGHT_RIGHT')) maneuver = 'SLIGHT_RIGHT';
+            else if (rawManeuver.includes('LEFT')) maneuver = 'TURN_LEFT';
             else if (rawManeuver.includes('RIGHT')) maneuver = 'TURN_RIGHT';
-            else if (rawManeuver.includes('UTURN')) maneuver = 'U_TURN';
+            else if (rawManeuver.includes('UTURN') || rawManeuver.includes('U_TURN')) maneuver = 'U_TURN';
+            else if (rawManeuver.includes('ROUNDABOUT') || rawManeuver.includes('ROTARY')) maneuver = 'ROUNDABOUT';
+            else if (rawManeuver.includes('RAMP')) maneuver = 'RAMP';
+            else if (rawManeuver.includes('FORK')) maneuver = rawManeuver.includes('LEFT') ? 'FORK_LEFT' : 'FORK_RIGHT';
+            else if (rawManeuver.includes('MERGE')) maneuver = 'MERGE';
             else if (rawManeuver.includes('DEPART')) maneuver = 'DEPART';
             else if (rawManeuver.includes('ARRIVE')) maneuver = 'ARRIVE';
 
@@ -254,6 +282,7 @@ class GoogleRoutingProvider {
       },
       travelMode: 'DRIVE',
       routingPreference,
+      departureTime: new Date().toISOString(),
       computeAlternativeRoutes: computeAlternatives,
       routeModifiers: {
         avoidTolls: false,
