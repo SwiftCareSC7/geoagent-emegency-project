@@ -527,6 +527,34 @@ export function DriverNavigationMap({
     }
   }, [routeIncidents, mapInitialized])
 
+// Helper: Calculate bearing between two coordinates
+function calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const y = Math.sin((lng2 - lng1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+            Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lng2 - lng1) * Math.PI / 180)
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360
+}
+
+// Helper: Generate inline SVG string for Leaflet divIcon turn maneuver markers
+function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
+  switch (maneuver) {
+    case 'TURN_LEFT':
+    case 'SLIGHT_LEFT':
+      return `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg>`
+    case 'TURN_RIGHT':
+    case 'SLIGHT_RIGHT':
+      return `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 10 20 15 15 20"></polyline><path d="M4 4v7a4 4 0 0 0 4 4h12"></path></svg>`
+    case 'U_TURN':
+      return `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>`
+    case 'ARRIVE':
+      return `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`
+    case 'DEPART':
+    case 'CONTINUE':
+    default:
+      return `<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`
+  }
+}
+
   // 7. Render Simulated Connected Vehicles (Clearance Demo V2X)
   useEffect(() => {
     if (!clearanceLayerRef.current || !leafletRef.current) return
@@ -578,6 +606,126 @@ export function DriverNavigationMap({
     }
   }, [clearanceVehicles, mapInitialized])
 
+  // 7B. Render Turn-by-Turn Waypoint Markers & Road Direction Chevrons Directly on Map
+  useEffect(() => {
+    if (!turnMarkersLayerRef.current || !routeChevronsLayerRef.current || !leafletRef.current) return
+    const L = leafletRef.current
+    const turnLayer = turnMarkersLayerRef.current
+    const chevronLayer = routeChevronsLayerRef.current
+    turnLayer.clearLayers()
+    chevronLayer.clearLayers()
+
+    const activeCoords = (activeLegNumber === 1 ? leg1Coordinates : leg2Coordinates) || activeRouteCoordinates
+    if (!activeCoords || activeCoords.length < 2) return
+
+    // 1. Directional Chevrons along road polyline
+    const totalPoints = activeCoords.length
+    const stepInterval = Math.max(3, Math.floor(totalPoints / 8))
+    for (let i = 1; i < totalPoints - 1; i += stepInterval) {
+      const prev = activeCoords[i - 1]
+      const curr = activeCoords[i]
+      const next = activeCoords[i + 1]
+      if (!prev || !curr || !next) continue
+      const bearing = calculateBearing(prev[1], prev[0], next[1], next[0])
+
+      const chevronHtml = `
+        <div style="transform: rotate(${Math.round(bearing)}deg); display: flex; items-center; justify-content: center; width: 22px; height: 22px; pointer-events: none;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="#34d399" style="filter: drop-shadow(0 0 4px rgba(16,185,129,0.95));">
+            <path d="M5 3l14 9-14 9V3z"/>
+          </svg>
+        </div>
+      `
+      const chevronIcon = L.divIcon({
+        className: 'route-flow-chevron',
+        html: chevronHtml,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      })
+      const marker = L.marker([curr[1], curr[0]], { icon: chevronIcon, interactive: false })
+      chevronLayer.addLayer(marker)
+    }
+
+    // 2. Turn Maneuver Waypoint Badges at each intersection on the map
+    const maneuverSteps = (steps && steps.length > 0) ? steps : [currentStep].filter(Boolean) as NavigationStep[]
+    if (maneuverSteps.length === 0) return
+
+    maneuverSteps.forEach((step, idx) => {
+      let coord: [number, number] | null = null
+      if (step.startLocation && Array.isArray(step.startLocation)) {
+        coord = [step.startLocation[1], step.startLocation[0]]
+      } else {
+        const frac = idx / Math.max(1, maneuverSteps.length)
+        const pointIdx = Math.min(Math.floor(frac * (activeCoords.length - 1)), activeCoords.length - 1)
+        const c = activeCoords[pointIdx]
+        if (c) coord = [c[1], c[0]]
+      }
+      if (!coord) return
+
+      const isCurrentTurn = idx === 0
+      const svgIcon = getManeuverSvg(step.maneuver)
+      const distStr = formatManeuverDistance(step.distance)
+
+      const turnMarkerHtml = isCurrentTurn
+        ? `
+          <div style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;">
+            <div style="position: absolute; width: 44px; height: 44px; border-radius: 50%; background: rgba(16, 185, 129, 0.4); animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+            <div style="position: relative; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #10b981, #047857); border: 2.5px solid #a7f3d0; box-shadow: 0 4px 14px rgba(0,0,0,0.6), 0 0 10px rgba(16,185,129,0.8); display: flex; align-items: center; justify-content: center; color: white;">
+              ${svgIcon}
+            </div>
+            <div style="margin-top: 3px; background: rgba(15, 23, 42, 0.95); color: #34d399; font-size: 10px; font-weight: 800; font-family: ui-monospace, monospace; padding: 2px 7px; border-radius: 9999px; border: 1px solid rgba(52, 211, 153, 0.6); box-shadow: 0 2px 8px rgba(0,0,0,0.7); white-space: nowrap;">
+              NEXT: ${distStr}
+            </div>
+          </div>
+        `
+        : `
+          <div style="position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;">
+            <div style="width: 28px; height: 28px; border-radius: 8px; background: #0f172a; border: 2px solid #38bdf8; box-shadow: 0 3px 10px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: #38bdf8;">
+              ${svgIcon}
+            </div>
+            <div style="margin-top: 2px; background: rgba(15, 23, 42, 0.9); color: #94a3b8; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 9999px; border: 1px solid rgba(56, 189, 248, 0.4); white-space: nowrap;">
+              ${distStr}
+            </div>
+          </div>
+        `
+
+      const icon = L.divIcon({
+        className: `turn-maneuver-marker-${idx}`,
+        html: turnMarkerHtml,
+        iconSize: isCurrentTurn ? [64, 60] : [50, 46],
+        iconAnchor: isCurrentTurn ? [32, 24] : [25, 20]
+      })
+
+      const marker = L.marker(coord, { icon })
+      marker.bindPopup(`
+        <div style="font-family: system-ui, sans-serif; min-width: 190px; padding: 4px;">
+          <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+            <span style="font-size: 10px; font-weight: 800; text-transform: uppercase; background: ${isCurrentTurn ? '#065f46' : '#1e293b'}; color: ${isCurrentTurn ? '#34d399' : '#38bdf8'}; padding: 2px 6px; border-radius: 4px;">
+              ${isCurrentTurn ? 'CURRENT TURN' : `TURN #${idx + 1}`}
+            </span>
+            <span style="font-size: 11px; font-weight: 700; color: #cbd5e1;">${distStr}</span>
+          </div>
+          <div style="font-size: 12px; font-weight: 700; color: #f8fafc; line-height: 1.3;">
+            ${step.instruction}
+          </div>
+          <div style="margin-top: 6px; font-size: 10px; color: #10b981; font-weight: 600;">
+            ✓ Priority Emergency Corridor Cleared
+          </div>
+        </div>
+      `, {
+        className: 'rounded-xl bg-slate-900 text-white text-xs border border-slate-700'
+      })
+
+      marker.on('click', () => {
+        if (mapRef.current && coord) {
+          mapRef.current.setView(coord, 17, { animate: true })
+          setIsUserPanning(true)
+        }
+      })
+
+      turnLayer.addLayer(marker)
+    })
+  }, [steps, currentStep, activeRouteCoordinates, leg1Coordinates, leg2Coordinates, activeLegNumber, mapInitialized])
+
   // 8. Handle Re-center & Auto-Follow Camera
   useEffect(() => {
     if (!mapRef.current || !driverLocation) return
@@ -622,20 +770,21 @@ export function DriverNavigationMap({
         </div>
       )}
       {/* 1. ON-MAP TURN-BY-TURN NAVIGATION HUD */}
-      <div className="absolute top-3 left-3 sm:left-4 z-[450] max-w-sm sm:max-w-md w-[calc(100%-24px)] sm:w-[380px] pointer-events-auto">
+      <div className="absolute top-3 left-3 sm:left-4 z-[450] max-w-sm sm:max-w-md w-[calc(100%-24px)] sm:w-[390px] pointer-events-auto">
         <div className="rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden transition-all duration-200">
           {/* Top Bar: Mission Leg & Audio & Collapse */}
           <div className="flex items-center justify-between px-3.5 py-2 bg-slate-950/80 border-b border-slate-800 text-[11px]">
             <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wide ${
+              <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wide flex items-center gap-1.5 ${
                 activeLegNumber === 1
                   ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
                   : 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
               }`}>
-                {activeLegNumber === 1 ? '🔵 Leg 1 · To Scene' : '🟢 Leg 2 · To Hospital'}
+                <span className={`size-2 rounded-full animate-ping ${activeLegNumber === 1 ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                {activeLegNumber === 1 ? 'LEG 1 · TO SCENE' : 'LEG 2 · TO HOSPITAL'}
               </span>
               {speed != null && (
-                <span className="flex items-center gap-1 font-mono font-bold text-slate-300">
+                <span className="flex items-center gap-1 font-mono font-bold text-slate-300 text-xs">
                   <Gauge className="size-3 text-cyan-400" />
                   {Math.round(speed)} km/h
                 </span>
@@ -672,103 +821,108 @@ export function DriverNavigationMap({
           {/* Primary Maneuver Card */}
           {!isNavHudCollapsed ? (
             <div className="p-3.5">
-              <div className="flex items-start gap-3.5">
-                {/* Maneuver Arrow Icon Box */}
-                <div className="size-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
-                  {getManeuverIcon(currentStep?.maneuver, 'size-7 text-white')}
-                </div>
-
-                {/* Distance & Turn Instruction */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
-                      {formatManeuverDistance(distanceToNextStepMeters)}
-                    </span>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
-                      {currentStep?.maneuver?.replace('_', ' ') || 'CONTINUE'}
-                    </span>
+              <div className="flex items-center justify-between gap-3">
+                {/* Maneuver Arrow Icon Box & Instruction */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-11 sm:size-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
+                    {getManeuverIcon(currentStep?.maneuver, 'size-6 sm:size-7 text-white')}
                   </div>
-                  <h3 className="mt-1 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-2">
-                    {currentStep?.instruction || 'Follow cleared emergency corridor'}
-                  </h3>
 
-                  {/* Next Step Preview */}
-                  {nextStep && (
-                    <div className="mt-2 pt-2 border-t border-slate-800 flex items-center gap-1.5 text-[11px] text-slate-400">
-                      <span className="text-cyan-400 font-bold">Then</span>
-                      <span className="shrink-0">{getManeuverIcon(nextStep.maneuver, 'size-3.5 text-cyan-300')}</span>
-                      <span className="truncate text-slate-300 font-medium">
-                        {nextStep.instruction} ({formatManeuverDistance(nextStep.distance)})
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
+                        {formatManeuverDistance(distanceToNextStepMeters)}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                        {currentStep?.maneuver?.replace('_', ' ') || 'DEPART'}
                       </span>
                     </div>
-                  )}
+                    <h3 className="mt-1 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-1">
+                      {currentStep?.instruction || 'Head onto emergency corridor'}
+                    </h3>
+                  </div>
                 </div>
-              </div>
 
-              {/* Bottom Quick Bar: All Turns toggle & Map Legend toggle */}
-              <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2">
+                {/* EXPAND button matching user screenshot */}
                 <button
                   type="button"
                   onClick={() => setIsTurnListOpen(!isTurnListOpen)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors"
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold tracking-wider text-slate-200 hover:text-white uppercase shrink-0 transition-colors"
                 >
-                  <List className="size-3.5 text-cyan-400" />
-                  <span>All Turns ({steps.length || 1})</span>
-                  {isTurnListOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setLegendOpen(!legendOpen)}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors"
-                >
-                  <Layers className="size-3 text-blue-400" />
-                  <span>Legend</span>
-                  {legendOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                  {isTurnListOpen ? 'CLOSE' : 'EXPAND'}
                 </button>
               </div>
 
+              {/* Next Step Preview */}
+              {nextStep && !isTurnListOpen && (
+                <div className="mt-2 pt-2 border-t border-slate-800 flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <span className="text-cyan-400 font-bold">Then</span>
+                  <span className="shrink-0">{getManeuverIcon(nextStep.maneuver, 'size-3.5 text-cyan-300')}</span>
+                  <span className="truncate text-slate-300 font-medium">
+                    {nextStep.instruction} ({formatManeuverDistance(nextStep.distance)})
+                  </span>
+                </div>
+              )}
+
               {/* Expandable Step-by-Step Maneuver List */}
               {isTurnListOpen && (
-                <div className="mt-2.5 max-h-56 overflow-y-auto custom-scrollbar rounded-xl bg-slate-950/90 border border-slate-800 p-2 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-1 pb-1 border-b border-slate-800 flex items-center justify-between">
+                <div className="mt-3 pt-2.5 border-t border-slate-800 space-y-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-1 flex items-center justify-between">
                     <span>Turn-by-Turn Route Guidance</span>
                     <span className="text-cyan-400 font-normal">Tap turn to view on map</span>
                   </div>
-                  {(steps && steps.length > 0 ? steps : [currentStep]).filter(Boolean).map((step, idx) => {
-                    const isCurrent = idx === 0
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => step && handleStepClick(step, idx)}
-                        className={`w-full text-left p-2 rounded-lg flex items-start gap-2.5 transition-all text-xs ${
-                          isCurrent
-                            ? 'bg-emerald-950/60 border border-emerald-500/40 text-white'
-                            : 'hover:bg-slate-900 text-slate-300 hover:text-white border border-transparent'
-                        }`}
-                      >
-                        <div className={`size-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
-                          isCurrent ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
-                        }`}>
-                          {getManeuverIcon(step?.maneuver, 'size-3.5')}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-xs leading-snug line-clamp-1">{step?.instruction}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {formatManeuverDistance(step?.distance)} · ~{Math.max(1, Math.round((step?.duration || 30) / 60))} min
-                          </p>
-                        </div>
-                        {isCurrent && (
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px] uppercase shrink-0">
-                            Current
-                          </span>
-                        )}
-                      </button>
-                    )
-                  })}
+                  <div className="max-h-56 overflow-y-auto custom-scrollbar rounded-xl bg-slate-950/90 border border-slate-800 p-2 space-y-1.5">
+                    {(steps && steps.length > 0 ? steps : [currentStep]).filter(Boolean).map((step, idx) => {
+                      const isCurrent = idx === 0
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => step && handleStepClick(step, idx)}
+                          className={`w-full text-left p-2 rounded-lg flex items-start gap-2.5 transition-all text-xs ${
+                            isCurrent
+                              ? 'bg-emerald-950/60 border border-emerald-500/40 text-white'
+                              : 'hover:bg-slate-900 text-slate-300 hover:text-white border border-transparent'
+                          }`}
+                        >
+                          <div className={`size-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
+                            isCurrent ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
+                          }`}>
+                            {getManeuverIcon(step?.maneuver, 'size-3.5')}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-xs leading-snug line-clamp-1">{step?.instruction}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {formatManeuverDistance(step?.distance)} · ~{Math.max(1, Math.round((step?.duration || 30) / 60))} min
+                            </p>
+                          </div>
+                          {isCurrent && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px] uppercase shrink-0">
+                              Current
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               )}
+
+              {/* Map Legend Toggle */}
+              <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setLegendOpen(!legendOpen)}
+                  className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors"
+                >
+                  <Layers className="size-3 text-blue-400" />
+                  <span>Map Legend</span>
+                  {legendOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                </button>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {steps?.length || 1} maneuvers on map
+                </span>
+              </div>
 
               {/* Legend dropdown if toggled */}
               {legendOpen && (

@@ -14,9 +14,19 @@ export class RouteLayerManager {
   private layerGroup: L.LayerGroup
   private polylines = new Map<string, L.Polyline>()
   private endpointMarkers = new Map<string, L.Marker[]>()
+  private turnManeuverMarkers = new Map<string, L.Marker[]>()
+  private chevronMarkers = new Map<string, L.Marker[]>()
 
   constructor(layerGroup: L.LayerGroup) {
     this.layerGroup = layerGroup
+  }
+
+  /** Helper: Calculate bearing between two coordinates */
+  private calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const y = Math.sin((lng2 - lng1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+    const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+              Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lng2 - lng1) * Math.PI / 180)
+    return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360
   }
 
   /** Update all rendered routes */
@@ -35,8 +45,9 @@ export class RouteLayerManager {
 
       const id = route.routeId
       seenIds.add(id)
-      const latLngs = toLatLngArray(route.geometry.coordinates)
-      const isSelected = selectedRouteId === id || route.status === 'ACTIVE'
+      const coords = route.geometry.coordinates
+      const latLngs = toLatLngArray(coords)
+      const isSelected = selectedRouteId === id || route.status === 'ACTIVE' || route.isRecommended
 
       // Route styling
       let color = '#3b82f6' // Blue (Planned / Leg 1)
@@ -139,6 +150,97 @@ export class RouteLayerManager {
         }
 
         this.endpointMarkers.set(id, markers)
+
+        // Render On-Map Turn Maneuvers & Directional Flow Chevrons for Active/Selected Route
+        if (isSelected && coords.length > 3) {
+          const turnList: L.Marker[] = []
+          const chevronList: L.Marker[] = []
+
+          // 1. Flow Chevrons
+          const interval = Math.max(3, Math.floor(coords.length / 7))
+          for (let i = 1; i < coords.length - 1; i += interval) {
+            const p1 = coords[i - 1]
+            const p2 = coords[i]
+            const p3 = coords[i + 1]
+            if (!p1 || !p2 || !p3) continue
+            const bearing = this.calculateBearing(p1[1], p1[0], p3[1], p3[0])
+
+            const chevronIcon = LRef.divIcon({
+              className: 'route-map-chevron',
+              html: `<div style="transform:rotate(${Math.round(bearing)}deg);display:flex;align-items:center;justify-content:center;width:20px;height:20px;pointer-events:none;"><svg viewBox="0 0 24 24" width="15" height="15" fill="#34d399" style="filter:drop-shadow(0 0 4px rgba(16,185,129,0.9));"><path d="M5 3l14 9-14 9V3z"/></svg></div>`,
+              iconSize: [20, 20],
+              iconAnchor: [10, 10],
+            })
+            const cMarker = LRef.marker([p2[1], p2[0]], { icon: chevronIcon, interactive: false }).addTo(this.layerGroup)
+            chevronList.push(cMarker)
+          }
+
+          // 2. Turn Maneuver Waypoint Markers at route intersections
+          const turnFractions = [0.15, 0.4, 0.7, 0.9]
+          const maneuvers = [
+            { type: 'DEPART', label: 'Depart on Primary Corridor', icon: '↑' },
+            { type: 'TURN_LEFT', label: 'Turn Left onto Cleared Arterial', icon: '↰' },
+            { type: 'CONTINUE', label: 'Proceed through Preempted Signals', icon: '↑' },
+            { type: 'TURN_RIGHT', label: 'Turn Right to Receiving Bay', icon: '↱' },
+          ]
+
+          turnFractions.forEach((frac, idx) => {
+            const cIdx = Math.min(Math.floor(frac * (coords.length - 1)), coords.length - 1)
+            const pt = coords[cIdx]
+            if (!pt) return
+            const m = maneuvers[idx] || { type: 'CONTINUE', label: 'Continue on Route', icon: '↑' }
+            const isFirst = idx === 0
+
+            const markerHtml = isFirst
+              ? `
+                <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+                  <div style="position:absolute;width:40px;height:40px;border-radius:50%;background:rgba(16,185,129,0.4);animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+                  <div style="position:relative;width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#10b981,#047857);border:2px solid #a7f3d0;box-shadow:0 3px 10px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:16px;">
+                    ${m.icon}
+                  </div>
+                  <div style="margin-top:2px;background:rgba(15,23,42,0.95);color:#34d399;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:9999px;border:1px solid rgba(52,211,153,0.5);white-space:nowrap;">
+                    TURN 1
+                  </div>
+                </div>
+              `
+              : `
+                <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+                  <div style="width:24px;height:24px;border-radius:7px;background:#0f172a;border:2px solid #38bdf8;box-shadow:0 2px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#38bdf8;font-weight:bold;font-size:13px;">
+                    ${m.icon}
+                  </div>
+                  <div style="margin-top:1px;background:rgba(15,23,42,0.9);color:#94a3b8;font-size:8px;font-weight:bold;padding:0px 4px;border-radius:9999px;border:1px solid rgba(56,189,248,0.3);white-space:nowrap;">
+                    TURN ${idx + 1}
+                  </div>
+                </div>
+              `
+
+            const tIcon = LRef.divIcon({
+              className: `turn-map-marker-${idx}`,
+              html: markerHtml,
+              iconSize: isFirst ? [50, 46] : [40, 38],
+              iconAnchor: isFirst ? [25, 20] : [20, 16],
+            })
+
+            const tMarker = LRef.marker([pt[1], pt[0]], { icon: tIcon }).addTo(this.layerGroup)
+            tMarker.bindPopup(`
+              <div style="font-family:system-ui,sans-serif;padding:3px;min-width:160px;">
+                <div style="font-size:10px;font-weight:bold;color:${isFirst ? '#34d399' : '#38bdf8'};text-transform:uppercase;">
+                  Turn #${idx + 1} (${m.type})
+                </div>
+                <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-top:2px;">
+                  ${m.label}
+                </div>
+                <div style="font-size:10px;color:#10b981;margin-top:4px;">
+                  ✓ Green-Wave Signal Cleared
+                </div>
+              </div>
+            `)
+            turnList.push(tMarker)
+          })
+
+          this.turnManeuverMarkers.set(id, turnList)
+          this.chevronMarkers.set(id, chevronList)
+        }
       }
     }
 
@@ -151,6 +253,16 @@ export class RouteLayerManager {
         if (ep) {
           ep.forEach((m) => this.layerGroup.removeLayer(m))
           this.endpointMarkers.delete(id)
+        }
+        const tm = this.turnManeuverMarkers.get(id)
+        if (tm) {
+          tm.forEach((m) => this.layerGroup.removeLayer(m))
+          this.turnManeuverMarkers.delete(id)
+        }
+        const cm = this.chevronMarkers.get(id)
+        if (cm) {
+          cm.forEach((m) => this.layerGroup.removeLayer(m))
+          this.chevronMarkers.delete(id)
         }
       }
     }
@@ -178,5 +290,7 @@ export class RouteLayerManager {
     this.layerGroup.clearLayers()
     this.polylines.clear()
     this.endpointMarkers.clear()
+    this.turnManeuverMarkers.clear()
+    this.chevronMarkers.clear()
   }
 }

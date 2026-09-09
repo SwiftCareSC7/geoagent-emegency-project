@@ -57,7 +57,9 @@ import {
   List,
   Compass,
   CheckCircle2,
-  Clock
+  Clock,
+  Gauge,
+  Volume2
 } from 'lucide-react'
 
 function getCrManeuverIcon(maneuver?: string, className = 'size-5 text-white') {
@@ -832,103 +834,126 @@ export function ControlRoomMap({
         ) : null}
 
         {/* Turn-by-Turn Navigation Corridor HUD */}
-        <div className="rounded-2xl border border-cyan-500/40 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden pointer-events-auto transition-all">
+        <div className="rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden pointer-events-auto transition-all duration-200">
           {/* Top Bar: Mission & Collapse */}
-          <div className="flex items-center justify-between px-3 py-1.5 bg-cyan-950/70 border-b border-cyan-800/40 text-[11px]">
-            <div className="flex items-center gap-1.5 font-bold text-cyan-200">
-              <Navigation className="size-3.5 text-cyan-400" />
-              <span>Turn-by-Turn Guidance</span>
+          <div className="flex items-center justify-between px-3.5 py-2 bg-slate-950/80 border-b border-slate-800 text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wide bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
+                ACTIVE CORRIDOR · V2X
+              </span>
+              <span className="flex items-center gap-1 font-mono font-bold text-slate-300 text-xs">
+                <Gauge className="size-3 text-cyan-400" />
+                42 km/h
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setCrNavHudCollapsed(!crNavHudCollapsed)}
-              className="p-1 rounded hover:bg-cyan-900/60 text-cyan-300 transition-colors"
-              aria-label={crNavHudCollapsed ? 'Expand turn navigation' : 'Collapse turn navigation'}
-            >
-              {crNavHudCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <span className="p-1 text-emerald-400" title="Corridor radio active">
+                <Volume2 className="size-3.5" />
+              </span>
+              <button
+                type="button"
+                onClick={() => setCrNavHudCollapsed(!crNavHudCollapsed)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                aria-label={crNavHudCollapsed ? 'Expand turn navigation' : 'Collapse turn navigation'}
+              >
+                {crNavHudCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+              </button>
+            </div>
           </div>
 
           {!crNavHudCollapsed ? (
-            <div className="p-3">
-              {/* Primary Maneuver Row */}
-              <div className="flex items-start gap-3">
-                <div className="size-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
-                  {getCrManeuverIcon(routeSteps[0]?.maneuver, 'size-5 text-white')}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-lg font-black text-white leading-none">
-                      {formatCrDistance(routeSteps[0]?.distance)}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                      {routeSteps[0]?.maneuver?.replace('_', ' ')}
-                    </span>
+            <div className="p-3.5">
+              {/* Primary Maneuver Row with EXPAND button */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-11 sm:size-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
+                    {getCrManeuverIcon(routeSteps[0]?.maneuver, 'size-6 text-white')}
                   </div>
-                  <p className="mt-1 text-xs font-semibold text-slate-200 leading-snug line-clamp-1">
-                    {routeSteps[0]?.instruction}
-                  </p>
-                  {routeSteps[1] && (
-                    <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400">
-                      <span className="text-cyan-400 font-bold">Then</span>
-                      <span className="truncate text-slate-300">
-                        {routeSteps[1].instruction} ({formatCrDistance(routeSteps[1].distance)})
+                  <div className="min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl font-black text-white tracking-tight leading-none">
+                        {formatCrDistance(routeSteps[0]?.distance)}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                        {routeSteps[0]?.maneuver?.replace('_', ' ') || 'DEPART'}
                       </span>
                     </div>
-                  )}
+                    <p className="mt-1 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-1">
+                      {routeSteps[0]?.instruction}
+                    </p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Toggle Steps Button */}
-              <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between">
+                {/* EXPAND button matching user screenshot */}
                 <button
                   type="button"
                   onClick={() => setCrTurnListOpen(!crTurnListOpen)}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold tracking-wider text-slate-200 hover:text-white uppercase shrink-0 transition-colors"
                 >
-                  <List className="size-3 text-cyan-400" />
-                  <span>Maneuvers ({routeSteps.length})</span>
-                  {crTurnListOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                  {crTurnListOpen ? 'CLOSE' : 'EXPAND'}
                 </button>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  ETA ~{Math.round(routeSteps.reduce((acc, s) => acc + (s.duration || 60), 0) / 60)} min
-                </span>
               </div>
+
+              {/* Next Step Preview */}
+              {routeSteps[1] && !crTurnListOpen && (
+                <div className="mt-2 pt-2 border-t border-slate-800 flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <span className="text-cyan-400 font-bold">Then</span>
+                  <span className="truncate text-slate-300 font-medium">
+                    {routeSteps[1].instruction} ({formatCrDistance(routeSteps[1].distance)})
+                  </span>
+                </div>
+              )}
 
               {/* Expandable Step-by-Step Maneuver List */}
               {crTurnListOpen && (
-                <div className="mt-2 max-h-48 overflow-y-auto custom-scrollbar rounded-xl bg-slate-950/90 border border-slate-800 p-1.5 space-y-1 animate-in fade-in duration-150">
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 px-1 pb-1 border-b border-slate-800 flex items-center justify-between">
+                <div className="mt-3 pt-2.5 border-t border-slate-800 space-y-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-1 flex items-center justify-between">
                     <span>Turn Route Guidance</span>
-                    <span className="text-cyan-400">Click to focus map</span>
+                    <span className="text-cyan-400 font-normal">Click turn to focus map</span>
                   </div>
-                  {routeSteps.map((step, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleCrStepClick(step.coord)}
-                      className={`w-full text-left p-1.5 rounded-lg flex items-start gap-2 transition-all text-xs ${
-                        idx === 0
-                          ? 'bg-emerald-950/50 border border-emerald-500/30 text-white'
-                          : 'hover:bg-slate-900 text-slate-300 hover:text-white border border-transparent'
-                      }`}
-                    >
-                      <div className={`size-5 rounded flex items-center justify-center shrink-0 mt-0.5 ${
-                        idx === 0 ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
-                      }`}>
-                        {getCrManeuverIcon(step.maneuver, 'size-3')}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[11px] leading-snug line-clamp-1">{step.instruction}</p>
-                        <p className="text-[9px] text-slate-400">{formatCrDistance(step.distance)}</p>
-                      </div>
-                    </button>
-                  ))}
+                  <div className="max-h-48 overflow-y-auto custom-scrollbar rounded-xl bg-slate-950/90 border border-slate-800 p-2 space-y-1.5">
+                    {routeSteps.map((step, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleCrStepClick(step.coord)}
+                        className={`w-full text-left p-2 rounded-lg flex items-start gap-2.5 transition-all text-xs ${
+                          idx === 0
+                            ? 'bg-emerald-950/60 border border-emerald-500/40 text-white'
+                            : 'hover:bg-slate-900 text-slate-300 hover:text-white border border-transparent'
+                        }`}
+                      >
+                        <div className={`size-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
+                          idx === 0 ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          {getCrManeuverIcon(step.maneuver, 'size-3.5')}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-xs leading-snug line-clamp-1">{step.instruction}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{formatCrDistance(step.distance)}</p>
+                        </div>
+                        {idx === 0 && (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px] uppercase shrink-0">
+                            Active
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Status footer */}
+              <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                <span>{routeSteps.length} turns mapped with green-wave signal clearance</span>
+                <span className="font-mono text-cyan-400">
+                  ETA ~{Math.round(routeSteps.reduce((acc, s) => acc + (s.duration || 60), 0) / 60)} min
+                </span>
+              </div>
             </div>
           ) : (
-            <div className="px-3 py-1.5 flex items-center justify-between gap-2">
+            <div className="px-3.5 py-2 flex items-center justify-between gap-2.5">
               <div className="flex items-center gap-2 truncate">
                 <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
                 <span className="text-xs font-bold text-white truncate">
@@ -938,7 +963,7 @@ export function ControlRoomMap({
               <button
                 type="button"
                 onClick={() => setCrNavHudCollapsed(false)}
-                className="text-[10px] font-bold text-cyan-300 hover:text-white shrink-0"
+                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-cyan-300 hover:text-white uppercase tracking-wider shrink-0"
               >
                 Expand
               </button>

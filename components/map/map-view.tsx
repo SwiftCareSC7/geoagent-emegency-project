@@ -88,7 +88,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim()
       const cartoDarkUrl = cartoKey
         ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoKey)}`
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 
       if (onBasemapHealthChange) {
         onBasemapHealthChange(

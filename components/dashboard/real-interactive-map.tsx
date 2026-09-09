@@ -202,7 +202,7 @@ export function RealInteractiveMap({
       const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim()
       const cartoDarkUrl = cartoKey
         ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoKey)}`
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 
       const darkTiles = L.tileLayer(cartoDarkUrl, {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
@@ -271,6 +271,56 @@ export function RealInteractiveMap({
       L.polyline(RECOMMENDED_ROUTE_B, { color: '#10b981', weight: 6, opacity: 0.9 })
         .bindPopup('<b>Route B (Indiranagar 100ft Rd - RECOMMENDED)</b><br>ETA: 11 min | Time Saved: 5.0 min')
         .addTo(altGroup)
+
+      // 2B. On-Map Turn Maneuvers for Route B
+      INTERACTIVE_MAP_STEPS.forEach((step, idx) => {
+        const isFirst = idx === 0
+        const maneuverIconChar = step.maneuver === 'TURN_LEFT' ? '↰' : step.maneuver === 'TURN_RIGHT' ? '↱' : '↑'
+        const markerHtml = isFirst
+          ? `
+            <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+              <div style="position:absolute;width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,0.4);animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+              <div style="position:relative;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#10b981,#047857);border:2px solid #a7f3d0;box-shadow:0 3px 10px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:15px;">
+                ${maneuverIconChar}
+              </div>
+              <div style="margin-top:2px;background:rgba(15,23,42,0.95);color:#34d399;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:9999px;border:1px solid rgba(52,211,153,0.5);white-space:nowrap;">
+                ${step.distance}m
+              </div>
+            </div>
+          `
+          : `
+            <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+              <div style="width:24px;height:24px;border-radius:7px;background:#0f172a;border:2px solid #38bdf8;box-shadow:0 2px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#38bdf8;font-weight:bold;font-size:13px;">
+                ${maneuverIconChar}
+              </div>
+              <div style="margin-top:1px;background:rgba(15,23,42,0.9);color:#94a3b8;font-size:8px;font-weight:bold;padding:0px 4px;border-radius:9999px;border:1px solid rgba(56,189,248,0.3);white-space:nowrap;">
+                ${step.distance}m
+              </div>
+            </div>
+          `
+
+        const icon = L.divIcon({
+          className: `interactive-turn-marker-${idx}`,
+          html: markerHtml,
+          iconSize: isFirst ? [46, 42] : [38, 34],
+          iconAnchor: isFirst ? [23, 18] : [19, 14],
+        })
+
+        const tMarker = L.marker(step.coord, { icon }).addTo(altGroup)
+        tMarker.bindPopup(`
+          <div style="font-family:system-ui,sans-serif;padding:3px;min-width:160px;">
+            <div style="font-size:10px;font-weight:bold;color:${isFirst ? '#34d399' : '#38bdf8'};text-transform:uppercase;">
+              Turn #${idx + 1} (${step.maneuver.replace('_', ' ')})
+            </div>
+            <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-top:2px;">
+              ${step.instruction}
+            </div>
+            <div style="font-size:10px;color:#10b981;margin-top:4px;">
+              ✓ Signal Preemption Active (${step.distance}m)
+            </div>
+          </div>
+        `)
+      })
 
       // 3. Alternative Route C (Amber)
       L.polyline(ALTERNATIVE_ROUTE_C, { color: '#f59e0b', weight: 4, dashArray: '6, 6', opacity: 0.6 })
@@ -707,51 +757,46 @@ export function RealInteractiveMap({
 
             {!isNavHudCollapsed ? (
               <div className="p-3">
-                {/* Primary Maneuver Card */}
-                <div className="flex items-start gap-3">
-                  <div className="size-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
-                    {getInteractiveManeuverIcon(currentNavStep?.maneuver, 'size-6 text-white')}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xl font-black text-white tracking-tight leading-none">
-                        {currentNavStep?.distance ? `${currentNavStep.distance} m` : '0 m'}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                        {currentNavStep?.maneuver?.replace('_', ' ')}
-                      </span>
+                {/* Primary Maneuver Card with EXPAND button */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="size-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
+                      {getInteractiveManeuverIcon(currentNavStep?.maneuver, 'size-6 text-white')}
                     </div>
-                    <h4 className="mt-1 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-2">
-                      {currentNavStep?.instruction}
-                    </h4>
-
-                    {nextNavStep && (
-                      <div className="mt-2 pt-1.5 border-t border-slate-800 flex items-center gap-1.5 text-[10px] text-slate-400">
-                        <span className="text-cyan-400 font-bold">Then</span>
-                        <span className="shrink-0">{getInteractiveManeuverIcon(nextNavStep.maneuver, 'size-3 text-cyan-300')}</span>
-                        <span className="truncate text-slate-300 font-medium">
-                          {nextNavStep.instruction} ({nextNavStep.distance}m)
+                    <div className="min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xl font-black text-white tracking-tight leading-none">
+                          {currentNavStep?.distance ? `${currentNavStep.distance} m` : '0 m'}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                          {currentNavStep?.maneuver?.replace('_', ' ') || 'DEPART'}
                         </span>
                       </div>
-                    )}
+                      <h4 className="mt-1 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-1">
+                        {currentNavStep?.instruction}
+                      </h4>
+                    </div>
                   </div>
-                </div>
 
-                {/* Bottom Bar: Maneuvers toggle */}
-                <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between">
+                  {/* EXPAND button matching user screenshot */}
                   <button
                     type="button"
                     onClick={() => setIsTurnListOpen(!isTurnListOpen)}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors"
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold tracking-wider text-slate-200 hover:text-white uppercase shrink-0 transition-colors"
                   >
-                    <List className="size-3 text-cyan-400" />
-                    <span>All Turns ({INTERACTIVE_MAP_STEPS.length})</span>
-                    {isTurnListOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                    {isTurnListOpen ? 'CLOSE' : 'EXPAND'}
                   </button>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {isSimulating ? 'Simulating Drive...' : 'Live Route'}
-                  </span>
                 </div>
+
+                {nextNavStep && !isTurnListOpen && (
+                  <div className="mt-2 pt-1.5 border-t border-slate-800 flex items-center gap-1.5 text-[10px] text-slate-400">
+                    <span className="text-cyan-400 font-bold">Then</span>
+                    <span className="shrink-0">{getInteractiveManeuverIcon(nextNavStep.maneuver, 'size-3 text-cyan-300')}</span>
+                    <span className="truncate text-slate-300 font-medium">
+                      {nextNavStep.instruction} ({nextNavStep.distance}m)
+                    </span>
+                  </div>
+                )}
 
                 {/* Expandable Step-by-Step Maneuver List */}
                 {isTurnListOpen && (
