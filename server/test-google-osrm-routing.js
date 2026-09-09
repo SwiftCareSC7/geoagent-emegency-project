@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config({ path: 'server/.env' });
+
 import routingService from './modules/routes/routing.service.js';
 import mockRoutingProvider from './modules/routes/providers/mockRoutingProvider.js';
 import osrmRoutingProvider from './modules/routes/providers/osrmRoutingProvider.js';
