@@ -198,8 +198,11 @@ class GoogleRoutingProvider {
    * @param {String} name Identifier name for error messages
    */
   validateCoordinates(point, name = 'coordinate') {
+    if (Array.isArray(point) && point.length >= 2) {
+      point = { type: 'Point', coordinates: [Number(point[0]), Number(point[1])] };
+    }
     if (!point || typeof point !== 'object') {
-      const error = new Error(`Invalid ${name}: point must be a GeoJSON object`);
+      const error = new Error(`Invalid ${name}: point must be a GeoJSON object or [longitude, latitude] array`);
       error.status = 400;
       error.isOperational = true;
       throw error;
@@ -223,6 +226,7 @@ class GoogleRoutingProvider {
       error.isOperational = true;
       throw error;
     }
+    return point;
   }
 
   /**
@@ -234,8 +238,8 @@ class GoogleRoutingProvider {
    */
   async getRoute(origin, destination, options = {}) {
     // 1. Validate inputs before doing any work
-    this.validateCoordinates(origin, 'origin');
-    this.validateCoordinates(destination, 'destination');
+    origin = this.validateCoordinates(origin, 'origin');
+    destination = this.validateCoordinates(destination, 'destination');
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {

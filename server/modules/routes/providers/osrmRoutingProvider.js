@@ -30,11 +30,14 @@ class OsrmRoutingProvider {
   }
 
   /**
-   * Validates GeoJSON Point coordinates
+   * Validates and normalizes GeoJSON Point or [lng, lat] coordinates
    */
   validateCoordinates(point, name = 'coordinate') {
+    if (Array.isArray(point) && point.length >= 2) {
+      point = { type: 'Point', coordinates: [Number(point[0]), Number(point[1])] };
+    }
     if (!point || typeof point !== 'object') {
-      const error = new Error(`Invalid ${name}: point must be a GeoJSON object`);
+      const error = new Error(`Invalid ${name}: point must be a GeoJSON object or [longitude, latitude] array`);
       error.status = 400;
       error.isOperational = true;
       throw error;
@@ -58,6 +61,7 @@ class OsrmRoutingProvider {
       error.isOperational = true;
       throw error;
     }
+    return point;
   }
 
   /**
@@ -169,8 +173,8 @@ class OsrmRoutingProvider {
    * @returns {Promise<Object>} Normalized route
    */
   async getRoute(origin, destination, options = {}) {
-    this.validateCoordinates(origin, 'origin');
-    this.validateCoordinates(destination, 'destination');
+    origin = this.validateCoordinates(origin, 'origin');
+    destination = this.validateCoordinates(destination, 'destination');
 
     const cacheKey = this._getCacheKey(origin, destination, options);
     const cached = this.cache.get(cacheKey);

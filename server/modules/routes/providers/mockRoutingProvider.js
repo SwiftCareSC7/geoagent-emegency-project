@@ -549,8 +549,15 @@ class MockRoutingProvider {
    * @returns {Promise<Object>} Normalized routing data
    */
   async getRoute(origin, destination, options = {}) {
-    const origCoords = origin.coordinates;
-    const destCoords = destination.coordinates;
+    const origCoords = Array.isArray(origin) ? origin : origin?.coordinates;
+    const destCoords = Array.isArray(destination) ? destination : destination?.coordinates;
+    const origPoint = Array.isArray(origin) ? { type: 'Point', coordinates: origin } : origin;
+    const destPoint = Array.isArray(destination) ? { type: 'Point', coordinates: destination } : destination;
+
+    if (!origCoords || !destCoords) {
+      throw new Error('Invalid origin or destination coordinates');
+    }
+
     const preference = (options.preference || options.routingPreference || 'FASTEST').toUpperCase();
 
     // 1. Check if matches any canonical corridor
@@ -568,42 +575,38 @@ class MockRoutingProvider {
           trafficDelaySeconds: selected.trafficDelaySeconds,
           preference: preference === 'SHORTEST' ? 'SHORTEST' : 'FASTEST',
           description: selected.description,
-          steps: selected.steps,
           provider: 'MOCK',
-          retrievedAt: new Date().toISOString()
+          dataSource: 'BENGALURU_CORRIDOR_FIXTURES',
+          steps: selected.steps,
+          calculatedAt: new Date().toISOString()
         };
       }
     }
 
-    // 2. Real road routing: Call OSRM real road router to follow actual streets
-    try {
-      const realRoute = await osrmRoutingProvider.getRoute(origin, destination, options);
-      return {
-        ...realRoute,
-        provider: 'MOCK_OSRM_ROADS',
-        description: realRoute.description || (isShortest ? 'Shortest Drivable Road Route' : 'Fastest Drivable Arterial Corridor')
-      };
-    } catch (osrmErr) {
-      console.error(`[MockRoutingProvider] OSRM real road router failed: ${osrmErr.message}`);
-      throw new Error(`Unable to calculate road route: ${osrmErr.message}`);
-    }
+    // 2. Non-canonical coordinates: Route via OpenStreetMap OSRM real road network engine
+    return await osrmRoutingProvider.getRoute(origPoint, destPoint, options);
   }
 
   /**
-   * Retrieves route with alternatives for mock provider
+   * Generates route with alternatives for what-if scenario testing
    */
   async getRouteWithAlternatives(origin, destination, options = {}) {
+    const origCoords = Array.isArray(origin) ? origin : origin?.coordinates;
+    const destCoords = Array.isArray(destination) ? destination : destination?.coordinates;
+    const origPoint = Array.isArray(origin) ? { type: 'Point', coordinates: origin } : origin;
+    const destPoint = Array.isArray(destination) ? { type: 'Point', coordinates: destination } : destination;
+
     for (const corridor of BENGALURU_CORRIDORS) {
-      if (corridor.match(origin.coordinates, destination.coordinates)) {
-        const primary = await this.getRoute(origin, destination, { ...options, preference: 'FASTEST' });
-        const alt = await this.getRoute(origin, destination, { ...options, preference: 'SHORTEST' });
+      if (corridor.match(origCoords, destCoords)) {
+        const primary = await this.getRoute(origPoint, destPoint, { ...options, preference: 'FASTEST' });
+        const alt = await this.getRoute(origPoint, destPoint, { ...options, preference: 'SHORTEST' });
         return {
           primary,
           alternatives: [{ ...alt, isAlternative: true, candidateIndex: 1 }]
         };
       }
     }
-    return await osrmRoutingProvider.getRouteWithAlternatives(origin, destination, options);
+    return await osrmRoutingProvider.getRouteWithAlternatives(origPoint, destPoint, options);
   }
 }
 
