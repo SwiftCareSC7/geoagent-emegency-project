@@ -23,7 +23,10 @@ export const REALTIME_EVENTS = {
   CLEARANCE_DETECTED: 'clearance.detected',
   CLEARANCE_ALERT_SENT: 'clearance.alert_sent',
   CLEARANCE_STATUS_UPDATED: 'clearance.status_updated',
-  CLEARANCE_CLEARED: 'clearance.cleared'
+  CLEARANCE_CLEARED: 'clearance.cleared',
+  SMS_SUBMITTED: 'sms.submitted',
+  SMS_DELIVERED: 'sms.delivered',
+  SMS_FAILED: 'sms.failed'
 };
 
 export const CLIENT_COMMANDS = {

@@ -65,6 +65,29 @@ const emergencySchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
+    communication: {
+      lastSmsStatus: {
+        type: String,
+        enum: ['READY', 'SENDING', 'SUBMITTED', 'DELIVERED', 'FAILED', 'UNKNOWN'],
+        default: 'READY'
+      },
+      lastSmsProvider: {
+        type: String,
+        default: 'MSG91'
+      },
+      lastSmsSentAt: {
+        type: Date
+      },
+      lastSmsRecipient: {
+        type: String
+      },
+      lastSmsMessageId: {
+        type: String
+      },
+      lastSmsError: {
+        type: String
+      }
+    },
     isDeleted: {
       type: Boolean,
       default: false

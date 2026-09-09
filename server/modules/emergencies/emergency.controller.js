@@ -1,4 +1,5 @@
 import * as emergencyService from './emergency.service.js';
+import communicationService from '../communication/communication.service.js';
 
 /**
  * Handle emergency creation
@@ -103,6 +104,55 @@ export const deleteEmergency = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Emergency deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Handle sending emergency status SMS via MSG91
+ */
+export const sendEmergencyStatusSms = async (req, res, next) => {
+  const start = Date.now();
+  try {
+    const { emergencyId } = req.params;
+    const { recipientMobile } = req.body || {};
+
+    const result = await communicationService.sendEmergencyStatusSms(
+      emergencyId,
+      req.user,
+      { recipientMobile }
+    );
+
+    // Audit log
+    console.log(`[Audit] USER=${req.user._id || req.user.id} ROLE=${req.user.role} ACTION=send_status_sms EMERGENCY=${emergencyId} STATUS=${result.status} DURATION=${Date.now() - start}ms`);
+
+    res.status(200).json({
+      success: true,
+      message: result.message,
+      status: result.status,
+      provider: result.provider,
+      messageId: result.messageId,
+      recipient: result.recipient,
+      data: result.data
+    });
+  } catch (error) {
+    console.error(`[Audit] USER=${req.user?._id || req.user?.id} ROLE=${req.user?.role} ACTION=send_status_sms_failed EMERGENCY=${req.params.emergencyId} ERROR="${error.message}" DURATION=${Date.now() - start}ms`);
+    next(error);
+  }
+};
+
+/**
+ * Handle getting emergency communication/SMS status
+ */
+export const getEmergencySmsStatus = async (req, res, next) => {
+  try {
+    const { emergencyId } = req.params;
+    const status = await communicationService.getEmergencySmsStatus(emergencyId);
+    res.status(200).json({
+      success: true,
+      data: status
     });
   } catch (error) {
     next(error);

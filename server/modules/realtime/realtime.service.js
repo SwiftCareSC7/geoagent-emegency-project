@@ -227,13 +227,21 @@ class RealtimeService {
   }
 
   /**
-   * Emits decision executed event
+   * Emits SMS communication status event
    */
-  emitDecisionExecuted(emergencyId, vehicleId, payload) {
+  emitSmsStatus(emergencyId, vehicleId, payload) {
     const rooms = [REALTIME_ROOMS.CONTROL_ROOM];
     if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
     if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
-    this.emitToRooms(rooms, REALTIME_EVENTS.DECISION_EXECUTED, payload);
+
+    let eventName = REALTIME_EVENTS.SMS_SUBMITTED;
+    if (payload.status === 'DELIVERED') eventName = REALTIME_EVENTS.SMS_DELIVERED;
+    else if (payload.status === 'FAILED') eventName = REALTIME_EVENTS.SMS_FAILED;
+
+    this.emitToRooms(rooms, eventName, payload);
+    // Also emit friendly colon-formatted alias (e.g. 'sms:submitted', 'sms:failed')
+    const colonEvent = `sms:${payload.status ? payload.status.toLowerCase() : 'update'}`;
+    this.emitToRooms(rooms, colonEvent, payload);
   }
 }
 
