@@ -53,6 +53,10 @@ const validateEnvironment = () => {
   const geminiConfigured = !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key';
   const googleConfigured = !!process.env.GOOGLE_MAPS_API_KEY && process.env.GOOGLE_MAPS_API_KEY !== 'your_google_maps_key';
 
+  if (routing === 'google' && !googleConfigured) {
+    console.warn('Google Maps routing unavailable: GOOGLE_MAPS_API_KEY is not configured. Falling back to OpenStreetMap/OSRM real road router.');
+  }
+
   console.log(`[Config] NODE_ENV=${env}, ROUTING=${routing}, TRAFFIC=${traffic}`);
   console.log(`[Config] Google API: ${googleConfigured ? 'configured' : 'not configured'}, Gemini: ${geminiConfigured ? 'configured' : 'not configured'}`);
 };

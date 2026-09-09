@@ -1,4 +1,5 @@
 import { calculateDistance } from '../../../shared/services/geospatial.service.js';
+import osrmRoutingProvider from './osrmRoutingProvider.js';
 
 /**
  * Predefined realistic Bengaluru Navigation Corridors
@@ -574,83 +575,35 @@ class MockRoutingProvider {
       }
     }
 
-    // 2. Fallback: Synthesize realistic route with intermediate maneuvers
-    const { meters } = calculateDistance(origin, destination);
-    const [origLng, origLat] = origCoords;
-    const [destLng, destLat] = destCoords;
+    // 2. Real road routing: Call OSRM real road router to follow actual streets
+    try {
+      const realRoute = await osrmRoutingProvider.getRoute(origin, destination, options);
+      return {
+        ...realRoute,
+        provider: 'MOCK_OSRM_ROADS',
+        description: realRoute.description || (isShortest ? 'Shortest Drivable Road Route' : 'Fastest Drivable Arterial Corridor')
+      };
+    } catch (osrmErr) {
+      console.error(`[MockRoutingProvider] OSRM real road router failed: ${osrmErr.message}`);
+      throw new Error(`Unable to calculate road route: ${osrmErr.message}`);
+    }
+  }
 
-    const isShortest = preference === 'SHORTEST';
-    // FASTEST: 45 km/h arterial speed (12.5 m/s) with 1.18x distance factor (arterials)
-    // SHORTEST: 30 km/h grid speed (8.33 m/s) with 1.05x distance factor
-    const distanceMeters = Math.round(meters * (isShortest ? 1.05 : 1.18));
-    const speedMps = isShortest ? 8.33 : 12.5;
-    const staticDurationSeconds = Math.round(distanceMeters / speedMps);
-    const trafficDelaySeconds = isShortest ? Math.round(staticDurationSeconds * 0.35) : Math.round(staticDurationSeconds * 0.15);
-    const durationSeconds = staticDurationSeconds + trafficDelaySeconds;
-
-    // Intermediate waypoints
-    const mid1Lng = origLng + (destLng - origLng) * 0.35 + (isShortest ? -0.0005 : 0.0018);
-    const mid1Lat = origLat + (destLat - origLat) * 0.35 + (isShortest ? 0.0005 : -0.0015);
-
-    const mid2Lng = origLng + (destLng - origLng) * 0.70 + (isShortest ? 0.0004 : 0.0012);
-    const mid2Lat = origLat + (destLat - origLat) * 0.70 + (isShortest ? -0.0004 : 0.0008);
-
-    const coordinates = [
-      [origLng, origLat],
-      [mid1Lng, mid1Lat],
-      [mid2Lng, mid2Lat],
-      [destLng, destLat]
-    ];
-
-    const step1Dist = Math.round(distanceMeters * 0.35);
-    const step2Dist = Math.round(distanceMeters * 0.35);
-    const step3Dist = distanceMeters - step1Dist - step2Dist;
-
-    const steps = [
-      {
-        maneuver: 'DEPART',
-        instruction: `Head toward destination on ${isShortest ? 'Local Access Way' : 'Main Arterial Corridor'}`,
-        distance: step1Dist,
-        duration: Math.round(durationSeconds * 0.35),
-        startLocation: [origLng, origLat],
-        endLocation: [mid1Lng, mid1Lat],
-        stepPolyline: [[origLng, origLat], [mid1Lng, mid1Lat]]
-      },
-      {
-        maneuver: isShortest ? 'TURN_LEFT' : 'KEEP_RIGHT',
-        instruction: isShortest ? 'Turn left onto connecting cross street' : 'Keep right onto arterial overpass bypass',
-        distance: step2Dist,
-        duration: Math.round(durationSeconds * 0.35),
-        startLocation: [mid1Lng, mid1Lat],
-        endLocation: [mid2Lng, mid2Lat],
-        stepPolyline: [[mid1Lng, mid1Lat], [mid2Lng, mid2Lat]]
-      },
-      {
-        maneuver: 'ARRIVE',
-        instruction: 'Arrive at destination emergency facility',
-        distance: step3Dist,
-        duration: Math.round(durationSeconds * 0.30),
-        startLocation: [mid2Lng, mid2Lat],
-        endLocation: [destLng, destLat],
-        stepPolyline: [[mid2Lng, mid2Lat], [destLng, destLat]]
+  /**
+   * Retrieves route with alternatives for mock provider
+   */
+  async getRouteWithAlternatives(origin, destination, options = {}) {
+    for (const corridor of BENGALURU_CORRIDORS) {
+      if (corridor.match(origin.coordinates, destination.coordinates)) {
+        const primary = await this.getRoute(origin, destination, { ...options, preference: 'FASTEST' });
+        const alt = await this.getRoute(origin, destination, { ...options, preference: 'SHORTEST' });
+        return {
+          primary,
+          alternatives: [{ ...alt, isAlternative: true, candidateIndex: 1 }]
+        };
       }
-    ];
-
-    return {
-      geometry: {
-        type: 'LineString',
-        coordinates
-      },
-      distanceMeters,
-      durationSeconds,
-      staticDurationSeconds,
-      trafficDelaySeconds,
-      preference: isShortest ? 'SHORTEST' : 'FASTEST',
-      description: isShortest ? 'Shortest Direct Distance Route' : 'Fastest Traffic-Optimized Arterial Corridor',
-      steps,
-      provider: 'MOCK',
-      retrievedAt: new Date().toISOString()
-    };
+    }
+    return await osrmRoutingProvider.getRouteWithAlternatives(origin, destination, options);
   }
 }
 

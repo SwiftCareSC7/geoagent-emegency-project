@@ -6,11 +6,13 @@ import { createRoute, getRoutes, getRoute, getRouteAnalysis, compareRoute, getCo
 
 const router = express.Router();
 
-// Apply auth middleware to all routes
+// Calculation does not mutate DB or expose private user data — allow route planner & navigation
+router.post('/calculate', calculateRoute);
+
+// Apply auth middleware to remaining management routes
 router.use(protect);
 router.use(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'));
 
-router.post('/calculate', calculateRoute);
 router.post('/:routeId/accept-reroute', acceptReroute);
 
 router.route('/')
