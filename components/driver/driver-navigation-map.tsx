@@ -142,6 +142,8 @@ export function DriverNavigationMap({
   const destinationMarkerRef = useRef<L.Marker | null>(null)
   const incidentsLayerRef = useRef<L.LayerGroup | null>(null)
   const clearanceLayerRef = useRef<L.LayerGroup | null>(null)
+  const turnMarkersLayerRef = useRef<L.LayerGroup | null>(null)
+  const routeChevronsLayerRef = useRef<L.LayerGroup | null>(null)
 
   const [mapInitialized, setMapInitialized] = useState(false)
   const [legendOpen, setLegendOpen] = useState(false)
@@ -193,11 +195,11 @@ export function DriverNavigationMap({
         attributionControl: false
       })
 
-      // Add modern dark tile layer with OSM fallback
-      const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY
+      // Clean tile layer without API Key watermark (uses OSM fallback if no CARTO key)
+      const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim()
       const tileUrl = cartoKey
         ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${cartoKey}`
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
+        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
 
       const tileLayer = L.tileLayer(tileUrl, {
         maxZoom: 19,
@@ -206,7 +208,7 @@ export function DriverNavigationMap({
 
       // Graceful fallback to OpenStreetMap if tiles fail
       tileLayer.on('tileerror', () => {
-        tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+        tileLayer.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png')
       })
 
       tileLayer.addTo(map)
@@ -221,6 +223,8 @@ export function DriverNavigationMap({
       mapRef.current = map
       incidentsLayerRef.current = L.layerGroup().addTo(map)
       clearanceLayerRef.current = L.layerGroup().addTo(map)
+      turnMarkersLayerRef.current = L.layerGroup().addTo(map)
+      routeChevronsLayerRef.current = L.layerGroup().addTo(map)
       setMapInitialized(true)
     }
 
