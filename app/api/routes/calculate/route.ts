@@ -119,65 +119,19 @@ export async function POST(request: NextRequest) {
         }
       }
     } catch (osrmErr) {
-      console.warn('[BFF] OSRM public route fetch failed, falling back to synthetic generator:', osrmErr)
+      console.warn('[BFF] OSRM public route fetch failed:', osrmErr)
     }
 
-    // Resilient Fallback 2: Guaranteed high-fidelity synthetic corridor with maneuvers
-    const dx = destLng - origLng
-    const dy = destLat - origLat
-    const distEst = Math.round(Math.hypot(dx * 111000, dy * 111000))
-    const durEst = Math.round(distEst / 11) // ~40 km/h average emergency speed
-
-    // Generate 6-point smooth polyline along realistic roads
-    const synthCoords: [number, number][] = [
-      [origLng, origLat],
-      [origLng + dx * 0.25 + 0.001, origLat + dy * 0.2 - 0.0005],
-      [origLng + dx * 0.45 - 0.0008, origLat + dy * 0.48 + 0.001],
-      [origLng + dx * 0.72 + 0.0005, origLat + dy * 0.75 - 0.0004],
-      [origLng + dx * 0.9, origLat + dy * 0.92],
-      [destLng, destLat],
-    ]
-
-    return NextResponse.json({
-      success: true,
-      message: 'Route plan calculated successfully (synthetic corridor)',
-      data: {
-        geometry: { type: 'LineString', coordinates: synthCoords },
-        distanceMeters: distEst,
-        durationSeconds: durEst,
-        preference: body.preference || 'FASTEST',
-        description: 'Priority Emergency Transit Corridor',
-        provider: 'GEOAGENT_CORRIDOR_ENGINE',
-        steps: [
-          { maneuver: 'DEPART', instruction: 'Depart starting facility with sirens active', distance: Math.round(distEst * 0.15), duration: Math.round(durEst * 0.15) },
-          { maneuver: 'TURN_RIGHT', instruction: 'Turn right onto main arterial connector', distance: Math.round(distEst * 0.25), duration: Math.round(durEst * 0.25) },
-          { maneuver: 'CONTINUE', instruction: 'Proceed through green-wave cleared transit corridor', distance: Math.round(distEst * 0.4), duration: Math.round(durEst * 0.4) },
-          { maneuver: 'TURN_LEFT', instruction: 'Turn left toward destination hospital/scene gate', distance: Math.round(distEst * 0.15), duration: Math.round(durEst * 0.15) },
-          { maneuver: 'ARRIVE', instruction: 'Arrive at destination emergency entrance', distance: Math.round(distEst * 0.05), duration: Math.round(durEst * 0.05) },
-        ],
-        alternative: {
-          geometry: {
-            type: 'LineString',
-            coordinates: [
-              [origLng, origLat],
-              [origLng + dx * 0.3 - 0.002, origLat + dy * 0.35 + 0.002],
-              [origLng + dx * 0.7 - 0.001, origLat + dy * 0.7 + 0.002],
-              [destLng, destLat],
-            ],
-          },
-          distanceMeters: Math.round(distEst * 1.12),
-          durationSeconds: Math.round(durEst * 1.15),
-          preference: 'SHORTEST',
-          description: 'Secondary bypass corridor',
-          steps: [
-            { maneuver: 'DEPART', instruction: 'Take outer ring bypass', distance: Math.round(distEst * 0.3), duration: Math.round(durEst * 0.3) },
-            { maneuver: 'CONTINUE', instruction: 'Continue on bypass corridor', distance: Math.round(distEst * 0.7), duration: Math.round(durEst * 0.7) },
-            { maneuver: 'ARRIVE', instruction: 'Arrive at destination', distance: 100, duration: 20 },
-          ],
-        },
-        calculatedAt: new Date().toISOString(),
+    // Google and OSRM were both unreachable or returned no driving path.
+    // As required by PART 50: Never draw straight lines across buildings.
+    return NextResponse.json(
+      {
+        success: false,
+        code: 'ROUTE_UNAVAILABLE',
+        message: 'Unable to calculate a driving route on the road network. Please retry.',
       },
-    })
+      { status: 503 }
+    )
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal Server Error'
     console.error('[BFF] /api/routes/calculate POST failed:', err)

@@ -560,7 +560,17 @@ class MockRoutingProvider {
 
     const preference = (options.preference || options.routingPreference || 'FASTEST').toUpperCase();
 
-    // 1. Check if matches any canonical corridor
+    // 1. Prioritize real road network routing (OSRM) to guarantee real road centerlines
+    try {
+      const roadRoute = await osrmRoutingProvider.getRoute(origPoint, destPoint, options);
+      if (roadRoute && roadRoute.geometry?.coordinates?.length >= 2) {
+        return roadRoute;
+      }
+    } catch (err) {
+      console.warn(`[MockRoutingProvider] OSRM query failed (${err.message}). Checking canonical corridor fixtures.`);
+    }
+
+    // 2. Fallback to predefined canonical corridor if matches
     for (const corridor of BENGALURU_CORRIDORS) {
       if (corridor.match(origCoords, destCoords)) {
         const selected = preference === 'SHORTEST' ? corridor.shortest : corridor.fastest;
@@ -583,8 +593,7 @@ class MockRoutingProvider {
       }
     }
 
-    // 2. Non-canonical coordinates: Route via OpenStreetMap OSRM real road network engine
-    return await osrmRoutingProvider.getRoute(origPoint, destPoint, options);
+    throw new Error('Unable to calculate driving route on road network');
   }
 
   /**
@@ -595,6 +604,12 @@ class MockRoutingProvider {
     const destCoords = Array.isArray(destination) ? destination : destination?.coordinates;
     const origPoint = Array.isArray(origin) ? { type: 'Point', coordinates: origin } : origin;
     const destPoint = Array.isArray(destination) ? { type: 'Point', coordinates: destination } : destination;
+
+    try {
+      return await osrmRoutingProvider.getRouteWithAlternatives(origPoint, destPoint, options);
+    } catch (err) {
+      console.warn(`[MockRoutingProvider] OSRM alternatives query failed: ${err.message}`);
+    }
 
     for (const corridor of BENGALURU_CORRIDORS) {
       if (corridor.match(origCoords, destCoords)) {

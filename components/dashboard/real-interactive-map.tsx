@@ -41,6 +41,8 @@ import { Button } from '@/components/ui/button'
 import type { MapMarker } from '@/lib/mock-data'
 import { subscribeEvent, REALTIME_EVENTS } from '@/lib/socket/client'
 import { cn } from '@/lib/utils'
+import { NavigationManeuverHUD } from '@/components/navigation/NavigationManeuverHUD'
+import { formatDistance, formatDuration, formatArrivalTime } from '@/lib/navigation/geometry'
 
 interface RealInteractiveMapProps {
   markers?: MapMarker[]
@@ -731,133 +733,37 @@ export function RealInteractiveMap({
           ) : null}
         </div>
 
-        {/* TOP-RIGHT: TURN-BY-TURN NAVIGATION HUD */}
+        {/* TOP-RIGHT: UNIFIED TURN-BY-TURN NAVIGATION HUD */}
         <div className="absolute top-3 right-3 z-10 max-w-sm w-[320px] sm:w-[350px] pointer-events-auto">
-          <div className="rounded-2xl border border-cyan-500/40 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden transition-all duration-200">
-            {/* Top Bar */}
-            <div className="flex items-center justify-between px-3.5 py-2 bg-slate-950/80 border-b border-slate-800 text-[11px]">
-              <div className="flex items-center gap-1.5 font-bold text-cyan-300">
-                <Navigation className="size-3.5 text-cyan-400" />
-                <span>Live Turn Guidance</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold text-[10px] uppercase">
-                  Step {currentNavIdx + 1} of {INTERACTIVE_MAP_STEPS.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsNavHudCollapsed(!isNavHudCollapsed)}
-                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                  aria-label={isNavHudCollapsed ? 'Expand turn navigation' : 'Collapse turn navigation'}
-                >
-                  {isNavHudCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
-                </button>
-              </div>
-            </div>
-
-            {!isNavHudCollapsed ? (
-              <div className="p-3">
-                {/* Primary Maneuver Card with EXPAND button */}
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="size-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
-                      {getInteractiveManeuverIcon(currentNavStep?.maneuver, 'size-6 text-white')}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xl font-black text-white tracking-tight leading-none">
-                          {currentNavStep?.distance ? `${currentNavStep.distance} m` : '0 m'}
-                        </span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                          {currentNavStep?.maneuver?.replace('_', ' ') || 'DEPART'}
-                        </span>
-                      </div>
-                      <h4 className="mt-1 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-1">
-                        {currentNavStep?.instruction}
-                      </h4>
-                    </div>
-                  </div>
-
-                  {/* EXPAND button matching user screenshot */}
-                  <button
-                    type="button"
-                    onClick={() => setIsTurnListOpen(!isTurnListOpen)}
-                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold tracking-wider text-slate-200 hover:text-white uppercase shrink-0 transition-colors"
-                  >
-                    {isTurnListOpen ? 'CLOSE' : 'EXPAND'}
-                  </button>
-                </div>
-
-                {nextNavStep && !isTurnListOpen && (
-                  <div className="mt-2 pt-1.5 border-t border-slate-800 flex items-center gap-1.5 text-[10px] text-slate-400">
-                    <span className="text-cyan-400 font-bold">Then</span>
-                    <span className="shrink-0">{getInteractiveManeuverIcon(nextNavStep.maneuver, 'size-3 text-cyan-300')}</span>
-                    <span className="truncate text-slate-300 font-medium">
-                      {nextNavStep.instruction} ({nextNavStep.distance}m)
-                    </span>
-                  </div>
-                )}
-
-                {/* Expandable Step-by-Step Maneuver List */}
-                {isTurnListOpen && (
-                  <div className="mt-2 max-h-48 overflow-y-auto custom-scrollbar rounded-xl bg-slate-950/90 border border-slate-800 p-1.5 space-y-1 animate-in fade-in duration-150">
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 px-1 pb-1 border-b border-slate-800 flex items-center justify-between">
-                      <span>Corridor Turns</span>
-                      <span className="text-cyan-400 font-normal">Click to pan map</span>
-                    </div>
-                    {INTERACTIVE_MAP_STEPS.map((step, idx) => {
-                      const isCurrent = idx === currentNavIdx
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => handleNavStepClick(step.coord)}
-                          className={`w-full text-left p-1.5 rounded-lg flex items-start gap-2 transition-all text-xs ${
-                            isCurrent
-                              ? 'bg-emerald-950/60 border border-emerald-500/40 text-white'
-                              : 'hover:bg-slate-900 text-slate-300 hover:text-white border border-transparent'
-                          }`}
-                        >
-                          <div className={`size-5 rounded flex items-center justify-center shrink-0 mt-0.5 ${
-                            isCurrent ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
-                          }`}>
-                            {getInteractiveManeuverIcon(step.maneuver, 'size-3')}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-[11px] leading-snug line-clamp-1">{step.instruction}</p>
-                            <p className="text-[9px] text-slate-400">{step.distance} m · ~{Math.round(step.duration / 60)} min</p>
-                          </div>
-                          {isCurrent && (
-                            <span className="px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[8px] uppercase shrink-0">
-                              Active
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-2 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 truncate">
-                  <div className="size-7 rounded bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                    {getInteractiveManeuverIcon(currentNavStep?.maneuver, 'size-3.5 text-white')}
-                  </div>
-                  <span className="text-xs font-bold text-white truncate">
-                    {currentNavStep?.distance}m: {currentNavStep?.instruction}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsNavHudCollapsed(false)}
-                  className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-cyan-300 uppercase shrink-0"
-                >
-                  Expand
-                </button>
-              </div>
+          <NavigationManeuverHUD
+            currentStep={currentNavStep as any}
+            nextStep={nextNavStep as any}
+            distanceToNextStepMeters={currentNavStep?.distance || 0}
+            formattedDistance={formatDistance(currentNavStep?.distance)}
+            isImminentTurn={(currentNavStep?.distance || 0) <= 45}
+            upcomingSteps={INTERACTIVE_MAP_STEPS.slice(currentNavIdx + 1) as any}
+            remainingDistanceFormatted={formatDistance(
+              INTERACTIVE_MAP_STEPS.slice(currentNavIdx).reduce((acc, s) => acc + (s.distance || 0), 0)
             )}
-          </div>
+            remainingDurationFormatted={formatDuration(
+              INTERACTIVE_MAP_STEPS.slice(currentNavIdx).reduce((acc, s) => acc + (s.duration || 60), 0)
+            )}
+            arrivalTimeFormatted={formatArrivalTime(
+              INTERACTIVE_MAP_STEPS.slice(currentNavIdx).reduce((acc, s) => acc + (s.duration || 60), 0)
+            )}
+            routeProgressPercent={Math.round(((currentNavIdx + 1) / INTERACTIVE_MAP_STEPS.length) * 100)}
+            speed={45}
+            navState={currentNavIdx >= INTERACTIVE_MAP_STEPS.length - 1 ? 'ARRIVED' : 'NAVIGATING'}
+            activeLegNumber={1}
+            vehicleCallsign="AMB-01"
+            variant="compact"
+            onRouteOverview={() => {
+              if (mapInstanceRef.current) {
+                mapInstanceRef.current.setView(BANGALORE_CENTER, 13)
+              }
+            }}
+            onSelectStep={(step: any) => handleNavStepClick(step.coord || step.startLocation)}
+          />
         </div>
 
         {/* Map Layers Selector Floating Box */}

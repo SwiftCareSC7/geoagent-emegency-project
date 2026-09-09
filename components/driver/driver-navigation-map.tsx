@@ -5,6 +5,8 @@ import type L from 'leaflet'
 import type { Incident } from '@/lib/api/types'
 import type { ConnectedVehicle } from '@/lib/api/clearance'
 import type { NavigationStep, NavigationState, ManeuverType } from './types'
+import { NavigationManeuverHUD } from '@/components/navigation/NavigationManeuverHUD'
+import { formatDistance, formatDuration, formatArrivalTime } from '@/lib/navigation/geometry'
 import {
   AlertTriangle,
   Layers,
@@ -745,239 +747,67 @@ function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
     })
   }, [driverLocation, isUserPanning])
 
+  const handleRecenter = React.useCallback(() => {
+    if (!mapRef.current || !driverLocation) return
+    setIsUserPanning(false)
+    mapRef.current.setView([driverLocation[1], driverLocation[0]], 16, {
+      animate: true,
+      duration: 0.6
+    })
+  }, [driverLocation])
+
+  const handleRouteOverview = React.useCallback(() => {
+    if (!mapRef.current || !leafletRef.current) return
+    const L = leafletRef.current
+    const activeCoords = (activeLegNumber === 1 ? leg1Coordinates : leg2Coordinates) || activeRouteCoordinates
+    if (activeCoords && activeCoords.length > 1) {
+      const latLngs = activeCoords.map(([lng, lat]) => [lat, lng] as [number, number])
+      const bounds = L.latLngBounds(latLngs)
+      mapRef.current.fitBounds(bounds, { padding: [60, 60], maxZoom: 16 })
+      setIsUserPanning(true)
+    }
+  }, [activeLegNumber, leg1Coordinates, leg2Coordinates, activeRouteCoordinates])
+
+  const handleStepSelect = React.useCallback((step: any) => {
+    if (!mapRef.current) return
+    const coord = step.startLocation || step.endLocation
+    if (coord && Array.isArray(coord)) {
+      mapRef.current.setView([coord[1], coord[0]], 17, { animate: true })
+      setIsUserPanning(true)
+    }
+  }, [])
+
   return (
     <div className="relative w-full h-full">
-      {/* Floating Recenter / Return to Vehicle Button when user panned away */}
-      {isUserPanning && driverLocation && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[500] pointer-events-auto">
-          <button
-            type="button"
-            onClick={() => {
-              setIsUserPanning(false)
-              if (mapRef.current && driverLocation) {
-                mapRef.current.setView([driverLocation[1], driverLocation[0]], 16, {
-                  animate: true,
-                  duration: 0.6
-                })
-              }
-            }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-2xl border-2 border-white/60 backdrop-blur-xl animate-bounce tracking-wide transition-all cursor-pointer"
-            aria-label="Return to live vehicle location"
-          >
-            <LocateFixed className="size-4 text-cyan-300 animate-spin" />
-            <span>RETURN TO VEHICLE</span>
-          </button>
-        </div>
-      )}
-      {/* 1. ON-MAP TURN-BY-TURN NAVIGATION HUD */}
-      <div className="absolute top-3 left-3 sm:left-4 z-[450] max-w-sm sm:max-w-md w-[calc(100%-24px)] sm:w-[390px] pointer-events-auto">
-        <div className="rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden transition-all duration-200">
-          {/* Top Bar: Mission Leg & Audio & Collapse */}
-          <div className="flex items-center justify-between px-3.5 py-2 bg-slate-950/80 border-b border-slate-800 text-[11px]">
-            <div className="flex items-center gap-2">
-              <span className={`px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wide flex items-center gap-1.5 ${
-                activeLegNumber === 1
-                  ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
-                  : 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
-              }`}>
-                <span className={`size-2 rounded-full animate-ping ${activeLegNumber === 1 ? 'bg-blue-400' : 'bg-emerald-400'}`} />
-                {activeLegNumber === 1 ? 'LEG 1 · TO SCENE' : 'LEG 2 · TO HOSPITAL'}
-              </span>
-              {speed != null && (
-                <span className="flex items-center gap-1 font-mono font-bold text-slate-300 text-xs">
-                  <Gauge className="size-3 text-cyan-400" />
-                  {Math.round(speed)} km/h
-                </span>
-              )}
-            </div>
+      {/* 1. SHARED GOOGLE-MAPS-STYLE TURN-BY-TURN NAVIGATION HUD */}
+      <NavigationManeuverHUD
+        currentStep={currentStep as any}
+        nextStep={nextStep as any}
+        distanceToNextStepMeters={distanceToNextStepMeters || 0}
+        formattedDistance={formatDistance(distanceToNextStepMeters)}
+        isImminentTurn={(distanceToNextStepMeters || 0) <= 45}
+        upcomingSteps={(steps && steps.length > 0 ? steps.slice(1) : []) as any}
+        remainingDistanceFormatted={formatDistance(totalDistanceRemainingMeters)}
+        remainingDurationFormatted={formatDuration(totalDurationRemainingSeconds)}
+        arrivalTimeFormatted={formatArrivalTime(totalDurationRemainingSeconds)}
+        routeProgressPercent={
+          totalDistanceRemainingMeters != null && totalDistanceRemainingMeters > 0
+            ? Math.max(5, Math.min(100, Math.round((1 - (totalDistanceRemainingMeters / Math.max(1, totalDistanceRemainingMeters + 1500))) * 100)))
+            : 0
+        }
+        speed={speed}
+        navState={navState}
+        activeLegNumber={activeLegNumber}
+        vehicleCallsign="AMB-001"
+        isUserPanning={isUserPanning}
+        isVoiceActive={isVoiceActive}
+        onToggleVoice={onToggleVoice}
+        onRecenter={handleRecenter}
+        onRouteOverview={handleRouteOverview}
+        onSelectStep={handleStepSelect}
+      />
 
-            <div className="flex items-center gap-1.5">
-              {onToggleVoice && (
-                <button
-                  type="button"
-                  onClick={onToggleVoice}
-                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors"
-                  aria-label={isVoiceActive ? 'Mute turn guidance voice' : 'Unmute turn guidance voice'}
-                  title={isVoiceActive ? 'Voice active' : 'Voice muted'}
-                >
-                  {isVoiceActive ? (
-                    <Volume2 className="size-3.5 text-emerald-400" />
-                  ) : (
-                    <VolumeX className="size-3.5 text-rose-400" />
-                  )}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsNavHudCollapsed(!isNavHudCollapsed)}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
-                aria-label={isNavHudCollapsed ? 'Expand turn navigation HUD' : 'Collapse turn navigation HUD'}
-              >
-                {isNavHudCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Primary Maneuver Card */}
-          {!isNavHudCollapsed ? (
-            <div className="p-3.5">
-              <div className="flex items-center justify-between gap-3">
-                {/* Maneuver Arrow Icon Box & Instruction */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-11 sm:size-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
-                    {getManeuverIcon(currentStep?.maneuver, 'size-6 sm:size-7 text-white')}
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
-                        {formatManeuverDistance(distanceToNextStepMeters)}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                        {currentStep?.maneuver?.replace('_', ' ') || 'DEPART'}
-                      </span>
-                    </div>
-                    <h3 className="mt-1 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-1">
-                      {currentStep?.instruction || 'Head onto emergency corridor'}
-                    </h3>
-                  </div>
-                </div>
-
-                {/* EXPAND button matching user screenshot */}
-                <button
-                  type="button"
-                  onClick={() => setIsTurnListOpen(!isTurnListOpen)}
-                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold tracking-wider text-slate-200 hover:text-white uppercase shrink-0 transition-colors"
-                >
-                  {isTurnListOpen ? 'CLOSE' : 'EXPAND'}
-                </button>
-              </div>
-
-              {/* Next Step Preview */}
-              {nextStep && !isTurnListOpen && (
-                <div className="mt-2 pt-2 border-t border-slate-800 flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="text-cyan-400 font-bold">Then</span>
-                  <span className="shrink-0">{getManeuverIcon(nextStep.maneuver, 'size-3.5 text-cyan-300')}</span>
-                  <span className="truncate text-slate-300 font-medium">
-                    {nextStep.instruction} ({formatManeuverDistance(nextStep.distance)})
-                  </span>
-                </div>
-              )}
-
-              {/* Expandable Step-by-Step Maneuver List */}
-              {isTurnListOpen && (
-                <div className="mt-3 pt-2.5 border-t border-slate-800 space-y-2 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-1 flex items-center justify-between">
-                    <span>Turn-by-Turn Route Guidance</span>
-                    <span className="text-cyan-400 font-normal">Tap turn to view on map</span>
-                  </div>
-                  <div className="max-h-56 overflow-y-auto custom-scrollbar rounded-xl bg-slate-950/90 border border-slate-800 p-2 space-y-1.5">
-                    {(steps && steps.length > 0 ? steps : [currentStep]).filter(Boolean).map((step, idx) => {
-                      const isCurrent = idx === 0
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => step && handleStepClick(step, idx)}
-                          className={`w-full text-left p-2 rounded-lg flex items-start gap-2.5 transition-all text-xs ${
-                            isCurrent
-                              ? 'bg-emerald-950/60 border border-emerald-500/40 text-white'
-                              : 'hover:bg-slate-900 text-slate-300 hover:text-white border border-transparent'
-                          }`}
-                        >
-                          <div className={`size-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
-                            isCurrent ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
-                          }`}>
-                            {getManeuverIcon(step?.maneuver, 'size-3.5')}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-xs leading-snug line-clamp-1">{step?.instruction}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5">
-                              {formatManeuverDistance(step?.distance)} · ~{Math.max(1, Math.round((step?.duration || 30) / 60))} min
-                            </p>
-                          </div>
-                          {isCurrent && (
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px] uppercase shrink-0">
-                              Current
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Map Legend Toggle */}
-              <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setLegendOpen(!legendOpen)}
-                  className="flex items-center gap-1 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors"
-                >
-                  <Layers className="size-3 text-blue-400" />
-                  <span>Map Legend</span>
-                  {legendOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-                </button>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  {steps?.length || 1} maneuvers on map
-                </span>
-              </div>
-
-              {/* Legend dropdown if toggled */}
-              {legendOpen && (
-                <div className="mt-2 rounded-xl border border-slate-700/80 bg-slate-950/95 p-2.5 text-[10px] space-y-1.5 animate-in fade-in duration-150">
-                  <div className="font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-1">
-                    Corridor Hierarchy
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-200">
-                    <div className="h-2 w-4 rounded-full bg-blue-500" />
-                    <span>🔵 Leg 1: To Emergency Scene</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-200">
-                    <div className="h-2 w-4 rounded-full bg-emerald-500" />
-                    <span>🟢 Leg 2: To Hospital ER</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <div className="h-1.5 w-4 border-b-2 border-dashed border-cyan-400" />
-                    <span>⚪ Alternative Bypass</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <div className="h-1.5 w-4 border-b-2 border-dotted border-amber-400" />
-                    <span>🟡 Congested Route</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Collapsed Pill */
-            <div className="p-2.5 flex items-center justify-between gap-2.5">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="size-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                  {getManeuverIcon(currentStep?.maneuver, 'size-4 text-white')}
-                </div>
-                <div className="truncate">
-                  <span className="font-black text-sm text-white mr-1.5">
-                    {formatManeuverDistance(distanceToNextStepMeters)}
-                  </span>
-                  <span className="text-xs text-slate-200 font-semibold truncate">
-                    {currentStep?.instruction || 'Continue on route'}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsNavHudCollapsed(false)}
-                className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-cyan-300 uppercase shrink-0"
-              >
-                Expand
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Map Canvas */}
+      {/* 2. LEAFLET MAP CANVAS */}
       <div
         ref={containerRef}
         style={{ height, width: '100%' }}

@@ -31,6 +31,7 @@ export type ManeuverType =
 export type NavigationState =
   | 'IDLE'
   | 'PLANNING'
+  | 'ROUTE_CALCULATING'
   | 'ROUTE_READY'
   | 'NAVIGATING'
   | 'APPROACHING_TURN'
