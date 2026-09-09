@@ -77,3 +77,17 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 
 > **Local Development Note**:
 > If the backend is running on port `5000` (the default in `server/server.js`), configure `NEXT_PUBLIC_API_URL=http://localhost:5000/api` and `NEXT_PUBLIC_SOCKET_URL=http://localhost:5000` in `.env.local` to match. If unconfigured or backend is offline, the frontend gracefully falls back to demonstration data fixtures.
+
+---
+
+## 7. Emergency SMS Notifications (MSG91)
+
+| Variable | Required? | Default | Purpose | Production Behavior |
+|---|---|---|---|---|
+| `MSG91_PROVIDER` | Optional | `real` | Provider mode: `real` (telecom) or `mock` (webhook testing) | In `mock` mode, requests are safely sent to test endpoint |
+| `MSG91_API_URL` | Optional | `https://control.msg91.com/api/v5/flow` | MSG91 Flow API endpoint | Can be pointed to a mock webhook for non-telecom testing |
+| `MSG91_AUTH_KEY` | Optional | None | MSG91 API Authentication Key | Transmitted in `authkey` header. Never expose to client |
+| `MSG91_FLOW_ID` | Optional | None | MSG91 Flow Template Identifier | Flow containing template variables (`vehicle`, `eta`, `hospital`) |
+| `MSG91_SENDER_ID` | Optional | `SWFCARE` | Approved 6-character sender ID | Passed in flow dispatch payload |
+
+> **Security Rule**: `MSG91_AUTH_KEY` is strictly a backend secret. Never prefix with `NEXT_PUBLIC_*` or transmit real credentials to mock webhooks.

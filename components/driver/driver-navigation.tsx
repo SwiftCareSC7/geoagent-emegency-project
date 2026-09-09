@@ -44,6 +44,7 @@ import { DriverGeoAgentPanel } from './driver-geoagent-panel'
 import { DriverLiveSituation } from './driver-live-situation'
 import { DriverAlternativeRoutes } from './driver-alternative-routes'
 import { DriverEmergencyClearance } from './driver-emergency-clearance'
+import { DriverSmsButton } from './driver-sms-button'
 import {
   BENGALURU_HOSPITALS,
   BENGALURU_LANDMARKS,
@@ -1007,6 +1008,15 @@ export function DriverNavigation({
               <Radio className={`size-3.5 ${gpsMode === 'LIVE_GPS' ? 'text-white animate-pulse' : 'text-slate-400'}`} />
               <span>{gpsMode === 'LIVE_GPS' ? 'Live GPS Active' : 'Live GPS'}</span>
             </button>
+
+            {/* Emergency Status SMS Action */}
+            <DriverSmsButton
+              emergencyId={currentScenario.id}
+              ambulanceId={activeAmbulanceId}
+              defaultCallerContact={currentScenario.callerContact || '9876543210'}
+              destinationHospital={destinationName}
+              etaMinutes={currentEtaMin}
+            />
           </div>
 
           <div className="flex items-center gap-2 text-xs">

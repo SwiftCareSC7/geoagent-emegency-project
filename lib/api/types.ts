@@ -158,6 +158,14 @@ export interface Emergency {
   destination?: GeoJSONPoint
   assignedVehicle?: AssignedVehicleSummary | string | null
   createdBy?: string
+  communication?: {
+    lastSmsStatus?: 'READY' | 'SENDING' | 'SUBMITTED' | 'DELIVERED' | 'FAILED' | 'UNKNOWN'
+    lastSmsProvider?: string
+    lastSmsSentAt?: string
+    lastSmsRecipient?: string
+    lastSmsMessageId?: string
+    lastSmsError?: string
+  }
   createdAt?: string
   updatedAt?: string
 }

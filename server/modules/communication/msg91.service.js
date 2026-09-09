@@ -96,9 +96,11 @@ export class Msg91Service {
       throw error;
     }
 
-    const effectiveFlowId = this.flowId || 'swiftcare_emergency_flow';
-    const effectiveSender = this.senderId || 'SWFCARE';
-    const effectiveAuthKey = this.authKey || (this.providerMode === 'mock' ? 'mock-test-authkey' : '');
+    const effectiveProviderMode = process.env.MSG91_PROVIDER || this.providerMode || 'real';
+    const effectiveEndpoint = process.env.MSG91_API_URL || this.apiUrl || 'https://control.msg91.com/api/v5/flow';
+    const effectiveFlowId = process.env.MSG91_FLOW_ID || this.flowId || 'swiftcare_emergency_flow';
+    const effectiveSender = process.env.MSG91_SENDER_ID || this.senderId || 'SWFCARE';
+    const effectiveAuthKey = process.env.MSG91_AUTH_KEY || this.authKey || (effectiveProviderMode === 'mock' || effectiveEndpoint.includes('webhook.site') ? 'mock-test-authkey' : '');
 
     if (!effectiveAuthKey) {
       const error = new Error('MSG91_AUTH_KEY is not configured on the server');
@@ -127,7 +129,7 @@ export class Msg91Service {
       variables
     };
 
-    const endpoint = this.apiUrl;
+    const endpoint = effectiveEndpoint;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 

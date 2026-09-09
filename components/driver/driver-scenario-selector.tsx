@@ -33,6 +33,7 @@ export interface ScenarioDefinition {
   type: string
   expectedTimeSavedMinutes: number
   scenarioTag: string
+  callerContact?: string
   hasDeviation?: boolean
   hasAutoReroute?: boolean
   hasRoadClosure?: boolean

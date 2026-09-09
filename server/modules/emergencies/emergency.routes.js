@@ -5,7 +5,9 @@ import {
   getEmergency,
   updateEmergency,
   assignVehicle,
-  deleteEmergency
+  deleteEmergency,
+  sendEmergencyStatusSms,
+  getEmergencySmsStatus
 } from './emergency.controller.js';
 import { protect } from '../auth/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/roleMiddleware.js';
@@ -48,5 +50,12 @@ router
   .route('/:emergencyId/decisions')
   // GET: CONTROL_ROOM & ADMIN — list all decisions for this emergency
   .get(requireRole('CONTROL_ROOM', 'ADMIN'), getEmergencyDecisions);
+
+router
+  .route('/:emergencyId/send-status-sms')
+  // POST: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC (Service enforces vehicle assignment for DRIVER)
+  .post(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), sendEmergencyStatusSms)
+  // GET: Read current SMS communication status
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getEmergencySmsStatus);
 
 export default router;

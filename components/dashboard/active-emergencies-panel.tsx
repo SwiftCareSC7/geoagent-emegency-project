@@ -268,6 +268,20 @@ export function ActiveEmergenciesPanel({
                       >
                         {status.label}
                       </span>
+                      {e.communication?.lastSmsStatus && e.communication.lastSmsStatus !== 'READY' && (
+                        <span
+                          className={cn(
+                            'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-mono font-bold',
+                            e.communication.lastSmsStatus === 'SUBMITTED' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+                            e.communication.lastSmsStatus === 'DELIVERED' && 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
+                            e.communication.lastSmsStatus === 'FAILED' && 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
+                            e.communication.lastSmsStatus === 'SENDING' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                          )}
+                        >
+                          <Phone className="size-3" />
+                          <span>STATUS SMS: {e.communication.lastSmsStatus}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
 
