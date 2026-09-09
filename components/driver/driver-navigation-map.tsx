@@ -4,7 +4,59 @@ import React, { useEffect, useRef, useState } from 'react'
 import type L from 'leaflet'
 import type { Incident } from '@/lib/api/types'
 import type { ConnectedVehicle } from '@/lib/api/clearance'
-import { AlertTriangle, Layers, ChevronDown, ChevronUp, MapPin, Building2, Car, Radio, LocateFixed } from 'lucide-react'
+import type { NavigationStep, NavigationState, ManeuverType } from './types'
+import {
+  AlertTriangle,
+  Layers,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Building2,
+  Car,
+  Radio,
+  LocateFixed,
+  CornerUpLeft,
+  CornerUpRight,
+  ArrowUpLeft,
+  ArrowUpRight,
+  ArrowUp,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  List,
+  Navigation,
+  Compass,
+  CheckCircle2,
+  Clock,
+  Gauge
+} from 'lucide-react'
+
+function getManeuverIcon(maneuver?: ManeuverType, className = 'size-6 text-white') {
+  switch (maneuver) {
+    case 'TURN_LEFT':
+      return <CornerUpLeft className={className} />
+    case 'TURN_RIGHT':
+      return <CornerUpRight className={className} />
+    case 'KEEP_LEFT':
+      return <ArrowUpLeft className={className} />
+    case 'KEEP_RIGHT':
+      return <ArrowUpRight className={className} />
+    case 'U_TURN':
+      return <RotateCcw className={className} />
+    case 'ARRIVE':
+      return <MapPin className={className} />
+    case 'DEPART':
+    case 'CONTINUE':
+    default:
+      return <ArrowUp className={className} />
+  }
+}
+
+function formatManeuverDistance(meters?: number): string {
+  if (meters === undefined || meters === null) return '0 m'
+  if (meters < 1000) return `${Math.round(meters)} m`
+  return `${(meters / 1000).toFixed(1)} km`
+}
 
 interface DriverNavigationMapProps {
   activeRouteCoordinates?: [number, number][] // [lng, lat]
@@ -26,6 +78,17 @@ interface DriverNavigationMapProps {
   recenterTrigger?: number
   height?: string
   className?: string
+  // Turn-by-Turn Navigation props
+  currentStep?: NavigationStep | null
+  nextStep?: NavigationStep | null
+  distanceToNextStepMeters?: number
+  totalDistanceRemainingMeters?: number
+  totalDurationRemainingSeconds?: number
+  steps?: NavigationStep[]
+  navState?: NavigationState
+  speed?: number | null
+  isVoiceActive?: boolean
+  onToggleVoice?: () => void
 }
 
 export function DriverNavigationMap({
@@ -47,7 +110,17 @@ export function DriverNavigationMap({
   deviationDistance = 0,
   recenterTrigger = 0,
   height = '100%',
-  className = ''
+  className = '',
+  currentStep,
+  nextStep,
+  distanceToNextStepMeters,
+  totalDistanceRemainingMeters,
+  totalDurationRemainingSeconds,
+  steps = [],
+  navState = 'NAVIGATING',
+  speed,
+  isVoiceActive = true,
+  onToggleVoice
 }: DriverNavigationMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
@@ -73,6 +146,20 @@ export function DriverNavigationMap({
   const [mapInitialized, setMapInitialized] = useState(false)
   const [legendOpen, setLegendOpen] = useState(false)
   const [isUserPanning, setIsUserPanning] = useState(false)
+  const [isTurnListOpen, setIsTurnListOpen] = useState(false)
+  const [isNavHudCollapsed, setIsNavHudCollapsed] = useState(false)
+
+  const handleStepClick = (step: NavigationStep, idx: number) => {
+    if (!mapRef.current) return
+    if (step.startLocation) {
+      mapRef.current.setView([step.startLocation[1], step.startLocation[0]], 17, { animate: true })
+      setIsUserPanning(true)
+    } else if (activeRouteCoordinates && activeRouteCoordinates.length > idx) {
+      const coord = activeRouteCoordinates[Math.min(idx * 2, activeRouteCoordinates.length - 1)]
+      mapRef.current.setView([coord[1], coord[0]], 17, { animate: true })
+      setIsUserPanning(true)
+    }
+  }
 
   // 1. Initialize Leaflet Map
   useEffect(() => {
@@ -530,84 +617,206 @@ export function DriverNavigationMap({
           </button>
         </div>
       )}
-      {/* Route Deviation In-Map Alert Overlay */}
-      {isDeviated && (
-        <div className="absolute top-3 inset-x-3 sm:inset-x-6 z-[500] pointer-events-none">
-          <div className="mx-auto max-w-lg p-2.5 px-3.5 rounded-xl bg-rose-600/95 text-white backdrop-blur-md border border-rose-400 shadow-2xl flex items-center justify-between gap-3 animate-pulse">
+      {/* 1. ON-MAP TURN-BY-TURN NAVIGATION HUD */}
+      <div className="absolute top-3 left-3 sm:left-4 z-[450] max-w-sm sm:max-w-md w-[calc(100%-24px)] sm:w-[380px] pointer-events-auto">
+        <div className="rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden transition-all duration-200">
+          {/* Top Bar: Mission Leg & Audio & Collapse */}
+          <div className="flex items-center justify-between px-3.5 py-2 bg-slate-950/80 border-b border-slate-800 text-[11px]">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-200 shrink-0" />
-              <div>
-                <span className="text-xs font-black uppercase tracking-wider block">
-                  Route Deviation Detected (+{Math.round(deviationDistance)}m)
+              <span className={`px-2 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wide ${
+                activeLegNumber === 1
+                  ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
+                  : 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+              }`}>
+                {activeLegNumber === 1 ? '🔵 Leg 1 · To Scene' : '🟢 Leg 2 · To Hospital'}
+              </span>
+              {speed !== undefined && (
+                <span className="flex items-center gap-1 font-mono font-bold text-slate-300">
+                  <Gauge className="size-3 text-cyan-400" />
+                  {Math.round(speed)} km/h
                 </span>
-                <span className="text-[11px] text-rose-100">
-                  GeoAgent has evaluated affected corridor & recommends reroute
-                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {onToggleVoice && (
+                <button
+                  type="button"
+                  onClick={onToggleVoice}
+                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors"
+                  aria-label={isVoiceActive ? 'Mute turn guidance voice' : 'Unmute turn guidance voice'}
+                  title={isVoiceActive ? 'Voice active' : 'Voice muted'}
+                >
+                  {isVoiceActive ? (
+                    <Volume2 className="size-3.5 text-emerald-400" />
+                  ) : (
+                    <VolumeX className="size-3.5 text-rose-400" />
+                  )}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsNavHudCollapsed(!isNavHudCollapsed)}
+                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                aria-label={isNavHudCollapsed ? 'Expand turn navigation HUD' : 'Collapse turn navigation HUD'}
+              >
+                {isNavHudCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Primary Maneuver Card */}
+          {!isNavHudCollapsed ? (
+            <div className="p-3.5">
+              <div className="flex items-start gap-3.5">
+                {/* Maneuver Arrow Icon Box */}
+                <div className="size-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center shadow-lg shadow-emerald-950/50 border border-emerald-300/40 shrink-0">
+                  {getManeuverIcon(currentStep?.maneuver, 'size-7 text-white')}
+                </div>
+
+                {/* Distance & Turn Instruction */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
+                      {formatManeuverDistance(distanceToNextStepMeters)}
+                    </span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                      {currentStep?.maneuver?.replace('_', ' ') || 'CONTINUE'}
+                    </span>
+                  </div>
+                  <h3 className="mt-1 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-2">
+                    {currentStep?.instruction || 'Follow cleared emergency corridor'}
+                  </h3>
+
+                  {/* Next Step Preview */}
+                  {nextStep && (
+                    <div className="mt-2 pt-2 border-t border-slate-800 flex items-center gap-1.5 text-[11px] text-slate-400">
+                      <span className="text-cyan-400 font-bold">Then</span>
+                      <span className="shrink-0">{getManeuverIcon(nextStep.maneuver, 'size-3.5 text-cyan-300')}</span>
+                      <span className="truncate text-slate-300 font-medium">
+                        {nextStep.instruction} ({formatManeuverDistance(nextStep.distance)})
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Bottom Quick Bar: All Turns toggle & Map Legend toggle */}
+              <div className="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsTurnListOpen(!isTurnListOpen)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors"
+                >
+                  <List className="size-3.5 text-cyan-400" />
+                  <span>All Turns ({steps.length || 1})</span>
+                  {isTurnListOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLegendOpen(!legendOpen)}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-semibold transition-colors"
+                >
+                  <Layers className="size-3 text-blue-400" />
+                  <span>Legend</span>
+                  {legendOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                </button>
+              </div>
+
+              {/* Expandable Step-by-Step Maneuver List */}
+              {isTurnListOpen && (
+                <div className="mt-2.5 max-h-56 overflow-y-auto custom-scrollbar rounded-xl bg-slate-950/90 border border-slate-800 p-2 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-1 pb-1 border-b border-slate-800 flex items-center justify-between">
+                    <span>Turn-by-Turn Route Guidance</span>
+                    <span className="text-cyan-400 font-normal">Tap turn to view on map</span>
+                  </div>
+                  {(steps && steps.length > 0 ? steps : [currentStep]).filter(Boolean).map((step, idx) => {
+                    const isCurrent = idx === 0
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => step && handleStepClick(step, idx)}
+                        className={`w-full text-left p-2 rounded-lg flex items-start gap-2.5 transition-all text-xs ${
+                          isCurrent
+                            ? 'bg-emerald-950/60 border border-emerald-500/40 text-white'
+                            : 'hover:bg-slate-900 text-slate-300 hover:text-white border border-transparent'
+                        }`}
+                      >
+                        <div className={`size-6 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
+                          isCurrent ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          {getManeuverIcon(step?.maneuver, 'size-3.5')}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-xs leading-snug line-clamp-1">{step?.instruction}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            {formatManeuverDistance(step?.distance)} · ~{Math.max(1, Math.round((step?.duration || 30) / 60))} min
+                          </p>
+                        </div>
+                        {isCurrent && (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px] uppercase shrink-0">
+                            Current
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Legend dropdown if toggled */}
+              {legendOpen && (
+                <div className="mt-2 rounded-xl border border-slate-700/80 bg-slate-950/95 p-2.5 text-[10px] space-y-1.5 animate-in fade-in duration-150">
+                  <div className="font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-1">
+                    Corridor Hierarchy
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-200">
+                    <div className="h-2 w-4 rounded-full bg-blue-500" />
+                    <span>🔵 Leg 1: To Emergency Scene</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-200">
+                    <div className="h-2 w-4 rounded-full bg-emerald-500" />
+                    <span>🟢 Leg 2: To Hospital ER</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <div className="h-1.5 w-4 border-b-2 border-dashed border-cyan-400" />
+                    <span>⚪ Alternative Bypass</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <div className="h-1.5 w-4 border-b-2 border-dotted border-amber-400" />
+                    <span>🟡 Congested Route</span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="px-2 py-0.5 rounded bg-rose-800/80 border border-rose-300/40 text-[10px] font-extrabold uppercase shrink-0">
-              Leg {activeLegNumber}
+          ) : (
+            /* Collapsed Pill */
+            <div className="p-2.5 flex items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                  {getManeuverIcon(currentStep?.maneuver, 'size-4 text-white')}
+                </div>
+                <div className="truncate">
+                  <span className="font-black text-sm text-white mr-1.5">
+                    {formatManeuverDistance(distanceToNextStepMeters)}
+                  </span>
+                  <span className="text-xs text-slate-200 font-semibold truncate">
+                    {currentStep?.instruction || 'Continue on route'}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNavHudCollapsed(false)}
+                className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-cyan-300 uppercase shrink-0"
+              >
+                Expand
+              </button>
             </div>
-          </div>
+          )}
         </div>
-      )}
-
-      {/* Compact Collapsible Map Legend (Part 10 & 84) */}
-      <div className="absolute top-3 left-3 z-[400] max-w-[220px]">
-        <button
-          type="button"
-          onClick={() => setLegendOpen(!legendOpen)}
-          className="flex items-center gap-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 px-2.5 py-1.5 text-[11px] font-extrabold text-slate-200 shadow-xl backdrop-blur-md transition-colors"
-          aria-label="Toggle Route Legend"
-        >
-          <Layers className="h-3.5 w-3.5 text-blue-400" />
-          <span>MAP LEGEND</span>
-          {legendOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-        </button>
-
-        {legendOpen && (
-          <div className="mt-1.5 rounded-xl border border-slate-700/80 bg-slate-900/95 p-2.5 shadow-2xl backdrop-blur-xl text-[10px] space-y-1.5 animate-in fade-in duration-150">
-            <div className="font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-1">
-              Corridor Hierarchy
-            </div>
-            <div className="flex items-center gap-2 text-slate-200">
-              <div className="h-2 w-4 rounded-full bg-blue-500 shadow-sm" />
-              <span className="font-semibold">🔵 Leg 1: To Emergency</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-200">
-              <div className="h-2 w-4 rounded-full bg-emerald-500 shadow-sm" />
-              <span className="font-semibold">🟢 Leg 2: To Hospital</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-300">
-              <div className="h-1.5 w-4 border-b-2 border-dashed border-cyan-400" />
-              <span>⚪ Alternative Route</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-300">
-              <div className="h-1.5 w-4 border-b-2 border-dotted border-amber-400" />
-              <span>🟡 Congested Route</span>
-            </div>
-
-            <div className="font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pt-1 pb-1">
-              Key Markers
-            </div>
-            <div className="flex items-center gap-2 text-slate-300">
-              <span>🚑</span>
-              <span>Ambulance (Driver)</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-300">
-              <span>🚨</span>
-              <span>Emergency Location</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-300">
-              <span>🏥</span>
-              <span>Hospital ER Bay</span>
-            </div>
-            <div className="flex items-center gap-2 text-slate-300">
-              <span>🚗</span>
-              <span>Connected Vehicles (V2X)</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Map Canvas */}
