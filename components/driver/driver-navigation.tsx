@@ -27,7 +27,8 @@ import {
   RefreshCw,
   Building2,
   Route as RouteIcon,
-  XCircle
+  XCircle,
+  Siren
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DriverManeuverCard } from './driver-maneuver-card'
@@ -989,9 +990,9 @@ export function DriverNavigation({
           onOpenScenarios={() => setIsScenarioSelectorOpen(true)}
         />
 
-        {/* MODE SWITCHER / DISCOVERY BAR (Part 1, 7, 21 — Clear Mode Selection) */}
-        <div className="bg-slate-900 border-b border-slate-800 px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
+        {/* MODE SWITCHER BAR */}
+        <div className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-1.5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto">
             <button
               type="button"
               onClick={() => {
@@ -999,13 +1000,14 @@ export function DriverNavigation({
                 setIsRoutePlannerVisible(false)
                 initializeScenarioCorridors(currentScenario)
               }}
-              className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+              className={`min-h-[36px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 navigationMode === 'EMERGENCY_MISSION' && !isRoutePlannerVisible
-                  ? 'bg-blue-600 text-white shadow-md'
+                  ? 'bg-blue-600 text-white shadow-sm'
                   : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
-              <span>🚨 Emergency Mission (2-Leg)</span>
+              <Siren className="size-3" />
+              <span>Emergency Mission</span>
             </button>
 
             <button
@@ -1013,17 +1015,17 @@ export function DriverNavigation({
               onClick={() => {
                 setIsRoutePlannerVisible(true)
               }}
-              className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+              className={`min-h-[36px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 isRoutePlannerVisible || navigationMode === 'MANUAL_ROUTE'
-                  ? 'bg-emerald-600 text-white shadow-md'
+                  ? 'bg-emerald-600 text-white shadow-sm'
                   : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
-              <RouteIcon className="size-3.5" />
-              <span>🗺️ Route Planner (My Location → Dest)</span>
+              <RouteIcon className="size-3" />
+              <span>Route Planner</span>
             </button>
 
-            {/* GPS Tracking Mode Toggle */}
+            {/* GPS Toggle */}
             <button
               type="button"
               onClick={() => {
@@ -1034,18 +1036,17 @@ export function DriverNavigation({
                   setGpsMode('SIMULATION')
                 }
               }}
-              className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`min-h-[36px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 gpsMode === 'LIVE_GPS'
-                  ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400'
+                  ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400'
                   : 'bg-slate-800 text-slate-300 hover:text-white'
               }`}
-              title={gpsMode === 'LIVE_GPS' ? 'Switch to simulation mode' : 'Track live browser GPS'}
+              title={gpsMode === 'LIVE_GPS' ? 'Switch to simulation' : 'Track live GPS'}
             >
-              <Radio className={`size-3.5 ${gpsMode === 'LIVE_GPS' ? 'text-white animate-pulse' : 'text-slate-400'}`} />
-              <span>{gpsMode === 'LIVE_GPS' ? 'Live GPS Active' : 'Live GPS'}</span>
+              <Radio className={`size-3 ${gpsMode === 'LIVE_GPS' ? 'text-white animate-pulse' : 'text-slate-400'}`} />
+              <span className="hidden sm:inline">{gpsMode === 'LIVE_GPS' ? 'GPS Live' : 'Live GPS'}</span>
             </button>
 
-            {/* Emergency Status SMS Action */}
             <DriverSmsButton
               emergencyId={currentScenario.id}
               ambulanceId={activeAmbulanceId}
@@ -1055,25 +1056,22 @@ export function DriverNavigation({
             />
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 shrink-0">
             {isLoadingRoute && (
-              <span className="flex items-center gap-1.5 text-xs text-cyan-400 font-bold animate-pulse">
-                <RefreshCw className="size-3.5 animate-spin" />
-                <span>Routing Roads...</span>
+              <span className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold animate-pulse">
+                <RefreshCw className="size-3 animate-spin" />
+                <span className="hidden sm:inline">Routing...</span>
               </span>
             )}
             {navigationMode === 'MANUAL_ROUTE' && (
               <button
                 type="button"
                 onClick={handleEndNavigation}
-                className="min-h-[38px] px-2.5 py-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 font-bold border border-rose-500/40 text-[11px]"
+                className="min-h-[34px] px-2 py-1 rounded-lg bg-red-600/15 hover:bg-red-600/25 text-red-300 font-bold border border-red-500/30 text-[10px]"
               >
                 End Route
               </button>
             )}
-            <span className="font-mono text-[11px] text-slate-400 hidden sm:inline">
-              Mode: {navigationMode === 'EMERGENCY_MISSION' ? 'Active 2-Leg Emergency' : 'Manual Route Planner'}
-            </span>
           </div>
         </div>
       </div>
@@ -1298,86 +1296,86 @@ export function DriverNavigation({
           )}
         </div>
 
-        {/* RIGHT COLUMN: HUGE Central Interactive Leaflet Map (Parts 2-10) */}
+        {/* RIGHT COLUMN: Map Viewport */}
         <div className={`flex-1 relative h-full w-full z-10 ${
           mobileActiveTab === 'COCKPIT' ? 'hidden lg:block' : 'block'
         }`}>
           
-          {/* Top Floating Map Action Bar */}
-          <div className="absolute top-3 right-3 sm:right-6 z-30 flex flex-wrap items-center gap-2 pointer-events-auto">
-            {/* Plan Route / Return to Planner Button (Part 1, 15, 21) */}
+          {/* Top Floating Map Controls */}
+          <div className="absolute top-2 right-2 sm:top-3 sm:right-4 z-30 flex items-center gap-1.5 pointer-events-auto">
+            {/* Plan Route Button */}
             <Button
               size="sm"
               onClick={() => {
                 setIsRoutePlannerVisible(!isRoutePlannerVisible)
                 if (mobileActiveTab === 'MAP') setMobileActiveTab('COCKPIT')
               }}
-              className="min-h-[44px] px-3.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white font-black text-xs flex items-center gap-1.5 shadow-xl backdrop-blur-xl border border-emerald-400 transition-all"
-              title="Open My Location to Destination Route Planner"
+              className="min-h-[36px] px-2.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-lg backdrop-blur-xl border border-emerald-400 transition-all"
+              title="Open Route Planner"
             >
-              <RouteIcon className="h-4 w-4" />
-              <span>{isRoutePlannerVisible ? 'Hide Planner' : 'Plan Route'}</span>
+              <RouteIcon className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">{isRoutePlannerVisible ? 'Hide' : 'Plan'}</span>
             </Button>
 
-            {/* Demo Scenario Selector Button */}
+            {/* Scenario Button */}
             {navigationMode === 'EMERGENCY_MISSION' && (
               <Button
                 size="sm"
                 onClick={() => setIsScenarioSelectorOpen(true)}
-                className="min-h-[44px] px-3.5 rounded-xl bg-blue-600/90 hover:bg-blue-600 text-white font-black text-xs flex items-center gap-1.5 shadow-xl backdrop-blur-xl border border-blue-400 transition-all"
-                title="Select Bengaluru Demo Scenario"
+                className="min-h-[36px] px-2.5 rounded-lg bg-blue-600/90 hover:bg-blue-600 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-lg backdrop-blur-xl border border-blue-400 transition-all"
+                title="Select Demo Scenario"
               >
-                <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-                <span>{currentScenario.id}</span>
+                <Sparkles className="h-3 w-3" />
+                <span className="hidden sm:inline">{currentScenario.id}</span>
               </Button>
             )}
 
-            {/* Simulation Drive Toggle */}
+            {/* Simulate Drive */}
             <Button
               size="sm"
               onClick={toggleSimulation}
-              className={`min-h-[44px] px-3.5 rounded-xl shadow-xl font-bold font-mono text-xs flex items-center gap-1.5 border backdrop-blur-xl transition-all ${
+              className={`min-h-[36px] px-2.5 rounded-lg shadow-lg font-bold text-[11px] flex items-center gap-1.5 border backdrop-blur-xl transition-all ${
                 isSimulating
-                  ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 ring-2 ring-amber-400/40 animate-pulse'
+                  ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 animate-pulse'
                   : 'bg-slate-900/90 hover:bg-slate-800 text-white border-slate-700/80'
               }`}
-              title="Drive along route polyline"
+              title="Drive along route"
             >
               {isSimulating ? (
                 <>
-                  <Pause className="h-3.5 w-3.5 fill-current" />
-                  <span>Pause Drive</span>
+                  <Pause className="h-3 w-3 fill-current" />
+                  <span className="hidden sm:inline">Pause</span>
                 </>
               ) : (
                 <>
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                  <span>Simulate Drive</span>
+                  <Play className="h-3 w-3 fill-current" />
+                  <span className="hidden sm:inline">Simulate</span>
                 </>
               )}
             </Button>
 
-            {/* Recenter Map (Part 14, 15) */}
+            {/* Recenter */}
             <button
               type="button"
               onClick={() => setRecenterTrigger((prev) => prev + 1)}
-              className="min-h-[44px] min-w-[44px] rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white shadow-xl flex items-center justify-center backdrop-blur-xl transition-all"
-              aria-label="Recenter map on GPS location"
-              title="Recenter on current location"
+              className="min-h-[36px] min-w-[36px] rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white shadow-lg flex items-center justify-center backdrop-blur-xl transition-all"
+              aria-label="Recenter map"
+              title="Recenter"
             >
-              <LocateFixed className="h-4 w-4 text-cyan-400" />
+              <LocateFixed className="h-3.5 w-3.5 text-cyan-400" />
             </button>
 
-            {/* Audio Mute Toggle */}
+            {/* Voice Mute */}
             <button
               type="button"
               onClick={() => setVoiceMuted(!voiceMuted)}
-              className="min-h-[44px] min-w-[44px] rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white shadow-xl flex items-center justify-center backdrop-blur-xl transition-all"
+              className="min-h-[36px] min-w-[36px] rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white shadow-lg flex items-center justify-center backdrop-blur-xl transition-all"
               aria-label={voiceMuted ? 'Unmute voice' : 'Mute voice'}
             >
               {voiceMuted ? (
-                <VolumeX className="h-4 w-4 text-rose-400" />
+                <VolumeX className="h-3.5 w-3.5 text-red-400" />
               ) : (
-                <Volume2 className="h-4 w-4 text-emerald-400" />
+                <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
               )}
             </button>
           </div>
@@ -1416,40 +1414,32 @@ export function DriverNavigation({
         </div>
       </div>
 
-      {/* 3. MOBILE BOTTOM NAVIGATION BAR (for viewport <= 1024px) */}
-      <div className="lg:hidden z-30 w-full bg-slate-950 border-t border-slate-800 flex items-center justify-around p-2">
+      {/* 3. MOBILE BOTTOM NAVIGATION BAR */}
+      <div className="lg:hidden z-30 w-full bg-slate-950 border-t border-slate-800 flex items-center p-1.5 gap-1.5">
         <button
           type="button"
           onClick={() => setMobileActiveTab('COCKPIT')}
-          className={`flex-1 min-h-[44px] py-1.5 flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all ${
+          className={`flex-1 min-h-[44px] py-1.5 flex flex-col items-center justify-center rounded-lg text-[11px] font-bold transition-all ${
             mobileActiveTab === 'COCKPIT'
-              ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30'
+              : 'text-slate-500 hover:text-white'
           }`}
         >
-          <div className="flex items-center gap-1">
-            <Sparkles className="h-4 w-4" />
-            <span>Cockpit & Plan</span>
-          </div>
-          <span className="text-[10px] font-mono text-cyan-300">
-            {isRoutePlannerVisible ? 'Route Planner' : 'Navigation HUD'}
-          </span>
+          <Sparkles className="h-3.5 w-3.5 mb-0.5" />
+          <span>Cockpit</span>
         </button>
 
         <button
           type="button"
           onClick={() => setMobileActiveTab('MAP')}
-          className={`flex-1 min-h-[44px] py-1.5 flex flex-col items-center justify-center rounded-lg text-xs font-bold transition-all ${
+          className={`flex-1 min-h-[44px] py-1.5 flex flex-col items-center justify-center rounded-lg text-[11px] font-bold transition-all ${
             mobileActiveTab === 'MAP'
-              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : 'text-slate-400 hover:text-white'
+              ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30'
+              : 'text-slate-500 hover:text-white'
           }`}
         >
-          <div className="flex items-center gap-1">
-            <Navigation className="h-4 w-4" />
-            <span>Map View</span>
-          </div>
-          <span className="text-[10px] font-mono text-emerald-300">Live GPS</span>
+          <Navigation className="h-3.5 w-3.5 mb-0.5" />
+          <span>Map View</span>
         </button>
       </div>
 

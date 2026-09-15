@@ -41,33 +41,32 @@ export function DriverEmergencyHeader({
   onOpenScenarios,
   className = ''
 }: DriverEmergencyHeaderProps) {
-  // Visual & text styling for Priority
   const getPriorityBadge = (p: EmergencyPriority) => {
     switch (p) {
       case 'CRITICAL':
         return {
-          label: 'CRITICAL PRIORITY',
-          icon: <Flame className="size-4 animate-pulse text-white" />,
-          classes: 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-900/40 ring-2 ring-rose-400/40'
+          label: 'CRITICAL',
+          icon: <Flame className="size-3 animate-pulse text-white" />,
+          classes: 'bg-red-600 text-white border-red-500'
         }
       case 'HIGH':
         return {
-          label: 'HIGH PRIORITY',
-          icon: <AlertTriangle className="size-4 text-white" />,
-          classes: 'bg-amber-600 text-white border-amber-500 shadow-md shadow-amber-900/30'
+          label: 'HIGH',
+          icon: <AlertTriangle className="size-3 text-white" />,
+          classes: 'bg-amber-600 text-white border-amber-500'
         }
       case 'MEDIUM':
         return {
-          label: 'MEDIUM PRIORITY',
-          icon: <Activity className="size-4 text-white" />,
+          label: 'MEDIUM',
+          icon: <Activity className="size-3 text-white" />,
           classes: 'bg-blue-600 text-white border-blue-500'
         }
       case 'LOW':
       default:
         return {
-          label: 'LOW PRIORITY',
-          icon: <ShieldAlert className="size-4 text-white" />,
-          classes: 'bg-slate-700 text-slate-200 border-slate-600'
+          label: 'LOW',
+          icon: <ShieldAlert className="size-3 text-white" />,
+          classes: 'bg-slate-600 text-slate-200 border-slate-500'
         }
     }
   }
@@ -75,81 +74,80 @@ export function DriverEmergencyHeader({
   const priorityMeta = getPriorityBadge(priority)
 
   return (
-    <header className={`w-full bg-slate-900/95 border-b border-slate-800 backdrop-blur-xl shadow-2xl ${className}`}>
-      <div className="mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-        {/* 1. Unit & Emergency State */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-2xl bg-rose-600 px-3.5 py-1.5 text-white font-black font-mono text-sm tracking-wider shadow-md shadow-rose-900/50">
-            <Siren className="size-5 animate-spin" style={{ animationDuration: '2s' }} />
+    <header className={`w-full bg-slate-900 border-b border-slate-800 ${className}`}>
+      <div className="mx-auto px-3 sm:px-4 lg:px-6 py-2.5 flex items-center justify-between gap-2 sm:gap-4">
+        {/* Left: Unit ID + Status */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Ambulance Badge */}
+          <div className="flex items-center gap-1.5 rounded-lg bg-red-600 px-2.5 py-1 text-white font-black font-mono text-xs tracking-wider">
+            <Siren className="size-3.5 animate-spin" style={{ animationDuration: '2s' }} />
             <span>{ambulanceId}</span>
           </div>
 
-          <div className="hidden sm:flex flex-col">
-            <span className="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-rose-400">
-              <span className="size-2 rounded-full bg-rose-500 animate-ping" />
-              {emergencyActive ? 'Emergency Active' : 'Standby'}
-            </span>
-            <span className="text-[11px] font-mono text-slate-400">
-              Rapid Response Protocol
+          {/* Emergency Status */}
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span className={`size-1.5 rounded-full ${emergencyActive ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+              {emergencyActive ? 'ACTIVE' : 'STANDBY'}
             </span>
           </div>
         </div>
 
-        {/* 2. Destination Hospital (Prominent & Clear) */}
-        <div className="flex items-center gap-2.5 max-w-xs sm:max-w-md">
-          <div className="size-9 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
-            <MapPin className="size-5 text-cyan-400" />
+        {/* Center: Destination */}
+        <div className="flex items-center gap-2 min-w-0 flex-1 justify-center sm:justify-start">
+          <div className="size-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center shrink-0">
+            <MapPin className="size-3.5 text-cyan-400" />
           </div>
-          <div className="truncate">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Destination</p>
-            <p className="text-sm font-black text-white truncate" title={destinationName}>
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-500 leading-tight">Destination</p>
+            <p className="text-xs font-bold text-white truncate" title={destinationName}>
               {destinationName}
             </p>
           </div>
         </div>
 
-        {/* Demo Scenario Switcher Button */}
+        {/* Demo Scenario Button */}
         {onOpenScenarios && (
           <button
             type="button"
             onClick={onOpenScenarios}
-            className="flex items-center gap-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 px-3 py-1.5 text-xs font-extrabold text-blue-300 transition-all shadow-md shrink-0"
+            className="hidden sm:flex items-center gap-1.5 rounded-lg bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 px-2.5 py-1.5 text-[10px] font-bold text-blue-300 transition-all shrink-0"
             title="Switch Demonstration Scenario"
           >
-            <Sparkles className="size-3.5 text-blue-400 animate-pulse" />
-            <span className="max-w-[150px] truncate">{scenarioTitle || 'Scenarios (12)'}</span>
+            <Sparkles className="size-3 text-blue-400" />
+            <span className="max-w-[100px] truncate">{scenarioTitle || 'Scenarios'}</span>
           </button>
         )}
 
-        {/* 3. Metrics: Priority + Current ETA + Delay */}
-        <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-          {/* Priority Badge */}
-          <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black tracking-wide ${priorityMeta.classes}`}>
+        {/* Right: Priority + ETA + Delay */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Priority */}
+          <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-black tracking-wide ${priorityMeta.classes}`}>
             {priorityMeta.icon}
-            <span>{priorityMeta.label}</span>
+            <span className="hidden sm:inline">{priorityMeta.label}</span>
           </div>
 
-          {/* Live ETA */}
-          <div className="rounded-xl border border-slate-700/80 bg-slate-800/80 px-3 py-1 text-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">ETA</span>
-            <span className="font-mono text-sm font-black text-emerald-400">
+          {/* ETA */}
+          <div className="rounded-md border border-slate-700 bg-slate-800 px-2 py-1 text-center min-w-[52px]">
+            <span className="text-[8px] font-bold uppercase tracking-wider text-slate-500 block leading-tight">ETA</span>
+            <span className="font-mono text-xs font-black text-emerald-400 leading-tight">
               {etaMinutes} min
             </span>
           </div>
 
-          {/* Delay Warning */}
+          {/* Delay */}
           {delayMinutes > 0 ? (
-            <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-center animate-pulse">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-rose-400 block">Delay</span>
-              <span className="font-mono text-sm font-black text-rose-400">
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1 text-center min-w-[52px]">
+              <span className="text-[8px] font-bold uppercase tracking-wider text-red-400 block leading-tight">Delay</span>
+              <span className="font-mono text-xs font-black text-red-400 leading-tight">
                 +{delayMinutes} min
               </span>
             </div>
           ) : (
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">Delay</span>
-              <span className="font-mono text-sm font-black text-emerald-400">
-                On Schedule
+            <div className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-center min-w-[52px]">
+              <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-400 block leading-tight">Delay</span>
+              <span className="font-mono text-[10px] font-bold text-emerald-400 leading-tight">
+                On Time
               </span>
             </div>
           )}

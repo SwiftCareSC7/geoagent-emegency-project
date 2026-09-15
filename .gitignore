@@ -42,6 +42,7 @@ service-account*.json
 gcp-key*.json
 credentials*.json
 *.key
+*mcp_config.json
 
 # Docker
 docker-compose.override.yml

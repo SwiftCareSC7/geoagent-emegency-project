@@ -25,7 +25,7 @@ export function DriverDashboard({ data }: DriverDashboardProps) {
       />
 
       {/* Main Fullscreen Navigation Canvas */}
-      <main className="flex-1 relative w-full h-[calc(100vh-4rem)] overflow-hidden">
+      <main className="flex-1 relative w-full overflow-hidden">
         <DriverNavigation
           ambulanceId={ambulanceId}
           initialEmergency={data?.destination ? {

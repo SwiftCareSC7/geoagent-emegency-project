@@ -176,6 +176,46 @@
   }
 }
 
+/* Custom scrollbar for dark UI panels */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
+
+/* Leaflet map container fix */
+.leaflet-container {
+  font-family: inherit !important;
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(148, 163, 184, 0.15) !important;
+}
+.leaflet-popup-tip {
+  box-shadow: none !important;
+}
+.leaflet-control-zoom a {
+  border-radius: 10px !important;
+}
+
+/* Remove default focus outlines that look jarring */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

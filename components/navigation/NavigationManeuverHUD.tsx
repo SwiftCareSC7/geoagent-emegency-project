@@ -72,134 +72,126 @@ export function NavigationManeuverHUD({
   const isArrival = navState === 'ARRIVING' || navState === 'ARRIVED'
 
   const trafficBadgeColor = {
-    LIGHT: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-    MODERATE: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
-    HEAVY: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
-    SEVERE: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
-    UNKNOWN: 'bg-slate-700/30 text-slate-300 border-slate-600/40'
+    LIGHT: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    MODERATE: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    HEAVY: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+    SEVERE: 'bg-red-500/15 text-red-300 border-red-500/30',
+    UNKNOWN: 'bg-slate-700/30 text-slate-300 border-slate-600/30'
   }[trafficCondition]
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[450] flex flex-col justify-between p-3 sm:p-4">
       {/* 1. TOP MANEUVER HUD CARD */}
       <div className="pointer-events-auto flex flex-col items-start w-full max-w-sm sm:max-w-md">
-        <div className="w-full rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden transition-all duration-200">
-          {/* Top Bar: Call-sign, Leg & Telemetry Controls */}
-          <div className="flex items-center justify-between px-3.5 py-2 bg-slate-950/80 border-b border-slate-800 text-[11px]">
+        <div className="w-full rounded-xl border border-slate-700/60 bg-slate-900/95 shadow-2xl backdrop-blur-xl overflow-hidden">
+          {/* Top Bar: Leg & Speed */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-slate-950/80 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <span
-                className={`px-2.5 py-0.5 rounded-full font-black text-[10px] uppercase tracking-wide flex items-center gap-1.5 ${
+                className={`px-2 py-0.5 rounded font-black text-[9px] uppercase tracking-wide flex items-center gap-1 ${
                   activeLegNumber === 1
-                    ? 'bg-blue-600/30 text-blue-300 border border-blue-500/40'
-                    : 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
+                    : 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30'
                 }`}
               >
-                <span
-                  className={`size-2 rounded-full animate-ping ${
-                    activeLegNumber === 1 ? 'bg-blue-400' : 'bg-emerald-400'
-                  }`}
-                />
-                {vehicleCallsign} · {activeLegNumber === 1 ? 'LEG 1: TO SCENE' : 'LEG 2: TO HOSPITAL'}
+                <span className={`size-1.5 rounded-full ${activeLegNumber === 1 ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+                {vehicleCallsign} · {activeLegNumber === 1 ? 'LEG 1' : 'LEG 2'}
               </span>
 
               {speed != null && (
-                <span className="flex items-center gap-1 font-mono font-bold text-slate-300 text-xs">
+                <span className="flex items-center gap-1 font-mono font-bold text-slate-300 text-[11px]">
                   <Gauge className="size-3 text-cyan-400" />
                   {Math.round(speed)} km/h
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-1.5">
-              {/* Traffic Indicator */}
-              <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${trafficBadgeColor}`}>
-                {trafficCondition} Traffic
+            <div className="flex items-center gap-1">
+              <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border ${trafficBadgeColor}`}>
+                {trafficCondition}
               </span>
 
-              {/* Voice Toggle */}
               {onToggleVoice && (
                 <button
                   type="button"
                   onClick={onToggleVoice}
-                  className="p-1 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
                   aria-label={isVoiceActive ? 'Mute navigation voice' : 'Unmute navigation voice'}
-                  title={isVoiceActive ? 'Voice active' : 'Voice muted'}
                 >
                   {isVoiceActive ? (
-                    <Volume2 className="size-3.5 text-emerald-400" />
+                    <Volume2 className="size-3 text-emerald-400" />
                   ) : (
-                    <VolumeX className="size-3.5 text-slate-400" />
+                    <VolumeX className="size-3 text-slate-500" />
                   )}
                 </button>
               )}
 
-              {/* Collapse/Expand Toggle */}
               <button
                 type="button"
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                className="p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-white transition-colors cursor-pointer"
                 aria-label={isCollapsed ? 'Expand maneuver card' : 'Collapse maneuver card'}
               >
-                {isCollapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+                {isCollapsed ? <ChevronDown className="size-3" /> : <ChevronUp className="size-3" />}
               </button>
             </div>
           </div>
 
           {/* Primary Maneuver Details */}
           {!isCollapsed && (
-            <div className="p-3.5">
+            <div className="p-3">
               <div className="flex items-center justify-between gap-3">
-                {/* Left: Maneuver Icon Box & Next Turn */}
+                {/* Left: Maneuver Icon & Info */}
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`size-12 rounded-xl flex items-center justify-center shadow-lg shrink-0 border ${
+                    className={`size-11 rounded-xl flex items-center justify-center shadow-lg shrink-0 border ${
                       isArrival
-                        ? 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white border-emerald-300/40 shadow-emerald-950/50'
+                        ? 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white border-emerald-300/30'
                         : isImminentTurn
-                        ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-300/40 shadow-amber-950/50 animate-pulse'
-                        : 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-blue-400/40 shadow-blue-950/50'
+                        ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-300/30 animate-pulse'
+                        : 'bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-blue-400/30'
                     }`}
                   >
-                    <ManeuverIcon maneuver={currentStep?.maneuver} className="size-7 text-white" />
+                    <ManeuverIcon maneuver={currentStep?.maneuver} className="size-6 text-white" />
                   </div>
 
                   <div className="min-w-0">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-black text-white tracking-tight leading-none">
+                      <span className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none">
                         {formattedDistance}
                       </span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">
                         {currentStep?.maneuver?.replace('_', ' ') || 'CONTINUE'}
                       </span>
                     </div>
 
-                    <h3 className="mt-1 text-sm font-bold text-slate-100 leading-snug line-clamp-1">
+                    <h3 className="mt-0.5 text-xs sm:text-sm font-bold text-slate-100 leading-snug line-clamp-1">
                       {currentStep?.instruction || 'Continue on priority emergency route'}
                     </h3>
 
                     {currentStep?.streetName && (
-                      <p className="text-[11px] font-medium text-slate-400 line-clamp-1">
+                      <p className="text-[10px] font-medium text-slate-400 line-clamp-1">
                         onto {currentStep.streetName}
                       </p>
                     )}
                   </div>
                 </div>
 
-                {/* Right: EXPAND Button */}
+                {/* Expand Button */}
                 <button
                   type="button"
                   onClick={() => setIsDrawerOpen(!isDrawerOpen)}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold tracking-wider text-slate-200 hover:text-white uppercase shrink-0 transition-colors cursor-pointer"
+                  className="px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[10px] font-bold tracking-wider text-slate-300 hover:text-white uppercase shrink-0 transition-colors cursor-pointer"
                 >
-                  {isDrawerOpen ? 'CLOSE' : 'EXPAND'}
+                  {isDrawerOpen ? 'CLOSE' : 'STEPS'}
                 </button>
               </div>
 
-              {/* Next Maneuver Preview ("Then: ...") */}
+              {/* Next Turn Preview */}
               {nextStep && !isDrawerOpen && (
-                <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center gap-2 text-xs text-slate-400">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">THEN</span>
-                  <ManeuverIcon maneuver={nextStep.maneuver} className="size-3.5 text-slate-300" />
+                <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">THEN</span>
+                  <ManeuverIcon maneuver={nextStep.maneuver} className="size-3 text-slate-400" />
                   <span className="line-clamp-1 text-slate-300 font-medium">
                     {nextStep.instruction} ({Math.round(nextStep.distanceMeters)}m)
                   </span>
@@ -208,61 +200,47 @@ export function NavigationManeuverHUD({
             </div>
           )}
 
-          {/* Expandable Step-by-Step Drawer */}
+          {/* Expandable Steps Drawer */}
           {isDrawerOpen && (
-            <div className="max-h-64 overflow-y-auto border-t border-slate-800 bg-slate-950/90 p-3 divide-y divide-slate-800/60">
-              <div className="pb-2 text-[10px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                <span>Route Maneuvers Timeline</span>
+            <div className="max-h-56 overflow-y-auto border-t border-slate-800 bg-slate-950/90 p-2.5 divide-y divide-slate-800/60 custom-scrollbar">
+              <div className="pb-1.5 text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Route Maneuvers</span>
                 <span className="text-emerald-400 font-mono font-normal">
-                  {upcomingSteps.length} upcoming turns
+                  {upcomingSteps.length} upcoming
                 </span>
               </div>
 
-              {/* Current Turn Highlight */}
+              {/* Current Turn */}
               {currentStep && (
-                <div className="py-2 flex items-center gap-3 text-xs bg-emerald-950/20 px-2 rounded-lg border border-emerald-500/30">
-                  <div className="size-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                    <ManeuverIcon maneuver={currentStep.maneuver} className="size-4" />
+                <div className="py-1.5 flex items-center gap-2.5 text-[11px] bg-emerald-950/20 px-2 rounded-lg border border-emerald-500/20">
+                  <div className="size-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                    <ManeuverIcon maneuver={currentStep.maneuver} className="size-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-white text-[11px] line-clamp-1">
-                        {currentStep.instruction}
-                      </span>
-                      <span className="text-emerald-400 font-mono font-bold text-[10px] shrink-0 ml-2">
-                        {formattedDistance}
-                      </span>
+                      <span className="font-bold text-white line-clamp-1">{currentStep.instruction}</span>
+                      <span className="text-emerald-400 font-mono font-bold text-[10px] shrink-0 ml-2">{formattedDistance}</span>
                     </div>
-                    {currentStep.streetName && (
-                      <span className="text-[10px] text-slate-400 block">{currentStep.streetName}</span>
-                    )}
                   </div>
                 </div>
               )}
 
-              {/* Upcoming Turns */}
+              {/* Upcoming */}
               {upcomingSteps.map((step, idx) => (
                 <button
                   key={step.stepIndex || idx}
                   type="button"
                   onClick={() => onSelectStep?.(step)}
-                  className="w-full py-2 flex items-center gap-3 text-left hover:bg-slate-900/60 px-2 rounded-lg transition-colors cursor-pointer"
+                  className="w-full py-1.5 flex items-center gap-2.5 text-left hover:bg-slate-900/60 px-2 rounded-lg transition-colors cursor-pointer"
                 >
-                  <div className="size-7 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center shrink-0">
-                    <ManeuverIcon maneuver={step.maneuver} className="size-4" />
+                  <div className="size-6 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center shrink-0">
+                    <ManeuverIcon maneuver={step.maneuver} className="size-3.5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-slate-200 text-[11px] line-clamp-1">
-                        {step.instruction}
-                      </span>
-                      <span className="text-slate-400 font-mono text-[10px] shrink-0 ml-2">
-                        {Math.round(step.distanceMeters)}m
-                      </span>
+                      <span className="font-medium text-slate-200 text-[11px] line-clamp-1">{step.instruction}</span>
+                      <span className="text-slate-400 font-mono text-[10px] shrink-0 ml-2">{Math.round(step.distanceMeters)}m</span>
                     </div>
-                    {step.streetName && (
-                      <span className="text-[10px] text-slate-400 block">{step.streetName}</span>
-                    )}
                   </div>
                 </button>
               ))}
@@ -271,48 +249,48 @@ export function NavigationManeuverHUD({
         </div>
       </div>
 
-      {/* 2. BOTTOM INFO & CAMERA CONTROLS BAR */}
-      <div className="pointer-events-auto flex flex-col items-center w-full gap-2.5">
-        {/* Floating "RETURN TO VEHICLE" button if user panned away */}
+      {/* 2. BOTTOM INFO BAR */}
+      <div className="pointer-events-auto flex flex-col items-center w-full gap-2">
+        {/* Return to Vehicle Button */}
         {isUserPanning && onRecenter && (
           <button
             type="button"
             onClick={onRecenter}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-2xl border-2 border-white/80 backdrop-blur-xl animate-bounce tracking-wide transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] shadow-2xl border border-blue-400 backdrop-blur-xl animate-bounce tracking-wide transition-all cursor-pointer"
             aria-label="Return to live vehicle location"
           >
-            <LocateFixed className="size-4 text-cyan-300 animate-spin" />
+            <LocateFixed className="size-3.5 text-cyan-300" />
             <span>RETURN TO VEHICLE</span>
           </button>
         )}
 
-        {/* Bottom Navigation Stats Strip */}
-        <div className="w-full max-w-sm sm:max-w-md rounded-2xl border border-slate-700/80 bg-slate-900/95 shadow-2xl backdrop-blur-xl p-3">
+        {/* Bottom Stats Strip */}
+        <div className="w-full max-w-sm sm:max-w-md rounded-xl border border-slate-700/60 bg-slate-900/95 shadow-2xl backdrop-blur-xl p-2.5">
           <div className="flex items-center justify-between">
-            {/* ETA & Remaining Distance */}
-            <div className="flex items-baseline gap-3">
-              <span className="text-2xl font-black text-emerald-400 font-mono tracking-tight leading-none">
+            {/* ETA & Distance */}
+            <div className="flex items-baseline gap-2.5">
+              <span className="text-lg sm:text-xl font-black text-emerald-400 font-mono tracking-tight leading-none">
                 {remainingDurationFormatted}
               </span>
-              <span className="text-xs font-bold text-slate-300 font-mono">
+              <span className="text-[11px] font-bold text-slate-300 font-mono">
                 {remainingDistanceFormatted}
               </span>
-              <span className="text-xs font-medium text-slate-400">
+              <span className="text-[10px] font-medium text-slate-500 hidden sm:inline">
                 Arrive {arrivalTimeFormatted}
               </span>
             </div>
 
-            {/* Quick Actions: Recenter & Route Overview */}
-            <div className="flex items-center gap-1.5">
+            {/* Quick Actions */}
+            <div className="flex items-center gap-1">
               {onRouteOverview && (
                 <button
                   type="button"
                   onClick={onRouteOverview}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
-                  title="Route Overview (fit all)"
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition-colors cursor-pointer"
+                  title="Route Overview"
                   aria-label="Fit entire route"
                 >
-                  <Maximize2 className="size-4" />
+                  <Maximize2 className="size-3.5" />
                 </button>
               )}
 
@@ -320,20 +298,20 @@ export function NavigationManeuverHUD({
                 <button
                   type="button"
                   onClick={onRecenter}
-                  className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-lg transition-colors cursor-pointer"
                   title="Recenter Camera"
                   aria-label="Recenter on vehicle"
                 >
-                  <LocateFixed className="size-4 text-white" />
+                  <LocateFixed className="size-3.5" />
                 </button>
               )}
             </div>
           </div>
 
           {/* Route Progress Bar */}
-          <div className="mt-2.5 w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+          <div className="mt-2 w-full bg-slate-800 rounded-full h-1 overflow-hidden">
             <div
-              className="bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-400 h-1.5 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-blue-500 via-teal-400 to-emerald-400 h-1 rounded-full transition-all duration-300"
               style={{ width: `${Math.max(2, Math.min(100, routeProgressPercent))}%` }}
             />
           </div>

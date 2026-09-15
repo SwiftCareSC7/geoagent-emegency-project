@@ -28,8 +28,8 @@ export default function LandingPage() {
         <ContactSection />
       </main>
 
-      <footer className="border-t border-border py-6">
-        <div className="mx-auto max-w-7xl px-4 text-center text-xs text-muted-foreground sm:px-6 lg:px-8">
+      <footer className="border-t border-border py-5">
+        <div className="mx-auto max-w-7xl px-4 text-center text-[11px] text-muted-foreground sm:px-6 lg:px-8">
           SwiftCare GeoAgent — Prototype UI. No real medical data, GPS, or
           accounts are used.
         </div>

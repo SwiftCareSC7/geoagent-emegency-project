@@ -34,7 +34,7 @@ export type GeoAgentDecisionState =
 interface DriverGeoAgentPanelProps {
   state?: GeoAgentDecisionState
   likelyCause?: string
-  confidence?: number | null // e.g. 0.87 -> 87%
+  confidence?: number | null
   currentEtaMinutes?: number
   alternativeEtaMinutes?: number
   timeSavedMinutes?: number
@@ -55,12 +55,7 @@ export function DriverGeoAgentPanel({
   alternativeEtaMinutes = 10,
   timeSavedMinutes = 5,
   explanation = 'Congestion detected ahead on the planned corridor. Alternative Route B has lower estimated delay.',
-  evidence = [
-    'Route deviation detected (+45m drift from planned LineString)',
-    'Traffic density elevated to 84% on Intermediate Ring Road',
-    'Incident reported ahead (Accident blocking left lane)',
-    'Alternative corridor (Indiranagar 100ft) ETA is 5 min lower'
-  ],
+  evidence = [],
   onAcceptReroute,
   onKeepCurrentRoute,
   onViewRoute,
@@ -69,64 +64,63 @@ export function DriverGeoAgentPanel({
 }: DriverGeoAgentPanelProps) {
   const [evidenceExpanded, setEvidenceExpanded] = useState(false)
 
-  // Meta configuration per decision state
   const getStateMeta = (st: GeoAgentDecisionState) => {
     switch (st) {
       case 'REROUTE_RECOMMENDED':
         return {
           title: 'REROUTE RECOMMENDED',
-          badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 ring-1 ring-emerald-500/30',
-          borderClass: 'border-emerald-500/50',
-          icon: <Sparkles className="size-4 animate-pulse text-emerald-400" />
+          badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+          borderClass: 'border-emerald-500/40',
+          icon: <Sparkles className="size-3.5 text-emerald-400" />
         }
       case 'REROUTE_REQUIRED':
         return {
           title: 'REROUTE REQUIRED',
-          badgeClass: 'bg-rose-500/20 text-rose-400 border-rose-500/40 ring-1 ring-rose-500/30',
-          borderClass: 'border-rose-500/50',
-          icon: <AlertTriangle className="size-4 animate-bounce text-rose-400" />
+          badgeClass: 'bg-red-500/15 text-red-400 border-red-500/30',
+          borderClass: 'border-red-500/40',
+          icon: <AlertTriangle className="size-3.5 text-red-400" />
         }
       case 'DEVIATION_DETECTED':
         return {
           title: 'DEVIATION DETECTED',
-          badgeClass: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
-          borderClass: 'border-amber-500/50',
-          icon: <AlertTriangle className="size-4 text-amber-400" />
+          badgeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
+          borderClass: 'border-amber-500/40',
+          icon: <AlertTriangle className="size-3.5 text-amber-400" />
         }
       case 'NO_ACTION_NEEDED':
         return {
           title: 'NO ACTION NEEDED',
-          badgeClass: 'bg-blue-500/20 text-blue-400 border-blue-500/40',
-          borderClass: 'border-blue-500/40',
-          icon: <ShieldCheck className="size-4 text-blue-400" />
+          badgeClass: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
+          borderClass: 'border-blue-500/30',
+          icon: <ShieldCheck className="size-3.5 text-blue-400" />
         }
       case 'MONITOR':
         return {
-          title: 'MONITORING CORRIDOR',
-          badgeClass: 'bg-slate-700/50 text-slate-300 border-slate-600',
+          title: 'MONITORING',
+          badgeClass: 'bg-slate-700/30 text-slate-300 border-slate-600/30',
           borderClass: 'border-slate-700',
-          icon: <Clock className="size-4 text-slate-300" />
+          icon: <Clock className="size-3.5 text-slate-300" />
         }
       case 'BACKUP_RECOMMENDED':
         return {
           title: 'BACKUP RECOMMENDED',
-          badgeClass: 'bg-purple-500/20 text-purple-400 border-purple-500/40',
-          borderClass: 'border-purple-500/50',
-          icon: <Car className="size-4 text-purple-400" />
+          badgeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
+          borderClass: 'border-purple-500/40',
+          icon: <Car className="size-3.5 text-purple-400" />
         }
       case 'ARRIVED':
         return {
-          title: 'MISSION COMPLETE / ARRIVED',
-          badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-          borderClass: 'border-emerald-500/40',
-          icon: <CheckCircle2 className="size-4 text-emerald-400" />
+          title: 'MISSION COMPLETE',
+          badgeClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+          borderClass: 'border-emerald-500/30',
+          icon: <CheckCircle2 className="size-3.5 text-emerald-400" />
         }
       default:
         return {
           title: 'GEOAGENT ADVISORY',
-          badgeClass: 'bg-slate-700/50 text-slate-300 border-slate-600',
+          badgeClass: 'bg-slate-700/30 text-slate-300 border-slate-600/30',
           borderClass: 'border-slate-700',
-          icon: <BrainCircuit className="size-4 text-cyan-400" />
+          icon: <BrainCircuit className="size-3.5 text-cyan-400" />
         }
     }
   }
@@ -134,69 +128,69 @@ export function DriverGeoAgentPanel({
   const meta = getStateMeta(state)
   const confidenceText = confidence !== null && confidence !== undefined
     ? `${Math.round(confidence * 100)}%`
-    : 'Unavailable'
+    : 'N/A'
 
   const hasRerouteOption = state === 'REROUTE_RECOMMENDED' || state === 'REROUTE_REQUIRED'
 
   return (
     <section
-      className={`rounded-3xl border-2 ${meta.borderClass} bg-slate-900/98 p-4 sm:p-5 shadow-2xl backdrop-blur-2xl text-white ${className}`}
+      className={`rounded-xl border ${meta.borderClass} bg-slate-900/95 p-3 sm:p-4 shadow-xl text-white ${className}`}
       aria-label="GeoAgent Decision Panel"
     >
-      {/* 1. Header Bar: Title + State Badge */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <div className="size-8 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
-            <BrainCircuit className="size-5 text-cyan-400" />
+          <div className="size-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center">
+            <BrainCircuit className="size-4 text-cyan-400" />
           </div>
           <div>
-            <h2 className="text-xs font-black tracking-widest uppercase text-cyan-400">
+            <h2 className="text-[10px] font-black tracking-widest uppercase text-cyan-400 leading-tight">
               GeoAgent Decision
             </h2>
-            <p className="text-[11px] font-mono text-slate-400">
-              Spatial Intelligence & Decision Engine
+            <p className="text-[9px] font-mono text-slate-500 leading-tight">
+              Spatial Intelligence Engine
             </p>
           </div>
         </div>
 
-        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-black tracking-wide ${meta.badgeClass}`}>
+        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] font-black tracking-wide ${meta.badgeClass}`}>
           {meta.icon}
           <span>{meta.title}</span>
         </div>
       </div>
 
-      {/* 2. Primary Metrics Matrix: Cause, Confidence, Current vs Alternative */}
-      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      {/* Metrics Grid */}
+      <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
         {/* Cause */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-2.5 col-span-2 sm:col-span-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Likely Cause</span>
-          <span className="text-xs font-bold text-white leading-tight block mt-0.5 truncate" title={likelyCause}>
+        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2 col-span-2 sm:col-span-1">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block leading-tight">Likely Cause</span>
+          <span className="text-[11px] font-bold text-white leading-tight block mt-0.5 truncate" title={likelyCause}>
             {likelyCause}
           </span>
         </div>
 
         {/* Confidence */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-2.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Confidence</span>
+        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block leading-tight">Confidence</span>
           <span className="text-sm font-black font-mono text-cyan-400 block mt-0.5">
             {confidenceText}
           </span>
         </div>
 
-        {/* Current Route ETA */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-2.5">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Current Route</span>
-          <span className="text-sm font-black font-mono text-rose-400 block mt-0.5">
+        {/* Current ETA */}
+        <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2">
+          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block leading-tight">Current Route</span>
+          <span className="text-sm font-black font-mono text-red-400 block mt-0.5">
             {currentEtaMinutes} min
           </span>
         </div>
 
-        {/* Alternative ETA & Time Saved */}
+        {/* Alternative */}
         {hasRerouteOption ? (
-          <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-2.5 col-span-2 sm:col-span-1">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2 col-span-2 sm:col-span-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Alternative</span>
-              <span className="text-[10px] font-mono font-black text-emerald-400 bg-emerald-500/20 px-1.5 py-0.5 rounded-md">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">Alternative</span>
+              <span className="text-[9px] font-mono font-black text-emerald-400 bg-emerald-500/20 px-1 py-0.5 rounded">
                 SAVE {timeSavedMinutes} MIN
               </span>
             </div>
@@ -205,38 +199,38 @@ export function DriverGeoAgentPanel({
             </span>
           </div>
         ) : (
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-2.5 col-span-2 sm:col-span-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Alternative</span>
-            <span className="text-xs font-mono text-slate-400 block mt-0.5">
+          <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2 col-span-2 sm:col-span-1">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 block leading-tight">Alternative</span>
+            <span className="text-[11px] font-mono text-slate-500 block mt-0.5">
               Not Required
             </span>
           </div>
         )}
       </div>
 
-      {/* 3. "Why?" Decision Explanation */}
-      <div className="mt-3 rounded-2xl border border-slate-800/90 bg-slate-950/50 p-3">
-        <p className="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 mb-1">
-          <span>Why did GeoAgent decide this?</span>
+      {/* Explanation */}
+      <div className="mt-2.5 rounded-lg border border-slate-800/80 bg-slate-950/50 p-2.5">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-cyan-400 mb-1">
+          Why did GeoAgent decide this?
         </p>
-        <p className="text-xs text-slate-200 leading-relaxed font-sans">
+        <p className="text-[11px] text-slate-300 leading-relaxed">
           {explanation}
         </p>
 
-        {/* Expandable Supporting Evidence */}
+        {/* Evidence */}
         {evidence && evidence.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-slate-800/80">
+          <div className="mt-2 pt-2 border-t border-slate-800/60">
             <button
               type="button"
               onClick={() => setEvidenceExpanded(!evidenceExpanded)}
-              className="flex items-center justify-between w-full text-[11px] font-bold text-slate-400 hover:text-slate-200 transition-colors"
+              className="flex items-center justify-between w-full text-[10px] font-bold text-slate-400 hover:text-slate-200 transition-colors"
             >
-              <span>Supporting Evidence ({evidence.length} signals evaluated)</span>
-              {evidenceExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+              <span>Supporting Evidence ({evidence.length})</span>
+              {evidenceExpanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
             </button>
 
             {evidenceExpanded && (
-              <ul className="mt-2 space-y-1 text-[11px] text-slate-300 font-mono list-disc list-inside">
+              <ul className="mt-1.5 space-y-0.5 text-[10px] text-slate-300 font-mono list-disc list-inside">
                 {evidence.map((item, idx) => (
                   <li key={idx} className="leading-snug">{item}</li>
                 ))}
@@ -246,23 +240,23 @@ export function DriverGeoAgentPanel({
         )}
       </div>
 
-      {/* 4. Action Triggers with Large Touch Targets (>= 44px) */}
+      {/* Actions */}
       {hasRerouteOption && (
-        <div className="mt-4 flex flex-wrap items-center gap-2.5">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button
             onClick={onAcceptReroute}
             disabled={isAccepting}
-            className="flex-1 min-h-[48px] rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-950/50 flex items-center justify-center gap-2 active:scale-95 transition-all"
+            className="flex-1 min-h-[40px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all"
           >
-            <Check className="size-5 stroke-[3]" />
-            <span>{isAccepting ? 'Activating Route...' : `Accept Reroute (Save ${timeSavedMinutes}m)`}</span>
+            <Check className="size-4 stroke-[3]" />
+            <span>{isAccepting ? 'Activating...' : `Accept Reroute (Save ${timeSavedMinutes}m)`}</span>
           </Button>
 
           {onViewRoute && (
             <Button
               variant="outline"
               onClick={onViewRoute}
-              className="min-h-[48px] px-4 rounded-2xl border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-white font-bold text-xs"
+              className="min-h-[40px] px-3 rounded-lg border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-white font-bold text-[11px]"
             >
               View Route
             </Button>
@@ -272,9 +266,9 @@ export function DriverGeoAgentPanel({
             <Button
               variant="ghost"
               onClick={onKeepCurrentRoute}
-              className="min-h-[48px] px-3.5 rounded-2xl text-slate-400 hover:text-white font-bold text-xs"
+              className="min-h-[40px] px-2.5 rounded-lg text-slate-400 hover:text-white font-bold text-[11px]"
             >
-              <X className="size-4 mr-1" />
+              <X className="size-3.5 mr-1" />
               Keep Current
             </Button>
           )}

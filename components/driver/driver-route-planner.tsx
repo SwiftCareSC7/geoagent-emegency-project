@@ -58,23 +58,16 @@ export function DriverRoutePlanner({
   initialEmergencyDestination = null,
   className = ''
 }: DriverRoutePlannerProps) {
-  // Origin State: 'GPS' or manual
   const [originMode, setOriginMode] = useState<'GPS' | 'MANUAL'>('GPS')
   const [selectedLandmarkId, setSelectedLandmarkId] = useState<string>('lm-koramangala')
-  const [originSearch, setOriginSearch] = useState<string>('')
-
-  // Destination State
+  const [destinationSearch, setDestinationSearch] = useState<string>('')
   const [selectedDestinationId, setSelectedDestinationId] = useState<string>(
     initialEmergencyDestination?.id || 'hosp-manipal'
   )
-  const [destinationSearch, setDestinationSearch] = useState<string>('')
   const [customDestinationName, setCustomDestinationName] = useState<string>('')
   const [customDestinationCoords, setCustomDestinationCoords] = useState<[number, number] | null>(null)
-
-  // Route Preference: FASTEST (Default) or SHORTEST
   const [preference, setPreference] = useState<'FASTEST' | 'SHORTEST'>('FASTEST')
 
-  // Resolve Origin
   const selectedLandmark =
     BENGALURU_LANDMARKS.find((lm) => lm.id === selectedLandmarkId) || BENGALURU_LANDMARKS[0]
   const isGpsActive = originMode === 'GPS' && currentLocation !== null
@@ -84,12 +77,8 @@ export function DriverRoutePlanner({
       ? currentLocation.coordinates
       : selectedLandmark.coordinates
 
-  const resolvedOriginName =
-    isGpsActive
-      ? 'Current Device GPS Location'
-      : selectedLandmark.name
+  const resolvedOriginName = isGpsActive ? 'Current Device GPS Location' : selectedLandmark.name
 
-  // Filtered Destinations (Hospitals + Landmarks for search convenience)
   const filteredDestinations = useMemo(() => {
     const q = destinationSearch.toLowerCase().trim()
     if (!q) return BENGALURU_HOSPITALS
@@ -97,7 +86,6 @@ export function DriverRoutePlanner({
     const matchedHospitals = BENGALURU_HOSPITALS.filter(
       (h) => h.name.toLowerCase().includes(q) || h.address.toLowerCase().includes(q)
     )
-
     const matchedLandmarks = BENGALURU_LANDMARKS.filter(
       (lm) => lm.name.toLowerCase().includes(q) || lm.area.toLowerCase().includes(q)
     ).map((lm) => ({
@@ -110,13 +98,12 @@ export function DriverRoutePlanner({
     return [...matchedHospitals, ...matchedLandmarks]
   }, [destinationSearch])
 
-  // Resolve Destination
   const selectedDestination = useMemo(() => {
     if (customDestinationName && customDestinationCoords) {
       return {
         id: 'dest-custom',
         name: customDestinationName,
-        address: 'Custom Bengaluru Location',
+        address: 'Custom Location',
         coordinates: customDestinationCoords
       }
     }
@@ -136,7 +123,6 @@ export function DriverRoutePlanner({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-
     onCalculateRoute({
       originCoordinates: resolvedOriginCoords,
       originName: resolvedOriginName,
@@ -148,19 +134,16 @@ export function DriverRoutePlanner({
   }
 
   return (
-    <div
-      className={`rounded-3xl border border-slate-700 bg-slate-900/95 p-4 sm:p-6 shadow-2xl text-white backdrop-blur-xl ${className}`}
-    >
-      {/* Header with Cancel / Back option */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div className={`rounded-xl border border-slate-800 bg-slate-900/95 p-3 sm:p-4 shadow-xl text-white backdrop-blur-xl ${className}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider text-emerald-400 border border-emerald-500/30">
+            <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400 border border-emerald-500/30">
               Route Planner
             </span>
-            <span className="text-[11px] font-mono text-slate-400">Manual / Custom Route</span>
           </div>
-          <h2 className="text-lg sm:text-xl font-black tracking-tight text-white mt-1">
+          <h2 className="text-sm sm:text-base font-bold tracking-tight text-white mt-0.5">
             My Location → Destination
           </h2>
         </div>
@@ -169,102 +152,100 @@ export function DriverRoutePlanner({
           <button
             type="button"
             onClick={onCancel}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+            className="flex size-8 items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
             aria-label="Close route planner"
           >
-            <X className="size-5" />
+            <X className="size-4" />
           </button>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-        {/* 1. ORIGIN / CURRENT LOCATION */}
+      <form onSubmit={handleSubmit} className="mt-3 space-y-3">
+        {/* Origin */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-            FROM: Origin / Starting Point
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            FROM
           </label>
 
-          <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="grid grid-cols-2 gap-1.5 mb-1.5">
             <button
               type="button"
               onClick={() => {
                 setOriginMode('GPS')
                 onRequestGps()
               }}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all min-h-[44px] touch-manipulation ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-2 px-2.5 text-[11px] font-bold transition-all min-h-[40px] touch-manipulation ${
                 originMode === 'GPS'
-                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400'
+                  ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
               }`}
             >
-              <LocateFixed className="size-4 shrink-0 text-cyan-300" />
+              <LocateFixed className="size-3.5 shrink-0 text-cyan-300" />
               <span>Use My Location</span>
             </button>
 
             <button
               type="button"
               onClick={() => setOriginMode('MANUAL')}
-              className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-bold transition-all min-h-[44px] touch-manipulation ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg py-2 px-2.5 text-[11px] font-bold transition-all min-h-[40px] touch-manipulation ${
                 originMode === 'MANUAL'
-                  ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400'
+                  ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400'
                   : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
               }`}
             >
-              <Building2 className="size-4 shrink-0 text-slate-300" />
+              <Building2 className="size-3.5 shrink-0 text-slate-300" />
               <span>Select Landmark</span>
             </button>
           </div>
 
-          {/* GPS Status / Feedback Box */}
           {originMode === 'GPS' ? (
-            <div className="rounded-xl border border-slate-800 bg-slate-950/80 p-3">
+            <div className="rounded-lg border border-slate-800 bg-slate-950/80 p-2.5">
               {currentLocation ? (
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                    <CheckCircle2 className="size-4" />
-                    <span>GPS Active: [{currentLocation.coordinates[1].toFixed(4)}, {currentLocation.coordinates[0].toFixed(4)}]</span>
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                    <CheckCircle2 className="size-3.5" />
+                    <span>GPS Active</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-emerald-950 text-[10px] font-mono text-emerald-300 border border-emerald-800">
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-950 text-[9px] font-mono text-emerald-300 border border-emerald-800">
                     ±{currentLocation.accuracy || 5}m
                   </span>
                 </div>
               ) : (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold">
-                    <AlertCircle className="size-4 shrink-0" />
-                    <span>{gpsStatusMessage || 'Click "Use My Location" to obtain GPS position'}</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-semibold">
+                    <AlertCircle className="size-3.5 shrink-0" />
+                    <span>{gpsStatusMessage || 'Tap "Use My Location" for GPS position'}</span>
                   </div>
-                  <p className="text-[11px] text-slate-400">
-                    If browser GPS is denied or unavailable, tap &quot;Select Landmark&quot; to pick your origin.
+                  <p className="text-[10px] text-slate-500">
+                    Or tap &quot;Select Landmark&quot; to pick your origin.
                   </p>
                 </div>
               )}
             </div>
           ) : (
-            /* Manual Landmark Selector */
             <select
               value={selectedLandmarkId}
               onChange={(e) => setSelectedLandmarkId(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs font-bold text-white focus:border-blue-500 focus:outline-none min-h-[44px]"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-[11px] font-bold text-white focus:border-blue-500 focus:outline-none min-h-[40px]"
             >
               {BENGALURU_LANDMARKS.map((lm) => (
                 <option key={lm.id} value={lm.id}>
-                  📍 {lm.name} ({lm.area})
+                  {lm.name} ({lm.area})
                 </option>
               ))}
             </select>
           )}
         </div>
 
-        {/* 2. DESTINATION */}
+        {/* Destination */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-            TO: Destination / Hospital Facility
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            TO
           </label>
 
-          {/* Destination Search Box */}
-          <div className="relative mb-2">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+          {/* Search */}
+          <div className="relative mb-1.5">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
             <input
               type="text"
               value={destinationSearch}
@@ -273,35 +254,34 @@ export function DriverRoutePlanner({
                 setCustomDestinationName('')
                 setCustomDestinationCoords(null)
               }}
-              placeholder="Search destination or hospital (e.g. Manipal, Victoria, Indiranagar)..."
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none min-h-[44px]"
+              placeholder="Search hospital or destination..."
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 pl-9 pr-3 py-2 text-[11px] text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none min-h-[40px]"
             />
           </div>
 
-          {/* Custom Destination Option if user typed text */}
+          {/* Custom Destination */}
           {destinationSearch.trim().length > 2 && (
             <button
               type="button"
               onClick={() => {
                 setCustomDestinationName(destinationSearch.trim())
-                // Use coordinates of first match or center of Bengaluru
                 const fallbackCoord = filteredDestinations[0]?.coordinates || [77.6200, 12.9500]
                 setCustomDestinationCoords(fallbackCoord as [number, number])
               }}
-              className="w-full mb-2 text-left rounded-xl border border-blue-500/60 bg-blue-950/40 p-2.5 text-xs text-blue-300 flex items-center justify-between hover:bg-blue-900/40 transition-colors"
+              className="w-full mb-1.5 text-left rounded-lg border border-blue-500/40 bg-blue-950/30 p-2 text-[11px] text-blue-300 flex items-center justify-between hover:bg-blue-900/30 transition-colors"
             >
-              <div className="flex items-center gap-2">
-                <MapPin className="size-4 text-cyan-400 shrink-0" />
-                <span className="font-bold truncate">Use custom location: &quot;{destinationSearch.trim()}&quot;</span>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="size-3.5 text-cyan-400 shrink-0" />
+                <span className="font-bold truncate">Use: &quot;{destinationSearch.trim()}&quot;</span>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-800/80 text-white font-bold">
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-800/60 text-white font-bold">
                 Select
               </span>
             </button>
           )}
 
-          {/* Destination List (Scrollable Cards) */}
-          <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+          {/* Destination List */}
+          <div className="max-h-36 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
             {filteredDestinations.map((dest) => {
               const isSelected = selectedDestination.id === dest.id && !customDestinationName
               return (
@@ -313,28 +293,22 @@ export function DriverRoutePlanner({
                     setCustomDestinationName('')
                     setCustomDestinationCoords(null)
                   }}
-                  className={`w-full text-left rounded-xl border p-2.5 transition-all min-h-[44px] touch-manipulation ${
+                  className={`w-full text-left rounded-lg border p-2 transition-all min-h-[40px] touch-manipulation ${
                     isSelected
-                      ? 'border-emerald-500 bg-emerald-950/50 ring-1 ring-emerald-500/60'
-                      : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                      ? 'border-emerald-500/50 bg-emerald-950/40 ring-1 ring-emerald-500/30'
+                      : 'border-slate-800 bg-slate-950/50 hover:border-slate-700'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-1.5">
                     <div className="min-w-0">
-                      <div className="font-bold text-xs text-slate-100 flex items-center gap-1.5">
-                        <MapPin
-                          className={`size-3.5 shrink-0 ${
-                            isSelected ? 'text-emerald-400' : 'text-slate-400'
-                          }`}
-                        />
+                      <div className="font-bold text-[11px] text-slate-100 flex items-center gap-1.5">
+                        <MapPin className={`size-3 shrink-0 ${isSelected ? 'text-emerald-400' : 'text-slate-500'}`} />
                         <span className="truncate">{dest.name}</span>
                       </div>
-                      <div className="text-[11px] text-slate-400 truncate mt-0.5 pl-5">
-                        {dest.address}
-                      </div>
+                      <div className="text-[10px] text-slate-500 truncate mt-0.5 pl-4">{dest.address}</div>
                     </div>
                     {isSelected && (
-                      <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400 uppercase tracking-wider shrink-0 border border-emerald-500/40">
+                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400 uppercase tracking-wider shrink-0 border border-emerald-500/30">
                         Selected
                       </span>
                     )}
@@ -345,61 +319,60 @@ export function DriverRoutePlanner({
           </div>
         </div>
 
-        {/* 3. OPTIMIZATION PREFERENCE */}
+        {/* Preference */}
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">
-            CORRIDOR OPTIMIZATION
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            OPTIMIZATION
           </label>
-
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={() => setPreference('FASTEST')}
-              className={`rounded-xl border p-2.5 text-left transition-all min-h-[44px] touch-manipulation ${
+              className={`rounded-lg border p-2 text-left transition-all min-h-[40px] touch-manipulation ${
                 preference === 'FASTEST'
-                  ? 'border-blue-500 bg-blue-950/40 ring-1 ring-blue-500'
+                  ? 'border-blue-500 bg-blue-950/30 ring-1 ring-blue-500/50'
                   : 'border-slate-800 bg-slate-950/50 text-slate-400'
               }`}
             >
-              <div className="font-bold text-xs text-white">⚡ Fastest Corridor</div>
-              <p className="text-[10px] text-slate-400 mt-0.5">Live traffic & arterial bypass priority</p>
+              <div className="font-bold text-[11px] text-white">Fastest Corridor</div>
+              <p className="text-[9px] text-slate-500 mt-0.5">Live traffic priority</p>
             </button>
 
             <button
               type="button"
               onClick={() => setPreference('SHORTEST')}
-              className={`rounded-xl border p-2.5 text-left transition-all min-h-[44px] touch-manipulation ${
+              className={`rounded-lg border p-2 text-left transition-all min-h-[40px] touch-manipulation ${
                 preference === 'SHORTEST'
-                  ? 'border-blue-500 bg-blue-950/40 ring-1 ring-blue-500'
+                  ? 'border-blue-500 bg-blue-950/30 ring-1 ring-blue-500/50'
                   : 'border-slate-800 bg-slate-950/50 text-slate-400'
               }`}
             >
-              <div className="font-bold text-xs text-white">📏 Shortest Distance</div>
-              <p className="text-[10px] text-slate-400 mt-0.5">Minimizes physical kilometer distance</p>
+              <div className="font-bold text-[11px] text-white">Shortest Distance</div>
+              <p className="text-[9px] text-slate-500 mt-0.5">Minimize kilometers</p>
             </button>
           </div>
         </div>
 
-        {/* Error notification if calculation fails */}
+        {/* Error */}
         {errorMessage && (
-          <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/60 text-rose-200 text-xs flex items-center gap-2">
-            <AlertCircle className="size-4 text-rose-400 shrink-0" />
+          <div className="p-2.5 rounded-lg bg-red-950/60 border border-red-500/40 text-red-200 text-[11px] flex items-center gap-2">
+            <AlertCircle className="size-3.5 text-red-400 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
-        {/* 4. SUBMIT ACTION: START ROUTE */}
-        <div className="pt-2">
+        {/* Submit */}
+        <div className="pt-1">
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full min-h-[50px] rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm tracking-wide shadow-xl shadow-emerald-600/30 active:scale-[0.98] transition-all touch-manipulation flex items-center justify-center gap-2"
+            className="w-full min-h-[44px] rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm tracking-wide shadow-lg active:scale-[0.98] transition-all touch-manipulation flex items-center justify-center gap-2"
           >
             {isLoading ? (
-              <span>Calculating Route via Backend...</span>
+              <span>Calculating Route...</span>
             ) : (
               <>
-                <RouteIcon className="size-5" />
+                <RouteIcon className="size-4" />
                 <span>START ROUTE</span>
                 <ArrowRight className="size-4" />
               </>
