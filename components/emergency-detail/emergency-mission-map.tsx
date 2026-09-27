@@ -233,10 +233,9 @@ export function EmergencyMissionMap({
         </div>
 
         <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-          <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="font-bold text-foreground">Google Maps Platform</span>
+          <span>Leaflet Vector Engine</span>
           <span>•</span>
-          <span className="text-emerald-600 dark:text-emerald-400 font-bold">Live Traffic Layer Active</span>
+          <span>OpenStreetMap / CARTO Basemap</span>
         </div>
       </div>
     </div>
