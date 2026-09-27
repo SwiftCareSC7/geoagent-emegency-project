@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = useCallback(async (): Promise<User | null> => {
     // Only show loading if we don't already have an optimistic user
-    if (!localStorage.getItem('swiftcare_user')) {
+    if (typeof window !== 'undefined' && !localStorage.getItem('swiftcare_user')) {
       setLoading(true)
     }
     try {
@@ -49,40 +49,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return result.user
       }
 
-      // Check localStorage backup if backend API returned null (e.g. cookie domain mismatch or offline mode)
+      // If backend explicitly returns unauthenticated (401), clear local storage
       if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('swiftcare_user')
-        if (stored) {
-          try {
-            const parsedUser = JSON.parse(stored) as User
-            setUser(parsedUser)
-            setError(null)
-            return parsedUser
-          } catch {
-            localStorage.removeItem('swiftcare_user')
-          }
-        }
+        localStorage.removeItem('swiftcare_user')
       }
-
       setUser(null)
       setError(result.error)
       return null
     } catch (err) {
-      // Check localStorage backup on catch
       if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('swiftcare_user')
-        if (stored) {
-          try {
-            const parsedUser = JSON.parse(stored) as User
-            setUser(parsedUser)
-            setError(null)
-            return parsedUser
-          } catch {
-            localStorage.removeItem('swiftcare_user')
-          }
-        }
+        localStorage.removeItem('swiftcare_user')
       }
-
       const message = err instanceof Error ? err.message : 'Failed to refresh session'
       setError(message)
       setUser(null)
@@ -107,23 +84,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (credentials: LoginPayload): Promise<User> => {
-      setLoading(true)
       setError(null)
       try {
-        let loggedUser: User | null = null
-        try {
-          const res = await authApi.login(credentials)
-          loggedUser = res.user
-        } catch (apiErr) {
-          // If backend API connection is down or CORS/Cookie fails, fallback to local authenticated user
-          loggedUser = {
-            id: 'usr_operator_01',
-            email: credentials.email,
-            name: credentials.email.split('@')[0] || 'Emergency Operator',
-            role: 'CONTROL_ROOM',
-            createdAt: new Date().toISOString(),
-          }
-        }
+        const res = await authApi.login({
+          email: credentials.email.trim().toLowerCase(),
+          password: credentials.password,
+        })
+        const loggedUser = res.user
 
         setUser(loggedUser)
         if (typeof window !== 'undefined') {
@@ -139,8 +106,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setError(message)
         throw err
-      } finally {
-        setLoading(false)
       }
     },
     [],
@@ -150,33 +115,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (
       data: RegisterPayload,
     ): Promise<{ success: boolean; message: string; user: User }> => {
-      setLoading(true)
       setError(null)
       try {
-        const res = await authApi.register(data)
-        if (res.user) {
-          setUser(res.user)
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('swiftcare_user', JSON.stringify(res.user))
-          }
-        }
+        const res = await authApi.register({
+          name: data.name.trim(),
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
+          role: data.role,
+        })
         return res
       } catch (err: unknown) {
-        // Fallback registration
-        const fallbackUser: User = {
-          id: `usr_${Date.now()}`,
-          email: data.email,
-          name: data.name || data.email.split('@')[0],
-          role: 'CONTROL_ROOM',
-          createdAt: new Date().toISOString(),
+        let message = 'Registration failed. Please check your information.'
+        if (err instanceof ApiError) {
+          message = err.message
+        } else if (err instanceof Error) {
+          message = err.message
         }
-        setUser(fallbackUser)
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('swiftcare_user', JSON.stringify(fallbackUser))
-        }
-        return { success: true, message: 'Registration successful', user: fallbackUser }
-      } finally {
-        setLoading(false)
+        setError(message)
+        throw err
       }
     },
     [],

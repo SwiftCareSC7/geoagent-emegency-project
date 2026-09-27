@@ -18,13 +18,16 @@ import { ThemeToggleCompact } from '@/components/theme-toggle'
 
 function SignupContent() {
   const router = useRouter()
-  const { authenticated, loading } = useAuth()
+  const { user, authenticated, loading } = useAuth()
 
   useEffect(() => {
-    if (!loading && authenticated) {
-      router.replace('/driver/dashboard')
+    if (!loading && authenticated && user) {
+      if (user.role === 'ADMIN') router.replace('/admin')
+      else if (user.role === 'CONTROL_ROOM') router.replace('/control-room')
+      else if (user.role === 'PARAMEDIC') router.replace('/paramedic')
+      else router.replace('/driver/dashboard')
     }
-  }, [authenticated, loading, router])
+  }, [authenticated, loading, user, router])
 
   if (loading) {
     return (

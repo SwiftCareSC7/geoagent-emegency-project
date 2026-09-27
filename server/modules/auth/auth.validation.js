@@ -29,6 +29,30 @@ export const validateRegister = (req, res, next) => {
     return next(error);
   }
 
+  // Role validation & privilege escalation prevention
+  const ALLOWED_PUBLIC_ROLES = ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+  const requestedRole = req.body.role;
+
+  if (requestedRole) {
+    if (requestedRole === 'ADMIN') {
+      const error = new Error('Public registration for the ADMIN role is restricted. Please contact system administrators or use authorized provisioning.');
+      error.status = 403;
+      error.isOperational = true;
+      return next(error);
+    }
+
+    if (!ALLOWED_PUBLIC_ROLES.includes(requestedRole)) {
+      const error = new Error('Please select a valid role (CONTROL_ROOM, DRIVER, PARAMEDIC)');
+      error.status = 400;
+      error.isOperational = true;
+      return next(error);
+    }
+
+    req.body.role = requestedRole;
+  } else {
+    req.body.role = 'CONTROL_ROOM';
+  }
+
   // Normalize email
   req.body.email = email.trim().toLowerCase();
 

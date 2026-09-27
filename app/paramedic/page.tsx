@@ -34,6 +34,7 @@ import type { Emergency, Vehicle, PredictionResult } from '@/lib/api/types'
 import { DEMO_EMERGENCIES, DEMO_VEHICLES } from '@/lib/demo-fixtures'
 import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -154,13 +155,14 @@ export default function ParamedicPage() {
   }
 
   return (
-    <div className="min-h-svh bg-background text-foreground">
-      <DashboardTopbar
-        ambulanceId={currentVehicle?.vehicleId || 'AMB-01'}
-        driverName={currentVehicle?.driverName || 'Officer Paramedic'}
-        emergencyActive={currentEmergency?.status !== 'RESOLVED'}
-        lastRefreshed={lastRefreshed}
-      />
+    <ProtectedRoute allowedRoles={['PARAMEDIC', 'ADMIN', 'CONTROL_ROOM']}>
+      <div className="min-h-svh bg-background text-foreground">
+        <DashboardTopbar
+          ambulanceId={currentVehicle?.vehicleId || 'AMB-01'}
+          driverName={currentVehicle?.driverName || 'Officer Paramedic'}
+          emergencyActive={currentEmergency?.status !== 'RESOLVED'}
+          lastRefreshed={lastRefreshed}
+        />
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {/* Header Bar */}
@@ -439,5 +441,6 @@ export default function ParamedicPage() {
         </div>
       </main>
     </div>
+    </ProtectedRoute>
   )
 }

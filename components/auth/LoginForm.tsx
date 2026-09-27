@@ -40,7 +40,7 @@ const DEMO_ROLES = [
   {
     label: 'Driver',
     sub: 'Vehicle HUD',
-    email: 'driver1@swiftcare.local',
+    email: 'driver@swiftcare.local',
     pass: 'DriverPassword123!',
     route: '/driver/dashboard',
     icon: Navigation,
@@ -62,8 +62,8 @@ const DEMO_ROLES = [
   {
     label: 'Paramedic',
     sub: 'Triage',
-    email: 'operator@swiftcare.local',
-    pass: 'Operator123!',
+    email: 'paramedic@swiftcare.local',
+    pass: 'Paramedic123!',
     route: '/paramedic',
     icon: HeartPulse,
     color: 'rose',
@@ -129,32 +129,23 @@ export function LoginForm() {
 
       router.push(customRedirect || targetRoute)
     } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        if (err.isUnauthorized) {
-          setFormError({
-            what: 'Invalid email or password combination.',
-            howToFix: 'Double check for typos or use one of the demo roles above.'
-          })
-        } else if (err.isNetworkError) {
-          setFormError({
-            what: 'Backend API connection failed.',
-            howToFix: 'Ensure the Express API server on port 5001 is active.'
-          })
-        } else {
-          setFormError({
-            what: err.message,
-            howToFix: 'Verify your credentials or contact system admin.'
-          })
-        }
-      } else if (err instanceof Error) {
+      const status = (err as any)?.status
+      const msg = ((err as any)?.message || '').toLowerCase()
+
+      if (status === 401 || msg.includes('invalid email') || msg.includes('unauthorized') || (err as any)?.isUnauthorized) {
         setFormError({
-          what: err.message,
-          howToFix: 'Check console logs or retry login.'
+          what: 'Invalid email or password combination.',
+          howToFix: 'Double check for typos or use one of the demo roles above.'
+        })
+      } else if (status === 0 || msg.includes('network') || (err as any)?.isNetworkError) {
+        setFormError({
+          what: 'Backend API connection failed.',
+          howToFix: 'Ensure the Express API server on port 5001 is active.'
         })
       } else {
         setFormError({
-          what: 'An unexpected authentication error occurred.',
-          howToFix: 'Refresh the page and try logging in again.'
+          what: (err as any)?.message || 'Authentication error occurred.',
+          howToFix: 'Verify your credentials or contact system admin.'
         })
       }
     } finally {
@@ -189,6 +180,7 @@ export function LoginForm() {
       {formError && (
         <div
           role="alert"
+          id="auth-error-alert"
           className="mb-5 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3 text-xs space-y-0.5"
         >
           <div className="flex items-center gap-2 font-semibold text-rose-400">

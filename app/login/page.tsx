@@ -12,14 +12,24 @@ import { ThemeToggleCompact } from '@/components/theme-toggle'
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectPath = searchParams.get('redirect') || '/driver/dashboard'
-  const { authenticated, loading } = useAuth()
+  const redirectParam = searchParams.get('redirect')
+  const { user, authenticated, loading } = useAuth()
 
   useEffect(() => {
-    if (!loading && authenticated) {
-      router.replace(redirectPath)
+    if (!loading && authenticated && user) {
+      if (redirectParam) {
+        router.replace(redirectParam)
+      } else if (user.role === 'ADMIN') {
+        router.replace('/admin')
+      } else if (user.role === 'CONTROL_ROOM') {
+        router.replace('/control-room')
+      } else if (user.role === 'PARAMEDIC') {
+        router.replace('/paramedic')
+      } else {
+        router.replace('/driver/dashboard')
+      }
     }
-  }, [authenticated, loading, redirectPath, router])
+  }, [authenticated, loading, redirectParam, user, router])
 
   if (loading) {
     return (

@@ -20,13 +20,18 @@ export const registerUser = async (userData) => {
   const salt = await bcrypt.genSalt(12); // High work factor
   const hashedPassword = await bcrypt.hash(password, salt);
 
+  // Determine assigned role (validated by middleware, default CONTROL_ROOM, strictly block unauthenticated ADMIN)
+  let assignedRole = 'CONTROL_ROOM';
+  if (userData.role && ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'].includes(userData.role)) {
+    assignedRole = userData.role;
+  }
+
   // Create user
-  // We explicitly ignore any 'role' field passed in to prevent privilege escalation
   const newUser = new User({
-    name,
-    email,
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
     password: hashedPassword,
-    role: 'CONTROL_ROOM' // Hardcoded for public registration
+    role: assignedRole
   });
 
   await newUser.save();
