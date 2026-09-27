@@ -40,7 +40,7 @@ const ACCOUNTS_SPEC = [
     email: 'spec.priyanshu@gmail.com',
     name: 'Priyanshu (Admin)',
     role: 'ADMIN',
-    pass: process.env.ADMIN_PASSWORD || 'AdminPassword123!'
+    pass: process.env.ADMIN_PASSWORD || 'FzhexDCVDMj7AFb'
   },
   {
     email: 'admin@swiftcare.local',

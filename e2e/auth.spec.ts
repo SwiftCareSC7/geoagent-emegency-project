@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 const ADMIN_EMAIL = 'spec.priyanshu@gmail.com';
-const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
+const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'FzhexDCVDMj7AFb';
 
 test.describe('SwiftCare GeoAgent — Comprehensive Auth & Role E2E Suite', () => {
 
@@ -216,6 +216,29 @@ test.describe('SwiftCare GeoAgent — Comprehensive Auth & Role E2E Suite', () =
     await expect(page.getByText('Access Restricted')).toBeVisible();
     await expect(page.getByText('DRIVER', { exact: true })).toBeVisible();
     await expect(page.getByText('not authorized to view this screen')).toBeVisible();
+  });
+
+  // 14. Admin Role Selection on Signup
+  test('14. Admin role selection on signup creates account and redirects directly to /admin', async ({ page }) => {
+    const uniqueEmail = `admin.${Date.now()}@swiftcare.local`;
+
+    await page.goto('/signup');
+    await page.fill('input#name', 'Chief System Administrator');
+    await page.fill('input#email', uniqueEmail);
+
+    // Select Admin role
+    const adminRoleBtn = page.getByRole('button', { name: /Admin/i });
+    await expect(adminRoleBtn).toBeVisible();
+    await adminRoleBtn.click();
+
+    await page.fill('input#password', 'SecureAdminPass123!');
+    await page.fill('input#confirmPassword', 'SecureAdminPass123!');
+    await page.click('button[type="submit"]');
+
+    // Should redirect to /admin
+    await page.waitForURL('**/admin', { timeout: 10000 });
+    expect(page.url()).toContain('/admin');
+    await expect(page.getByRole('heading', { name: /Admin Console/i })).toBeVisible();
   });
 
 });

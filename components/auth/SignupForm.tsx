@@ -11,6 +11,7 @@ import {
   Loader2,
   Navigation,
   Shield,
+  ShieldAlert,
   X
 } from 'lucide-react'
 import Link from 'next/link'
@@ -34,7 +35,7 @@ export function SignupForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [role, setRole] = useState<'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'>('CONTROL_ROOM')
+  const [role, setRole] = useState<'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC' | 'ADMIN'>('CONTROL_ROOM')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -96,8 +97,8 @@ export function SignupForm() {
       errors.confirmPassword = 'Passwords do not match. Please ensure both passwords are identical.'
     }
 
-    if (!['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'].includes(role)) {
-      errors.role = 'Please select a valid operational role (Dispatcher, Driver, or Paramedic).'
+    if (!['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN'].includes(role)) {
+      errors.role = 'Please select a valid operational role (Dispatcher, Driver, Paramedic, or Admin).'
     }
 
     setFieldErrors(errors)
@@ -293,7 +294,7 @@ export function SignupForm() {
             </label>
             <span className="text-[10px] font-mono text-muted-foreground/70">Select deployment</span>
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               type="button"
               onClick={() => {
@@ -338,6 +339,21 @@ export function SignupForm() {
             >
               <HeartPulse className="size-4 mb-1 text-rose-500" />
               <span>Paramedic</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRole('ADMIN')
+                if (fieldErrors.role) setFieldErrors((prev) => ({ ...prev, role: undefined }))
+              }}
+              className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                role === 'ADMIN'
+                  ? 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-300 shadow-xs'
+                  : 'border-border bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card'
+              }`}
+            >
+              <ShieldAlert className="size-4 mb-1 text-amber-500" />
+              <span>Admin</span>
             </button>
           </div>
           {fieldErrors.role && (

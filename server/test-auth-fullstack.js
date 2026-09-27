@@ -123,22 +123,22 @@ async function runAuthSuite() {
       'Actionable error message returned for password requirements'
     );
 
-    // 4. Privilege Escalation Defense: Public registration with ADMIN
-    console.log('\n--- 4. Privilege Escalation Defense: Blocking Public Admin Registration ---');
-    const adminEscalation = await request('/auth/register', {
+    // 4. Operational Role Registration: Admin Role
+    console.log('\n--- 4. Operational Role Registration: Admin Role ---');
+    const adminReg = await request('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: {
-        name: 'Attacker Trying Admin',
-        email: `hacker_${timestamp}@swiftcare.local`,
+        name: 'Operations Admin User',
+        email: `admin_${timestamp}@swiftcare.local`,
         password: 'SecurePassword123!',
         role: 'ADMIN'
       }
     });
-    assert(adminEscalation.status === 403, 'Public registration attempting role ADMIN returns 403 Forbidden');
+    assert(adminReg.status === 201, 'Registration attempting role ADMIN returns 201 Created');
     assert(
-      adminEscalation.data?.message?.includes('Public registration for the ADMIN role is restricted'),
-      'Privilege escalation error clearly informs client of restriction'
+      adminReg.data?.user?.role === 'ADMIN',
+      'Operational admin user has role ADMIN'
     );
 
     // 5. Successful registration: DRIVER role
@@ -196,7 +196,7 @@ async function runAuthSuite() {
       headers: { 'Content-Type': 'application/json' },
       body: {
         email: 'spec.priyanshu@gmail.com',
-        password: process.env.ADMIN_PASSWORD || 'AdminPassword123!'
+        password: process.env.ADMIN_PASSWORD || 'FzhexDCVDMj7AFb'
       }
     });
     assert(adminLogin.status === 200, 'Admin login succeeds with 200 OK');

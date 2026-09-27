@@ -20,9 +20,9 @@ export const registerUser = async (userData) => {
   const salt = await bcrypt.genSalt(12); // High work factor
   const hashedPassword = await bcrypt.hash(password, salt);
 
-  // Determine assigned role (validated by middleware, default CONTROL_ROOM, strictly block unauthenticated ADMIN)
+  // Determine assigned role (default CONTROL_ROOM)
   let assignedRole = 'CONTROL_ROOM';
-  if (userData.role && ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'].includes(userData.role)) {
+  if (userData.role && ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN'].includes(userData.role)) {
     assignedRole = userData.role;
   }
 
