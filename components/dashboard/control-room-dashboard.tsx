@@ -10,8 +10,10 @@ import {
   RefreshCw,
   Layers,
   Radio,
-  ShieldAlert
+  ShieldAlert,
+  GitCompare,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -446,6 +448,14 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
               <PhoneCall />
               Broadcast Alert
             </Button>
+
+            <Link
+              href="/diff"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 px-3 py-1.5 text-xs font-semibold shadow-xs transition-colors"
+            >
+              <GitCompare className="size-3.5 text-purple-500" />
+              <span>What-If Simulator</span>
+            </Link>
 
             <span className="text-xs text-muted-foreground">
               Synced: {lastRefreshed}

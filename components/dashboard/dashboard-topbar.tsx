@@ -1,6 +1,6 @@
 'use client'
 
-import { LogOut, Navigation, Shield, Siren, UserRound, Menu, X, HeartPulse, Beaker } from 'lucide-react'
+import { LogOut, Navigation, Shield, Siren, UserRound, Menu, X, HeartPulse, Beaker, GitCompare } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import React, { useState, useEffect } from 'react'
@@ -144,6 +144,18 @@ export function DashboardTopbar({
                 <span>Emergency Lab</span>
               </Link>
               <Link
+                href="/diff"
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
+                  pathname === '/diff'
+                    ? 'bg-card text-foreground shadow-xs border border-border'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+              >
+                <GitCompare className="size-3 text-indigo-500 dark:text-indigo-400" />
+                <span>What-If Diff</span>
+              </Link>
+              <Link
                 href="/admin"
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
@@ -265,6 +277,14 @@ export function DashboardTopbar({
               >
                 <Beaker className="size-4 text-purple-500 dark:text-purple-400" />
                 Emergency Lab
+              </Link>
+              <Link
+                href="/diff"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border/50 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted"
+              >
+                <GitCompare className="size-4 text-indigo-500 dark:text-indigo-400" />
+                What-If Diff
               </Link>
               <Link
                 href="/admin"

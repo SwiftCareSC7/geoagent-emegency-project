@@ -8,7 +8,8 @@ import {
   Menu,
   Phone,
   UserPlus,
-  X
+  X,
+  GitCompare,
 } from 'lucide-react'
 import { BrandLogo } from '@/components/brand-logo'
 import { ThemeToggleCompact } from '@/components/theme-toggle'
@@ -72,6 +73,14 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
           <ThemeToggleCompact />
 
           <Link
+            href="/diff"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-semibold text-purple-600 dark:text-purple-300 transition-colors hover:bg-purple-500/20"
+          >
+            <GitCompare className="size-3.5 text-purple-500" />
+            <span>What-If Simulator</span>
+          </Link>
+
+          <Link
             href="/login"
             className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
@@ -130,6 +139,14 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
               Operational Guide
             </button>
           )}
+          <Link
+            href="/diff"
+            onClick={() => setMobileMenuOpen(false)}
+            className="w-full flex items-center gap-2 rounded-lg bg-purple-500/10 border border-purple-500/30 p-2.5 text-xs font-semibold text-purple-600 dark:text-purple-300 text-left"
+          >
+            <GitCompare className="size-4 text-purple-500" />
+            What-If Scenario Simulator
+          </Link>
           <div className="flex items-center gap-2 pt-2 border-t border-border">
             <Link
               href="/login"
