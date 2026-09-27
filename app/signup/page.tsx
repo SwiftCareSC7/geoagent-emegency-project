@@ -14,6 +14,7 @@ import React, { Suspense, useEffect } from 'react'
 
 import { SignupForm } from '@/components/auth/SignupForm'
 import { useAuth } from '@/lib/auth/context'
+import { ThemeToggleCompact } from '@/components/theme-toggle'
 
 function SignupContent() {
   const router = useRouter()
@@ -73,7 +74,10 @@ function SignupContent() {
       </aside>
 
       {/* Form column */}
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      <div className="relative flex items-center justify-center p-6 sm:p-10">
+        <div className="absolute top-4 right-4 z-20">
+          <ThemeToggleCompact />
+        </div>
         <div className="w-full max-w-md">
           <Link
             href="/"

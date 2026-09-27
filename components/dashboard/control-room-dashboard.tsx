@@ -20,9 +20,23 @@ import { getDashboard } from '@/lib/dashboard-api'
 import { vehicleApi } from '@/lib/api/vehicles'
 import { emergencyApi } from '@/lib/api/emergencies'
 import { incidentApi } from '@/lib/api/incidents'
-import type { Emergency, Vehicle, Incident } from '@/lib/api/types'
-import { DEMO_VEHICLES, DEMO_EMERGENCIES, DEMO_INCIDENTS } from '@/lib/demo-fixtures'
-import type { DashboardData } from '@/lib/mock-data'
+import { routeApi } from '@/lib/api/routes'
+import { analysisApi } from '@/lib/api/analysis'
+import { decisionApi } from '@/lib/api/decisions'
+import { trajectoryApi } from '@/lib/api/trajectories'
+import type {
+  Emergency,
+  Vehicle,
+  Incident,
+  Route,
+  Trajectory,
+  SituationAnalysis,
+  PredictionResult,
+  Decision
+} from '@/lib/api/types'
+import { DEMO_VEHICLES, DEMO_EMERGENCIES, DEMO_INCIDENTS, getCanonicalRouteForEmergency } from '@/lib/demo-fixtures'
+import { validateRouteGeometry } from '@/lib/route-validator'
+import { AMB_01_DASHBOARD, type DashboardData } from '@/lib/mock-data'
 import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +51,7 @@ import { MapPlaceholder } from './map-placeholder'
 import { RouteStatusCards } from './route-status-cards'
 import { TimelinePanel } from './timeline-panel'
 import { EmergencyClearanceMonitor } from './emergency-clearance-monitor'
+import { MissionAssessmentHUD } from '@/components/assessment/mission-assessment-hud'
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString([], {
@@ -64,7 +79,15 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
   const [showRecommended, setShowRecommended] = useState(true)
   const [contactOpen, setContactOpen] = useState(false)
   const [contactSent, setContactSent] = useState(false)
-  const [dashboardData, setDashboardData] = useState<DashboardData | undefined>(initialData)
+  const [dashboardData, setDashboardData] = useState<DashboardData>(initialData || AMB_01_DASHBOARD)
+
+  // Mission Assessment & Corridor State
+  const [selectedRoute, setSelectedRoute] = useState<Route | null>(null)
+  const [selectedTrajectory, setSelectedTrajectory] = useState<Trajectory | null>(null)
+  const [situationAnalysis, setSituationAnalysis] = useState<SituationAnalysis | null>(null)
+  const [prediction, setPrediction] = useState<PredictionResult | null>(null)
+  const [decision, setDecision] = useState<Decision | null>(null)
+  const [comparisonData, setComparisonData] = useState<any>(null)
 
   // Fetch real data from live backend REST endpoints
   const fetchLiveData = useCallback(async () => {
@@ -114,6 +137,106 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
   useEffect(() => {
     fetchLiveData()
   }, [fetchLiveData])
+
+  // Resolve active emergency and vehicle objects
+  const selectedEmergency = emergencies.find((e) => e.emergencyId === selectedEmergencyId) || (emergencies.length > 0 ? emergencies[0] : null)
+  const assignedVehicleId = selectedEmergency?.assignedVehicle
+    ? typeof selectedEmergency.assignedVehicle === 'object' && 'vehicleId' in selectedEmergency.assignedVehicle
+      ? selectedEmergency.assignedVehicle.vehicleId
+      : (typeof selectedEmergency.assignedVehicle === 'string' ? selectedEmergency.assignedVehicle : undefined)
+    : undefined
+  const selectedVehicle = assignedVehicleId ? vehicles.find((v) => v.vehicleId === assignedVehicleId) || null : null
+
+  // Fetch corridor telemetry, analysis, prediction, and decisions for selected emergency
+  useEffect(() => {
+    if (!selectedEmergencyId) return
+
+    const targetVehId = assignedVehicleId || null
+
+    // Fetch Route
+    routeApi.getForEmergency(selectedEmergencyId)
+      .then(async (res) => {
+        let authRoute: Route | null = null
+        if (res.data && res.data.length > 0) {
+          const candidate = res.data[0]
+          const val = validateRouteGeometry(candidate)
+          if (val.isValid && val.isRoadConstrained) {
+            authRoute = candidate
+          }
+        }
+        if (!authRoute) {
+          const fallback = getCanonicalRouteForEmergency(selectedEmergencyId, selectedEmergency)
+          authRoute = fallback.length > 0 ? (fallback[0] as unknown as Route) : null
+        }
+        setSelectedRoute(authRoute)
+        if (authRoute) {
+          try {
+            const comp = await routeApi.compare(authRoute.routeId)
+            if (comp && comp.data) setComparisonData(comp.data)
+          } catch {
+            setComparisonData(null)
+          }
+        } else {
+          setComparisonData(null)
+        }
+      })
+      .catch(() => {
+        const fallback = getCanonicalRouteForEmergency(selectedEmergencyId, selectedEmergency)
+        setSelectedRoute(fallback.length > 0 ? (fallback[0] as unknown as Route) : null)
+        setComparisonData(null)
+      })
+
+    // Fetch Latest GPS Trajectory
+    if (targetVehId) {
+      trajectoryApi.getLatestSafe(targetVehId)
+        .then((t) => setSelectedTrajectory(t))
+        .catch(() => setSelectedTrajectory(null))
+
+      // Fetch Situation Analysis (Deviation + Hazard correlation)
+      analysisApi.getVehicleSituationSafe(targetVehId)
+        .then((s) => setSituationAnalysis(s))
+        .catch(() => setSituationAnalysis(null))
+
+      // Fetch Delay & Arrival Prediction
+      analysisApi.getVehiclePredictionSafe(targetVehId)
+        .then((p) => setPrediction(p))
+        .catch(() => setPrediction(null))
+    } else {
+      setSelectedTrajectory(null)
+      setSituationAnalysis(null)
+      setPrediction(null)
+    }
+
+    // Fetch Decisions
+    decisionApi.list({ emergencyId: selectedEmergencyId })
+      .then((dRes) => {
+        if (dRes.data && dRes.data.length > 0) {
+          setDecision(dRes.data[0])
+        } else {
+          setDecision(null)
+        }
+      })
+      .catch(() => setDecision(null))
+  }, [selectedEmergencyId, assignedVehicleId, selectedEmergency])
+
+  // Decision Handlers
+  const handleApproveDecision = async (decisionId: string, comment?: string) => {
+    const res = await decisionApi.approve(decisionId, comment)
+    if (res.data) setDecision(res.data)
+    fetchLiveData()
+  }
+
+  const handleRejectDecision = async (decisionId: string, reason?: string) => {
+    const res = await decisionApi.reject(decisionId, reason)
+    if (res.data) setDecision(res.data)
+    fetchLiveData()
+  }
+
+  const handleExecuteDecision = async (decisionId: string) => {
+    const res = await decisionApi.execute(decisionId)
+    if (res.data) setDecision(res.data)
+    fetchLiveData()
+  }
 
   // Real-time Socket.IO subscriptions for Control Room fleet and emergency updates
   const [socketConnected, setSocketConnected] = useState(false)
@@ -262,8 +385,9 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              <Navigation className="size-3.5" />
-              <span>Corridor Telemetry & Route</span>
+              <Navigation className="size-3.5 text-emerald-400" />
+              <span>Corridor Telemetry & Mock Data</span>
+              <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[10px] font-mono text-emerald-400">AMB-01</span>
             </button>
           </div>
 
@@ -359,6 +483,47 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
               loading={loadingLive}
             />
 
+            {/* Quick-Access Corridor Telemetry & Mock Data Banner */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-card to-card p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                  <Navigation className="size-4 animate-pulse" />
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">AMB-01 MOCK CORRIDOR ACTIVE</span>
+                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/25">Deviation Detected</span>
+                    <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">-6m Saved via Route B</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Unit KA-01-AMB-108 (Officer Ananya Rao) en route to Manipal Hospital · Road accident on 100 Feet Road
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setActiveTab('telemetry')}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
+              >
+                <span>Inspect Full Telemetry & Timeline</span>
+              </Button>
+            </div>
+
+            {/* 5-Question Mission Assessment HUD */}
+            <MissionAssessmentHUD
+              emergency={selectedEmergency}
+              vehicle={selectedVehicle}
+              route={selectedRoute}
+              latestTrajectory={selectedTrajectory}
+              situationAnalysis={situationAnalysis}
+              prediction={prediction}
+              decision={decision}
+              comparisonData={comparisonData}
+              onApproveDecision={handleApproveDecision}
+              onRejectDecision={handleRejectDecision}
+              onExecuteDecision={handleExecuteDecision}
+            />
+
             {/* Real-time Metropolitan Map Viewport */}
             <MapPlaceholder
               showRecommended={showRecommended}
@@ -402,26 +567,43 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
           </div>
         ) : (
           /* TAB 2: CORRIDOR TELEMETRY & ROUTE */
-          <div className="grid gap-6 lg:grid-cols-5">
-            <div className="space-y-6 lg:col-span-3">
-              {dashboardData ? <EtaSummary data={dashboardData} /> : null}
-              <MapPlaceholder
-                markers={dashboardData?.markers}
-                showRecommended={showRecommended}
-                selectedEmergencyId={selectedEmergencyId}
-                onSelectEmergency={setSelectedEmergencyId}
-                emergencies={emergencies}
-                vehicles={vehicles}
-                incidents={incidents}
-                height="500px"
-              />
-              {dashboardData?.timeline ? <TimelinePanel events={dashboardData.timeline} /> : null}
-            </div>
+          <div className="space-y-6">
+            {/* 5-Question Mission Assessment HUD in Telemetry View */}
+            <MissionAssessmentHUD
+              emergency={selectedEmergency}
+              vehicle={selectedVehicle}
+              route={selectedRoute}
+              latestTrajectory={selectedTrajectory}
+              situationAnalysis={situationAnalysis}
+              prediction={prediction}
+              decision={decision}
+              comparisonData={comparisonData}
+              onApproveDecision={handleApproveDecision}
+              onRejectDecision={handleRejectDecision}
+              onExecuteDecision={handleExecuteDecision}
+            />
 
-            <div className="space-y-6 lg:col-span-2">
-              <EmergencyClearanceMonitor ambulanceId="AMB-01" />
-              {dashboardData ? <RouteStatusCards data={dashboardData} /> : null}
-              {dashboardData?.explanation ? <GeoAgentCard explanation={dashboardData.explanation} /> : null}
+            <div className="grid gap-6 lg:grid-cols-5">
+              <div className="space-y-6 lg:col-span-3">
+                {dashboardData ? <EtaSummary data={dashboardData} /> : null}
+                <MapPlaceholder
+                  markers={dashboardData?.markers}
+                  showRecommended={showRecommended}
+                  selectedEmergencyId={selectedEmergencyId}
+                  onSelectEmergency={setSelectedEmergencyId}
+                  emergencies={emergencies}
+                  vehicles={vehicles}
+                  incidents={incidents}
+                  height="500px"
+                />
+                {dashboardData?.timeline ? <TimelinePanel events={dashboardData.timeline} /> : null}
+              </div>
+
+              <div className="space-y-6 lg:col-span-2">
+                <EmergencyClearanceMonitor ambulanceId="AMB-01" />
+                {dashboardData ? <RouteStatusCards data={dashboardData} /> : null}
+                {dashboardData?.explanation ? <GeoAgentCard explanation={dashboardData.explanation} /> : null}
+              </div>
             </div>
           </div>
         )}

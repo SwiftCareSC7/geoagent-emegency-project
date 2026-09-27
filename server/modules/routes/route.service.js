@@ -187,6 +187,48 @@ class RouteService {
       Route.countDocuments(query)
     ]);
 
+    if (filters.emergencyId && routes.length === 0) {
+      try {
+        const isEmergencyObjectId = typeof filters.emergencyId === 'string' && filters.emergencyId.match(/^[0-9a-fA-F]{24}$/);
+        const em = await Emergency.findOne(
+          isEmergencyObjectId ? { _id: filters.emergencyId } : { emergencyId: filters.emergencyId }
+        ).populate('assignedVehicle');
+
+        if (em && em.location) {
+          const veh = em.assignedVehicle || (await Vehicle.findOne({ status: { $ne: 'MAINTENANCE' } }));
+          if (veh && veh.location) {
+            const origin = veh.location;
+            const destination = em.destination || em.location;
+            const newRoute = await this.createRoute({
+              emergencyId: em.emergencyId,
+              vehicleId: veh.vehicleId,
+              origin,
+              destination,
+              routeType: 'PLANNED',
+              preference: 'FASTEST'
+            }, null);
+
+            if (newRoute) {
+              const populated = await Route.findById(newRoute._id)
+                .populate('emergency', 'emergencyId status priority')
+                .populate('vehicle', 'vehicleId status registrationNumber driverName');
+              return {
+                data: [populated],
+                meta: {
+                  total: 1,
+                  page: 1,
+                  limit: safeLimit,
+                  totalPages: 1
+                }
+              };
+            }
+          }
+        }
+      } catch (autoErr) {
+        console.warn(`[RouteService] Auto-route generation for ${filters.emergencyId} failed: ${autoErr.message}`);
+      }
+    }
+
     return {
       data: routes,
       meta: {

@@ -227,6 +227,16 @@ class RealtimeService {
   }
 
   /**
+   * Emits decision executed event
+   */
+  emitDecisionExecuted(emergencyId, vehicleId, payload) {
+    const rooms = [REALTIME_ROOMS.CONTROL_ROOM];
+    if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
+    if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
+    this.emitToRooms(rooms, REALTIME_EVENTS.DECISION_EXECUTED, payload);
+  }
+
+  /**
    * Emits SMS communication status event
    */
   emitSmsStatus(emergencyId, vehicleId, payload) {

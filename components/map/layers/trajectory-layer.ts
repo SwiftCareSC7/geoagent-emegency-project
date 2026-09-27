@@ -37,14 +37,14 @@ export class TrajectoryLayerManager {
         existingLine.setLatLngs(latLngs)
       } else {
         const polyline = LRef.polyline(latLngs, {
-          color: '#06b6d4',
-          weight: 3,
-          opacity: 0.75,
-          dashArray: '3, 4',
+          color: '#f97316', // Canonical Orange (Actual GPS Trajectory)
+          weight: 3.5,
+          opacity: 0.85,
+          dashArray: '4, 4',
           lineCap: 'round',
           lineJoin: 'round',
         }).addTo(this.layerGroup)
-        polyline.bindPopup(`<b>Actual GPS Breadcrumb Trail</b><br>Vehicle: ${traj.vehicleId}<br>Fixes: ${traj.points.length}`)
+        polyline.bindPopup(`<b>Actual GPS Trajectory Trail</b><br>Vehicle: ${traj.vehicleId}<br>Fixes: ${traj.points.length}`)
         this.polylines.set(id, polyline)
       }
 
@@ -59,9 +59,9 @@ export class TrajectoryLayerManager {
       for (const pt of recentPoints) {
         const dot = LRef.circleMarker(toLatLng(pt.coordinates), {
           radius: 3.5,
-          color: '#0891b2',
-          fillColor: '#22d3ee',
-          fillOpacity: 0.8,
+          color: '#ea580c',
+          fillColor: '#fb923c',
+          fillOpacity: 0.9,
           weight: 1,
         }).addTo(this.layerGroup)
 

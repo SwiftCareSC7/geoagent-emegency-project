@@ -9,6 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { useTheme } from 'next-themes'
 import type L from 'leaflet'
 import {
   emergencyApi,
@@ -31,7 +32,9 @@ import {
   DEMO_TRAJECTORIES,
   DEMO_DEVIATION,
   DEMO_PREDICTION,
+  getCanonicalRouteForEmergency,
 } from '@/lib/demo-fixtures'
+import { validateRouteGeometry } from '@/lib/route-validator'
 import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { useSocketStatus } from '@/lib/socket/useRealtime'
 import { MapView, type MapViewHandle } from './map-view'
@@ -152,11 +155,19 @@ export function ControlRoomMap({
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null)
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
 
+  const { resolvedTheme } = useTheme()
+
   // Display Controls State
-  const [activeTile, setActiveTile] = useState<TileLayerProvider>('carto_dark')
-  const [basemapHealth, setBasemapHealth] = useState<MapProviderHealth>(
-    process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim() ? 'AVAILABLE' : 'NOT_CONFIGURED'
+  const [activeTile, setActiveTile] = useState<TileLayerProvider>(
+    resolvedTheme === 'light' ? 'google_streets' : 'carto_dark'
   )
+
+  useEffect(() => {
+    const targetTile: TileLayerProvider = resolvedTheme === 'light' ? 'google_streets' : 'carto_dark'
+    setActiveTile(targetTile)
+    mapViewRef.current?.setTileLayer(targetTile)
+  }, [resolvedTheme])
+  const [basemapHealth, setBasemapHealth] = useState<MapProviderHealth>('AVAILABLE')
   const [basemapNoticeDismissed, setBasemapNoticeDismissed] = useState(false)
   const [visibility, setVisibility] = useState<MapLayerVisibility>({
     vehicles: true,
@@ -414,34 +425,53 @@ export function ControlRoomMap({
 
         if (!isMounted) return
 
-        // 1. Map Routes
+        // 1. Map Routes — Authoritative and correctly scoped to selectedEmergencyId
         const fetchedRoutes: Route[] = routesRes.data || []
-        const rawRoutes: Route[] =
+        const candidateRoutes: Route[] =
           fetchedRoutes.length > 0
             ? fetchedRoutes
-            : DEMO_ROUTES[selectedEmergencyId!] || DEMO_ROUTES['E-DEMO-001'] || []
-        const mappedRoutes: MapRoute[] = rawRoutes.map((r) => ({
-          id: r.id || r.routeId,
-          routeId: r.routeId,
-          emergencyId: selectedEmergencyId!,
-          origin: r.origin,
-          destination: r.destination,
-          geometry: r.geometry,
-          distanceMeters: r.distance || r.distanceMeters || 0,
-          durationSeconds: r.duration || r.durationSeconds || 0,
-          routeType: r.routeType || 'PLANNED',
-          status: r.status || 'ACTIVE',
-          provider: r.provider,
-          isRecommended: showRecommended && (r.routeType === 'CURRENT' || r.status === 'ACTIVE'),
-        }))
+            : getCanonicalRouteForEmergency(selectedEmergencyId!, emg)
+
+        // Strict validation: Reject non-road geometry, straight lines, or cross-mission leaks
+        const validatedRoutes = candidateRoutes.filter((r) => {
+          const v = validateRouteGeometry(r)
+          if (!v.isValid || !v.isRoadConstrained) {
+            console.warn(`[ControlRoomMap] Route ${r.routeId || r.id} rejected by route validator:`, v.reasons)
+            return false
+          }
+          return true
+        })
+
+        const mappedRoutes: MapRoute[] = validatedRoutes.map((r) => {
+          const isAlternative =
+            r.routeType === 'ALTERNATIVE' ||
+            (r.routeType as string) === 'RECOMMENDED' ||
+            (r.routeType as string) === 'DETOUR'
+          const isRecommended = isAlternative && showRecommended
+
+          return {
+            id: r.id || r.routeId,
+            routeId: r.routeId,
+            emergencyId: selectedEmergencyId!,
+            origin: r.origin,
+            destination: r.destination,
+            geometry: r.geometry,
+            distanceMeters: r.distance || r.distanceMeters || 0,
+            durationSeconds: r.duration || r.durationSeconds || 0,
+            routeType: isAlternative ? 'ALTERNATIVE' : 'PLANNED',
+            status: r.status || 'ACTIVE',
+            provider: r.provider,
+            isRecommended,
+          }
+        })
         setRoutes(mappedRoutes)
 
-        // 2. Map Trajectory (Bounded actual fixes)
+        // 2. Map Trajectory (Strictly scoped to assigned vehicle — NO cross-mission leaks)
         const fetchedTraj = trajRes.data || []
         const rawTraj =
           fetchedTraj.length > 0
             ? fetchedTraj
-            : (vehId && DEMO_TRAJECTORIES[vehId] ? DEMO_TRAJECTORIES[vehId] : DEMO_TRAJECTORIES['AMB-DEMO-01'] || [])
+            : (vehId && DEMO_TRAJECTORIES[vehId] ? DEMO_TRAJECTORIES[vehId] : [])
         if (vehId && rawTraj.length > 0) {
           setTrajectories([
             {
@@ -458,10 +488,14 @@ export function ControlRoomMap({
           setTrajectories([])
         }
 
-        // 3. Map Deviation
-        const dData =
-          devRes?.data ||
-          (selectedEmergencyId === 'E-DEMO-001' || vehId === 'AMB-DEMO-01' ? DEMO_DEVIATION : null)
+        // 3. Map Deviation (Only for legitimately active deviation scenario)
+        const isDemoCorridorActive =
+          selectedEmergencyId === 'E-DEMO-001' ||
+          selectedEmergencyId === 'EMG-0001' ||
+          vehId === 'AMB-01' ||
+          vehId === 'AMB-DEMO-01'
+
+        const dData = devRes?.data || (isDemoCorridorActive ? DEMO_DEVIATION : null)
         if (vehId && dData) {
           const d = dData as any
           if (d.status === 'DEVIATED' || d.status === 'CRITICAL_DEVIATION') {
@@ -481,18 +515,19 @@ export function ControlRoomMap({
           } else {
             setDeviations([])
           }
+        } else {
+          setDeviations([])
         }
 
         // 4. Map Prediction
-        const pData =
-          predRes ||
-          (selectedEmergencyId === 'E-DEMO-001' || vehId === 'AMB-DEMO-01' ? DEMO_PREDICTION : null)
+        const pData = predRes || (isDemoCorridorActive ? DEMO_PREDICTION : null)
         if (vehId && pData) {
           setPredictions((prev) => ({
             ...prev,
             [vehId]: pData.predictedDelayMinutes || 0,
           }))
         }
+
 
         // 5. Fit bounds to corridor
         if (mapViewRef.current) {
@@ -771,7 +806,7 @@ export function ControlRoomMap({
   }
 
   return (
-    <div className={`relative w-full rounded-2xl border border-border bg-slate-950 overflow-hidden shadow-2xl ${className}`}>
+    <div className={`relative w-full rounded-2xl border border-border bg-card dark:bg-slate-950 overflow-hidden shadow-2xl ${className}`}>
       {/* Real Map Viewport */}
       <MapView
         ref={mapViewRef}
@@ -801,20 +836,20 @@ export function ControlRoomMap({
 
       {/* Floating Status & Freshness Header Banner */}
       <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-1.5 max-w-sm">
-        <div className="flex items-center gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-3 py-1.5 text-xs text-slate-200 shadow-xl backdrop-blur-md">
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-1.5 text-xs text-foreground shadow-xl backdrop-blur-md">
           {socketConnected ? (
-            <span className="flex items-center gap-1.5 font-bold text-emerald-400">
-              <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>LIVE CONTROL STREAM</span>
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 font-bold text-sky-400">
-              <span className="size-2 rounded-full bg-sky-400" />
+            <span className="flex items-center gap-1.5 font-bold text-sky-600 dark:text-sky-400">
+              <span className="size-2 rounded-full bg-sky-500" />
               <span>SIMULATION CORRIDOR</span>
             </span>
           )}
-          <span className="text-slate-600">|</span>
-          <span className="text-[11px] text-slate-400 font-mono">
+          <span className="text-muted-foreground/60">|</span>
+          <span className="text-[11px] text-muted-foreground font-mono">
             {emergencies.length} Emergencies · {vehicles.length} Units
           </span>
         </div>
@@ -861,33 +896,7 @@ export function ControlRoomMap({
           </div>
         )}
 
-        {/* Basemap Configuration / Degradation Notice */}
-        {activeTile === 'carto_dark' && basemapHealth === 'NOT_CONFIGURED' && !basemapNoticeDismissed ? (
-          <div className="flex items-center gap-2 rounded-xl border border-amber-500/40 bg-slate-900/95 px-3 py-1.5 text-xs text-amber-200 shadow-xl backdrop-blur-md">
-            <AlertTriangle className="size-3.5 shrink-0 text-amber-400" />
-            <span className="text-[11px] leading-tight flex-1">
-              <strong>Basemap:</strong> CARTO key unconfigured (preview watermark may show).
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTile('osm')
-                mapViewRef.current?.setTileLayer('osm')
-              }}
-              className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-500/30 transition-colors"
-            >
-              Use OSM
-            </button>
-            <button
-              type="button"
-              onClick={() => setBasemapNoticeDismissed(true)}
-              className="text-slate-400 hover:text-white text-xs px-1"
-              aria-label="Dismiss notice"
-            >
-              ✕
-            </button>
-          </div>
-        ) : null}
+
 
         {basemapHealth === 'DEGRADED' ? (
           <div className="flex items-center gap-2 rounded-xl border border-rose-500/40 bg-slate-900/95 px-3 py-1.5 text-xs text-rose-200 shadow-xl backdrop-blur-md">

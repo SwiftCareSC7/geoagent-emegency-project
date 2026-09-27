@@ -1,5 +1,6 @@
 import type { Emergency, Vehicle, Incident, Route, Trajectory } from './api/types'
 import { CANONICAL_ROAD_CORRIDORS } from './canonical-road-corridors'
+import { validateRouteGeometry, haversineDistance, extractLngLat } from './route-validator'
 
 export const DEMO_VEHICLES: Vehicle[] = [
   {
@@ -1231,7 +1232,7 @@ export const DEMO_ROUTES: Record<string, Route[]> = {
       id: 'route-demo-01',
       routeId: 'ROUTE-DEMO-01',
       emergency: 'E-DEMO-001',
-      vehicle: 'AMB-DEMO-01',
+      vehicle: 'AMB-01',
       origin: { type: 'Point', coordinates: [77.5946, 12.9716] },
       destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
       distance: CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.distance,
@@ -1250,7 +1251,7 @@ export const DEMO_ROUTES: Record<string, Route[]> = {
       id: 'route-demo-alt',
       routeId: 'ROUTE-DEMO-ALT',
       emergency: 'E-DEMO-001',
-      vehicle: 'AMB-DEMO-01',
+      vehicle: 'AMB-01',
       origin: { type: 'Point', coordinates: [77.5946, 12.9716] },
       destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
       distance: CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.alternative?.distance || 8200,
@@ -1274,10 +1275,10 @@ export const DEMO_ROUTES: Record<string, Route[]> = {
       vehicle: 'AMB-02',
       origin: { type: 'Point', coordinates: [77.5925, 13.0358] },
       destination: { type: 'Point', coordinates: [77.5739, 12.9634] },
-      distance: 10800,
-      duration: 1140,
-      distanceMeters: 10800,
-      durationSeconds: 1140,
+      distance: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.distance + CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.distance,
+      duration: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.duration + CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.duration,
+      distanceMeters: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.distance + CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.distance,
+      durationSeconds: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.duration + CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.duration,
       provider: 'OSRM',
       routeType: 'PLANNED',
       status: 'ACTIVE',
@@ -1285,11 +1286,232 @@ export const DEMO_ROUTES: Record<string, Route[]> = {
         type: 'LineString',
         coordinates: [
           ...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.coordinates,
-          ...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.coordinates.slice(1)
+          ...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.coordinates.slice(1),
+        ] as [number, number][],
+      },
+    },
+    {
+      id: 'route-demo-02-alt',
+      routeId: 'ROUTE-DEMO-02-ALT',
+      emergency: 'E-DEMO-002',
+      vehicle: 'AMB-02',
+      origin: { type: 'Point', coordinates: [77.5925, 13.0358] },
+      destination: { type: 'Point', coordinates: [77.5739, 12.9634] },
+      distance: (CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative?.distance || 9200) + 3200,
+      duration: (CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative?.duration || 680) + 320,
+      distanceMeters: (CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative?.distance || 9200) + 3200,
+      durationSeconds: (CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative?.duration || 680) + 320,
+      provider: 'OSRM',
+      routeType: 'ALTERNATIVE',
+      status: 'ACTIVE',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          ...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.coordinates,
+          ...(CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative?.coordinates || CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.coordinates).slice(1),
         ] as [number, number][],
       },
     },
   ],
+  'E-DEMO-003': [
+    {
+      id: 'route-demo-03',
+      routeId: 'ROUTE-DEMO-03',
+      emergency: 'E-DEMO-003',
+      vehicle: 'AMB-03',
+      origin: { type: 'Point', coordinates: [77.7500, 12.9698] },
+      destination: { type: 'Point', coordinates: [77.6890, 12.9288] },
+      distance: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.distance + CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.distance,
+      duration: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.duration + CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.duration,
+      distanceMeters: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.distance + CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.distance,
+      durationSeconds: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.duration + CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.duration,
+      provider: 'OSRM',
+      routeType: 'PLANNED',
+      status: 'ACTIVE',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          ...CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.coordinates,
+          ...CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.coordinates.slice(1),
+        ] as [number, number][],
+      },
+    },
+    {
+      id: 'route-demo-03-alt',
+      routeId: 'ROUTE-DEMO-03-ALT',
+      emergency: 'E-DEMO-003',
+      vehicle: 'AMB-03',
+      origin: { type: 'Point', coordinates: [77.7500, 12.9698] },
+      destination: { type: 'Point', coordinates: [77.6890, 12.9288] },
+      distance: (CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative?.distance || 8100) + 6200,
+      duration: (CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative?.duration || 710) + 440,
+      distanceMeters: (CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative?.distance || 8100) + 6200,
+      durationSeconds: (CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative?.duration || 710) + 440,
+      provider: 'OSRM',
+      routeType: 'ALTERNATIVE',
+      status: 'ACTIVE',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          ...CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.coordinates,
+          ...(CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative?.coordinates || CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.coordinates).slice(1),
+        ] as [number, number][],
+      },
+    },
+  ],
+  'E-DEMO-004': [
+    {
+      id: 'route-demo-04',
+      routeId: 'ROUTE-DEMO-04',
+      emergency: 'E-DEMO-004',
+      vehicle: 'AMB-04',
+      origin: { type: 'Point', coordinates: [77.5963, 13.1007] },
+      destination: { type: 'Point', coordinates: [77.6033, 12.9833] },
+      distance: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.distance + CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.distance,
+      duration: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.duration + CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.duration,
+      distanceMeters: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.distance + CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.distance,
+      durationSeconds: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.duration + CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.duration,
+      provider: 'OSRM',
+      routeType: 'PLANNED',
+      status: 'ACTIVE',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          ...CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.coordinates,
+          ...CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.coordinates.slice(1),
+        ] as [number, number][],
+      },
+    },
+    {
+      id: 'route-demo-04-alt',
+      routeId: 'ROUTE-DEMO-04-ALT',
+      emergency: 'E-DEMO-004',
+      vehicle: 'AMB-04',
+      origin: { type: 'Point', coordinates: [77.5963, 13.1007] },
+      destination: { type: 'Point', coordinates: [77.6033, 12.9833] },
+      distance: (CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative?.distance || 11200) + 5500,
+      duration: (CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative?.duration || 900) + 440,
+      distanceMeters: (CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative?.distance || 11200) + 5500,
+      durationSeconds: (CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative?.duration || 900) + 440,
+      provider: 'OSRM',
+      routeType: 'ALTERNATIVE',
+      status: 'ACTIVE',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          ...CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.coordinates,
+          ...(CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative?.coordinates || CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.coordinates).slice(1),
+        ] as [number, number][],
+      },
+    },
+  ],
+  'E-DEMO-005': [
+    {
+      id: 'route-demo-05',
+      routeId: 'ROUTE-DEMO-05',
+      emergency: 'E-DEMO-005',
+      vehicle: 'AMB-05',
+      origin: { type: 'Point', coordinates: [77.6766, 12.8452] },
+      destination: { type: 'Point', coordinates: [77.6200, 12.9315] },
+      distance: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.distance + CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.distance,
+      duration: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.duration + CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.duration,
+      distanceMeters: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.distance + CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.distance,
+      durationSeconds: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.duration + CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.duration,
+      provider: 'OSRM',
+      routeType: 'PLANNED',
+      status: 'ACTIVE',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          ...CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.coordinates,
+          ...CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.coordinates.slice(1),
+        ] as [number, number][],
+      },
+    },
+    {
+      id: 'route-demo-05-alt',
+      routeId: 'ROUTE-DEMO-05-ALT',
+      emergency: 'E-DEMO-005',
+      vehicle: 'AMB-05',
+      origin: { type: 'Point', coordinates: [77.6766, 12.8452] },
+      destination: { type: 'Point', coordinates: [77.6200, 12.9315] },
+      distance: (CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative?.distance || 5800) + 10300,
+      duration: (CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative?.duration || 540) + 790,
+      distanceMeters: (CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative?.distance || 5800) + 10300,
+      durationSeconds: (CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative?.duration || 540) + 790,
+      provider: 'OSRM',
+      routeType: 'ALTERNATIVE',
+      status: 'ACTIVE',
+      geometry: {
+        type: 'LineString',
+        coordinates: [
+          ...CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.coordinates,
+          ...(CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative?.coordinates || CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.coordinates).slice(1),
+        ] as [number, number][],
+      },
+    },
+  ],
+}
+
+// Aliases for EMG-0001 through EMG-0005 to match corresponding canonical demo scenarios
+DEMO_ROUTES['EMG-0001'] = DEMO_ROUTES['E-DEMO-001']
+DEMO_ROUTES['EMG-0002'] = DEMO_ROUTES['E-DEMO-002']
+DEMO_ROUTES['EMG-0003'] = DEMO_ROUTES['E-DEMO-003']
+DEMO_ROUTES['EMG-0004'] = DEMO_ROUTES['E-DEMO-004']
+DEMO_ROUTES['EMG-0005'] = DEMO_ROUTES['E-DEMO-005']
+
+/**
+ * Authoritative Canonical Route Resolver for any emergency
+ * NEVER produces cross-mission contamination.
+ * Only returns routes that strictly belong to the specified emergency.
+ */
+export function getCanonicalRouteForEmergency(
+  emergencyId: string | null | undefined,
+  emergency?: Emergency | null
+): Route[] {
+  if (!emergencyId) return []
+
+  // 1. Direct or alias match
+  if (DEMO_ROUTES[emergencyId]) {
+    const list = DEMO_ROUTES[emergencyId]
+    return list.filter((r) => validateRouteGeometry(r).isValid)
+  }
+
+  // 2. Normalize alias variations (e.g. "emg-0001", "EMG-2026-001")
+  const norm = emergencyId.toUpperCase()
+  if (norm.includes('001') && DEMO_ROUTES['E-DEMO-001']) return DEMO_ROUTES['E-DEMO-001']
+  if (norm.includes('002') && DEMO_ROUTES['E-DEMO-002']) return DEMO_ROUTES['E-DEMO-002']
+  if (norm.includes('003') && DEMO_ROUTES['E-DEMO-003']) return DEMO_ROUTES['E-DEMO-003']
+  if (norm.includes('004') && DEMO_ROUTES['E-DEMO-004']) return DEMO_ROUTES['E-DEMO-004']
+  if (norm.includes('005') && DEMO_ROUTES['E-DEMO-005']) return DEMO_ROUTES['E-DEMO-005']
+
+  // 3. Proximity-based matching against canonical corridors
+  if (emergency && emergency.location?.coordinates) {
+    const eCoord = extractLngLat(emergency.location)
+    const dCoord = emergency.destination ? extractLngLat(emergency.destination) : null
+
+    if (eCoord) {
+      // Find candidate scenario matching within 3.5km
+      const candidates = [
+        { key: 'E-DEMO-001', center: [77.6320, 12.9410] as [number, number] },
+        { key: 'E-DEMO-002', center: [77.5890, 13.0180] as [number, number] },
+        { key: 'E-DEMO-003', center: [77.7120, 12.9650] as [number, number] },
+        { key: 'E-DEMO-004', center: [77.5900, 13.0600] as [number, number] },
+        { key: 'E-DEMO-005', center: [77.6400, 12.9050] as [number, number] },
+      ]
+
+      for (const cand of candidates) {
+        const dist = haversineDistance(eCoord, cand.center)
+        if (dist < 3500 && DEMO_ROUTES[cand.key]) {
+          return DEMO_ROUTES[cand.key].filter((r) => validateRouteGeometry(r).isValid)
+        }
+      }
+    }
+  }
+
+  // 4. If no legitimate match exists, NEVER return an unrelated emergency's route.
+  // Return empty array so the UI accurately displays pending status rather than cross-mission fake geometry.
+  return []
 }
 
 export const DEMO_TRAJECTORIES: Record<string, Trajectory[]> = {
@@ -1299,6 +1521,33 @@ export const DEMO_TRAJECTORIES: Record<string, Trajectory[]> = {
     { id: 'traj-3', vehicleId: 'AMB-DEMO-01', location: { type: 'Point', coordinates: [77.6100, 12.9720] }, speed: 11, heading: 100, timestamp: new Date(Date.now() - 40000).toISOString(), source: 'SIMULATOR', createdAt: '' },
     { id: 'traj-4', vehicleId: 'AMB-DEMO-01', location: { type: 'Point', coordinates: [77.6135, 12.9740] }, speed: 32, heading: 45, timestamp: new Date(Date.now() - 20000).toISOString(), source: 'SIMULATOR', createdAt: '' },
     { id: 'traj-5', vehicleId: 'AMB-DEMO-01', location: { type: 'Point', coordinates: [77.6175, 12.9755] }, speed: 38, heading: 85, timestamp: new Date().toISOString(), source: 'SIMULATOR', createdAt: '' },
+  ],
+  'AMB-01': [
+    { id: 'traj-amb01-1', vehicleId: 'AMB-01', location: { type: 'Point', coordinates: [77.6271, 12.9352] }, speed: 40, heading: 42, timestamp: new Date(Date.now() - 80000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb01-2', vehicleId: 'AMB-01', location: { type: 'Point', coordinates: [77.6310, 12.9395] }, speed: 38, heading: 45, timestamp: new Date(Date.now() - 60000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb01-3', vehicleId: 'AMB-01', location: { type: 'Point', coordinates: [77.6355, 12.9440] }, speed: 24, heading: 40, timestamp: new Date(Date.now() - 40000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb01-4', vehicleId: 'AMB-01', location: { type: 'Point', coordinates: [77.6385, 12.9490] }, speed: 35, heading: 50, timestamp: new Date(Date.now() - 20000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb01-5', vehicleId: 'AMB-01', location: { type: 'Point', coordinates: [77.6410, 12.9515] }, speed: 42, heading: 55, timestamp: new Date().toISOString(), source: 'DEVICE', createdAt: '' },
+  ],
+  'AMB-02': [
+    { id: 'traj-amb02-1', vehicleId: 'AMB-02', location: { type: 'Point', coordinates: [77.5925, 13.0358] }, speed: 48, heading: 175, timestamp: new Date(Date.now() - 60000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb02-2', vehicleId: 'AMB-02', location: { type: 'Point', coordinates: [77.5900, 13.0240] }, speed: 42, heading: 180, timestamp: new Date(Date.now() - 30000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb02-3', vehicleId: 'AMB-02', location: { type: 'Point', coordinates: [77.5890, 13.0180] }, speed: 36, heading: 175, timestamp: new Date().toISOString(), source: 'DEVICE', createdAt: '' },
+  ],
+  'AMB-03': [
+    { id: 'traj-amb03-1', vehicleId: 'AMB-03', location: { type: 'Point', coordinates: [77.7500, 12.9698] }, speed: 45, heading: 250, timestamp: new Date(Date.now() - 60000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb03-2', vehicleId: 'AMB-03', location: { type: 'Point', coordinates: [77.7310, 12.9675] }, speed: 38, heading: 255, timestamp: new Date(Date.now() - 30000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb03-3', vehicleId: 'AMB-03', location: { type: 'Point', coordinates: [77.7120, 12.9650] }, speed: 34, heading: 250, timestamp: new Date().toISOString(), source: 'DEVICE', createdAt: '' },
+  ],
+  'AMB-04': [
+    { id: 'traj-amb04-1', vehicleId: 'AMB-04', location: { type: 'Point', coordinates: [77.5963, 13.1007] }, speed: 55, heading: 180, timestamp: new Date(Date.now() - 60000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb04-2', vehicleId: 'AMB-04', location: { type: 'Point', coordinates: [77.5930, 13.0800] }, speed: 50, heading: 180, timestamp: new Date(Date.now() - 30000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb04-3', vehicleId: 'AMB-04', location: { type: 'Point', coordinates: [77.5900, 13.0600] }, speed: 44, heading: 175, timestamp: new Date().toISOString(), source: 'DEVICE', createdAt: '' },
+  ],
+  'AMB-05': [
+    { id: 'traj-amb05-1', vehicleId: 'AMB-05', location: { type: 'Point', coordinates: [77.6766, 12.8452] }, speed: 46, heading: 320, timestamp: new Date(Date.now() - 60000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb05-2', vehicleId: 'AMB-05', location: { type: 'Point', coordinates: [77.6580, 12.8750] }, speed: 38, heading: 330, timestamp: new Date(Date.now() - 30000).toISOString(), source: 'DEVICE', createdAt: '' },
+    { id: 'traj-amb05-3', vehicleId: 'AMB-05', location: { type: 'Point', coordinates: [77.6400, 12.9050] }, speed: 32, heading: 325, timestamp: new Date().toISOString(), source: 'DEVICE', createdAt: '' },
   ],
 }
 

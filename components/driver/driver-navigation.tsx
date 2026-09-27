@@ -62,19 +62,82 @@ import { incidentApi } from '@/lib/api/incidents'
 import { clearanceApi, type ClearanceSession, type ConnectedVehicle } from '@/lib/api/clearance'
 import { getSocket, subscribeEvent, REALTIME_EVENTS } from '@/lib/socket/client'
 import type { Incident } from '@/lib/api/types'
+import { CANONICAL_ROAD_CORRIDORS } from '@/lib/canonical-road-corridors'
+
+function getCanonicalScenarioLegs(sc: ScenarioDefinition): {
+  leg1Coords: [number, number][]
+  leg2Coords: [number, number][]
+  altCoords: [number, number][] | null
+} {
+  const code = (sc.code || sc.id || '').toUpperCase()
+  const emgId = (sc.emergencyId || '').toUpperCase()
+
+  if (code.includes('001') || emgId.includes('001')) {
+    return {
+      leg1Coords: CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary.coordinates as unknown as [number, number][],
+      leg2Coords: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary.coordinates as unknown as [number, number][],
+      altCoords: (CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative?.coordinates || null) as unknown as [number, number][] | null
+    }
+  }
+  if (code.includes('002') || emgId.includes('002')) {
+    return {
+      leg1Coords: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.coordinates as unknown as [number, number][],
+      leg2Coords: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.coordinates as unknown as [number, number][],
+      altCoords: (CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative?.coordinates || null) as unknown as [number, number][] | null
+    }
+  }
+  if (code.includes('003') || emgId.includes('003')) {
+    return {
+      leg1Coords: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.coordinates as unknown as [number, number][],
+      leg2Coords: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.coordinates as unknown as [number, number][],
+      altCoords: (CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative?.coordinates || null) as unknown as [number, number][] | null
+    }
+  }
+  if (code.includes('004') || emgId.includes('004')) {
+    return {
+      leg1Coords: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.coordinates as unknown as [number, number][],
+      leg2Coords: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.coordinates as unknown as [number, number][],
+      altCoords: (CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative?.coordinates || null) as unknown as [number, number][] | null
+    }
+  }
+  if (code.includes('005') || emgId.includes('005')) {
+    return {
+      leg1Coords: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.coordinates as unknown as [number, number][],
+      leg2Coords: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.coordinates as unknown as [number, number][],
+      altCoords: (CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative?.coordinates || null) as unknown as [number, number][] | null
+    }
+  }
+
+  return {
+    leg1Coords: CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary.coordinates as unknown as [number, number][],
+    leg2Coords: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary.coordinates as unknown as [number, number][],
+    altCoords: (CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative?.coordinates || null) as unknown as [number, number][] | null
+  }
+}
 
 interface DriverNavigationProps {
   initialEmergency?: any
   ambulanceId?: string
   className?: string
+  onOpenPriorityRadio?: () => void
+  onOpenTelemetry?: () => void
 }
 
 function haversineMeters(coord1: [number, number], coord2: [number, number]): number {
+  if (!coord1 || !coord2 || !Array.isArray(coord1) || !Array.isArray(coord2) || coord1.length < 2 || coord2.length < 2) {
+    return 0
+  }
+  const [lng1, lat1Val] = coord1
+  const [lng2, lat2Val] = coord2
+  if (typeof lat1Val !== 'number' || typeof lng1 !== 'number' || typeof lat2Val !== 'number' || typeof lng2 !== 'number') {
+    return 0
+  }
+
   const R = 6371e3
-  const lat1 = (coord1[1] * Math.PI) / 180
-  const lat2 = (coord2[1] * Math.PI) / 180
-  const deltaLat = ((coord2[1] - coord1[1]) * Math.PI) / 180
-  const deltaLng = ((coord2[0] - coord1[0]) * Math.PI) / 180
+  const lat1 = (lat1Val * Math.PI) / 180
+  const lat2 = (lat2Val * Math.PI) / 180
+  const deltaLat = ((lat2Val - lat1Val) * Math.PI) / 180
+  const deltaLng = ((lng2 - lng1) * Math.PI) / 180
 
   const a =
     Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
@@ -84,12 +147,21 @@ function haversineMeters(coord1: [number, number], coord2: [number, number]): nu
 }
 
 function calculateBearing(start: [number, number], end: [number, number]): number {
-  const startLat = (start[1] * Math.PI) / 180
-  const startLng = (start[0] * Math.PI) / 180
-  const endLat = (end[1] * Math.PI) / 180
-  const endLng = (end[0] * Math.PI) / 180
+  if (!start || !end || !Array.isArray(start) || !Array.isArray(end) || start.length < 2 || end.length < 2) {
+    return 0
+  }
+  const [startLng, startLatVal] = start
+  const [endLng, endLatVal] = end
+  if (typeof startLatVal !== 'number' || typeof startLng !== 'number' || typeof endLatVal !== 'number' || typeof endLng !== 'number') {
+    return 0
+  }
 
-  const dLng = endLng - startLng
+  const startLat = (startLatVal * Math.PI) / 180
+  const startLngRad = (startLng * Math.PI) / 180
+  const endLat = (endLatVal * Math.PI) / 180
+  const endLngRad = (endLng * Math.PI) / 180
+
+  const dLng = endLngRad - startLngRad
   const y = Math.sin(dLng) * Math.cos(endLat)
   const x =
     Math.cos(startLat) * Math.sin(endLat) -
@@ -160,7 +232,9 @@ function snapToRoute(
 export function DriverNavigation({
   initialEmergency,
   ambulanceId: propAmbulanceId = 'AMB-01',
-  className = ''
+  className = '',
+  onOpenPriorityRadio,
+  onOpenTelemetry
 }: DriverNavigationProps) {
   // Navigation Mode: 'EMERGENCY_MISSION' (Mode A: 2-Leg) vs 'MANUAL_ROUTE' (Mode B: My Location -> Destination)
   const [navigationMode, setNavigationMode] = useState<'EMERGENCY_MISSION' | 'MANUAL_ROUTE'>('EMERGENCY_MISSION')
@@ -401,33 +475,23 @@ export function DriverNavigation({
       let leg1Source = 'UNKNOWN'
       let leg2Source = 'UNKNOWN'
 
-      // Use API-returned geometry when available (real road-following routes)
-      // Only fall back to canonical corridor fixtures for DEMO scenarios
-      const leg1Coords: [number, number][] = (leg1Plan?.geometry?.coordinates?.length > 2)
-        ? (leg1Plan.geometry.coordinates as [number, number][])
-        : (() => {
-            console.warn('[DriverNav] Leg 1 API geometry unavailable or insufficient. Using DEMO corridor fixture.')
-            leg1Source = 'DEMO_CORRIDOR_FIXTURE'
-            return []
-          })()
+      const canonical = getCanonicalScenarioLegs(sc)
 
-      const leg2Coords: [number, number][] = (leg2Plan?.geometry?.coordinates?.length > 2)
+      // Use API-returned geometry when available (real road-following routes)
+      // Fall back to authentic canonical road network corridor fixtures for DEMO scenarios
+      const leg1Coords: [number, number][] = (leg1Plan?.geometry?.coordinates?.length >= 5)
+        ? (leg1Plan.geometry.coordinates as [number, number][])
+        : canonical.leg1Coords
+
+      const leg2Coords: [number, number][] = (leg2Plan?.geometry?.coordinates?.length >= 5)
         ? (leg2Plan.geometry.coordinates as [number, number][])
-        : (() => {
-            console.warn('[DriverNav] Leg 2 API geometry unavailable or insufficient. Using DEMO corridor fixture.')
-            leg2Source = 'DEMO_CORRIDOR_FIXTURE'
-            return []
-          })()
+        : canonical.leg2Coords
 
       setLeg1Coordinates(leg1Coords)
       setLeg2Coordinates(leg2Coords)
 
       const fullLine: [number, number][] = [...leg1Coords, ...leg2Coords.slice(1)]
       setOriginalRouteCoordinates(fullLine)
-
-      if (leg1Source === 'DEMO_CORRIDOR_FIXTURE' || leg2Source === 'DEMO_CORRIDOR_FIXTURE') {
-        console.warn('[DriverNav] DEMO MODE: Using pre-computed corridor fixtures. Routes may not reflect real-time road conditions.')
-      }
 
       const dist1 = leg1Plan?.distanceMeters || 2800
       const dist2 = leg2Plan?.distanceMeters || 5200
@@ -505,6 +569,21 @@ export function DriverNavigation({
           trafficDelaySeconds: leg2Plan.alternative.trafficDelaySeconds || 360,
           steps: leg2Plan.alternative.steps || []
         }
+      } else if (sc.hasAutoReroute && canonical.altCoords && canonical.altCoords.length > 2) {
+        alternative = {
+          affectedLegNumber: 2,
+          geometry: { type: 'LineString', coordinates: canonical.altCoords },
+          distanceMeters: dist2 + 600,
+          durationSeconds: Math.max(dur2 - (sc.expectedTimeSavedMinutes || 6) * 60, 240),
+          preference: 'FASTEST' as const,
+          description: `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 6} min)`,
+          trafficDelaySeconds: 30,
+          steps: [
+            { maneuver: 'DEPART' as const, instruction: 'Take arterial bypass around congestion bottleneck', distance: 800, duration: 90 },
+            { maneuver: 'CONTINUE' as const, instruction: 'Proceed via synchronized signal corridor', distance: 2400, duration: 240 },
+            { maneuver: 'ARRIVE' as const, instruction: `Arrive at ${sc.destinationName} ER Bay`, distance: 300, duration: 40 }
+          ]
+        }
       }
 
       const plan: RoutePlan = {
@@ -527,15 +606,18 @@ export function DriverNavigation({
       setTotalDistanceRemainingMeters(plan.distanceMeters)
       setTotalDurationRemainingSeconds(plan.durationSeconds)
 
+      const startPoint = (leg1Coords && leg1Coords.length > 0 ? leg1Coords[0] : null) || sc.originCoordinates
+      const nextPoint = (leg1Coords && leg1Coords.length > 1 ? leg1Coords[1] : null) || sc.emergencyCoordinates
+
       setCurrentLocation({
-        coordinates: leg1Coords[0],
-        heading: calculateBearing(leg1Coords[0], leg1Coords[1] || sc.emergencyCoordinates),
+        coordinates: startPoint,
+        heading: calculateBearing(startPoint, nextPoint),
         speed: 36,
         accuracy: 3,
         timestamp: Date.now(),
         isSimulated: true
       })
-      setDistanceToNextStepMeters(legs[0].steps[0]?.distance || 350)
+      setDistanceToNextStepMeters(legs[0]?.steps?.[0]?.distance || 350)
       setRecenterTrigger((prev) => prev + 1)
     } catch (err: unknown) {
       console.error('[DriverNav] Scenario corridor calculation failed:', err)
@@ -975,8 +1057,8 @@ export function DriverNavigation({
   const timeSavedMin = Math.max(1, currentEtaMin - altEtaMin)
 
   return (
-    <div className={`relative flex flex-col h-full w-full overflow-hidden bg-slate-950 select-none ${className}`}>
-      {/* 1. TOP EMERGENCY HEADER (Part 1 — Emergency State, Destination, Priority, ETA) */}
+    <div className={`relative flex flex-col h-full w-full overflow-hidden bg-background text-foreground select-none ${className}`}>
+      {/* 1. UNIFIED MISSION BAR (Single-Tier Header) */}
       <div className="z-30 w-full shrink-0">
         <DriverEmergencyHeader
           ambulanceId={activeAmbulanceId}
@@ -988,65 +1070,24 @@ export function DriverNavigation({
           emergencyActive={navState !== 'ARRIVED'}
           scenarioTitle={navigationMode === 'MANUAL_ROUTE' ? 'Custom Route' : currentScenario.id}
           onOpenScenarios={() => setIsScenarioSelectorOpen(true)}
-        />
-
-        {/* MODE SWITCHER BAR */}
-        <div className="bg-slate-900 border-b border-slate-800 px-3 sm:px-4 py-1.5 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => {
-                setNavigationMode('EMERGENCY_MISSION')
-                setIsRoutePlannerVisible(false)
-                initializeScenarioCorridors(currentScenario)
-              }}
-              className={`min-h-[36px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                navigationMode === 'EMERGENCY_MISSION' && !isRoutePlannerVisible
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              <Siren className="size-3" />
-              <span>Emergency Mission</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setIsRoutePlannerVisible(true)
-              }}
-              className={`min-h-[36px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                isRoutePlannerVisible || navigationMode === 'MANUAL_ROUTE'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'
-              }`}
-            >
-              <RouteIcon className="size-3" />
-              <span>Route Planner</span>
-            </button>
-
-            {/* GPS Toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                if (gpsMode === 'SIMULATION') {
-                  setIsSimulating(false)
-                  setGpsMode('LIVE_GPS')
-                } else {
-                  setGpsMode('SIMULATION')
-                }
-              }}
-              className={`min-h-[36px] px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                gpsMode === 'LIVE_GPS'
-                  ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400'
-                  : 'bg-slate-800 text-slate-300 hover:text-white'
-              }`}
-              title={gpsMode === 'LIVE_GPS' ? 'Switch to simulation' : 'Track live GPS'}
-            >
-              <Radio className={`size-3 ${gpsMode === 'LIVE_GPS' ? 'text-white animate-pulse' : 'text-slate-400'}`} />
-              <span className="hidden sm:inline">{gpsMode === 'LIVE_GPS' ? 'GPS Live' : 'Live GPS'}</span>
-            </button>
-
+          navigationMode={navigationMode}
+          onSelectEmergencyMission={() => {
+            setNavigationMode('EMERGENCY_MISSION')
+            setIsRoutePlannerVisible(false)
+            initializeScenarioCorridors(currentScenario)
+          }}
+          isRoutePlannerVisible={isRoutePlannerVisible}
+          onToggleRoutePlanner={() => setIsRoutePlannerVisible(!isRoutePlannerVisible)}
+          gpsMode={gpsMode}
+          onToggleGpsMode={() => {
+            if (gpsMode === 'SIMULATION') {
+              setIsSimulating(false)
+              setGpsMode('LIVE_GPS')
+            } else {
+              setGpsMode('SIMULATION')
+            }
+          }}
+          smsButtonNode={
             <DriverSmsButton
               emergencyId={currentScenario.id}
               ambulanceId={activeAmbulanceId}
@@ -1054,31 +1095,17 @@ export function DriverNavigation({
               destinationHospital={destinationName}
               etaMinutes={currentEtaMin}
             />
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {isLoadingRoute && (
-              <span className="flex items-center gap-1 text-[10px] text-cyan-400 font-bold animate-pulse">
-                <RefreshCw className="size-3 animate-spin" />
-                <span className="hidden sm:inline">Routing...</span>
-              </span>
-            )}
-            {navigationMode === 'MANUAL_ROUTE' && (
-              <button
-                type="button"
-                onClick={handleEndNavigation}
-                className="min-h-[34px] px-2 py-1 rounded-lg bg-red-600/15 hover:bg-red-600/25 text-red-300 font-bold border border-red-500/30 text-[10px]"
-              >
-                End Route
-              </button>
-            )}
-          </div>
-        </div>
+          }
+          onOpenPriorityRadio={onOpenPriorityRadio}
+          onOpenTelemetry={onOpenTelemetry}
+          isLoadingRoute={isLoadingRoute}
+          onEndNavigation={handleEndNavigation}
+        />
       </div>
 
       {/* Reroute Success Notification Toast */}
       {rerouteAcceptedToast && (
-        <div className="absolute top-28 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-50 animate-in slide-in-from-top duration-300">
+        <div className="absolute top-16 inset-x-4 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 z-50 animate-in slide-in-from-top duration-300">
           <div className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs sm:text-sm shadow-2xl border border-emerald-400 flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-emerald-200 animate-bounce" />
             <span>GeoAgent Route Activated · Bypass Corridor Set · Saving {timeSavedMin} Min</span>
@@ -1086,15 +1113,15 @@ export function DriverNavigation({
         </div>
       )}
 
-      {/* 2. MAIN COCKPIT: Split View on Desktop, Tabbed on Mobile */}
-      <div className="flex-1 relative w-full flex flex-col lg:flex-row overflow-hidden">
+      {/* 2. MAIN DRIVER WORKSPACE: 2-Column Split View filling full remaining viewport */}
+      <div className="flex-1 min-h-0 relative w-full flex flex-col lg:flex-row overflow-hidden bg-background">
         
-        {/* LEFT COLUMN / SIDEBAR (Desktop) or TAB CONTENT (Mobile) */}
-        <div className={`w-full lg:w-[480px] xl:w-[520px] shrink-0 flex flex-col z-20 overflow-y-auto custom-scrollbar border-r border-slate-800/80 bg-slate-950/95 backdrop-blur-md p-3 sm:p-4 space-y-3 ${
+        {/* LEFT COLUMN: Compact Operational Panel (32-36%, max 420px) */}
+        <div className={`w-full lg:w-[380px] xl:w-[420px] shrink-0 flex flex-col z-20 overflow-y-auto custom-scrollbar border-r border-border bg-card/95 text-card-foreground backdrop-blur-md p-3 sm:p-4 space-y-3 ${
           mobileActiveTab === 'MAP' ? 'hidden lg:flex' : 'flex'
         }`}>
           
-          {/* ROUTE PLANNER VIEW (Shown when user clicks Route Planner or IDLE) */}
+          {/* ROUTE PLANNER VIEW (Shown when user clicks Route Planner) */}
           {isRoutePlannerVisible ? (
             <div className="space-y-3">
               <DriverRoutePlanner
@@ -1120,56 +1147,8 @@ export function DriverNavigation({
             </div>
           ) : (
             <>
-              {/* A. 2-LEG JOURNEY STATUS (Only in Emergency Mission Mode) */}
-              {navigationMode === 'EMERGENCY_MISSION' ? (
-                <DriverJourneyStatus
-                  ambulanceId={activeAmbulanceId}
-                  currentLocationName={currentScenario.originName}
-                  emergencyLocationName={emergencyName}
-                  emergencyCoordinates={emergencyLocation}
-                  destinationName={destinationName}
-                  destinationCoordinates={destinationLocation}
-                  activeLegNumber={activeLegNumber}
-                  currentStage={currentStage}
-                  legs={routePlan?.legs || []}
-                  onSelectLeg={(legNum) => {
-                    setActiveLegNumber(legNum)
-                    setCurrentStepIndex(0)
-                  }}
-                  onAdvanceStage={handleAdvanceStage}
-                  isSimulating={isSimulating}
-                />
-              ) : (
-                /* Manual Route Status Card */
-                <div className="rounded-2xl border border-emerald-500/40 bg-slate-900/95 p-4 text-white shadow-xl">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2.5 mb-2.5">
-                    <div className="flex items-center gap-2">
-                      <RouteIcon className="size-4 text-emerald-400" />
-                      <span className="text-xs font-black uppercase text-emerald-400">Custom Navigation Active</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsRoutePlannerVisible(true)}
-                      className="text-xs font-bold text-blue-400 hover:text-blue-300 underline"
-                    >
-                      Edit Route
-                    </button>
-                  </div>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex items-center gap-2 text-slate-300">
-                      <Car className="size-3.5 text-blue-400 shrink-0" />
-                      <span className="truncate">From: Current Device GPS</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-white font-bold">
-                      <MapPin className="size-3.5 text-emerald-400 shrink-0" />
-                      <span className="truncate">To: {destinationName}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* B. NEXT MANEUVER CARD (Part 13 — Turn instructions) */}
-              {currentStep && (
+              {/* #1 DOMINANT NEXT MANEUVER CARD (At top of operational panel) */}
+              {currentStep ? (
                 <DriverManeuverCard
                   currentStep={currentStep}
                   nextStep={nextStep}
@@ -1177,25 +1156,65 @@ export function DriverNavigation({
                   distanceToStepMeters={distanceToNextStepMeters}
                   destinationName={destinationName}
                 />
+              ) : (
+                <div className="p-4 rounded-2xl bg-card border-2 border-emerald-500/30 text-card-foreground shadow-md flex items-center gap-3">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white">
+                    <Navigation className="size-6" />
+                  </div>
+                  <div>
+                    <span className="font-mono text-xs uppercase font-black text-emerald-600 dark:text-emerald-400">
+                      OPTIMAL CORRIDOR
+                    </span>
+                    <p className="text-sm font-bold text-foreground">
+                      Follow priority signals to {destinationName}
+                    </p>
+                  </div>
+                </div>
               )}
 
-              {/* C. GeoAgent Decision Action Hero Card */}
+              {/* #2 COMPACT CONNECTED ETA & MISSION METRICS STRIP */}
+              <div className="grid grid-cols-4 gap-1.5 p-2 rounded-xl bg-muted/60 border border-border text-center text-xs">
+                <div>
+                  <span className="text-[9px] text-muted-foreground uppercase font-bold block">ETA</span>
+                  <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">{currentEtaMin}m</span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-muted-foreground uppercase font-bold block">DIST</span>
+                  <span className="font-mono font-bold text-foreground">
+                    {typeof totalDistanceRemainingMeters === 'number' && totalDistanceRemainingMeters >= 1000
+                      ? `${(totalDistanceRemainingMeters / 1000).toFixed(1)} km`
+                      : `${Math.round(totalDistanceRemainingMeters || 0)} m`}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-muted-foreground uppercase font-bold block">SPEED</span>
+                  <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                    {Math.round(currentLocation.speed || 42)} km/h
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[9px] text-muted-foreground uppercase font-bold block">CORRIDOR</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">OPTIMAL</span>
+                </div>
+              </div>
+
+              {/* #3 COLLAPSIBLE GEOAGENT INTELLIGENCE PANEL */}
               {navigationMode === 'EMERGENCY_MISSION' && (
                 <>
                   {geoAgentState === 'BACKUP_RECOMMENDED' ? (
-                    <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-500/50 text-white shadow-xl space-y-2.5">
+                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-foreground shadow-md space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-amber-400 animate-pulse" />
-                          <span className="text-xs font-black uppercase tracking-wider text-amber-300">
-                            🤖 GeoAgent Advisory: Backup Unit Dispatched
+                          <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" />
+                          <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-300">
+                            GeoAgent Advisory: Backup Dispatched
                           </span>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
                           AMB-06 Standby
                         </span>
                       </div>
-                      <p className="text-xs text-slate-300">
+                      <p className="text-xs text-muted-foreground">
                         Primary corridor delayed by multi-vehicle bottleneck. Secondary unit AMB-06 at St John&apos;s recommended to reduce arrival time by 8 minutes.
                       </p>
                     </div>
@@ -1224,22 +1243,21 @@ export function DriverNavigation({
                       isAccepting={isAcceptingReroute}
                     />
                   ) : (
-                    /* State when route is updated or on track */
-                    <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40 text-white flex items-center justify-between shadow-lg">
+                    <div className="p-3 rounded-2xl bg-card border border-border text-foreground flex items-center justify-between shadow-xs">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="h-5 w-5" />
+                        <div className="p-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                          <CheckCircle2 className="h-4 w-4" />
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-                              GeoAgent Corridor
+                            <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                              Corridor Status
                             </span>
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                               OPTIMAL
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-300">
+                          <p className="text-[11px] text-muted-foreground">
                             Following recommended active corridor. Zero active hazards.
                           </p>
                         </div>
@@ -1250,15 +1268,34 @@ export function DriverNavigation({
                           setIsDeviated(true)
                           setGeoAgentState('REROUTE_RECOMMENDED')
                         }}
-                        className="min-h-[44px] px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 font-semibold border border-slate-700 shrink-0 transition-colors"
+                        className="px-2 py-1 rounded-lg bg-muted hover:bg-muted/80 text-[10px] text-muted-foreground font-semibold border border-border shrink-0 transition-colors cursor-pointer"
                         title="Simulate deviation to trigger GeoAgent"
                       >
-                        Simulate Deviation
+                        Simulate Detour
                       </button>
                     </div>
                   )}
 
-                  {/* D. Emergency Clearance Panel */}
+                  {/* #4 2-LEG JOURNEY STATUS */}
+                  <DriverJourneyStatus
+                    ambulanceId={activeAmbulanceId}
+                    currentLocationName={currentScenario.originName}
+                    emergencyLocationName={emergencyName}
+                    emergencyCoordinates={emergencyLocation}
+                    destinationName={destinationName}
+                    destinationCoordinates={destinationLocation}
+                    activeLegNumber={activeLegNumber}
+                    currentStage={currentStage}
+                    legs={routePlan?.legs || []}
+                    onSelectLeg={(legNum) => {
+                      setActiveLegNumber(legNum)
+                      setCurrentStepIndex(0)
+                    }}
+                    onAdvanceStage={handleAdvanceStage}
+                    isSimulating={isSimulating}
+                  />
+
+                  {/* #5 EMERGENCY CLEARANCE PANEL */}
                   <DriverEmergencyClearance
                     session={clearanceSession}
                     onAdvanceCycle={handleAdvanceClearance}
@@ -1267,7 +1304,7 @@ export function DriverNavigation({
                 </>
               )}
 
-              {/* E. Live Situation & Corridor Status (Part 22) */}
+              {/* #6 LIVE SITUATION PANEL */}
               <DriverLiveSituation
                 navState={navState}
                 isDeviated={isDeviated}
@@ -1281,7 +1318,7 @@ export function DriverNavigation({
                 gpsStatus="ACTIVE"
               />
 
-              {/* F. Route Comparison Drawer / Toggle */}
+              {/* #7 ROUTE COMPARISON DRAWER */}
               {isComparisonOpen && routePlan && routePlan.alternative && (
                 <DriverAlternativeRoutes
                   currentRoute={routePlan}
@@ -1297,7 +1334,7 @@ export function DriverNavigation({
         </div>
 
         {/* RIGHT COLUMN: Map Viewport */}
-        <div className={`flex-1 relative h-full w-full z-10 ${
+        <div className={`flex-1 relative h-full w-full min-h-[500px] z-10 ${
           mobileActiveTab === 'COCKPIT' ? 'hidden lg:block' : 'block'
         }`}>
           

@@ -9,6 +9,7 @@ import type L from 'leaflet'
 import type { MapRoute } from '../types'
 import { toLatLng, toLatLngArray } from '../types'
 import { createRoutePopupHtml } from '../popup-content'
+import { getRouteSemanticStyle } from '@/lib/routing-constants'
 
 export class RouteLayerManager {
   private layerGroup: L.LayerGroup
@@ -49,22 +50,15 @@ export class RouteLayerManager {
       const latLngs = toLatLngArray(coords)
       const isSelected = selectedRouteId === id || route.status === 'ACTIVE' || route.isRecommended
 
-      // Route styling
-      let color = '#3b82f6' // Blue (Planned / Leg 1)
-      let weight = isSelected ? 6 : 4
-      let opacity = isSelected ? 0.95 : 0.65
-      let dashArray: string | undefined = undefined
-
-      if (route.routeType === 'CURRENT' || route.status === 'ACTIVE') {
-        color = '#10b981' // Emerald (Active)
-        weight = isSelected ? 7 : 5
-        opacity = 0.95
-      } else if (route.routeType === 'ALTERNATIVE') {
-        color = '#06b6d4' // Cyan (Alternative)
-        dashArray = '6, 6'
-        weight = 5
-        opacity = 0.85
-      }
+      // Centralized route styling from single source of truth:
+      // 🔵 BLUE = Planned / Active Corridor
+      // 🟣 PURPLE = Recommended Alternative Detour
+      // ⚪ GRAY = Other Alternative Routes
+      const style = getRouteSemanticStyle(route)
+      const color = style.color
+      const dashArray = style.dashArray
+      const weight = isSelected ? (style.weight ? style.weight + 2 : 7) : (style.weight || 5)
+      const opacity = isSelected ? 1.0 : (style.opacity || 0.85)
 
       const popupContent = createRoutePopupHtml(route)
 
@@ -167,7 +161,7 @@ export class RouteLayerManager {
 
             const chevronIcon = LRef.divIcon({
               className: 'route-map-chevron',
-              html: `<div style="transform:rotate(${Math.round(bearing)}deg);display:flex;align-items:center;justify-content:center;width:20px;height:20px;pointer-events:none;"><svg viewBox="0 0 24 24" width="15" height="15" fill="#34d399" style="filter:drop-shadow(0 0 4px rgba(16,185,129,0.9));"><path d="M5 3l14 9-14 9V3z"/></svg></div>`,
+              html: `<div style="transform:rotate(${Math.round(bearing)}deg);display:flex;align-items:center;justify-content:center;width:20px;height:20px;pointer-events:none;"><svg viewBox="0 0 24 24" width="15" height="15" fill="${style.color}" style="filter:drop-shadow(0 0 4px ${style.color});"><path d="M5 3l14 9-14 9V3z"/></svg></div>`,
               iconSize: [20, 20],
               iconAnchor: [10, 10],
             })
@@ -194,21 +188,21 @@ export class RouteLayerManager {
             const markerHtml = isFirst
               ? `
                 <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-                  <div style="position:absolute;width:40px;height:40px;border-radius:50%;background:rgba(16,185,129,0.4);animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
-                  <div style="position:relative;width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#10b981,#047857);border:2px solid #a7f3d0;box-shadow:0 3px 10px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:16px;">
+                  <div style="position:absolute;width:40px;height:40px;border-radius:50%;background:${style.color}40;animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+                  <div style="position:relative;width:30px;height:30px;border-radius:8px;background:${style.color};border:2px solid #ffffff;box-shadow:0 3px 10px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:16px;">
                     ${m.icon}
                   </div>
-                  <div style="margin-top:2px;background:rgba(15,23,42,0.95);color:#34d399;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:9999px;border:1px solid rgba(52,211,153,0.5);white-space:nowrap;">
+                  <div style="margin-top:2px;background:rgba(15,23,42,0.95);color:${style.color};font-size:9px;font-weight:bold;padding:1px 5px;border-radius:9999px;border:1px solid ${style.color}80;white-space:nowrap;">
                     TURN 1
                   </div>
                 </div>
               `
               : `
                 <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-                  <div style="width:24px;height:24px;border-radius:7px;background:#0f172a;border:2px solid #38bdf8;box-shadow:0 2px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#38bdf8;font-weight:bold;font-size:13px;">
+                  <div style="width:24px;height:24px;border-radius:7px;background:#0f172a;border:2px solid ${style.color};box-shadow:0 2px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:${style.color};font-weight:bold;font-size:13px;">
                     ${m.icon}
                   </div>
-                  <div style="margin-top:1px;background:rgba(15,23,42,0.9);color:#94a3b8;font-size:8px;font-weight:bold;padding:0px 4px;border-radius:9999px;border:1px solid rgba(56,189,248,0.3);white-space:nowrap;">
+                  <div style="margin-top:1px;background:rgba(15,23,42,0.9);color:#94a3b8;font-size:8px;font-weight:bold;padding:0px 4px;border-radius:9999px;border:1px solid ${style.color}50;white-space:nowrap;">
                     TURN ${idx + 1}
                   </div>
                 </div>

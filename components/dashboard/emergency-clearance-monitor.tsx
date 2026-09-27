@@ -137,19 +137,19 @@ export function EmergencyClearanceMonitor({
   const percent = Math.round((clearedCount / totalCount) * 100)
 
   return (
-    <div className={`rounded-xl border border-border bg-card p-5 shadow-xs text-card-foreground ${className}`}>
+    <div className={`rounded-2xl border-2 border-border bg-card p-5 shadow-lg text-card-foreground transition-all ${className}`}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-teal-500/15 text-teal-400 border border-teal-500/30">
+            <div className="p-2 rounded-xl bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30">
               <Radio className="size-4 animate-pulse" />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-bold text-foreground">
+              <h3 className="text-sm font-extrabold text-foreground">
                 Corridor Emergency Clearance
               </h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-teal-500/15 text-teal-400 border border-teal-500/30">
+              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30">
                 SIMULATED CONNECTED VEHICLES (DEMO V2X)
               </span>
             </div>
@@ -163,7 +163,7 @@ export function EmergencyClearanceMonitor({
           type="button"
           onClick={handleAdvance}
           disabled={isAdvancing}
-          className="min-h-[36px] px-3 py-1.5 rounded-lg bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-400 text-xs font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+          className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white text-xs font-bold tracking-wide flex items-center gap-2 transition-all shadow-md shadow-emerald-700/20 shrink-0 disabled:opacity-50 cursor-pointer"
           title="Advance clearance simulation step"
         >
           <RefreshCw className={`size-3.5 ${isAdvancing ? 'animate-spin' : ''}`} />

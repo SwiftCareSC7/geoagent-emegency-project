@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react'
+import { useTheme } from 'next-themes'
 import type L from 'leaflet'
 import type { MapProviderHealth, TileLayerProvider } from './types'
 
@@ -41,6 +42,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   },
   ref
 ) {
+  const { resolvedTheme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const tileLayersRef = useRef<{ [key in TileLayerProvider]?: L.TileLayer }>({})
@@ -81,56 +83,83 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
 
       L.control.zoom({ position: 'topright' }).addTo(map)
       L.control
-        .attribution({ position: 'bottomright', prefix: '&copy; Leaflet & CARTO' })
+        .attribution({
+          position: 'bottomright',
+          prefix:
+            '<span class="px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold text-muted-foreground bg-background/80 backdrop-blur-xs border border-border/50">SwiftCare GeoAgent</span>',
+        })
         .addTo(map)
 
-      // 4. Create Tile Layers with CARTO API Key authentication
-      const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim()
-      const cartoDarkUrl = cartoKey
-        ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoKey)}`
-        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-      if (onBasemapHealthChange) {
-        onBasemapHealthChange(
-          cartoKey ? 'AVAILABLE' : 'NOT_CONFIGURED',
-          cartoKey ? 'CARTO authenticated tile layer active' : 'CARTO API key not configured'
-        )
-      }
-
-      const darkTiles = L.tileLayer(cartoDarkUrl, {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>',
+      // 4. Create High-Definition Tile Layers (Google Maps, CARTO Retina, OSM, ESRI)
+      const googleStreets = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
+        attribution: '&copy; Google Maps',
       })
 
-      darkTiles.on('tileerror', () => {
-        if (onBasemapHealthChange) {
-          onBasemapHealthChange('DEGRADED', 'Map tiles encountered loading errors')
-        }
+      const googleTraffic = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
+        attribution: '&copy; Google Maps &amp; Traffic',
+      })
+
+      const googleHybrid = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
+        attribution: '&copy; Google Maps Imagery',
+      })
+
+      const googleSatellite = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
+        attribution: '&copy; Google Maps Satellite',
+      })
+
+      const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+      })
+
+      const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
       })
 
       const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+        attribution: '&copy; OpenStreetMap',
       })
 
       const satelliteTiles = L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         {
           maxZoom: 19,
-          attribution: '&copy; ESRI, Maxar, Earthstar Geographics',
+          attribution: '&copy; ESRI World Imagery',
         }
       )
 
+      if (onBasemapHealthChange) {
+        onBasemapHealthChange('AVAILABLE', 'High-definition basemap layers active')
+      }
+
       tileLayersRef.current = {
+        google_streets: googleStreets,
+        google_traffic: googleTraffic,
+        google_hybrid: googleHybrid,
+        google_satellite: googleSatellite,
         carto_dark: darkTiles,
+        carto_light: lightTiles,
         osm: osmTiles,
         esri_satellite: satelliteTiles,
       }
 
-      darkTiles.addTo(map)
+      const isLightMode = resolvedTheme === 'light'
+      const initialTileKey: TileLayerProvider = isLightMode ? 'google_streets' : 'carto_dark'
+      const initialLayer = tileLayersRef.current[initialTileKey] || darkTiles
+      initialLayer.addTo(map)
+      activeTileLayerRef.current = initialTileKey
 
       // 5. Create Standard Layer Groups
       const groupNames = ['routes', 'trajectories', 'incidents', 'deviations', 'emergencies', 'vehicles', 'v2xSignals']
@@ -194,6 +223,9 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         }
         if (target) {
           target.addTo(map)
+          if (typeof (target as any).bringToBack === 'function') {
+            ;(target as any).bringToBack()
+          }
           activeTileLayerRef.current = provider
         }
       },
@@ -216,11 +248,33 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     [mapLoaded]
   )
 
+  // Dynamically synchronize basemap with global light / dark theme
+  useEffect(() => {
+    const map = mapInstanceRef.current
+    if (!map) return
+    const currentProvider = activeTileLayerRef.current
+    // Only auto-switch if active tile is carto_dark or carto_light
+    if (currentProvider === 'carto_dark' || currentProvider === 'carto_light') {
+      const targetProvider: TileLayerProvider = resolvedTheme === 'light' ? 'carto_light' : 'carto_dark'
+      if (currentProvider !== targetProvider) {
+        const currentLayer = tileLayersRef.current[currentProvider]
+        const targetLayer = tileLayersRef.current[targetProvider]
+        if (currentLayer && map.hasLayer(currentLayer)) {
+          map.removeLayer(currentLayer)
+        }
+        if (targetLayer) {
+          targetLayer.addTo(map)
+          activeTileLayerRef.current = targetProvider
+        }
+      }
+    }
+  }, [resolvedTheme])
+
   return (
-    <div className={`relative w-full overflow-hidden rounded-xl bg-slate-950 ${className}`} style={{ height }}>
+    <div className={`relative w-full overflow-hidden rounded-xl bg-muted/40 dark:bg-slate-950 ${className}`} style={{ height }}>
       <div ref={containerRef} className="size-full z-0" />
       {!mapLoaded ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/80 backdrop-blur-sm z-10 text-slate-300">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 dark:bg-slate-950/80 backdrop-blur-sm z-10 text-foreground dark:text-slate-300">
           <div className="size-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <span className="text-xs font-mono">Initializing Spatial Tiles...</span>
         </div>

@@ -44,6 +44,8 @@ import { cn } from '@/lib/utils'
 import { NavigationManeuverHUD } from '@/components/navigation/NavigationManeuverHUD'
 import { formatDistance, formatDuration, formatArrivalTime } from '@/lib/navigation/geometry'
 import { CANONICAL_ROAD_CORRIDORS } from '@/lib/canonical-road-corridors'
+import { MapLegend } from '@/components/map/map-legend'
+import { ROUTE_SEMANTICS } from '@/lib/routing-constants'
 
 interface RealInteractiveMapProps {
   markers?: MapMarker[]
@@ -185,26 +187,23 @@ export function RealInteractiveMap({
       L.control.zoom({ position: 'topright' }).addTo(map)
       mapInstanceRef.current = map
 
-      // Base Tile Layer Providers (including Google & CARTO & OpenStreetMap)
-      const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim()
-      const cartoDarkUrl = cartoKey
-        ? `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoKey)}`
-        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-
-      const darkTiles = L.tileLayer(cartoDarkUrl, {
+      // Base Tile Layer Providers (including Google Maps Live Traffic & CARTO Dark & Satellite)
+      const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         maxZoom: 19,
         subdomains: 'abcd',
       })
 
-      const googleTrafficTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; Google Maps / OpenStreetMap Real-Time Traffic Layer',
-        maxZoom: 19,
+      const googleTrafficTiles = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps &amp; Live Traffic',
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
       })
 
-      const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '&copy; ESRI Satellite Imagery & Google Imagery',
-        maxZoom: 19,
+      const satelliteTiles = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps Satellite Hybrid',
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
       })
 
       googleTrafficTiles.addTo(map)
@@ -249,38 +248,56 @@ export function RealInteractiveMap({
         siren: sirenGroup,
       }
 
-      // 1. Planned Route A (Blue)
-      L.polyline(PLANNED_ROUTE_A, { color: '#3b82f6', weight: 5, opacity: 0.75 })
-        .bindPopup('<b>Route A (Old Airport Road)</b><br>Planned ETA: 10 min | Distance: 6.22 km')
+      // 1. Planned / Active Corridor (Route A - Blue)
+      L.polyline(PLANNED_ROUTE_A, {
+        color: ROUTE_SEMANTICS.activeCorridor.color, // #2563eb
+        weight: ROUTE_SEMANTICS.activeCorridor.weight,
+        opacity: ROUTE_SEMANTICS.activeCorridor.opacity,
+      })
+        .bindPopup('<b>Planned / Active Corridor (Route A - Old Airport Road)</b><br>Active ETA: 10 min | Distance: 6.22 km<br><span style="color:#2563eb;font-weight:bold;">Operational Primary Route</span>')
         .addTo(plannedGroup)
 
-      // 2. Recommended Route B (Green)
-      L.polyline(RECOMMENDED_ROUTE_B, { color: '#10b981', weight: 6, opacity: 0.9 })
-        .bindPopup('<b>Route B (Indiranagar 100ft Rd - RECOMMENDED)</b><br>ETA: 11 min | Time Saved: 5.0 min')
+      // 2. Recommended Alternative (Route B - Purple Dashed)
+      // High contrast glow backing
+      L.polyline(RECOMMENDED_ROUTE_B, {
+        color: '#4c1d95',
+        weight: 10,
+        opacity: 0.5,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(altGroup)
+
+      L.polyline(RECOMMENDED_ROUTE_B, {
+        color: ROUTE_SEMANTICS.recommendedAlternative.color, // #8b5cf6
+        weight: ROUTE_SEMANTICS.recommendedAlternative.weight,
+        opacity: ROUTE_SEMANTICS.recommendedAlternative.opacity,
+        dashArray: ROUTE_SEMANTICS.recommendedAlternative.dashArray,
+      })
+        .bindPopup('<b>Recommended Alternative (Route B - Indiranagar 100ft Rd Bypass)</b><br>ETA: 11 min | Time Saved: 5.0 min<br><span style="color:#8b5cf6;font-weight:bold;">AI Recommended Detour Bypass</span>')
         .addTo(altGroup)
 
-      // 2B. On-Map Turn Maneuvers for Route B
+      // 2B. On-Map Turn Maneuvers for Route B (Purple Detour Waypoints)
       INTERACTIVE_MAP_STEPS.forEach((step, idx) => {
         const isFirst = idx === 0
         const maneuverIconChar = step.maneuver === 'TURN_LEFT' ? '↰' : step.maneuver === 'TURN_RIGHT' ? '↱' : '↑'
         const markerHtml = isFirst
           ? `
             <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-              <div style="position:absolute;width:38px;height:38px;border-radius:50%;background:rgba(16,185,129,0.4);animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
-              <div style="position:relative;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#10b981,#047857);border:2px solid #a7f3d0;box-shadow:0 3px 10px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:15px;">
+              <div style="position:absolute;width:38px;height:38px;border-radius:50%;background:rgba(139,92,246,0.4);animation:ping 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+              <div style="position:relative;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:2px solid #ddd6fe;box-shadow:0 3px 10px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:15px;">
                 ${maneuverIconChar}
               </div>
-              <div style="margin-top:2px;background:rgba(15,23,42,0.95);color:#34d399;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:9999px;border:1px solid rgba(52,211,153,0.5);white-space:nowrap;">
+              <div style="margin-top:2px;background:rgba(15,23,42,0.95);color:#c084fc;font-size:9px;font-weight:bold;padding:1px 5px;border-radius:9999px;border:1px solid rgba(192,132,252,0.5);white-space:nowrap;">
                 ${step.distance}m
               </div>
             </div>
           `
           : `
             <div style="position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-              <div style="width:24px;height:24px;border-radius:7px;background:#0f172a;border:2px solid #38bdf8;box-shadow:0 2px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#38bdf8;font-weight:bold;font-size:13px;">
+              <div style="width:24px;height:24px;border-radius:7px;background:#0f172a;border:2px solid #a78bfa;box-shadow:0 2px 6px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;color:#a78bfa;font-weight:bold;font-size:13px;">
                 ${maneuverIconChar}
               </div>
-              <div style="margin-top:1px;background:rgba(15,23,42,0.9);color:#94a3b8;font-size:8px;font-weight:bold;padding:0px 4px;border-radius:9999px;border:1px solid rgba(56,189,248,0.3);white-space:nowrap;">
+              <div style="margin-top:1px;background:rgba(15,23,42,0.9);color:#94a3b8;font-size:8px;font-weight:bold;padding:0px 4px;border-radius:9999px;border:1px solid rgba(167,139,250,0.3);white-space:nowrap;">
                 ${step.distance}m
               </div>
             </div>
@@ -296,27 +313,37 @@ export function RealInteractiveMap({
         const tMarker = L.marker(step.coord, { icon }).addTo(altGroup)
         tMarker.bindPopup(`
           <div style="font-family:system-ui,sans-serif;padding:3px;min-width:160px;">
-            <div style="font-size:10px;font-weight:bold;color:${isFirst ? '#34d399' : '#38bdf8'};text-transform:uppercase;">
+            <div style="font-size:10px;font-weight:bold;color:${isFirst ? '#c084fc' : '#a78bfa'};text-transform:uppercase;">
               Turn #${idx + 1} (${step.maneuver.replace('_', ' ')})
             </div>
             <div style="font-size:12px;font-weight:700;color:#f8fafc;margin-top:2px;">
               ${step.instruction}
             </div>
-            <div style="font-size:10px;color:#10b981;margin-top:4px;">
-              ✓ Signal Preemption Active (${step.distance}m)
+            <div style="font-size:10px;color:#a78bfa;margin-top:4px;">
+              ✓ Detour Preemption Active (${step.distance}m)
             </div>
           </div>
         `)
       })
 
-      // 3. Alternative Route C (Amber)
-      L.polyline(ALTERNATIVE_ROUTE_C, { color: '#f59e0b', weight: 4, dashArray: '6, 6', opacity: 0.6 })
-        .bindPopup('<b>Route C (Inner Ring Rd)</b><br>ETA: 14 min')
+      // 3. Other Alternative Route C (Gray)
+      L.polyline(ALTERNATIVE_ROUTE_C, {
+        color: ROUTE_SEMANTICS.otherAlternative.color, // #64748b
+        weight: ROUTE_SEMANTICS.otherAlternative.weight,
+        dashArray: ROUTE_SEMANTICS.otherAlternative.dashArray,
+        opacity: ROUTE_SEMANTICS.otherAlternative.opacity,
+      })
+        .bindPopup('<b>Other Alternative Route (Route C - Inner Ring Rd)</b><br>ETA: 14 min<br><span style="color:#64748b;">Secondary Evaluated Candidate</span>')
         .addTo(altGroup)
 
-      // 4. Deviated Telemetry Path (Red Dashed)
-      L.polyline(DEVIATED_PATH, { color: '#ef4444', weight: 4, dashArray: '8, 8' })
-        .bindPopup('<b>Deviated Telemetry Path</b><br>Distance off route: 444.7m')
+      // 4. Actual GPS Trajectory (Orange Dashed)
+      L.polyline(DEVIATED_PATH, {
+        color: ROUTE_SEMANTICS.gpsTrajectory.color, // #f97316
+        weight: ROUTE_SEMANTICS.gpsTrajectory.weight,
+        dashArray: ROUTE_SEMANTICS.gpsTrajectory.dashArray,
+        opacity: ROUTE_SEMANTICS.gpsTrajectory.opacity,
+      })
+        .bindPopup('<b>Actual GPS Trajectory</b><br>Actual vehicle breadcrumbs | Deviation: 444.7m off-route')
         .addTo(incidentGroup)
 
       // 5. Static Markers
@@ -752,8 +779,8 @@ export function RealInteractiveMap({
         </div>
 
         {/* Map Layers Selector Floating Box */}
-        <div className="absolute bottom-3 right-3 z-10 rounded-xl border border-border bg-card/90 p-2.5 backdrop-blur-md shadow-lg text-xs space-y-1.5">
-          <div className="flex items-center gap-1.5 font-bold text-card-foreground pb-1 border-b border-border">
+        <div className="absolute bottom-3 right-3 z-10 rounded-xl border border-border bg-card/95 p-3 backdrop-blur-md shadow-xl text-xs space-y-2">
+          <div className="flex items-center gap-1.5 font-bold text-card-foreground pb-1.5 border-b border-border">
             <Layers className="size-3.5 text-primary" />
             <span>Layer Controls</span>
           </div>
@@ -762,29 +789,29 @@ export function RealInteractiveMap({
               type="checkbox"
               checked={visibleLayers.planned}
               onChange={(e) => setVisibleLayers({ ...visibleLayers, planned: e.target.checked })}
-              className="rounded accent-blue-500"
+              className="rounded accent-blue-600"
             />
-            <span className="size-2 rounded-full bg-blue-500 inline-block" />
-            <span>Planned Route A</span>
+            <span className="size-2.5 rounded-full bg-blue-600 inline-block shrink-0" />
+            <span className="font-semibold text-blue-700 dark:text-blue-300">Active Corridor (Route A)</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
             <input
               type="checkbox"
               checked={visibleLayers.alternative}
               onChange={(e) => setVisibleLayers({ ...visibleLayers, alternative: e.target.checked })}
-              className="rounded accent-emerald-500"
+              className="rounded accent-purple-600"
             />
-            <span className="size-2 rounded-full bg-emerald-500 inline-block" />
-            <span>Route B (100ft Rd Bypass)</span>
+            <span className="size-2.5 rounded-full bg-purple-600 inline-block shrink-0" />
+            <span className="font-semibold text-purple-700 dark:text-purple-300">Recommended Detour (Route B)</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
             <input
               type="checkbox"
               checked={visibleLayers.v2x}
               onChange={(e) => setVisibleLayers({ ...visibleLayers, v2x: e.target.checked })}
-              className="rounded accent-emerald-400"
+              className="rounded accent-emerald-500"
             />
-            <span className="size-2 rounded-full bg-emerald-400 inline-block" />
+            <span className="size-2.5 rounded-full bg-emerald-500 inline-block shrink-0" />
             <span>V2X Green Wave Nodes</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
@@ -794,26 +821,29 @@ export function RealInteractiveMap({
               onChange={(e) => setVisibleLayers({ ...visibleLayers, virtualSiren: e.target.checked })}
               className="rounded accent-rose-500"
             />
-            <span className="size-2 rounded-full bg-rose-500 inline-block" />
+            <span className="size-2.5 rounded-full bg-rose-500 inline-block shrink-0" />
             <span>500m Virtual Siren Zone</span>
           </label>
         </div>
+
+        {/* PROMINENT MAP CORRIDOR LEGEND */}
+        <MapLegend />
       </div>
 
       {/* Bottom Summary Bar */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-border bg-card px-4 py-2.5 text-xs text-muted-foreground">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-blue-500" />
-            <span>Route A (Delayed: 16m)</span>
+            <span className="size-2.5 rounded-full bg-blue-600" />
+            <span className="font-semibold text-blue-700 dark:text-blue-300">Planned / Active Corridor (Delayed: 16m)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-emerald-500" />
-            <span>Route B (Optimal: 11m · Saved 5m)</span>
+            <span className="size-2.5 rounded-full bg-purple-600" />
+            <span className="font-semibold text-purple-700 dark:text-purple-300">Recommended Alternative (Optimal: 11m · Saved 5m)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-purple-500" />
-            <span>Predictive Forecast Mode: +{futurePredictionMinutes}m</span>
+            <span className="size-2.5 rounded-full bg-orange-500" />
+            <span>GPS Trajectory: Actual Movement</span>
           </div>
         </div>
 

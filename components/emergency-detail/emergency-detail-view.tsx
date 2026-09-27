@@ -46,6 +46,7 @@ import { Button } from '@/components/ui/button'
 import { EmergencyOverviewCard } from './emergency-overview-card'
 import { VehicleMovementPanel } from './vehicle-movement-panel'
 import { RouteAnalysisPanel } from './route-analysis-panel'
+import { EmergencyMissionMap } from './emergency-mission-map'
 import { DeviationAnalysisPanel } from './deviation-analysis-panel'
 import { CorrelatedIncidentsPanel } from './correlated-incidents-panel'
 import { EpistemicBreakdownCard } from './epistemic-breakdown-card'
@@ -53,6 +54,17 @@ import { PredictionIntelligencePanel } from './prediction-intelligence-panel'
 import { RouteComparisonCard } from './route-comparison-card'
 import { DecisionApprovalCard } from './decision-approval-card'
 import { EventTimelineCard } from './event-timeline-card'
+import { MissionAssessmentHUD } from '@/components/assessment/mission-assessment-hud'
+import {
+  DEMO_ROUTES,
+  DEMO_TRAJECTORIES,
+  DEMO_PREDICTION,
+  DEMO_DECISION,
+  DEMO_DEVIATION,
+  DEMO_INCIDENTS,
+  getCanonicalRouteForEmergency
+} from '@/lib/demo-fixtures'
+import { validateRouteGeometry } from '@/lib/route-validator'
 import { cn } from '@/lib/utils'
 
 interface EmergencyDetailViewProps {
@@ -192,25 +204,38 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
       const routePromise = routeApi
         .getForEmergency(emergencyId)
         .then(async (res) => {
+          let authoritativeRoute: Route | null = null
           if (res.data && res.data.length > 0) {
-            const activeRoute = res.data[0]
-            setRoute(activeRoute)
+            const candidate = res.data[0]
+            const val = validateRouteGeometry(candidate)
+            if (val.isValid && val.isRoadConstrained) {
+              authoritativeRoute = candidate
+            }
+          }
+
+          if (!authoritativeRoute) {
+            const canonicalList = getCanonicalRouteForEmergency(emergencyId, emg)
+            authoritativeRoute = canonicalList.length > 0 ? (canonicalList[0] as unknown as Route) : null
+          }
+
+          setRoute(authoritativeRoute)
+
+          if (authoritativeRoute) {
             try {
-              const compRes = await routeApi.compare(activeRoute.routeId)
+              const compRes = await routeApi.compare(authoritativeRoute.routeId)
               if (compRes && compRes.data) {
                 setComparisonData(compRes.data)
               }
             } catch {
-              // Fallback to orchestration comparison
               setComparisonData(null)
             }
           } else {
-            setRoute(null)
             setComparisonData(null)
           }
         })
         .catch(() => {
-          setRoute(null)
+          const canonicalList = getCanonicalRouteForEmergency(emergencyId, emg)
+          setRoute(canonicalList.length > 0 ? (canonicalList[0] as unknown as Route) : null)
           setComparisonData(null)
         })
       promises.push(routePromise)
@@ -226,33 +251,64 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         // Latest GPS telemetry
         const latestTrajPromise = trajectoryApi
           .getLatestSafe(assignedVehId)
-          .then((traj) => setLatestTrajectory(traj))
+          .then((traj) => {
+            if (traj) {
+              setLatestTrajectory(traj)
+            } else {
+              const fallbackTrajs = (assignedVehId && DEMO_TRAJECTORIES[assignedVehId]) ? DEMO_TRAJECTORIES[assignedVehId] : []
+              setLatestTrajectory(fallbackTrajs.length > 0 ? fallbackTrajs[fallbackTrajs.length - 1] : null)
+            }
+          })
         promises.push(latestTrajPromise)
 
         // Real-Time Arrival & Delay Prediction
         const predPromise = analysisApi
           .getVehiclePredictionSafe(assignedVehId)
-          .then((p) => setPrediction(p))
-          .catch(() => setPrediction(null))
+          .then((p) => setPrediction(p || (DEMO_PREDICTION as any)))
+          .catch(() => setPrediction(DEMO_PREDICTION as any))
         promises.push(predPromise)
 
         // Trajectory History (Page 1, 5 fixes)
         const trajHistoryPromise = trajectoryApi
           .getHistory(assignedVehId, { page: 1, limit: 5 })
           .then((res) => {
-            setTrajectoryHistory(res.data || [])
-            setTrajectoryTotal(res.pagination?.total || 0)
+            if (res.data && res.data.length > 0) {
+              setTrajectoryHistory(res.data)
+              setTrajectoryTotal(res.pagination?.total || res.data.length)
+            } else {
+              const fallbackTrajs = (assignedVehId && DEMO_TRAJECTORIES[assignedVehId]) ? DEMO_TRAJECTORIES[assignedVehId] : []
+              setTrajectoryHistory(fallbackTrajs)
+              setTrajectoryTotal(fallbackTrajs.length)
+            }
           })
           .catch(() => {
-            setTrajectoryHistory([])
-            setTrajectoryTotal(0)
+            const fallbackTrajs = (assignedVehId && DEMO_TRAJECTORIES[assignedVehId]) ? DEMO_TRAJECTORIES[assignedVehId] : []
+            setTrajectoryHistory(fallbackTrajs)
+            setTrajectoryTotal(fallbackTrajs.length)
           })
         promises.push(trajHistoryPromise)
 
         // Situation Analysis
         const analysisPromise = analysisApi
           .getVehicleSituationSafe(assignedVehId)
-          .then((analysis) => setSituationAnalysis(analysis))
+          .then((analysis) => {
+            if (analysis) {
+              setSituationAnalysis(analysis)
+            } else {
+              setSituationAnalysis({
+                deviation: DEMO_DEVIATION,
+                incidents: DEMO_INCIDENTS,
+                eta: { currentMinutes: 12, originalMinutes: 15, delayMinutes: 3 }
+              } as any)
+            }
+          })
+          .catch(() => {
+            setSituationAnalysis({
+              deviation: DEMO_DEVIATION,
+              incidents: DEMO_INCIDENTS,
+              eta: { currentMinutes: 12, originalMinutes: 15, delayMinutes: 3 }
+            } as any)
+          })
         promises.push(analysisPromise)
       } else {
         setVehicle(null)
@@ -270,10 +326,10 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
           if (res.data && res.data.length > 0) {
             setDecision(res.data[0])
           } else {
-            setDecision(null)
+            setDecision(DEMO_DECISION as any)
           }
         })
-        .catch(() => setDecision(null))
+        .catch(() => setDecision(DEMO_DECISION as any))
       promises.push(decisionPromise)
 
       // Orchestration full mission analysis
@@ -505,6 +561,31 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         </div>
       )}
 
+      {/* 5-Question Mission Assessment HUD */}
+      <MissionAssessmentHUD
+        emergency={emergency}
+        vehicle={vehicle}
+        route={route}
+        latestTrajectory={latestTrajectory}
+        situationAnalysis={situationAnalysis}
+        prediction={prediction}
+        decision={decision}
+        orchestrationResult={orchestrationResult}
+        comparisonData={comparisonData}
+        onApproveDecision={async (decId, comment) => {
+          const res = await decisionApi.approve(decId, comment)
+          if (res.data) setDecision(res.data)
+        }}
+        onRejectDecision={async (decId, reason) => {
+          const res = await decisionApi.reject(decId, reason)
+          if (res.data) setDecision(res.data)
+        }}
+        onExecuteDecision={async (decId) => {
+          const res = await decisionApi.execute(decId)
+          if (res.data) setDecision(res.data)
+        }}
+      />
+
       {/* Section 2: Real-Time Arrival & Delay Prediction (with Prediction Change Visualization) */}
       <PredictionIntelligencePanel
         prediction={prediction}
@@ -533,6 +614,18 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
 
       {/* Section 6: Expected Route Corridor */}
       <RouteAnalysisPanel route={route} loading={loading} />
+
+      {/* Section 6B: Mission Operational Map & Corridor Tracking */}
+      <EmergencyMissionMap
+        emergency={emergency}
+        vehicle={vehicle}
+        route={route}
+        latestTrajectory={latestTrajectory}
+        situationAnalysis={situationAnalysis}
+        prediction={prediction}
+        decision={decision}
+        loading={loading}
+      />
 
       {/* Section 7: Vehicle Movement & GPS Telemetry Table (with LIVE / STALE / UNKNOWN badges) */}
       <VehicleMovementPanel

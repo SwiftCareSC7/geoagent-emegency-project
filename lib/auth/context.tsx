@@ -34,7 +34,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   const refreshSession = useCallback(async (): Promise<User | null> => {
-    setLoading(true)
+    // Only show loading if we don't already have an optimistic user
+    if (!localStorage.getItem('swiftcare_user')) {
+      setLoading(true)
+    }
     try {
       const result = await getSession()
       if (result.user) {
@@ -91,6 +94,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize session on mount
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('swiftcare_user')
+        if (stored) {
+          setUser(JSON.parse(stored) as User)
+        }
+      } catch {}
+    }
     void refreshSession()
   }, [refreshSession])
 

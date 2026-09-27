@@ -22,7 +22,15 @@ import type {
 
 export type DataFreshness = 'LIVE' | 'STALE' | 'OFFLINE' | 'UNKNOWN'
 
-export type TileLayerProvider = 'carto_dark' | 'osm' | 'esri_satellite'
+export type TileLayerProvider =
+  | 'google_streets'
+  | 'google_traffic'
+  | 'google_hybrid'
+  | 'google_satellite'
+  | 'carto_dark'
+  | 'carto_light'
+  | 'osm'
+  | 'esri_satellite'
 
 export type MapProviderHealth = 'AVAILABLE' | 'DEGRADED' | 'UNAVAILABLE' | 'NOT_CONFIGURED'
 

@@ -41,7 +41,7 @@ class ProviderHealthService {
     const trafficProvider = (process.env.TRAFFIC_PROVIDER || 'mock').toLowerCase();
     const googleMapsConfigured = this.isConfigured(process.env.GOOGLE_MAPS_API_KEY);
     const geminiConfigured = this.isConfigured(process.env.GEMINI_API_KEY);
-    const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 
     // 1. Google Routes API Health
     let googleRoutesStatus = 'NOT_CONFIGURED';

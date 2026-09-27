@@ -1,94 +1,131 @@
 'use client'
 
 /**
- * SwiftCare GeoAgent — Accessible Map Legend Component
+ * SwiftCare GeoAgent — Prominent Accessible Map Legend Component
  *
- * Provides a collapsible, accessible legend matching actual rendered layers.
+ * Provides a high-contrast, visually prominent legend explaining:
+ * 🔵 ACTIVE / PLANNED CORRIDOR (Blue)
+ * 🟣 RECOMMENDED ALTERNATIVE DETOUR (Purple)
+ * ⚪ OTHER ALTERNATIVE ROUTES (Gray)
+ * 🔴 ROAD HAZARD / INCIDENT (Red)
+ * 🟠 ACTUAL GPS TRAJECTORY (Orange)
  */
 
-import { ChevronDown, ChevronUp, Info } from 'lucide-react'
+import { ChevronDown, ChevronUp, Layers, Info } from 'lucide-react'
 import { useState } from 'react'
+import { ROUTE_SEMANTICS } from '@/lib/routing-constants'
 
 export function MapLegend() {
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(true)
 
   return (
-    <div className="absolute bottom-3 left-3 z-[1000] max-w-xs rounded-xl border border-slate-700/60 bg-slate-900/90 text-slate-200 shadow-xl backdrop-blur-md text-xs">
+    <div className="absolute bottom-3 left-3 z-[1000] w-80 max-w-[calc(100vw-24px)] rounded-2xl border-2 border-slate-300/80 dark:border-slate-700/80 bg-white/98 dark:bg-slate-900/98 text-foreground shadow-2xl backdrop-blur-md text-xs overflow-hidden transition-all">
+      {/* Header Bar */}
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 font-bold hover:text-white transition-colors"
+        className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 font-bold hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors border-b border-slate-200 dark:border-slate-800"
         aria-expanded={expanded}
-        aria-label="Toggle map legend"
+        aria-label="Toggle map operational legend"
       >
-        <div className="flex items-center gap-1.5 text-slate-300">
-          <Info className="size-3.5 text-cyan-400" />
-          <span>Operational Legend</span>
+        <div className="flex items-center gap-2 text-foreground">
+          <span className="flex size-5 items-center justify-center rounded-md bg-blue-600 text-white shadow-xs">
+            <Layers className="size-3" />
+          </span>
+          <span className="font-extrabold tracking-tight text-[12px] uppercase">
+            Map Corridor Legend
+          </span>
         </div>
-        {expanded ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+        <div className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+          <span>{expanded ? 'Collapse' : 'Expand'}</span>
+          {expanded ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
+        </div>
       </button>
 
       {expanded ? (
-        <div className="border-t border-slate-800 px-3 py-2.5 space-y-2.5 text-[11px]">
-          {/* Fleet Vehicles */}
+        <div className="p-3.5 space-y-3 max-h-[360px] overflow-y-auto">
+          {/* Primary Route Types */}
           <div>
-            <div className="font-semibold text-slate-400 text-[10px] uppercase tracking-wider mb-1">
-              Fleet Units
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
+              <span>Route Types (Strict Meaning)</span>
+              <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-bold">2 Core Types</span>
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="flex size-3.5 items-center justify-center rounded-full border border-emerald-400 bg-emerald-950 text-[10px]">
-                  <span className="size-1.5 rounded-full bg-emerald-400" />
+
+            <div className="space-y-2">
+              {/* 1. ACTIVE / PLANNED CORRIDOR (BLUE) */}
+              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-blue-500/10 border border-blue-500/30">
+                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white text-[10px] shadow-sm font-bold">
+                  🔵
                 </span>
-                <span>Live Telemetry (&lt;15s)</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-bold text-blue-700 dark:text-blue-300 text-[11px]">
+                      {ROUTE_SEMANTICS.activeCorridor.label}
+                    </span>
+                    <span className="rounded bg-blue-600 text-white font-mono text-[9px] font-black px-1.5 py-0.2 uppercase">
+                      Solid Blue
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">
+                    Primary operational route the vehicle is currently/planned to follow to destination.
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="flex size-3.5 items-center justify-center rounded-full border border-amber-400 bg-amber-950 text-[10px]">
-                  <span className="size-1.5 rounded-full bg-amber-400" />
+
+              {/* 2. RECOMMENDED ALTERNATIVE (PURPLE) */}
+              <div className="flex items-start gap-2.5 p-2 rounded-xl bg-purple-500/10 border-2 border-purple-500/40 shadow-xs">
+                <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-purple-600 text-white text-[10px] shadow-sm font-bold">
+                  🟣
                 </span>
-                <span>Stale Telemetry (15s–60s)</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-bold text-purple-700 dark:text-purple-300 text-[11px]">
+                      {ROUTE_SEMANTICS.recommendedAlternative.label}
+                    </span>
+                    <span className="rounded bg-purple-600 text-white font-mono text-[9px] font-black px-1.5 py-0.2 uppercase">
+                      Dashed Purple
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">
+                    AI/routing suggested road-following detour around congestion or road hazards.
+                  </p>
+                </div>
+              </div>
+
+              {/* 3. OTHER ALTERNATIVE (GRAY) */}
+              <div className="flex items-start gap-2.5 px-2 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/40 border border-slate-300/60 dark:border-slate-700/60">
+                <span className="mt-0.5 flex size-3.5 shrink-0 items-center justify-center rounded-full bg-slate-400 text-white text-[9px]">
+                  ⚪
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-slate-700 dark:text-slate-300 text-[10px] block">
+                    {ROUTE_SEMANTICS.otherAlternative.label}
+                  </span>
+                  <span className="text-[9px] text-slate-500 dark:text-slate-400 block leading-tight">
+                    Secondary possible detour candidate evaluated by routing engine.
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Routes */}
-          <div>
-            <div className="font-semibold text-slate-400 text-[10px] uppercase tracking-wider mb-1">
-              Corridor Routes
+          {/* Telemetry & Hazards */}
+          <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+              Hazards & Telemetry Fixes
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="h-1 w-4 rounded-full bg-emerald-500" />
-                <span>Active / Selected Route</span>
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30">
+                <span className="size-2 rounded-full bg-red-500 shrink-0" />
+                <span className="font-bold text-rose-700 dark:text-rose-400 truncate">
+                  🔴 Road Hazard / Blockage
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="h-1 w-4 rounded-full bg-blue-500" />
-                <span>Planned Route</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-1 w-4 rounded-full bg-amber-500 border-t border-dashed border-amber-300" />
-                <span>Alternative Candidate</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Incidents & Deviations */}
-          <div>
-            <div className="font-semibold text-slate-400 text-[10px] uppercase tracking-wider mb-1">
-              Hazards & Deviations
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px]">⚠️</span>
-                <span className="text-rose-400">Critical / High Road Hazard</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="size-2 rounded-full border border-rose-500 border-dashed bg-rose-500/20" />
-                <span className="text-rose-400">Route Deviation Zone</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-0.5 w-3 bg-cyan-400 border-t border-dashed border-cyan-300" />
-                <span className="text-cyan-300">Actual GPS Breadcrumb Trail</span>
+              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-orange-500/10 border border-orange-500/30">
+                <span className="size-2 rounded-full bg-orange-500 shrink-0" />
+                <span className="font-bold text-orange-700 dark:text-orange-400 truncate">
+                  🟠 Actual GPS Trajectory
+                </span>
               </div>
             </div>
           </div>

@@ -1,12 +1,15 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
+import { useTheme } from 'next-themes'
 import type L from 'leaflet'
 import type { Incident } from '@/lib/api/types'
 import type { ConnectedVehicle } from '@/lib/api/clearance'
 import type { NavigationStep, NavigationState, ManeuverType } from './types'
 import { NavigationManeuverHUD } from '@/components/navigation/NavigationManeuverHUD'
 import { formatDistance, formatDuration, formatArrivalTime } from '@/lib/navigation/geometry'
+import { MapLegend } from '@/components/map/map-legend'
+import { ROUTE_SEMANTICS } from '@/lib/routing-constants'
 import {
   AlertTriangle,
   Layers,
@@ -124,9 +127,14 @@ export function DriverNavigationMap({
   isVoiceActive = true,
   onToggleVoice
 }: DriverNavigationMapProps) {
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme !== 'light'
+
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const leafletRef = useRef<typeof import('leaflet') | null>(null)
+  const tileLayerRef = useRef<L.TileLayer | null>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
   // Layer groups & polyline references
   const leg1LayerRef = useRef<L.Polyline | null>(null)
@@ -197,23 +205,25 @@ export function DriverNavigationMap({
         attributionControl: false
       })
 
-      // Clean tile layer without API Key watermark (uses OSM fallback if no CARTO key)
-      const cartoKey = process.env.NEXT_PUBLIC_CARTO_API_KEY?.trim()
-      const tileUrl = cartoKey
-        ? `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${cartoKey}`
-        : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+      // High-resolution basemap tiles adapting to light / dark theme:
+      // Google Streets for crisp daylight visibility, CARTO Dark for night operations
+      const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+      const lightTileUrl = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+      const initialTileUrl = isDark ? darkTileUrl : lightTileUrl
 
-      const tileLayer = L.tileLayer(tileUrl, {
-        maxZoom: 19,
-        subdomains: 'abcd'
+      const tileLayer = L.tileLayer(initialTileUrl, {
+        maxZoom: 20,
+        subdomains: isDark ? 'abcd' : ['0', '1', '2', '3'],
+        attribution: isDark ? '&copy; OpenStreetMap &copy; CARTO' : '&copy; Google Maps'
       })
 
       // Graceful fallback to OpenStreetMap if tiles fail
       tileLayer.on('tileerror', () => {
-        tileLayer.setUrl('https://tile.openstreetmap.org/{z}/{x}/{y}.png')
+        tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
       })
 
       tileLayer.addTo(map)
+      tileLayerRef.current = tileLayer
 
       map.on('dragstart', () => {
         setIsUserPanning(true)
@@ -228,18 +238,49 @@ export function DriverNavigationMap({
       turnMarkersLayerRef.current = L.layerGroup().addTo(map)
       routeChevronsLayerRef.current = L.layerGroup().addTo(map)
       setMapInitialized(true)
+
+      // Ensure Leaflet computes actual pixel dimensions immediately and on resize
+      map.invalidateSize()
+      setTimeout(() => map.invalidateSize(), 100)
+      setTimeout(() => map.invalidateSize(), 300)
+      setTimeout(() => map.invalidateSize(), 700)
+
+      if (containerRef.current && typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => {
+          if (mapRef.current) {
+            mapRef.current.invalidateSize()
+          }
+        })
+        ro.observe(containerRef.current)
+        resizeObserverRef.current = ro
+      }
     }
 
     init()
 
     return () => {
       isMounted = false
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect()
+        resizeObserverRef.current = null
+      }
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
       }
     }
   }, [])
+
+  // Dynamic Tile URL update when global theme switches (LIGHT <-> DARK)
+  useEffect(() => {
+    if (!tileLayerRef.current) return
+    const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+    const lightTileUrl = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+    tileLayerRef.current.setUrl(isDark ? darkTileUrl : lightTileUrl)
+    if (mapRef.current) {
+      mapRef.current.invalidateSize()
+    }
+  }, [isDark])
 
   // 2. Render Multi-Leg Route Geometry (Leg 1: BLUE, Leg 2: GREEN, Alt: CYAN)
   useEffect(() => {
@@ -257,27 +298,36 @@ export function DriverNavigationMap({
     if (alternativeRouteLayerRef.current) map.removeLayer(alternativeRouteLayerRef.current)
     if (originalRouteLayerRef.current) map.removeLayer(originalRouteLayerRef.current)
 
-    // Render Original / Degraded Route if available (Muted Amber)
+    // Render Original / Degraded Route if available (Slate Gray Dashed)
     if (originalRouteCoordinates && originalRouteCoordinates.length > 1) {
       const origLatLngs = originalRouteCoordinates.map(([lng, lat]) => [lat, lng] as [number, number])
       originalRouteLayerRef.current = L.polyline(origLatLngs, {
-        color: '#f59e0b', // Amber-500
+        color: ROUTE_SEMANTICS.otherAlternative.color, // Slate-500 (#64748b)
         weight: 4,
-        opacity: 0.5,
-        dashArray: '4, 8',
+        opacity: 0.7,
+        dashArray: '4, 6',
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map)
     }
 
-    // Render Alternative Route (Cyan Dashed, Promising)
+    // Render Alternative Route (PURPLE Dashed — Recommended Bypass Detour)
     if (alternativeRouteCoordinates && alternativeRouteCoordinates.length > 1) {
       const altLatLngs = alternativeRouteCoordinates.map(([lng, lat]) => [lat, lng] as [number, number])
+      // Contrast backing for purple detour line
+      L.polyline(altLatLngs, {
+        color: '#4c1d95', // Deep Violet-900 backing
+        weight: 9,
+        opacity: 0.5,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(map)
+
       alternativeRouteLayerRef.current = L.polyline(altLatLngs, {
-        color: '#06b6d4', // Cyan-500
+        color: ROUTE_SEMANTICS.recommendedAlternative.color, // Purple-500 (#8b5cf6)
         weight: 5,
-        opacity: 0.85,
-        dashArray: '8, 8',
+        opacity: 0.95,
+        dashArray: '6, 6',
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map)
@@ -285,7 +335,7 @@ export function DriverNavigationMap({
 
     const allPointsToFit: [number, number][] = []
 
-    // 2A. Render Distinct Multi-Leg Route if legs provided
+    // 2A. Render Distinct Multi-Leg Route if legs provided (Both part of Planned / Active Corridor in BLUE)
     if (leg1Coordinates && leg1Coordinates.length > 1) {
       const leg1LatLngs = leg1Coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
       allPointsToFit.push(...leg1LatLngs)
@@ -301,11 +351,11 @@ export function DriverNavigationMap({
         lineJoin: 'round'
       }).addTo(map)
 
-      // LEG 1 (BLUE) Polyline
+      // LEG 1 (PLANNED / ACTIVE CORRIDOR — BLUE)
       leg1LayerRef.current = L.polyline(leg1LatLngs, {
-        color: isLeg1Active ? '#3b82f6' : '#60a5fa', // Blue-500 or Blue-400
+        color: isLeg1Active ? ROUTE_SEMANTICS.activeCorridor.color : '#3b82f6', // Blue-600 or Blue-500
         weight: isLeg1Active ? 6 : 4,
-        opacity: isLeg1Active ? 1.0 : 0.7,
+        opacity: isLeg1Active ? 1.0 : 0.75,
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map)
@@ -319,16 +369,16 @@ export function DriverNavigationMap({
 
       // Backing line for high contrast
       leg2BackingRef.current = L.polyline(leg2LatLngs, {
-        color: '#064e3b', // Deep Emerald-900 backing
+        color: '#1e3a8a', // Deep Blue-900 backing
         weight: isLeg2Active ? 10 : 6,
         opacity: 0.9,
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(map)
 
-      // LEG 2 (GREEN) Polyline
+      // LEG 2 (PLANNED / ACTIVE CORRIDOR TO HOSPITAL — BLUE TONE)
       leg2LayerRef.current = L.polyline(leg2LatLngs, {
-        color: isLeg2Active ? '#10b981' : '#34d399', // Emerald-500 or Emerald-400
+        color: isLeg2Active ? ROUTE_SEMANTICS.activeCorridor.color : '#60a5fa', // Blue-600 or Blue-400
         weight: isLeg2Active ? 6 : 4,
         opacity: isLeg2Active ? 1.0 : 0.8,
         lineCap: 'round',
@@ -336,13 +386,13 @@ export function DriverNavigationMap({
       }).addTo(map)
     }
 
-    // 2B. Fallback to unified activeRouteCoordinates if legs not partitioned
+    // 2B. Fallback to unified activeRouteCoordinates if legs not partitioned (PLANNED / ACTIVE CORRIDOR — BLUE)
     if ((!leg1Coordinates || leg1Coordinates.length < 2) && activeRouteCoordinates && activeRouteCoordinates.length > 1) {
       const activeLatLngs = activeRouteCoordinates.map(([lng, lat]) => [lat, lng] as [number, number])
       allPointsToFit.push(...activeLatLngs)
 
       fallbackActiveRouteBackingRef.current = L.polyline(activeLatLngs, {
-        color: '#064e3b',
+        color: '#1e3a8a', // Deep Blue-900 backing
         weight: 10,
         opacity: 0.9,
         lineCap: 'round',
@@ -350,7 +400,7 @@ export function DriverNavigationMap({
       }).addTo(map)
 
       fallbackActiveRouteLayerRef.current = L.polyline(activeLatLngs, {
-        color: '#10b981',
+        color: ROUTE_SEMANTICS.activeCorridor.color, // Blue-600 (#2563eb)
         weight: 6,
         opacity: 1.0,
         lineCap: 'round',
@@ -778,7 +828,7 @@ function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
   }, [])
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full min-h-[450px]">
       {/* 1. SHARED GOOGLE-MAPS-STYLE TURN-BY-TURN NAVIGATION HUD */}
       <NavigationManeuverHUD
         currentStep={currentStep as any}
@@ -810,9 +860,11 @@ function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
       {/* 2. LEAFLET MAP CANVAS */}
       <div
         ref={containerRef}
-        style={{ height, width: '100%' }}
-        className={`relative z-0 overflow-hidden bg-slate-950 ${className}`}
+        className={`absolute inset-0 z-0 overflow-hidden bg-slate-100 dark:bg-slate-950 ${className}`}
       />
+
+      {/* 3. PROMINENT MAP CORRIDOR LEGEND */}
+      <MapLegend />
     </div>
   )
 }

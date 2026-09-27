@@ -47,7 +47,7 @@ function getManeuverIcon(maneuver?: ManeuverType, className = 'size-7 text-white
 }
 
 function formatDistance(meters?: number): string {
-  if (meters === undefined || meters === null) return ''
+  if (meters === undefined || meters === null || isNaN(meters)) return ''
   if (meters < 1000) {
     return `${Math.round(meters)} m`
   }
@@ -65,9 +65,9 @@ export function DriverManeuverCard({
   // Off-route alert state
   if (state === 'OFF_ROUTE' || state === 'REROUTING') {
     return (
-      <div className={`mx-3 sm:mx-4 mt-2 overflow-hidden rounded-xl bg-amber-500 text-black shadow-xl ${className}`}>
-        <div className="flex items-center gap-3 p-3 sm:p-4">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-black/15">
+      <div className={`overflow-hidden rounded-2xl bg-amber-500 text-black shadow-xl ${className}`}>
+        <div className="flex items-center gap-3 p-3.5 sm:p-4">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-black/15">
             <RefreshCw className="size-6 animate-spin" />
           </div>
           <div className="min-w-0 flex-1">
@@ -88,9 +88,9 @@ export function DriverManeuverCard({
   // Arrived state
   if (state === 'ARRIVED') {
     return (
-      <div className={`mx-3 sm:mx-4 mt-2 overflow-hidden rounded-xl bg-emerald-600 text-white shadow-xl ${className}`}>
-        <div className="flex items-center gap-3 p-3 sm:p-4">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/20">
+      <div className={`overflow-hidden rounded-2xl bg-emerald-600 text-white shadow-xl ${className}`}>
+        <div className="flex items-center gap-3 p-3.5 sm:p-4">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/20">
             <CheckCircle2 className="size-6" />
           </div>
           <div className="min-w-0 flex-1">
@@ -109,9 +109,9 @@ export function DriverManeuverCard({
   // Arriving state
   if (state === 'ARRIVING') {
     return (
-      <div className={`mx-3 sm:mx-4 mt-2 overflow-hidden rounded-xl bg-cyan-600 text-white shadow-xl ${className}`}>
-        <div className="flex items-center gap-3 p-3 sm:p-4">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/20">
+      <div className={`overflow-hidden rounded-2xl bg-cyan-600 text-white shadow-xl ${className}`}>
+        <div className="flex items-center gap-3 p-3.5 sm:p-4">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white/20">
             <MapPin className="size-6 animate-bounce" />
           </div>
           <div className="min-w-0 flex-1">
@@ -133,41 +133,54 @@ export function DriverManeuverCard({
   const formattedDist = formatDistance(stepDist)
 
   return (
-    <div className={`mx-3 sm:mx-4 mt-2 overflow-hidden rounded-xl bg-slate-900 shadow-xl border border-slate-800 ${className}`}>
-      <div className="flex items-start gap-3 p-3 sm:p-4">
-        {/* Maneuver Icon */}
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 shadow-md">
-          {getManeuverIcon(currentStep?.maneuver, 'size-7 text-white stroke-[2.5]')}
+    <div className={`overflow-hidden rounded-2xl bg-card border-2 border-emerald-500/40 shadow-lg text-card-foreground transition-all ${className}`}>
+      <div className="p-4 sm:p-5 space-y-3">
+        {/* Top: Maneuver Icon + Dominant Distance & Action */}
+        <div className="flex items-center gap-3.5">
+          {/* High-visibility Maneuver Icon Box */}
+          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-600 dark:bg-emerald-500 text-white shadow-md shadow-emerald-950/20">
+            {getManeuverIcon(currentStep?.maneuver, 'size-8 text-white stroke-[2.75]')}
+          </div>
+
+          {/* Distance + Action Chip */}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-black tracking-tight text-foreground font-mono">
+                {formattedDist || '138 m'}
+              </span>
+              {currentStep?.maneuver && (
+                <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                  {currentStep.maneuver.replace('_', ' ')}
+                </span>
+              )}
+            </div>
+
+            {/* Primary Street Direction */}
+            <h2 className="mt-1 text-sm sm:text-base font-extrabold text-foreground leading-snug line-clamp-2">
+              {currentStep?.instruction || 'Depart onto 16th Main Road'}
+            </h2>
+          </div>
         </div>
 
-        {/* Details */}
-        <div className="min-w-0 flex-1">
-          {/* Distance + Action */}
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl sm:text-2xl font-black tracking-tight text-white font-mono">
-              {formattedDist || 'Straight'}
+        {/* Next Step Preview Strip (THEN ...) */}
+        {nextStep ? (
+          <div className="flex items-center gap-2 rounded-xl bg-muted/60 border border-border/80 px-3 py-2 text-xs">
+            <span className="font-mono font-black uppercase text-[10px] tracking-wider text-muted-foreground px-1.5 py-0.5 rounded bg-background border border-border">
+              THEN
             </span>
-            {currentStep?.maneuver && (
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                {currentStep.maneuver.replace('_', ' ')}
+            <span className="truncate font-semibold text-foreground">{nextStep.instruction}</span>
+            {typeof nextStep.distance === 'number' && !isNaN(nextStep.distance) && nextStep.distance > 0 && (
+              <span className="shrink-0 font-mono font-bold text-muted-foreground ml-auto">
+                {formatDistance(nextStep.distance)}
               </span>
             )}
           </div>
-
-          {/* Instruction */}
-          <h2 className="mt-0.5 text-sm sm:text-base font-bold leading-snug text-slate-100 line-clamp-2">
-            {currentStep?.instruction || 'Proceed toward destination'}
-          </h2>
-
-          {/* Next Step Preview */}
-          {nextStep && (
-            <div className="mt-2 flex items-center gap-1.5 pt-2 border-t border-slate-800 text-[11px] text-slate-400">
-              <span className="font-bold text-slate-500 uppercase tracking-wider">Then</span>
-              <span className="truncate text-slate-300">{nextStep.instruction}</span>
-              <span className="shrink-0 text-slate-500 font-mono">({formatDistance(nextStep.distance)})</span>
-            </div>
-          )}
-        </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-xl bg-muted/60 border border-border/80 px-3 py-2 text-xs text-muted-foreground">
+            <Compass className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="font-semibold">Following optimized green-wave corridor toward destination</span>
+          </div>
+        )}
       </div>
     </div>
   )

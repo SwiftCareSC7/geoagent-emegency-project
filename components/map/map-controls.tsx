@@ -55,12 +55,12 @@ export function MapControls({
   return (
     <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
       {/* Zoom & Fit Group */}
-      <div className="flex flex-col rounded-xl border border-slate-700/60 bg-slate-900/90 p-1 shadow-lg backdrop-blur-md">
+      <div className="flex flex-col rounded-xl border border-border bg-card/90 text-foreground p-1 shadow-lg backdrop-blur-md">
         <button
           type="button"
           onClick={onZoomIn}
           aria-label="Zoom in"
-          className="flex size-8 items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <Plus className="size-4" />
         </button>
@@ -68,11 +68,11 @@ export function MapControls({
           type="button"
           onClick={onZoomOut}
           aria-label="Zoom out"
-          className="flex size-8 items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <Minus className="size-4" />
         </button>
-        <div className="my-1 h-px bg-slate-800" />
+        <div className="my-1 h-px bg-border" />
         <button
           type="button"
           onClick={onFitCorridor}
@@ -81,8 +81,8 @@ export function MapControls({
           title={hasSelectedEmergency ? 'Focus on selected corridor' : 'Select an emergency first'}
           className={`flex size-8 items-center justify-center rounded-lg transition-colors ${
             hasSelectedEmergency
-              ? 'text-cyan-400 hover:bg-slate-800 hover:text-cyan-300'
-              : 'text-slate-600 cursor-not-allowed'
+              ? 'text-cyan-500 dark:text-cyan-400 hover:bg-muted hover:text-cyan-600 dark:hover:text-cyan-300'
+              : 'text-muted-foreground/40 cursor-not-allowed'
           }`}
         >
           <Crosshair className="size-4" />
@@ -92,7 +92,7 @@ export function MapControls({
           onClick={onResetView}
           aria-label="Reset to city overview"
           title="Reset to metropolitan overview"
-          className="flex size-8 items-center justify-center rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <RotateCcw className="size-3.5" />
         </button>
@@ -110,16 +110,16 @@ export function MapControls({
           aria-expanded={layersOpen}
           className={`flex size-9 items-center justify-center rounded-xl border shadow-lg backdrop-blur-md transition-colors ${
             layersOpen
-              ? 'border-cyan-500 bg-cyan-950/80 text-cyan-300'
-              : 'border-slate-700/60 bg-slate-900/90 text-slate-300 hover:bg-slate-800 hover:text-white'
+              ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
+              : 'border-border bg-card/90 text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
           <Layers className="size-4" />
         </button>
 
         {layersOpen ? (
-          <div className="absolute right-0 top-11 w-48 rounded-xl border border-slate-700/80 bg-slate-900/95 p-2.5 text-xs text-slate-200 shadow-2xl backdrop-blur-md space-y-1">
-            <div className="font-bold text-slate-400 text-[11px] pb-1 border-b border-slate-800">
+          <div className="absolute right-0 top-11 w-48 rounded-xl border border-border bg-card/95 p-2.5 text-xs text-foreground shadow-2xl backdrop-blur-md space-y-1">
+            <div className="font-bold text-muted-foreground text-[11px] pb-1 border-b border-border">
               Layer Controls
             </div>
             {[
@@ -137,13 +137,13 @@ export function MapControls({
                   key={key}
                   type="button"
                   onClick={() => onToggleLayer(key as keyof MapLayerVisibility)}
-                  className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left hover:bg-slate-800 transition-colors"
+                  className="flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left hover:bg-muted transition-colors"
                 >
                   <span>{label}</span>
                   {active ? (
-                    <Eye className="size-3.5 text-emerald-400" />
+                    <Eye className="size-3.5 text-emerald-500 dark:text-emerald-400" />
                   ) : (
-                    <EyeOff className="size-3.5 text-slate-500" />
+                    <EyeOff className="size-3.5 text-muted-foreground" />
                   )}
                 </button>
               )
@@ -164,23 +164,29 @@ export function MapControls({
           aria-expanded={tilesOpen}
           className={`flex size-9 items-center justify-center rounded-xl border shadow-lg backdrop-blur-md transition-colors ${
             tilesOpen
-              ? 'border-indigo-500 bg-indigo-950/80 text-indigo-300'
-              : 'border-slate-700/60 bg-slate-900/90 text-slate-300 hover:bg-slate-800 hover:text-white'
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border bg-card/90 text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
           <MapIcon className="size-4" />
         </button>
 
         {tilesOpen ? (
-          <div className="absolute right-0 top-11 w-40 rounded-xl border border-slate-700/80 bg-slate-900/95 p-2 text-xs text-slate-200 shadow-2xl backdrop-blur-md space-y-1">
-            <div className="font-bold text-slate-400 text-[11px] pb-1 border-b border-slate-800">
-              Basemap Style
+          <div className="absolute right-0 top-11 w-52 rounded-xl border border-border bg-card/95 p-2 text-xs text-foreground shadow-2xl backdrop-blur-md space-y-1">
+            <div className="font-bold text-muted-foreground text-[11px] pb-1 border-b border-border flex items-center justify-between">
+              <span>Basemap Style</span>
+              <span className="text-[9px] font-normal text-muted-foreground">8 Providers</span>
             </div>
             {[
-              { id: 'carto_dark', label: 'Dark Mode (Night)' },
-              { id: 'osm', label: 'Street Map (OSM)' },
-              { id: 'esri_satellite', label: 'ESRI Satellite' },
-            ].map(({ id, label }) => (
+              { id: 'google_streets', label: 'Google Streets', tag: 'Google' },
+              { id: 'google_traffic', label: 'Google Live Traffic', tag: 'Live' },
+              { id: 'google_hybrid', label: 'Google Hybrid', tag: 'Sat+Road' },
+              { id: 'google_satellite', label: 'Google Satellite', tag: 'Photo' },
+              { id: 'carto_dark', label: 'CARTO Dark Matter', tag: 'Night' },
+              { id: 'carto_light', label: 'CARTO Voyager', tag: 'Day' },
+              { id: 'osm', label: 'OpenStreetMap', tag: 'OSM' },
+              { id: 'esri_satellite', label: 'ESRI World Imagery', tag: 'Sat' },
+            ].map(({ id, label, tag }) => (
               <button
                 key={id}
                 type="button"
@@ -190,12 +196,17 @@ export function MapControls({
                 }}
                 className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left transition-colors ${
                   activeTile === id
-                    ? 'bg-primary/20 text-primary font-bold'
-                    : 'hover:bg-slate-800 text-slate-300'
+                    ? 'bg-primary/15 text-primary font-bold'
+                    : 'hover:bg-muted text-foreground'
                 }`}
               >
-                <span>{label}</span>
-                {activeTile === id ? <span className="size-1.5 rounded-full bg-primary" /> : null}
+                <span className="truncate">{label}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="rounded bg-muted px-1.5 py-0.5 text-[9px] font-mono font-medium text-muted-foreground">
+                    {tag}
+                  </span>
+                  {activeTile === id ? <span className="size-1.5 rounded-full bg-primary" /> : null}
+                </div>
               </button>
             ))}
           </div>

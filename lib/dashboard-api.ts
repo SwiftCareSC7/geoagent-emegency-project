@@ -22,8 +22,6 @@ export async function getDashboard(
   ambulanceId: string,
 ): Promise<DashboardData> {
   if (USE_MOCK) {
-    // Simulate a small network delay so loading states behave realistically.
-    await new Promise((resolve) => setTimeout(resolve, 250))
     return { ...AMB_01_DASHBOARD, ambulanceId }
   }
 

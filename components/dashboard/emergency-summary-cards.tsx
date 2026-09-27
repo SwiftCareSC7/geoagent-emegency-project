@@ -24,7 +24,7 @@ export function EmergencySummaryCards({
   incidents,
   loading = false,
 }: EmergencySummaryCardsProps) {
-  if (loading) {
+  if (loading && emergencies.length === 0 && vehicles.length === 0) {
     return (
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {[...Array(5)].map((_, i) => (
@@ -109,7 +109,7 @@ export function EmergencySummaryCards({
             ? 'Active corridor hazards'
             : 'Corridors all clear'
         }
-        tone={activeIncidents.length > 0 ? 'warning' : 'default'}
+        tone={activeIncidents.length > 0 ? 'critical' : 'default'}
       />
     </div>
   )

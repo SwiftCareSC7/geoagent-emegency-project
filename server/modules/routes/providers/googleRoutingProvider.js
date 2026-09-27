@@ -84,13 +84,17 @@ class GoogleRoutingProvider {
     // In-memory route cache with 60-second TTL to avoid duplicate billing
     this.cache = new Map();
     this.cacheTtlMs = 60 * 1000;
+    this.circuitOpenUntil = 0;
   }
 
   /**
-   * Safe check for whether Google API key is configured without exposing it
+   * Safe check for whether Google API key is configured and circuit is not open
    * @returns {boolean}
    */
   isAvailable() {
+    if (this.circuitOpenUntil && Date.now() < this.circuitOpenUntil) {
+      return false;
+    }
     const key = process.env.GOOGLE_MAPS_API_KEY;
     return Boolean(key && typeof key === 'string' && key.trim().length > 10);
   }
@@ -316,7 +320,7 @@ class GoogleRoutingProvider {
     }
 
     const controller = new AbortController();
-    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 8000;
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 2500;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
@@ -348,9 +352,11 @@ class GoogleRoutingProvider {
           : `HTTP ${response.status} ${response.statusText}`;
 
         if (response.status === 403) {
+          this.circuitOpenUntil = Date.now() + 15 * 60 * 1000;
           throw new Error(`Google Routes API access denied: ${errorMsg}`);
         }
         if (response.status === 429) {
+          this.circuitOpenUntil = Date.now() + 15 * 60 * 1000;
           throw new Error(`Google Routes API quota exceeded: ${errorMsg}`);
         }
         throw new Error(`Google Routes API error (${response.status}): ${errorMsg}`);

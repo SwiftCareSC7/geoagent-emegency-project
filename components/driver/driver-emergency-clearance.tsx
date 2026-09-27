@@ -88,27 +88,27 @@ export function DriverEmergencyClearance({
 
   return (
     <div
-      className={`rounded-2xl border border-teal-500/30 bg-gradient-to-b from-slate-900/95 via-slate-900 to-slate-950 p-4 shadow-2xl text-white ${className}`}
+      className={`rounded-2xl border-2 border-border bg-card p-4 shadow-md text-card-foreground ${className}`}
       aria-label="Emergency Clearance Demo V2X Panel"
     >
       {/* Top Header with mandatory SIMULATED / DEMO V2X disclaimer */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-teal-500/20 text-teal-400 border border-teal-500/30">
+            <div className="p-1.5 rounded-lg bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/30">
               <Radio className="h-4 w-4 animate-pulse" />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white">
+              <h3 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-foreground">
                 Emergency Clearance
               </h3>
               {/* Mandatory Simulated Label */}
-              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-teal-500/15 text-teal-300 border border-teal-500/40">
+              <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/40">
                 SIMULATED CONNECTED VEHICLES (DEMO V2X)
               </span>
             </div>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
+          <p className="text-[11px] text-muted-foreground mt-1">
             Simulated corridor broadcast alerting forward civilian vehicles to pull over and yield right-of-way.
           </p>
         </div>
@@ -119,30 +119,30 @@ export function DriverEmergencyClearance({
             type="button"
             onClick={onAdvanceCycle}
             disabled={isAdvancing}
-            className="self-start sm:self-auto min-h-[44px] px-3 py-2 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 active:bg-teal-500/40 border border-teal-500/40 text-teal-300 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 focus:outline-none focus:ring-2 focus:ring-teal-400"
+            className="self-start sm:self-auto min-h-[36px] px-3 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 active:bg-teal-500/35 border border-teal-500/30 text-teal-700 dark:text-teal-300 text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 shrink-0 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
             title="Step through V2X clearance simulation sequence"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${isAdvancing ? 'animate-spin text-teal-400' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${isAdvancing ? 'animate-spin text-teal-500' : ''}`} />
             <span>{isAdvancing ? 'Advancing Cycle...' : 'Advance V2X Cycle'}</span>
           </button>
         )}
       </div>
 
       {/* Corridor Clearance Status Bar */}
-      <div className="mt-3 p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+      <div className="mt-3 p-3 rounded-xl bg-muted/50 border border-border">
         <div className="flex items-center justify-between text-xs mb-1.5">
-          <span className="text-slate-400 font-medium">Forward Corridor Clearance</span>
+          <span className="text-muted-foreground font-medium">Forward Corridor Clearance</span>
           <div className="flex items-center gap-1.5">
-            <span className="font-extrabold font-mono text-teal-400">{clearedCount} of {totalCount}</span>
-            <span className="text-slate-400">Vehicles Yielded</span>
-            <span className="text-[10px] font-bold text-teal-300 bg-teal-500/20 px-1.5 py-0.5 rounded">
+            <span className="font-extrabold font-mono text-teal-600 dark:text-teal-400">{clearedCount} of {totalCount}</span>
+            <span className="text-muted-foreground">Vehicles Yielded</span>
+            <span className="text-[10px] font-bold text-teal-700 dark:text-teal-300 bg-teal-500/20 px-1.5 py-0.5 rounded">
               {clearPercent}%
             </span>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-muted rounded-full overflow-hidden border border-border/50">
           <div
             className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 transition-all duration-500 ease-out rounded-full shadow-[0_0_10px_rgba(20,184,166,0.6)]"
             style={{ width: `${clearPercent}%` }}
@@ -150,8 +150,8 @@ export function DriverEmergencyClearance({
         </div>
 
         {/* V2X Siren Broadcast Message */}
-        <div className="mt-2.5 flex items-center gap-2 p-2 rounded-lg bg-teal-950/40 border border-teal-500/20 text-[11px] text-teal-200">
-          <Wifi className="h-3.5 w-3.5 text-teal-400 shrink-0" />
+        <div className="mt-2.5 flex items-center gap-2 p-2 rounded-lg bg-teal-500/10 border border-teal-500/20 text-[11px] text-teal-800 dark:text-teal-200">
+          <Wifi className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
           <span className="font-mono truncate">
             Broadcast Payload: &ldquo;AMBULANCE APPROACHING — PULL OVER TO LEFT SHOULDER&rdquo;
           </span>
@@ -160,7 +160,7 @@ export function DriverEmergencyClearance({
 
       {/* List of Simulated Connected Vehicles Ahead */}
       <div className="mt-3 space-y-2">
-        <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 px-1">
+        <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground px-1">
           Connected Vehicles Ahead in Ambulance Corridor
         </div>
 
@@ -172,42 +172,42 @@ export function DriverEmergencyClearance({
             return (
               <div
                 key={vehicle.vehicleId || idx}
-                className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/90 hover:border-slate-700 transition-all flex flex-col justify-between relative overflow-hidden group"
+                className="p-3 rounded-xl bg-card border border-border hover:border-teal-500/40 transition-all flex flex-col justify-between relative overflow-hidden group shadow-sm"
               >
                 {/* Distance and Vehicle ID */}
                 <div className="flex items-start justify-between gap-1">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-slate-800 text-slate-300">
+                    <div className="p-1.5 rounded-lg bg-muted text-foreground">
                       <Car className="h-4 w-4" />
                     </div>
                     <div>
-                      <span className="text-xs font-bold text-white block font-mono">
+                      <span className="text-xs font-bold text-foreground block font-mono">
                         {vehicle.label}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
+                      <span className="text-[10px] text-muted-foreground font-mono">
                         {vehicle.vehicleId}
                       </span>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <span className="text-xs font-black text-cyan-400 font-mono">
+                    <span className="text-xs font-black text-cyan-600 dark:text-cyan-400 font-mono">
                       {vehicle.distanceToAmbulanceMeters}m
                     </span>
-                    <span className="text-[10px] text-slate-500 block">ahead</span>
+                    <span className="text-[10px] text-muted-foreground block">ahead</span>
                   </div>
                 </div>
 
                 {/* Status Badge */}
-                <div className="mt-3 pt-2 border-t border-slate-800/80">
+                <div className="mt-3 pt-2 border-t border-border">
                   <div className="flex items-center justify-between">
                     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-extrabold border ${badge.bg}`}>
                       <span className={`h-1.5 w-1.5 rounded-full ${badge.dot}`} />
                       {badge.label}
                     </span>
-                    <BadgeIcon className="h-3.5 w-3.5 text-slate-400" />
+                    <BadgeIcon className="h-3.5 w-3.5 text-muted-foreground" />
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-1 truncate">
+                  <p className="text-[10px] text-muted-foreground mt-1 truncate">
                     {badge.desc}
                   </p>
                 </div>

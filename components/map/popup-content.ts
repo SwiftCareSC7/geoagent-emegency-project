@@ -6,6 +6,7 @@
  */
 
 import type { MapEmergency, MapIncident, MapRoute, MapVehicle, MapDeviation } from './types'
+import { getRouteSemanticStyle } from '@/lib/routing-constants'
 
 export function escapeHtml(str?: string | null): string {
   if (!str) return ''
@@ -153,29 +154,31 @@ export function createEmergencyPopupHtml(emergency: MapEmergency, isDestination 
 export function createRoutePopupHtml(route: MapRoute): string {
   const distKm = (route.distanceMeters / 1000).toFixed(2)
   const durMin = Math.round(route.durationSeconds / 60)
-  const typeLabel =
-    route.routeType === 'CURRENT'
-      ? 'Active Traversed Route'
-      : route.routeType === 'ALTERNATIVE'
-      ? 'Alternative Candidate Route'
-      : 'Planned Primary Route'
-
-  const typeColor =
-    route.routeType === 'CURRENT' ? '#10b981' : route.routeType === 'ALTERNATIVE' ? '#f59e0b' : '#3b82f6'
+  const style = getRouteSemanticStyle(route)
+  const typeLabel = style.label
+  const typeColor = style.color
 
   return `
-    <div style="font-family:ui-sans-serif,system-ui,sans-serif;min-width:210px;font-size:12px;color:#0f172a;line-height:1.4;">
+    <div style="font-family:ui-sans-serif,system-ui,sans-serif;min-width:220px;font-size:12px;color:#0f172a;line-height:1.4;">
       <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:6px;">
-        <strong style="color:${typeColor};font-size:13px;">${typeLabel}</strong>
+        <strong style="color:${typeColor};font-size:13px;display:flex;align-items:center;gap:4px;">
+          <span>${style.id === 'active_corridor' ? '🔵' : style.id === 'recommended_alternative' ? '🟣' : '⚪'}</span>
+          <span>${typeLabel}</span>
+        </strong>
         ${
-          route.isRecommended
-            ? '<span style="background:#10b981;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">RECOMMENDED</span>'
-            : ''
+          style.id === 'recommended_alternative'
+            ? '<span style="background:#8b5cf6;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">RECOMMENDED DETOUR</span>'
+            : style.id === 'active_corridor'
+            ? '<span style="background:#2563eb;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">ACTIVE CORRIDOR</span>'
+            : '<span style="background:#64748b;color:#fff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;">ALTERNATIVE</span>'
         }
+      </div>
+      <div style="margin-bottom:4px;font-size:11px;color:#475569;">
+        ${style.description}
       </div>
       <div style="margin-bottom:4px;font-size:11px;">
         <span style="color:#64748b;">Route ID:</span>
-        <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px;">${escapeHtml(route.routeId)}</code>
+        <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px;font-weight:600;">${escapeHtml(route.routeId)}</code>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0;background:#f8fafc;padding:6px;border-radius:6px;font-size:11px;">
         <div>Distance: <b>${distKm} km</b></div>

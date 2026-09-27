@@ -26,7 +26,8 @@ class OsrmRoutingProvider {
     const orig = origin.coordinates.map((c) => c.toFixed(4)).join(',');
     const dest = destination.coordinates.map((c) => c.toFixed(4)).join(',');
     const alt = Boolean(options.computeAlternativeRoutes);
-    return `osrm_${orig}_${dest}_${alt}`;
+    const pref = (options.preference || options.routingPreference || 'FASTEST').toUpperCase();
+    return `osrm_${orig}_${dest}_${alt}_${pref}`;
   }
 
   /**
@@ -213,12 +214,19 @@ class OsrmRoutingProvider {
         throw new Error(`OSRM routing failed: ${data.message || 'No drivable route found between points'}`);
       }
 
-      const primaryRoute = this.normalizeRoute(data.routes[0], 0);
+      let selectedIndex = 0;
+      if (options.preference === 'SHORTEST' && data.routes.length > 1) {
+        selectedIndex = 1;
+      }
 
-      // Alternatives (up to 2)
+      const primaryRoute = this.normalizeRoute(data.routes[selectedIndex], selectedIndex);
+
+      // Alternatives (other routes)
       const alternatives = [];
-      for (let i = 1; i < data.routes.length && i <= 2; i++) {
-        alternatives.push(this.normalizeRoute(data.routes[i], i));
+      for (let i = 0; i < data.routes.length && alternatives.length < 2; i++) {
+        if (i !== selectedIndex) {
+          alternatives.push(this.normalizeRoute(data.routes[i], i));
+        }
       }
 
       primaryRoute.alternatives = alternatives;

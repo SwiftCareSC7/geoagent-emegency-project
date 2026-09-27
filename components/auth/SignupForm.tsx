@@ -7,9 +7,13 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  HeartPulse,
   Loader2,
+  Navigation,
   Radio,
+  Shield,
   ShieldAlert,
+  UserCheck
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -18,9 +22,10 @@ import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api/types'
 import { useAuth } from '@/lib/auth/context'
+import { BrandLogo } from '@/components/brand-logo'
 
 const inputClass =
-  'w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-50 disabled:cursor-not-allowed'
+  'w-full rounded-xl border border-slate-700 bg-slate-900/90 px-3.5 py-2.5 text-sm text-white shadow-xs outline-hidden transition-colors placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed'
 
 export function SignupForm() {
   const router = useRouter()
@@ -29,13 +34,14 @@ export function SignupForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'>('CONTROL_ROOM')
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{
     name?: string
     email?: string
     password?: string
   }>({})
-  const [formError, setFormError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<{ what: string; howToFix: string } | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -64,7 +70,7 @@ export function SignupForm() {
     if (!email.trim()) {
       errors.email = 'Email address is required'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      errors.email = 'Please enter a valid email address'
+      errors.email = 'Please enter a valid email address (e.g. operator@swiftcare.local)'
     }
 
     if (!password) {
@@ -92,10 +98,11 @@ export function SignupForm() {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password,
+        role,
       })
 
       setSuccessMessage(
-        regResult.message || 'Account created successfully! Logging you in...',
+        regResult.message || 'Account created successfully! Authenticating session...',
       )
 
       // 2. Since backend registration does not auto-login, authenticate immediately
@@ -104,24 +111,40 @@ export function SignupForm() {
           email: email.trim().toLowerCase(),
           password,
         })
-        router.push('/driver/dashboard')
+        if (role === 'CONTROL_ROOM') router.push('/control-room')
+        else if (role === 'PARAMEDIC') router.push('/paramedic')
+        else router.push('/driver/dashboard')
       } catch {
-        // If auto-login fails, redirect to login page
         router.push('/login?registered=true')
       }
     } catch (err: unknown) {
       if (err instanceof ApiError) {
         if (err.isConflict) {
-          setFormError('An account with this email address already exists. Please log in.')
+          setFormError({
+            what: 'An account with this email address already exists.',
+            howToFix: 'Click "Sign In" below or use a different email address.'
+          })
         } else if (err.isNetworkError) {
-          setFormError('Unable to reach the server. Please verify the backend is running.')
+          setFormError({
+            what: 'Cannot connect to backend server.',
+            howToFix: 'Verify the Express backend is running on port 5001.'
+          })
         } else {
-          setFormError(err.message)
+          setFormError({
+            what: err.message,
+            howToFix: 'Please check your inputs and try again.'
+          })
         }
       } else if (err instanceof Error) {
-        setFormError(err.message)
+        setFormError({
+          what: err.message,
+          howToFix: 'Review the details provided.'
+        })
       } else {
-        setFormError('An unexpected error occurred during registration. Please try again.')
+        setFormError({
+          what: 'An unexpected error occurred during registration.',
+          howToFix: 'Refresh the page and try again.'
+        })
       }
     } finally {
       setSubmitting(false)
@@ -130,192 +153,231 @@ export function SignupForm() {
 
   return (
     <div className="w-full max-w-md">
-      <h1 className="font-display text-2xl font-bold text-foreground">
-        Create your account
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Register to access the SwiftCare emergency response platform.
-      </p>
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 sm:p-8 shadow-2xl backdrop-blur-md">
+        {/* Brand Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
+          <Link href="/" className="flex items-center">
+            <BrandLogo height={28} fallbackClassName="font-display text-base font-bold text-white" />
+          </Link>
+          <span className="rounded bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-indigo-400">
+            OPERATOR REGISTRATION
+          </span>
+        </div>
 
-      {/* Role notice banner */}
-      <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm text-foreground">
-        <Radio className="mt-0.5 size-4 shrink-0 text-primary" />
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">Control Room Account:</span>{' '}
-          Public registrations are assigned the <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">CONTROL_ROOM</code> role for authorized monitoring.
+        <h1 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight">
+          Create Account
+        </h1>
+        <p className="mt-1 text-xs text-slate-400">
+          Register credentials to access the SwiftCare corridor operations platform.
         </p>
-      </div>
 
-      {/* Success notification */}
-      {successMessage && (
-        <div
-          role="status"
-          className="mt-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-600 dark:text-emerald-400"
-        >
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-          <p className="font-medium leading-snug">{successMessage}</p>
-        </div>
-      )}
-
-      {/* Error notification */}
-      {formError && (
-        <div
-          role="alert"
-          className="mt-4 flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-        >
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <p className="font-medium leading-snug">{formError}</p>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
-        <div>
-          <label
-            htmlFor="name"
-            className="mb-1.5 block text-sm font-medium text-foreground"
+        {/* Success notification */}
+        {successMessage && (
+          <div
+            role="status"
+            className="mt-4 flex items-center gap-2.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs text-emerald-300"
           >
-            Full name
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            required
-            autoComplete="name"
-            disabled={submitting}
-            placeholder="Ananya Rao"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value)
-              if (fieldErrors.name) {
-                setFieldErrors((prev) => ({ ...prev, name: undefined }))
-              }
-            }}
-            className={`${inputClass} ${fieldErrors.name ? 'border-destructive focus:border-destructive focus:ring-destructive/30' : ''}`}
-          />
-          {fieldErrors.name && (
-            <p className="mt-1 text-xs text-destructive">{fieldErrors.name}</p>
-          )}
-        </div>
+            <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
+            <p className="font-medium">{successMessage}</p>
+          </div>
+        )}
 
-        <div>
-          <label
-            htmlFor="email"
-            className="mb-1.5 block text-sm font-medium text-foreground"
+        {/* Error notification */}
+        {formError && (
+          <div
+            role="alert"
+            className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 space-y-1"
           >
-            Email address
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            disabled={submitting}
-            placeholder="operator@geoagent.local"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              if (fieldErrors.email) {
-                setFieldErrors((prev) => ({ ...prev, email: undefined }))
-              }
-            }}
-            className={`${inputClass} ${fieldErrors.email ? 'border-destructive focus:border-destructive focus:ring-destructive/30' : ''}`}
-          />
-          {fieldErrors.email && (
-            <p className="mt-1 text-xs text-destructive">{fieldErrors.email}</p>
-          )}
-        </div>
+            <div className="flex items-center gap-2 font-bold text-rose-400">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{formError.what}</span>
+            </div>
+            <p className="pl-6 text-slate-300">
+              <strong>Action:</strong> {formError.howToFix}
+            </p>
+          </div>
+        )}
 
-        <div>
-          <label
-            htmlFor="password"
-            className="mb-1.5 block text-sm font-medium text-foreground"
-          >
-            Password
-          </label>
-          <div className="relative">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4" noValidate>
+          {/* Name Field */}
+          <div>
+            <label
+              htmlFor="name"
+              className="mb-1.5 block text-xs font-semibold text-slate-300"
+            >
+              Full name
+            </label>
             <input
-              id="password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
+              id="name"
+              name="name"
+              type="text"
               required
-              autoComplete="new-password"
+              autoComplete="name"
               disabled={submitting}
-              placeholder="••••••••"
-              value={password}
+              placeholder="e.g. Officer Vikram Singh"
+              value={name}
               onChange={(e) => {
-                setPassword(e.target.value)
-                if (fieldErrors.password) {
-                  setFieldErrors((prev) => ({ ...prev, password: undefined }))
+                setName(e.target.value)
+                if (fieldErrors.name) {
+                  setFieldErrors((prev) => ({ ...prev, name: undefined }))
                 }
               }}
-              className={`${inputClass} pr-10 ${fieldErrors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/30' : ''}`}
+              className={`${inputClass} ${fieldErrors.name ? 'border-rose-500' : ''}`}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              tabIndex={-1}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-            </button>
+            {fieldErrors.name && (
+              <p className="mt-1 text-xs text-rose-400">{fieldErrors.name}</p>
+            )}
           </div>
 
-          {/* Password criteria checklist */}
-          <div className="mt-2 space-y-1 text-xs">
-            <p className="font-medium text-muted-foreground">Password requirements:</p>
-            <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-              <span className={passwordCriteria.length ? 'text-emerald-500 font-medium' : ''}>
-                • Min 8 characters
-              </span>
-              <span className={passwordCriteria.hasUpper ? 'text-emerald-500 font-medium' : ''}>
-                • One uppercase
-              </span>
-              <span className={passwordCriteria.hasLower ? 'text-emerald-500 font-medium' : ''}>
-                • One lowercase
-              </span>
-              <span className={passwordCriteria.hasNumber ? 'text-emerald-500 font-medium' : ''}>
-                • One number
-              </span>
+          {/* Email Field */}
+          <div>
+            <label
+              htmlFor="email"
+              className="mb-1.5 block text-xs font-semibold text-slate-300"
+            >
+              Email address
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              disabled={submitting}
+              placeholder="e.g. vikram@swiftcare.local"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                if (fieldErrors.email) {
+                  setFieldErrors((prev) => ({ ...prev, email: undefined }))
+                }
+              }}
+              className={`${inputClass} ${fieldErrors.email ? 'border-rose-500' : ''}`}
+            />
+            {fieldErrors.email && (
+              <p className="mt-1 text-xs text-rose-400">{fieldErrors.email}</p>
+            )}
+          </div>
+
+          {/* Role Selection */}
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-300">
+              Operational Role
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setRole('CONTROL_ROOM')}
+                className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                  role === 'CONTROL_ROOM'
+                    ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300'
+                    : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
+                }`}
+              >
+                <Shield className="size-4 mb-1 text-emerald-400" />
+                <span>Dispatcher</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('DRIVER')}
+                className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                  role === 'DRIVER'
+                    ? 'border-cyan-500 bg-cyan-500/15 text-cyan-300'
+                    : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
+                }`}
+              >
+                <Navigation className="size-4 mb-1 text-cyan-400" />
+                <span>Driver</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('PARAMEDIC')}
+                className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                  role === 'PARAMEDIC'
+                    ? 'border-rose-500 bg-rose-500/15 text-rose-300'
+                    : 'border-slate-800 bg-slate-900 text-slate-400 hover:text-white'
+                }`}
+              >
+                <HeartPulse className="size-4 mb-1 text-rose-400" />
+                <span>Paramedic</span>
+              </button>
             </div>
           </div>
 
-          {fieldErrors.password && (
-            <p className="mt-1.5 text-xs text-destructive">{fieldErrors.password}</p>
-          )}
-        </div>
+          {/* Password Field */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label
+                htmlFor="password"
+                className="block text-xs font-semibold text-slate-300"
+              >
+                Password
+              </label>
+              <span className="text-[10px] font-mono text-slate-400">Min 8 chars (A-Z, a-z, 0-9)</span>
+            </div>
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                disabled={submitting}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  if (fieldErrors.password) {
+                    setFieldErrors((prev) => ({ ...prev, password: undefined }))
+                  }
+                }}
+                className={`${inputClass} pr-10 ${fieldErrors.password ? 'border-rose-500' : ''}`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            {fieldErrors.password && (
+              <p className="mt-1 text-xs text-rose-400">{fieldErrors.password}</p>
+            )}
+          </div>
 
-        <Button
-          type="submit"
-          size="lg"
-          disabled={submitting}
-          className="w-full font-semibold"
-        >
-          {submitting ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Creating account...
-            </>
-          ) : (
-            <>
-              Create account
-              <ArrowRight className="size-4" />
-            </>
-          )}
-        </Button>
-      </form>
+          <Button
+            type="submit"
+            size="lg"
+            disabled={submitting}
+            className="w-full font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950 transition-colors"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                <span>Creating Profile...</span>
+              </>
+            ) : (
+              <>
+                <span>Complete Registration</span>
+                <ArrowRight className="size-4" />
+              </>
+            )}
+          </Button>
+        </form>
 
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        Already registered?{' '}
-        <Link
-          href="/login"
-          className="font-semibold text-primary hover:underline"
-        >
-          Log in
-        </Link>
-      </p>
+        <p className="mt-6 text-center text-xs text-slate-400">
+          Already have an account?{' '}
+          <Link
+            href="/login"
+            className="font-semibold text-indigo-400 hover:underline"
+          >
+            Sign in here
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }
