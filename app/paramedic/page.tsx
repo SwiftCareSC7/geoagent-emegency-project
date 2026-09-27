@@ -35,6 +35,7 @@ import { DEMO_EMERGENCIES, DEMO_VEHICLES } from '@/lib/demo-fixtures'
 import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'
 import { Button } from '@/components/ui/button'
+import { ControlRoomMap } from '@/components/map/control-room-map'
 import { cn } from '@/lib/utils'
 
 export default function ParamedicPage() {
@@ -360,6 +361,24 @@ export default function ParamedicPage() {
                 <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   TRAUMA RESUS BAY 3
                 </span>
+              </div>
+
+              {/* Live Transit & Google Traffic Corridor */}
+              <div className="rounded-xl overflow-hidden border border-border shadow-inner mb-4">
+                <div className="bg-muted px-3 py-2 border-b border-border flex items-center justify-between text-xs font-bold">
+                  <div className="flex items-center gap-1.5 text-foreground">
+                    <MapPin className="size-3.5 text-blue-500" />
+                    <span>Live Transit Traffic Corridor</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
+                    <span>GOOGLE LIVE TRAFFIC</span>
+                  </div>
+                </div>
+                <ControlRoomMap
+                  selectedEmergencyId={selectedEmergencyId}
+                  height="220px"
+                />
               </div>
 
               {/* Hospital Target Card */}

@@ -38,6 +38,8 @@ import { validateRouteGeometry } from '@/lib/route-validator'
 import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { useSocketStatus } from '@/lib/socket/useRealtime'
 import { MapView, type MapViewHandle } from './map-view'
+import { GoogleMapView, type GoogleMapOverlayData } from './google-map-view'
+import { useMapSettings } from '@/lib/map-settings'
 import { MapControls } from './map-controls'
 import { MapLegend } from './map-legend'
 import { VehicleLayerManager } from './layers/vehicle-layer'
@@ -178,6 +180,55 @@ export function ControlRoomMap({
     deviations: true,
     v2xSignals: true,
   })
+
+  // Global Map Settings: Default to Google Maps with Real-time Traffic ON
+  const { isTrafficEnabled, toggleTraffic, isGoogleMaps, toggleProvider } = useMapSettings()
+  const [providerOverride, setProviderOverride] = useState<'google_maps' | 'leaflet_fallback' | null>(null)
+  const effectiveProvider = providerOverride || (isGoogleMaps ? 'google_maps' : 'leaflet_fallback')
+
+  const selectedEmg = emergencies.find((e) => e.emergencyId === selectedEmergencyId)
+  const activeRoute = routes.find((r) => r.isRecommended === false && r.status === 'ACTIVE') || routes.find((r) => r.routeType !== 'ALTERNATIVE') || routes[0]
+  const recommendedRoute = routes.find((r) => r.isRecommended || (r.routeType === 'ALTERNATIVE' && showRecommended))
+  const otherRoutes = routes.filter((r) => r !== activeRoute && r !== recommendedRoute)
+  const assignedVehicle = vehicles.find((v) => v.vehicleId === (selectedVehicleId || selectedEmg?.assignedVehicleId)) || vehicles[0]
+
+  const googleOverlays: GoogleMapOverlayData = useMemo(() => {
+    return {
+      activeRouteCoordinates: (activeRoute?.geometry?.coordinates as [number, number][]) || [],
+      alternativeRouteCoordinates: (recommendedRoute?.geometry?.coordinates as [number, number][]) || [],
+      originalRouteCoordinates: (otherRoutes[0]?.geometry?.coordinates as [number, number][]) || [],
+      trajectoryCoordinates: trajectories.flatMap((t) => (t.points || []).map((p) => p.coordinates)),
+      driverLocation: (assignedVehicle?.location?.coordinates as [number, number]) || undefined,
+      driverHeading: assignedVehicle?.heading ?? 0,
+      emergencyLocation: (selectedEmg?.location?.coordinates as [number, number]) || undefined,
+      emergencyName: selectedEmg?.emergencyId ? `Mission: ${selectedEmg.emergencyId}` : undefined,
+      destinationLocation: [77.6483, 12.9582], // Manipal Hospital Facility
+      destinationName: 'Manipal Hospital Receiving Bay',
+      incidents: incidents.map((i) => ({
+        id: i.id,
+        incidentId: i.incidentId,
+        type: i.type,
+        severity: i.severity,
+        status: i.status,
+        description: i.description,
+        location: i.location,
+        source: i.source as any,
+      })),
+      vehicles: vehicles.map((v) => ({
+        id: v.vehicleId,
+        vehicleId: v.vehicleId,
+        registrationNumber: v.registrationNumber,
+        type: v.type,
+        status: v.status,
+        capacity: v.capacity || 2,
+        driverName: v.driverName || 'Officer',
+        location: v.location,
+        speed: v.speed,
+        heading: v.heading,
+        updatedAt: v.lastUpdate,
+      })),
+    }
+  }, [activeRoute, recommendedRoute, otherRoutes, trajectories, assignedVehicle, selectedEmg, incidents, vehicles])
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -807,26 +858,57 @@ export function ControlRoomMap({
 
   return (
     <div className={`relative w-full rounded-2xl border border-border bg-card dark:bg-slate-950 overflow-hidden shadow-2xl ${className}`}>
-      {/* Real Map Viewport */}
-      <MapView
-        ref={mapViewRef}
-        height={height}
-        onMapReady={handleMapReady}
-        onBasemapHealthChange={setBasemapHealth}
-      />
+      {/* Real Map Viewport: Google Maps (DEFAULT) with Live Traffic or Leaflet Fallback */}
+      {effectiveProvider === 'google_maps' ? (
+        <GoogleMapView
+          height={height}
+          trafficEnabled={isTrafficEnabled}
+          onToggleTraffic={toggleTraffic}
+          overlays={googleOverlays}
+          showControls={false}
+          onError={(err) => {
+            console.warn('[ControlRoomMap] Google Maps Platform notice, using Leaflet GIS fallback', err)
+            setProviderOverride('leaflet_fallback')
+          }}
+        />
+      ) : (
+        <MapView
+          ref={mapViewRef}
+          height={height}
+          onMapReady={handleMapReady}
+          onBasemapHealthChange={setBasemapHealth}
+        />
+      )}
 
       {/* Floating Map Controls */}
       <MapControls
         visibility={visibility}
         onToggleLayer={handleToggleLayer}
-        onZoomIn={() => mapViewRef.current?.getMap()?.zoomIn()}
-        onZoomOut={() => mapViewRef.current?.getMap()?.zoomOut()}
+        onZoomIn={() => {
+          if (effectiveProvider === 'google_maps') {
+            // Handled internally in GoogleMapView or zoom control
+          } else {
+            mapViewRef.current?.getMap()?.zoomIn()
+          }
+        }}
+        onZoomOut={() => {
+          if (effectiveProvider === 'google_maps') {
+            // Handled internally
+          } else {
+            mapViewRef.current?.getMap()?.zoomOut()
+          }
+        }}
         onFitCorridor={handleFitCorridor}
         onResetView={handleResetView}
         activeTile={activeTile}
         onSelectTile={(tile) => {
           setActiveTile(tile)
-          mapViewRef.current?.setTileLayer(tile)
+          if (tile.startsWith('google')) {
+            setProviderOverride('google_maps')
+          } else {
+            setProviderOverride('leaflet_fallback')
+            mapViewRef.current?.setTileLayer(tile)
+          }
         }}
         hasSelectedEmergency={!!selectedEmergencyId}
       />
@@ -836,7 +918,8 @@ export function ControlRoomMap({
 
       {/* Floating Status & Freshness Header Banner */}
       <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-1.5 max-w-sm">
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-card/95 px-3 py-1.5 text-xs text-foreground shadow-xl backdrop-blur-md">
+        {/* Real-Time Stream & Live Traffic Indicator */}
+        <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card/95 px-3 py-1.5 text-xs text-foreground shadow-xl backdrop-blur-md">
           {socketConnected ? (
             <span className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400">
               <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -852,6 +935,41 @@ export function ControlRoomMap({
           <span className="text-[11px] text-muted-foreground font-mono">
             {emergencies.length} Emergencies · {vehicles.length} Units
           </span>
+        </div>
+
+        {/* Global Google Maps Engine & Live Traffic Status Pill */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900/90 text-white border border-slate-700/80 shadow-md backdrop-blur-md text-[11px]">
+            <span className={`size-2 rounded-full ${isTrafficEnabled ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
+            <span className="font-extrabold tracking-tight">
+              {effectiveProvider === 'google_maps' ? 'GOOGLE MAPS' : 'LEAFLET GIS'}
+            </span>
+            <span className="text-[10px] text-emerald-400 font-mono font-bold pl-1 border-l border-slate-700">
+              {isTrafficEnabled ? 'LIVE TRAFFIC: ON' : 'TRAFFIC: OFF'}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleTraffic}
+            className={`px-2 py-1 rounded-lg border text-[10px] font-bold transition-all shadow-sm backdrop-blur-md ${
+              isTrafficEnabled
+                ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/80'
+                : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+            }`}
+            title="Toggle Google Maps Live Traffic Overlay (Default: ON)"
+          >
+            {isTrafficEnabled ? 'Traffic: ON' : 'Traffic: OFF'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setProviderOverride(effectiveProvider === 'google_maps' ? 'leaflet_fallback' : 'google_maps')}
+            className="px-2 py-1 rounded-lg border border-slate-700/80 bg-slate-900/80 hover:bg-slate-800 text-slate-300 text-[10px] font-mono shadow-sm backdrop-blur-md"
+            title="Switch between Google Maps (Default) and Leaflet GIS (Fallback)"
+          >
+            {effectiveProvider === 'google_maps' ? 'Fallback GIS' : 'Google Maps'}
+          </button>
         </div>
 
         {/* Selected Mission Pill */}

@@ -10,6 +10,8 @@ import { NavigationManeuverHUD } from '@/components/navigation/NavigationManeuve
 import { formatDistance, formatDuration, formatArrivalTime } from '@/lib/navigation/geometry'
 import { MapLegend } from '@/components/map/map-legend'
 import { ROUTE_SEMANTICS } from '@/lib/routing-constants'
+import { GoogleMapView, type GoogleMapOverlayData } from '@/components/map/google-map-view'
+import { useMapSettings } from '@/lib/map-settings'
 import {
   AlertTriangle,
   Layers,
@@ -160,6 +162,44 @@ export function DriverNavigationMap({
   const [isUserPanning, setIsUserPanning] = useState(false)
   const [isTurnListOpen, setIsTurnListOpen] = useState(false)
   const [isNavHudCollapsed, setIsNavHudCollapsed] = useState(false)
+
+  // Global Google Maps Standard: Defaults to Google Maps with Live Traffic ON
+  const { isTrafficEnabled, toggleTraffic, isGoogleMaps } = useMapSettings()
+  const [engineOverride, setEngineOverride] = useState<'google_maps' | 'leaflet_fallback' | null>(null)
+  const effectiveEngine = engineOverride || (isGoogleMaps ? 'google_maps' : 'leaflet_fallback')
+
+  const googleOverlays: GoogleMapOverlayData = React.useMemo(
+    () => ({
+      activeRouteCoordinates,
+      leg1Coordinates,
+      leg2Coordinates,
+      activeLegNumber,
+      alternativeRouteCoordinates,
+      originalRouteCoordinates,
+      driverLocation,
+      driverHeading,
+      emergencyLocation: emergencyCoordinates,
+      emergencyName,
+      destinationLocation: destinationCoordinates,
+      destinationName,
+      incidents: routeIncidents,
+    }),
+    [
+      activeRouteCoordinates,
+      leg1Coordinates,
+      leg2Coordinates,
+      activeLegNumber,
+      alternativeRouteCoordinates,
+      originalRouteCoordinates,
+      driverLocation,
+      driverHeading,
+      emergencyCoordinates,
+      emergencyName,
+      destinationCoordinates,
+      destinationName,
+      routeIncidents,
+    ]
+  )
 
   const handleStepClick = (step: NavigationStep, idx: number) => {
     if (!mapRef.current) return
@@ -857,14 +897,62 @@ function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
         onSelectStep={handleStepSelect}
       />
 
-      {/* 2. LEAFLET MAP CANVAS */}
-      <div
-        ref={containerRef}
-        className={`absolute inset-0 z-0 overflow-hidden bg-slate-100 dark:bg-slate-950 ${className}`}
-      />
+      {/* 2. MAP VIEWPORT: GOOGLE MAPS (DEFAULT) OR LEAFLET (FALLBACK) */}
+      {effectiveEngine === 'google_maps' ? (
+        <GoogleMapView
+          initialCenter={driverLocation ? [driverLocation[1], driverLocation[0]] : [12.9582, 77.6483]}
+          initialZoom={16}
+          trafficEnabled={isTrafficEnabled}
+          onToggleTraffic={toggleTraffic}
+          overlays={googleOverlays}
+          showControls={false}
+          className={`absolute inset-0 z-0 ${className}`}
+          onError={() => setEngineOverride('leaflet_fallback')}
+        />
+      ) : (
+        <div
+          ref={containerRef}
+          className={`absolute inset-0 z-0 overflow-hidden bg-slate-100 dark:bg-slate-950 ${className}`}
+        />
+      )}
 
       {/* 3. PROMINENT MAP CORRIDOR LEGEND */}
       <MapLegend />
+
+      {/* 4. DRIVER BASEMAP & LIVE TRAFFIC ENGINE STATUS PILL */}
+      <div className="absolute bottom-3 right-3 z-20 flex flex-wrap items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 text-white border border-slate-700/80 shadow-xl backdrop-blur-md text-xs">
+          <span className={`size-2 rounded-full ${isTrafficEnabled ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
+          <span className="font-extrabold text-[11px] tracking-tight">
+            {effectiveEngine === 'google_maps' ? 'GOOGLE MAPS' : 'LEAFLET GIS'}
+          </span>
+          <span className="text-[10px] text-emerald-400 font-mono font-bold pl-1 border-l border-slate-700">
+            {isTrafficEnabled ? 'LIVE TRAFFIC: ON' : 'TRAFFIC: OFF'}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={toggleTraffic}
+          className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-lg backdrop-blur-md ${
+            isTrafficEnabled
+              ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 hover:bg-emerald-900/80'
+              : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:bg-slate-800'
+          }`}
+          title="Toggle Google Maps Real-time Traffic Layer"
+        >
+          {isTrafficEnabled ? 'Traffic: ON' : 'Traffic: OFF'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setEngineOverride(effectiveEngine === 'google_maps' ? 'leaflet_fallback' : 'google_maps')}
+          className="px-2 py-1.5 rounded-xl border border-slate-700/80 bg-slate-900/80 hover:bg-slate-800 text-slate-300 text-[10px] font-mono shadow-md backdrop-blur-md"
+          title="Switch between Google Maps and Leaflet GIS"
+        >
+          {effectiveEngine === 'google_maps' ? 'Fallback GIS' : 'Google Maps'}
+        </button>
+      </div>
     </div>
   )
 }

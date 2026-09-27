@@ -112,7 +112,7 @@ export function MapLegend() {
           {/* Telemetry & Hazards */}
           <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
             <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
-              Hazards & Telemetry Fixes
+              Hazards, Telemetry & Traffic
             </div>
             <div className="grid grid-cols-2 gap-2 text-[10px]">
               <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30">
@@ -126,6 +126,27 @@ export function MapLegend() {
                 <span className="font-bold text-orange-700 dark:text-orange-400 truncate">
                   🟠 Actual GPS Trajectory
                 </span>
+              </div>
+            </div>
+
+            {/* Official Google Real-Time Traffic Layer Status */}
+            <div className="mt-2 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                  <span className="font-bold text-emerald-700 dark:text-emerald-300 text-[10px]">
+                    🟢 Google Live Traffic Layer
+                  </span>
+                </div>
+                <span className="font-mono text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase">
+                  Enabled Default
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-1 text-[9px] font-mono text-slate-600 dark:text-slate-400 pt-1 border-t border-emerald-500/20">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">● Fast Flow</span>
+                <span className="text-amber-500 font-semibold">● Moderate</span>
+                <span className="text-orange-500 font-semibold">● Slow</span>
+                <span className="text-rose-600 font-semibold">● Congested</span>
               </div>
             </div>
           </div>
