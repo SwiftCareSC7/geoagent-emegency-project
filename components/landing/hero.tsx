@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, Navigation, GitCompare } from 'lucide-react'
+import { ArrowRight, Navigation } from 'lucide-react'
 import Link from 'next/link'
 
 export function Hero() {
@@ -68,13 +68,6 @@ export function Hero() {
             >
               <Navigation className="size-4 text-cyan-400" />
               <span>View Driver Dashboard</span>
-            </Link>
-            <Link
-              href="/diff"
-              className="inline-flex items-center gap-2 rounded-xl border border-purple-500/40 bg-purple-950/40 backdrop-blur-sm px-6 py-3.5 text-sm sm:text-base font-semibold text-purple-200 transition-all hover:bg-purple-900/60 hover:border-purple-400 active:scale-[0.98]"
-            >
-              <GitCompare className="size-4 text-purple-400" />
-              <span>What-If Simulator</span>
             </Link>
           </div>
         </div>
