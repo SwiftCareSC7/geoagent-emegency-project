@@ -1,6 +1,6 @@
 'use client'
 
-import { LogOut, Navigation, Shield, Siren, UserRound, Menu, X, HeartPulse, Beaker, GitCompare } from 'lucide-react'
+import { LogOut, Navigation, Shield, Siren, UserRound, Menu, X, HeartPulse, GitCompare } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import React, { useState, useEffect } from 'react'
@@ -15,6 +15,7 @@ interface DashboardTopbarProps {
   driverName?: string
   emergencyActive?: boolean
   lastRefreshed?: string
+  driverMode?: boolean
 }
 
 export function DashboardTopbar({
@@ -22,6 +23,7 @@ export function DashboardTopbar({
   driverName = 'Officer',
   emergencyActive = false,
   lastRefreshed = '',
+  driverMode = false,
 }: DashboardTopbarProps = {}) {
   const router = useRouter()
   const pathname = usePathname()
@@ -66,7 +68,7 @@ export function DashboardTopbar({
               />
             </Link>
 
-            <div className="hidden sm:block border-l border-border pl-3">
+            <div className={cn('hidden sm:block border-l border-border pl-3', driverMode && 'lg:hidden')}>
               <p className="text-sm font-bold leading-tight text-foreground">
                 GeoAgent
               </p>
@@ -76,7 +78,7 @@ export function DashboardTopbar({
             </div>
 
             {/* Status Badge */}
-            <div className="hidden md:flex items-center gap-2 ml-1">
+            <div className={cn('hidden md:flex items-center gap-2 ml-1', driverMode && 'flex')}>
               {emergencyActive ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 border border-red-500/30">
                   <Siren className="size-3" />
@@ -92,7 +94,7 @@ export function DashboardTopbar({
           </div>
 
           {/* Right: Desktop nav + Theme Switcher + User */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className={cn('hidden lg:flex items-center gap-2', driverMode && 'lg:hidden')}>
             {/* Navigation Links */}
             <nav className="flex items-center gap-1 rounded-lg bg-muted/60 border border-border p-0.5">
               <Link
@@ -130,18 +132,6 @@ export function DashboardTopbar({
               >
                 <HeartPulse className="size-3 text-rose-500 dark:text-rose-400" />
                 <span>Paramedic</span>
-              </Link>
-              <Link
-                href="/emergency-lab"
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
-                  pathname.startsWith('/emergency-lab')
-                    ? 'bg-card text-foreground shadow-xs border border-border'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                )}
-              >
-                <Beaker className="size-3 text-purple-500 dark:text-purple-400" />
-                <span>Emergency Lab</span>
               </Link>
               <Link
                 href="/diff"
@@ -207,7 +197,7 @@ export function DashboardTopbar({
           </div>
 
           {/* Mobile: Theme Toggle + Hamburger Menu */}
-          <div className="flex md:hidden items-center gap-2">
+          <div className={cn('flex lg:hidden items-center gap-2', driverMode && 'lg:flex')}>
             <ThemeToggleCompact />
             <button
               type="button"
@@ -223,7 +213,7 @@ export function DashboardTopbar({
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-card/98 text-foreground backdrop-blur-xl">
+        <div className={cn('border-t border-border bg-card/98 text-foreground backdrop-blur-xl', !driverMode && 'lg:hidden')}>
           <div className="px-4 py-3 space-y-2">
             {/* User Info Mobile */}
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/60 border border-border">
@@ -269,14 +259,6 @@ export function DashboardTopbar({
               >
                 <HeartPulse className="size-4 text-rose-500 dark:text-rose-400" />
                 Paramedic
-              </Link>
-              <Link
-                href="/emergency-lab"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border/50 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                <Beaker className="size-4 text-purple-500 dark:text-purple-400" />
-                Emergency Lab
               </Link>
               <Link
                 href="/diff"

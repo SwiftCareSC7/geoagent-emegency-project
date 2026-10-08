@@ -4,18 +4,13 @@ import React, { useState } from 'react'
 import {
   BrainCircuit,
   Sparkles,
-  ArrowRight,
+  ChevronDown,
   CheckCircle2,
   AlertTriangle,
   Clock,
   ShieldCheck,
-  ChevronDown,
-  ChevronUp,
-  Flame,
-  TrafficCone,
   Car,
   Check,
-  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -125,135 +120,97 @@ export function DriverGeoAgentPanel({
   }
 
   const [detailsExpanded, setDetailsExpanded] = useState(false)
-  const [evidenceExpanded, setEvidenceExpanded] = useState(false)
 
   const meta = getStateMeta(state)
   const confidenceText = confidence !== null && confidence !== undefined
     ? `${Math.round(confidence * 100)}%`
-    : '94%'
+    : 'Not provided'
 
   const hasRerouteOption = state === 'REROUTE_RECOMMENDED' || state === 'REROUTE_REQUIRED'
 
   return (
     <section
-      className={`rounded-2xl border-2 ${meta.borderClass} bg-card p-3 sm:p-4 shadow-md text-card-foreground transition-all ${className}`}
+      className={`rounded-xl border ${meta.borderClass} bg-card p-3 sm:p-4 text-card-foreground ${className}`}
       aria-label="GeoAgent Decision Panel"
     >
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="size-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center">
-            <BrainCircuit className="size-4 text-cyan-600 dark:text-cyan-400" />
-          </div>
-          <div>
-            <h2 className="text-[10px] font-black tracking-widest uppercase text-cyan-600 dark:text-cyan-400 leading-tight">
-              GeoAgent AI Intelligence
+            <div className="size-7 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <BrainCircuit className="size-4 text-purple-700 dark:text-purple-300" />
+            </div>
+            <div>
+            <h2 className="text-xs font-bold tracking-wide uppercase text-purple-700 dark:text-purple-300 leading-tight">
+              GeoAgent
             </h2>
-            <p className="text-[9px] font-mono text-muted-foreground leading-tight">
-              Dynamic Spatial Reasoning
-            </p>
           </div>
-        </div>
-
-        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-black tracking-wide ${meta.badgeClass}`}>
-          {meta.icon}
-          <span>{meta.title}</span>
         </div>
       </div>
 
-      {/* Main Reroute Action Banner */}
-      {hasRerouteOption ? (
-        <div className="mt-2.5 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-400">
-                Faster Alternative Corridor
-              </span>
-              <span className="font-mono text-[10px] font-black text-white bg-emerald-600 px-1.5 py-0.5 rounded-full">
-                SAVE {timeSavedMinutes} MIN
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              ETA {alternativeEtaMinutes}m vs Current {currentEtaMinutes}m ({likelyCause})
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <Button
-              size="sm"
-              onClick={onAcceptReroute}
-              disabled={isAccepting}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm"
-            >
-              <Check className="size-3.5 stroke-[3]" />
-              <span>{isAccepting ? 'Activating...' : 'Accept Detour'}</span>
-            </Button>
-          </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${meta.badgeClass}`}>
+            {meta.icon}<span>{hasRerouteOption ? 'GEOAGENT RECOMMENDS REROUTE' : meta.title}</span>
+          </span>
+          <p className="mt-1.5 text-xs font-medium text-foreground">{likelyCause}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {hasRerouteOption
+              ? `Estimated ETA ${alternativeEtaMinutes} min, compared with ${currentEtaMinutes} min on the current route.`
+              : explanation}
+          </p>
         </div>
-      ) : (
-        <div className="mt-2.5 flex items-center justify-between p-2 rounded-xl bg-muted/60 border border-border text-xs">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
-            <span className="font-semibold text-foreground">Current route corridor optimal · Zero delays</span>
-          </div>
-          <span className="font-mono text-[10px] text-muted-foreground font-bold">Conf: {confidenceText}</span>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            aria-expanded={detailsExpanded}
+            onClick={() => setDetailsExpanded((open) => !open)}
+            className="min-h-11 gap-1.5 px-3 text-xs"
+          >
+            <span>{detailsExpanded ? 'HIDE WHY' : 'VIEW WHY'}</span>
+            <ChevronDown className={`size-3.5 transition-transform ${detailsExpanded ? 'rotate-180' : ''}`} />
+          </Button>
+          {hasRerouteOption && (
+            <Button size="sm" onClick={onAcceptReroute} disabled={isAccepting} className="min-h-11 gap-1.5 bg-emerald-700 px-3 text-xs text-white hover:bg-emerald-800">
+              <Check className="size-3.5" />
+              <span>{isAccepting ? 'Activating…' : 'Accept route'}</span>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {detailsExpanded && (
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="mb-3 text-xs leading-relaxed text-muted-foreground">{explanation}</p>
+          <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" aria-label="GeoAgent recommendation rationale">
+            {[
+              { title: 'Observation', text: evidence[0] || `Route state: ${state.replace(/_/g, ' ')}` },
+              { title: 'Inference', text: likelyCause },
+              { title: 'Alternative', text: hasRerouteOption ? `Alternative ETA ${alternativeEtaMinutes} min` : 'No route change proposed' },
+              { title: 'Decision', text: hasRerouteOption ? 'Advisory only; route acceptance remains an explicit driver action.' : 'Continue monitoring current route.' },
+              { title: 'Expected outcome', text: hasRerouteOption ? `Estimated ${timeSavedMinutes} min saved, based on the supplied route estimates.` : 'Maintain current route and monitor conditions.' },
+              { title: 'Confidence', text: confidenceText },
+            ].map((step, index) => (
+              <li key={step.title} className="flex gap-2 rounded-lg bg-muted/50 p-2.5">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-800 dark:bg-purple-950 dark:text-purple-200">{index + 1}</span>
+                <span className="min-w-0">
+                  <span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{step.title}</span>
+                  <span className="mt-0.5 block text-xs leading-snug text-foreground">{step.text}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+          {evidence.length > 1 && (
+            <details className="mt-3 rounded-lg border border-border/70 px-3">
+              <summary className="min-h-10 cursor-pointer py-2 text-xs font-semibold text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">Evidence ({evidence.length})</summary>
+              <ul className="space-y-1 pb-3 text-xs text-muted-foreground">
+                {evidence.slice(1).map((item, idx) => <li key={`${idx}-${item}`}>{item}</li>)}
+              </ul>
+            </details>
+          )}
+          {onViewRoute && <button type="button" onClick={onViewRoute} className="mt-3 min-h-10 rounded-lg px-2 text-xs font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring">Compare routes</button>}
         </div>
       )}
-
-      {/* Collapsible Tertiary Diagnostics Toggle */}
-      <div className="mt-2 pt-2 border-t border-border">
-        <button
-          type="button"
-          onClick={() => setDetailsExpanded(!detailsExpanded)}
-          className="flex items-center justify-between w-full text-[11px] font-bold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
-          <span className="flex items-center gap-1">
-            <Sparkles className="size-3 text-cyan-600 dark:text-cyan-400" />
-            <span>AI Evidence & Reasoning Details</span>
-          </span>
-          {detailsExpanded ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-        </button>
-
-        {detailsExpanded && (
-          <div className="mt-2 space-y-2 pt-1 animate-in fade-in-50 duration-200">
-            {/* Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <div className="rounded-lg border border-border bg-muted/40 p-2">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block leading-tight">Likely Cause</span>
-                <span className="text-[11px] font-bold text-foreground leading-tight block mt-0.5 truncate" title={likelyCause}>
-                  {likelyCause}
-                </span>
-              </div>
-              <div className="rounded-lg border border-border bg-muted/40 p-2">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block leading-tight">Confidence</span>
-                <span className="text-xs font-black font-mono text-cyan-600 dark:text-cyan-400 block mt-0.5">
-                  {confidenceText}
-                </span>
-              </div>
-              <div className="rounded-lg border border-border bg-muted/40 p-2 col-span-2 sm:col-span-1">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block leading-tight">Current vs Alt</span>
-                <span className="text-xs font-mono font-bold text-foreground block mt-0.5">
-                  {currentEtaMinutes}m → {alternativeEtaMinutes}m
-                </span>
-              </div>
-            </div>
-
-            {/* Explanation text */}
-            <p className="text-[11px] text-muted-foreground leading-relaxed bg-muted/30 p-2 rounded-lg border border-border/60">
-              {explanation}
-            </p>
-
-            {/* Evidence items */}
-            {evidence && evidence.length > 0 && (
-              <ul className="space-y-1 text-[10px] text-muted-foreground font-mono list-disc list-inside bg-muted/20 p-2 rounded-lg border border-border/40">
-                {evidence.map((item, idx) => (
-                  <li key={idx} className="leading-snug">{item}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
     </section>
   )
 }

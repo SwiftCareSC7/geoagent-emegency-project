@@ -8,8 +8,6 @@ import {
   Navigation2, 
   Radio, 
   Activity, 
-  Gauge, 
-  Clock,
   ShieldAlert
 } from 'lucide-react'
 import type { NavigationState } from './types'
@@ -109,98 +107,35 @@ export function DriverLiveSituation({
         </div>
       </div>
 
-      {/* Grid of 4 key situational metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2.5">
-        {/* Metric 1: Route Alignment */}
-        <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-colors ${
-          isDeviated 
-            ? 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-200' 
-            : 'bg-muted/50 border-border text-foreground'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold tracking-wide uppercase text-muted-foreground">Trajectory</span>
-            <Navigation2 className={`h-3.5 w-3.5 ${isDeviated ? 'text-rose-500 rotate-45 animate-bounce' : 'text-emerald-500'}`} />
-          </div>
-          <div className="mt-1">
-            {isDeviated ? (
-              <div>
-                <span className="text-xs font-bold text-rose-600 dark:text-rose-400 block">Deviated</span>
-                <span className="text-[10px] text-muted-foreground">+{Math.round(deviationDistance)}m</span>
-              </div>
-            ) : (
-              <div>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">On Track</span>
-                <span className="text-[10px] text-muted-foreground">Aligned</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Metric 2: Corridor Traffic */}
-        <div className="p-2.5 rounded-xl bg-muted/50 border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold tracking-wide uppercase text-muted-foreground">Traffic</span>
-            <TrafficIcon className="h-3.5 w-3.5 text-amber-500" />
-          </div>
-          <div className="mt-1">
-            <span className="text-xs font-bold block text-foreground">
-              {trafficInfo.label}
-            </span>
-            <span className="text-[10px] text-muted-foreground">Flow ~{Math.round(currentSpeed || 20)} km/h</span>
-          </div>
-        </div>
-
-        {/* Metric 3: Active Speed */}
-        <div className="p-2.5 rounded-xl bg-muted/50 border border-border flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold tracking-wide uppercase text-muted-foreground">Ambulance</span>
-            <Gauge className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
-          </div>
-          <div className="mt-1">
-            <div className="flex items-baseline gap-1">
-              <span className="text-base font-extrabold text-foreground font-mono">{Math.round(currentSpeed || 0)}</span>
-              <span className="text-[10px] text-muted-foreground font-semibold">km/h</span>
-            </div>
-            <span className="text-[10px] text-muted-foreground">Limit {speedLimit} km/h</span>
-          </div>
-        </div>
-
-        {/* Metric 4: Delay Impact */}
-        <div className={`p-2.5 rounded-xl border flex flex-col justify-between ${
-          etaDelayMinutes > 0
-            ? 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-200'
-            : 'bg-muted/50 border-border text-foreground'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold tracking-wide uppercase text-muted-foreground">ETA Impact</span>
-            <Clock className={`h-3.5 w-3.5 ${etaDelayMinutes > 0 ? 'text-amber-500' : 'text-emerald-500'}`} />
-          </div>
-          <div className="mt-1">
-            {etaDelayMinutes > 0 ? (
-              <div>
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 block font-mono">+{etaDelayMinutes}m Delay</span>
-                <span className="text-[10px] text-muted-foreground">Congestion</span>
-              </div>
-            ) : (
-              <div>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">On Schedule</span>
-                <span className="text-[10px] text-muted-foreground">No delay</span>
-              </div>
-            )}
-          </div>
-        </div>
+      <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
+        <span className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-semibold ${isDeviated ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300' : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'}`}>
+          <Navigation2 className="size-3.5" />
+          {isDeviated ? `Off route · ${Math.round(deviationDistance)} m` : 'On planned route'}
+        </span>
+        {incidentAlert && <span className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/10 px-2.5 py-1.5 font-semibold text-rose-700 dark:text-rose-300"><ShieldAlert className="size-3.5" />{incidentAlert}</span>}
       </div>
 
-      {/* Incident Alert Banner (if incident present) */}
-      {incidentAlert && (
-        <div className="mt-2.5 p-2 px-2.5 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center gap-2 text-xs text-rose-700 dark:text-rose-300">
-          <ShieldAlert className="h-4 w-4 text-rose-500 shrink-0 animate-pulse" />
-          <span className="truncate flex-1 font-medium">{incidentAlert}</span>
-          <span className="text-[10px] uppercase font-bold text-rose-600 dark:text-rose-400 bg-rose-500/20 px-1.5 py-0.5 rounded border border-rose-500/40 shrink-0">
-            Hazard
-          </span>
+      <details className="group mt-2 rounded-lg border border-border/70">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-xs font-semibold text-muted-foreground outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <span>More live situation</span><span className="text-[10px] font-normal">Traffic · speed · ETA impact</span>
+        </summary>
+        <div className="grid grid-cols-3 gap-2 border-t border-border/70 p-2">
+          <div className="rounded-lg bg-muted/50 p-2">
+            <span className="block text-[10px] uppercase text-muted-foreground">Traffic</span>
+            <span className="mt-1 block text-xs font-semibold text-foreground">{trafficInfo.label}</span>
+          </div>
+          <div className="rounded-lg bg-muted/50 p-2">
+            <span className="block text-[10px] uppercase text-muted-foreground">Speed</span>
+            <span className="mt-1 block text-xs font-semibold text-foreground">{Math.round(currentSpeed || 0)} km/h <span className="font-normal text-muted-foreground">/ {speedLimit}</span></span>
+          </div>
+          <div className="rounded-lg bg-muted/50 p-2">
+            <span className="block text-[10px] uppercase text-muted-foreground">ETA impact</span>
+            <span className="mt-1 block text-xs font-semibold text-foreground">{etaDelayMinutes > 0 ? `+${etaDelayMinutes} min` : 'On schedule'}</span>
+          </div>
         </div>
-      )}
+      </details>
+
+      {/* Incident Alert Banner (if incident present) */}
     </div>
   )
 }

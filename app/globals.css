@@ -70,27 +70,27 @@
    ═══════════════════════════════════════════════════ */
 :root {
   color-scheme: light;
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f5f8fc;
+  --foreground: #15243a;
   --card: #ffffff;
   --card-foreground: #0f172a;
   --popover: #ffffff;
   --popover-foreground: #0f172a;
-  --primary: #0284c7;
+  --primary: #1769aa;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #334155;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #e2e8f0;
-  --accent-foreground: #0f172a;
+  --secondary: #eaf1f8;
+  --secondary-foreground: #29425f;
+  --muted: #edf3f8;
+  --muted-foreground: #60738a;
+  --accent: #e2edf7;
+  --accent-foreground: #15243a;
   --destructive: #dc2626;
-  --border: #cbd5e1; /* Crisp Slate-300 border so cards visibly pop against light background */
-  --input: #cbd5e1;
-  --ring: #0284c7;
+  --border: #d9e3ed;
+  --input: #cbd8e5;
+  --ring: #3184c2;
 
   /* SwiftCare brand palette */
-  --navy: #0f172a;
+  --navy: #15243a;
   --navy-foreground: #f8fafc;
   --critical: #dc2626;
   --warning: #d97706;
@@ -104,7 +104,7 @@
   --chart-3: #059669;
   --chart-4: #d97706;
   --chart-5: #dc2626;
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #0f172a;
   --sidebar-primary: #0284c7;
@@ -116,7 +116,7 @@
 
   /* Surface layers */
   --surface: #ffffff;
-  --surface-raised: #f1f5f9;
+  --surface-raised: #edf3f8;
   --surface-overlay: rgba(255, 255, 255, 0.95);
 }
 
@@ -207,9 +207,6 @@
 }
 
 /* Focus management */
-*:focus {
-  outline: none;
-}
 *:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
@@ -232,13 +229,13 @@ html.transitioning *::after {
   transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease !important;
 }
 
-/* Card elevation enhancements — makes panels and cards visibly pop against background */
+/* Quiet surface separation; keep attention on operational state, not decoration. */
 :root .bg-card {
-  box-shadow: 0 1px 4px 0 rgba(15, 23, 42, 0.08), 0 1px 2px -1px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 2px rgba(21, 36, 58, 0.035);
 }
 
 .dark .bg-card {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
 
 /* Tactical high-contrast Leaflet basemap styling (Zero watermark, night mode) */

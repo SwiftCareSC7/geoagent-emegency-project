@@ -43,6 +43,7 @@ import {
 } from '@/lib/api/index'
 import { useRealtimeEmergency } from '@/lib/socket/useRealtime'
 import { Button } from '@/components/ui/button'
+import { Disclosure } from '@/components/ui/disclosure'
 import { EmergencyOverviewCard } from './emergency-overview-card'
 import { VehicleMovementPanel } from './vehicle-movement-panel'
 import { RouteAnalysisPanel } from './route-analysis-panel'
@@ -561,8 +562,24 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         </div>
       )}
 
+      <section aria-label="Mission snapshot" className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-3 sm:grid-cols-5">
+        {[
+          { label: 'Status', value: emergency?.status || '—' },
+          { label: 'Assigned unit', value: vehicle?.vehicleId || assignedVehId || 'Unassigned' },
+          { label: 'ETA', value: prediction?.predictedDurationMinutes != null ? `${prediction.predictedDurationMinutes} min` : '—' },
+          { label: 'Delay risk', value: prediction?.delayRisk || '—' },
+          { label: 'Decision', value: decision?.status?.replace(/_/g, ' ') || 'No decision' },
+        ].map((item) => (
+          <div key={item.label} className="min-w-0 px-2 py-1">
+            <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{item.label}</span>
+            <span className="mt-1 block truncate text-sm font-semibold text-foreground" title={item.value}>{item.value}</span>
+          </div>
+        ))}
+      </section>
+
       {/* 5-Question Mission Assessment HUD */}
       <MissionAssessmentHUD
+        compact
         emergency={emergency}
         vehicle={vehicle}
         route={route}
@@ -586,23 +603,25 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         }}
       />
 
-      {/* Section 2: Real-Time Arrival & Delay Prediction (with Prediction Change Visualization) */}
-      <PredictionIntelligencePanel
-        prediction={prediction}
-        livePrediction={livePrediction}
-        predictionDelta={predictionDelta}
-        isLoading={loading}
-      />
+      <Disclosure title="Prediction details" summary="Factors, confidence, and changes over time">
+        <PredictionIntelligencePanel
+          prediction={prediction}
+          livePrediction={livePrediction}
+          predictionDelta={predictionDelta}
+          isLoading={loading}
+        />
+      </Disclosure>
 
-      {/* Section 3 & 4: Route Comparison & Deterministic What-If Analysis */}
-      <RouteComparisonCard
-        currentRoute={route}
-        alternatives={comparisonData?.alternatives || (orchestrationResult?.geoAgent as any)?.comparison?.alternatives || []}
-        whyRouteChanged={comparisonData?.whyRouteChanged || (orchestrationResult?.geoAgent as any)?.whyRouteChanged || []}
-        whatIfDoNothing={comparisonData?.whatIfDoNothing || (orchestrationResult?.geoAgent as any)?.comparison?.whatIfDoNothing}
-        currentEtaMinutes={comparisonData?.currentRoute?.etaMinutes || prediction?.predictedDurationMinutes || situationAnalysis?.eta?.currentMinutes}
-        plannedEtaMinutes={comparisonData?.currentRoute?.plannedEtaMinutes || situationAnalysis?.eta?.originalMinutes}
-      />
+      <Disclosure title="Route alternatives & what-if analysis" summary="Compare candidate corridors and estimated outcomes">
+        <RouteComparisonCard
+          currentRoute={route}
+          alternatives={comparisonData?.alternatives || (orchestrationResult?.geoAgent as any)?.comparison?.alternatives || []}
+          whyRouteChanged={comparisonData?.whyRouteChanged || (orchestrationResult?.geoAgent as any)?.whyRouteChanged || []}
+          whatIfDoNothing={comparisonData?.whatIfDoNothing || (orchestrationResult?.geoAgent as any)?.comparison?.whatIfDoNothing}
+          currentEtaMinutes={comparisonData?.currentRoute?.etaMinutes || prediction?.predictedDurationMinutes || situationAnalysis?.eta?.currentMinutes}
+          plannedEtaMinutes={comparisonData?.currentRoute?.plannedEtaMinutes || situationAnalysis?.eta?.originalMinutes}
+        />
+      </Disclosure>
 
       {/* Section 5: Authoritative Decision Engine & Operator Approval Card */}
       <DecisionApprovalCard
@@ -612,67 +631,68 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         onDecisionUpdated={(updated) => setDecision(updated)}
       />
 
-      {/* Section 6: Expected Route Corridor */}
-      <RouteAnalysisPanel route={route} loading={loading} />
+      <Disclosure title="Route geometry & provider" summary="Planned corridor details">
+        <RouteAnalysisPanel route={route} loading={loading} />
+      </Disclosure>
 
-      {/* Section 6B: Mission Operational Map & Corridor Tracking */}
-      <EmergencyMissionMap
-        emergency={emergency}
-        vehicle={vehicle}
-        route={route}
-        latestTrajectory={latestTrajectory}
-        situationAnalysis={situationAnalysis}
-        prediction={prediction}
-        decision={decision}
-        loading={loading}
-      />
+      <Disclosure title="Mission map" summary="Routes, vehicle, incidents, trajectory, and deviation layers">
+        <EmergencyMissionMap
+          emergency={emergency}
+          vehicle={vehicle}
+          route={route}
+          latestTrajectory={latestTrajectory}
+          situationAnalysis={situationAnalysis}
+          prediction={prediction}
+          decision={decision}
+          loading={loading}
+        />
+      </Disclosure>
 
-      {/* Section 7: Vehicle Movement & GPS Telemetry Table (with LIVE / STALE / UNKNOWN badges) */}
-      <VehicleMovementPanel
-        vehicle={vehicle}
-        latestFix={latestTrajectory}
-        history={trajectoryHistory}
-        totalFixes={trajectoryTotal}
-        loading={loading}
-        freshness={freshness}
-        ageString={getAgeString()}
-        page={trajectoryPage}
-        limit={5}
-        onPageChange={handlePageChange}
-        onRefresh={loadData}
-      />
+      <Disclosure title="Trajectory history" summary={`${trajectoryTotal} recorded fixes · ${getAgeString()}`}>
+        <VehicleMovementPanel
+          vehicle={vehicle}
+          latestFix={latestTrajectory}
+          history={trajectoryHistory}
+          totalFixes={trajectoryTotal}
+          loading={loading}
+          freshness={freshness}
+          ageString={getAgeString()}
+          page={trajectoryPage}
+          limit={5}
+          onPageChange={handlePageChange}
+          onRefresh={loadData}
+        />
+      </Disclosure>
 
-      {/* Section 8: Corridor Deviation & Traffic Intelligence */}
-      <DeviationAnalysisPanel
-        analysis={situationAnalysis}
-        loading={loading}
-      />
+      <Disclosure title="Deviation & traffic evidence" summary="Cross-track metrics and corridor analysis">
+        <DeviationAnalysisPanel analysis={situationAnalysis} loading={loading} />
+      </Disclosure>
 
-      {/* Section 9: Corridor Hazards & Correlated Incidents */}
-      <CorrelatedIncidentsPanel
-        correlatedIncidents={situationAnalysis?.incidents || []}
-        loading={loading}
-      />
+      <Disclosure title="Correlated incidents" summary={`${situationAnalysis?.incidents?.length || 0} linked incident(s)`}>
+        <CorrelatedIncidentsPanel correlatedIncidents={situationAnalysis?.incidents || []} loading={loading} />
+      </Disclosure>
 
-      {/* Section 10: 3-Tier Epistemic Analysis (Gemini Advisory Reasoning vs Deterministic Rules) */}
-      <EpistemicBreakdownCard
-        breakdown={orchestrationResult?.epistemicBreakdown}
-        executionTimeMs={orchestrationResult?.executionTimeMs}
-        loading={loading}
-      />
+      <Disclosure title="Evidence classification" summary="Observed · inferred · unknown">
+        <EpistemicBreakdownCard
+          breakdown={orchestrationResult?.epistemicBreakdown}
+          executionTimeMs={orchestrationResult?.executionTimeMs}
+          loading={loading}
+        />
+      </Disclosure>
 
-      {/* Section 11: Unified Chronological Event & Audit Timeline */}
-      <EventTimelineCard
-        emergency={emergency}
-        vehicle={vehicle}
-        route={route}
-        latestFix={latestTrajectory}
-        prediction={prediction}
-        decision={decision}
-        liveDecision={liveDecision}
-        situation={situationAnalysis}
-        liveEvents={liveEvents}
-      />
+      <Disclosure title="Event & audit timeline" summary="Chronological mission activity">
+        <EventTimelineCard
+          emergency={emergency}
+          vehicle={vehicle}
+          route={route}
+          latestFix={latestTrajectory}
+          prediction={prediction}
+          decision={decision}
+          liveDecision={liveDecision}
+          situation={situationAnalysis}
+          liveEvents={liveEvents}
+        />
+      </Disclosure>
     </div>
   )
 }

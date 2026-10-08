@@ -36,6 +36,7 @@ import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { Button } from '@/components/ui/button'
+import { Disclosure } from '@/components/ui/disclosure'
 import { cn } from '@/lib/utils'
 
 export default function ParamedicPage() {
@@ -180,7 +181,7 @@ export default function ParamedicPage() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Active patient status, continuous vitals telemetry, and trauma center arrival coordination
+              Patient, transport, and destination overview
             </p>
           </div>
 
@@ -189,12 +190,12 @@ export default function ParamedicPage() {
               {socketConnected ? (
                 <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
                   <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
-                  <span>TRAUMA FEED LIVE</span>
+                  <span>SOCKET CONNECTED</span>
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
                   <span className="size-2 rounded-full bg-amber-500" />
-                  <span>OFFLINE / POLLING</span>
+                  <span>SOCKET DISCONNECTED</span>
                 </span>
               )}
             </div>
@@ -286,12 +287,11 @@ export default function ParamedicPage() {
                 <div className="flex items-center gap-2">
                   <Activity className="size-4 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-xs font-bold text-foreground uppercase tracking-wider">
-                    In-Transit Vitals Telemetry
+                    Patient vitals
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-emerald-500 animate-ping" />
-                  PULSE OXIMETER CONNECTED
+                <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 rounded-full bg-amber-500/10 px-2 py-1">
+                  LOCAL DEMO VALUES · NOT DEVICE TELEMETRY
                 </span>
               </div>
 
@@ -334,8 +334,7 @@ export default function ParamedicPage() {
                 </div>
               </div>
 
-              {/* Pre-Hospital Interventions & Notes */}
-              <div>
+              <Disclosure title="Clinical notes & interventions" summary="Local workspace text · not transmitted">
                 <label className="block text-xs font-semibold text-foreground mb-2">
                   Clinical Pre-Hospital Notes & Interventions
                 </label>
@@ -345,7 +344,7 @@ export default function ParamedicPage() {
                   rows={3}
                   className="w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden"
                 />
-              </div>
+              </Disclosure>
             </div>
           </div>
 
@@ -359,8 +358,8 @@ export default function ParamedicPage() {
                     Destination ER Trauma Bay
                   </span>
                 </div>
-                <span className="rounded bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  TRAUMA RESUS BAY 3
+                <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                  DEMO READINESS
                 </span>
               </div>
 
@@ -383,18 +382,19 @@ export default function ParamedicPage() {
                   <div className="flex items-center gap-2">
                     <Clock className="size-4 text-cyan-600 dark:text-cyan-400" />
                     <div>
-                      <div className="text-[10px] font-mono text-muted-foreground uppercase">Synchronized Corridor ETA</div>
+                      <div className="text-[10px] font-mono text-muted-foreground uppercase">Predicted corridor ETA</div>
                       <div className="font-mono text-lg font-bold text-foreground">
-                        {prediction?.predictedDurationMinutes || 8.5} MINUTES
+                        {prediction?.predictedDurationMinutes ?? '—'}{prediction ? ' MINUTES' : ''}
                       </div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/20">
-                    REALTIME SYNC
+                  <span className="text-[10px] font-semibold text-muted-foreground px-2 py-1 rounded bg-muted">
+                    {prediction ? 'BACKEND PREDICTION' : 'NO PREDICTION'}
                   </span>
                 </div>
 
-                <div className="text-xs text-muted-foreground space-y-1.5 pt-2 border-t border-border">
+                <Disclosure title="Hospital readiness details" summary="Local demo fields · no receiving-capacity API">
+                <div className="text-xs text-muted-foreground space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span>Trauma Team Readiness:</span>
                     <span className="font-bold text-emerald-600 dark:text-emerald-400">STANDBY CONFIRMED</span>
@@ -408,6 +408,7 @@ export default function ParamedicPage() {
                     <span className="font-bold text-foreground">PRE-ALERTED</span>
                   </div>
                 </div>
+                </Disclosure>
               </div>
 
               {/* Transmit Pre-Arrival Summary Action */}
@@ -415,7 +416,7 @@ export default function ParamedicPage() {
                 {notificationSent && (
                   <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-600 dark:text-emerald-300 flex items-center gap-2">
                     <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                    <span>Pre-Arrival packet transmitted directly to Trauma Resus Bay 3 terminal.</span>
+                    <span>Demo confirmation shown locally. No packet was sent to a hospital system.</span>
                   </div>
                 )}
 
@@ -427,13 +428,13 @@ export default function ParamedicPage() {
                   <Send className="size-4" />
                   <span>
                     {transmittingNotification
-                      ? 'Transmitting to ER Console...'
-                      : 'Transmit Pre-Arrival Trauma Packet'}
+                      ? 'Simulating transmission...'
+                      : 'Simulate pre-arrival packet'}
                   </span>
                 </Button>
 
                 <p className="text-[11px] text-center text-muted-foreground font-mono">
-                  Transmits GCS {gcsScore}, HR {heartRate}, BP {bloodPressure}, and SpO2 {spo2}% directly to ER desk.
+                  Demonstration only: GCS {gcsScore}, HR {heartRate}, BP {bloodPressure}, and SpO2 {spo2}% are not sent to an ER.
                 </p>
               </div>
             </div>

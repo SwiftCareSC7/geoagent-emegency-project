@@ -16,15 +16,15 @@ import { useState } from 'react'
 import { ROUTE_SEMANTICS } from '@/lib/routing-constants'
 
 export function MapLegend() {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="absolute bottom-3 left-3 z-[1000] w-80 max-w-[calc(100vw-24px)] rounded-2xl border-2 border-slate-300/80 dark:border-slate-700/80 bg-white/98 dark:bg-slate-900/98 text-foreground shadow-2xl backdrop-blur-md text-xs overflow-hidden transition-all">
+    <div className="absolute bottom-3 left-3 z-[1000] w-72 max-w-[calc(100vw-24px)] rounded-xl border border-border bg-card/95 text-foreground shadow-md backdrop-blur-md text-xs overflow-hidden transition-all">
       {/* Header Bar */}
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 font-bold hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors border-b border-slate-200 dark:border-slate-800"
+        className="flex min-h-10 w-full items-center justify-between gap-2 px-3 py-2 font-semibold hover:bg-muted/60 transition-colors"
         aria-expanded={expanded}
         aria-label="Toggle map operational legend"
       >

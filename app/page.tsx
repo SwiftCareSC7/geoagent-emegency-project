@@ -58,10 +58,6 @@ export default function LandingPage() {
             <span className="font-bold text-foreground font-mono">3. Paramedic Triage:</span>
             <span>Pre-hospital clinical handoff, trauma vitals monitoring, and hospital destination readiness.</span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="font-bold text-foreground font-mono">4. Emergency Lab:</span>
-            <span>18 stress-test scenarios, including unmapped road closures, GPS dropout, and multi-incident cascades.</span>
-          </li>
         </ul>
       </Modal>
     </div>

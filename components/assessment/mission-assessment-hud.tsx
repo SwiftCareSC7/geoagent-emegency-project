@@ -86,6 +86,7 @@ export function MissionAssessmentHUD({
   compact = false,
 }: MissionAssessmentHUDProps) {
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null)
+  const [assessmentExpanded, setAssessmentExpanded] = useState(false)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectReason, setRejectReason] = useState('Operator override: corridor conditions cleared')
   const [actionLoading, setActionLoading] = useState(false)
@@ -373,9 +374,9 @@ export function MissionAssessmentHUD({
   ]
 
   return (
-    <div className={cn('rounded-2xl border-2 border-border bg-card text-card-foreground shadow-lg hover:shadow-xl transition-all overflow-hidden', className)}>
+    <div className={cn('overflow-hidden rounded-xl border border-border bg-card text-card-foreground', className)}>
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3.5 bg-muted/60">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-card px-4 py-3">
         <div className="flex items-center gap-2.5">
           <span className="flex size-7 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30">
             <BrainCircuit className="size-4" />
@@ -383,14 +384,14 @@ export function MissionAssessmentHUD({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-display text-sm font-bold tracking-tight text-foreground">
-                Mission Assessment & GeoAgent Reasoning
+                Mission assessment
               </h3>
-              <span className="rounded bg-indigo-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                5-QUESTION CANONICAL CAD
+              <span className="rounded bg-purple-500/10 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:text-purple-300">
+                GeoAgent advisory
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Corridor telemetry, deviation forensics & deterministic decision verification
+              Evidence-led corridor status and operator decision
             </p>
           </div>
         </div>
@@ -434,16 +435,33 @@ export function MissionAssessmentHUD({
         </div>
       )}
 
-      {/* Main 5-Question Grid */}
-      <div className="p-4 sm:p-5">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
+      {/* Summary first; the full question set remains available on demand. */}
+      <div className="p-3 sm:p-4">
+        {compact && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2.5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+              <span className={cn('font-semibold', isDeviated ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300')}>
+                {isDeviated ? `Deviation · ${Math.round(deviationMeters)} m` : 'Route · on course'}
+              </span>
+              <span className="text-muted-foreground">ETA {predictedDurationMin} min{delayMinutes > 0 ? ` · +${delayMinutes.toFixed(1)} min` : ''}</span>
+              <span className="text-muted-foreground">Decision · {decisionStatus.replace(/_/g, ' ').toLowerCase()}</span>
+            </div>
+            <button type="button" onClick={() => setAssessmentExpanded((open) => !open)} aria-expanded={assessmentExpanded} className="min-h-9 rounded-md px-2 text-xs font-semibold text-primary hover:bg-primary/5 focus-visible:outline-2 focus-visible:outline-ring">
+              {assessmentExpanded ? 'Hide assessment' : 'View assessment'}
+            </button>
+          </div>
+        )}
+
+        {(!compact || assessmentExpanded) && <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-5">
           {questions.map((q) => {
             const isExpanded = expandedQuestion === q.id
             return (
-              <div
+              <button
+                type="button"
                 key={q.id}
+                aria-expanded={isExpanded}
                 className={cn(
-                  'flex flex-col justify-between rounded-xl border p-3.5 transition-all cursor-pointer',
+                  'flex min-h-28 w-full flex-col justify-between rounded-lg border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-ring',
                   q.isAlert
                     ? 'border-rose-500/40 bg-rose-500/10 hover:border-rose-500/60'
                     : 'border-border bg-muted/30 hover:border-border/80',
@@ -473,10 +491,10 @@ export function MissionAssessmentHUD({
                     <span>{isExpanded ? 'Hide' : 'Inspect'}</span>
                   </span>
                 </div>
-              </div>
+              </button>
             )
           })}
-        </div>
+        </div>}
 
         {/* Detailed Evidence Expansion Panel */}
         {expandedQuestion !== null && (
@@ -500,6 +518,7 @@ export function MissionAssessmentHUD({
                       type="button"
                       onClick={() => setExpandedQuestion(null)}
                       className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted"
+                      aria-label="Close evidence details"
                     >
                       <X className="size-3.5" />
                     </button>
@@ -518,79 +537,28 @@ export function MissionAssessmentHUD({
           </div>
         )}
 
-        {/* GeoAgent Operational Reasoning Layer (What Happened, Why, Impact, Recommendation) */}
-        <div className="mt-4 rounded-xl border border-border bg-muted/40 p-4">
-          <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
-            <div className="flex items-center gap-2">
-              <Bot className="size-4 text-purple-600 dark:text-purple-400" />
-              <span className="text-xs font-bold text-foreground uppercase tracking-wider">
-                Operational Reasoning Matrix
-              </span>
-              <span className="rounded bg-purple-500/10 px-1.5 py-0.5 text-[9px] font-mono text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                GEMINI 3.8 FLASH ADVISORY
-              </span>
-            </div>
-            <span className="text-[10px] font-mono text-muted-foreground">
-              Evaluated: {new Date().toLocaleTimeString()}
-            </span>
+        {/* GeoAgent reasoning is available on request; no additional AI behavior is introduced here. */}
+        <details className="group mt-3 rounded-xl border border-purple-200 bg-purple-50/50 dark:border-purple-900/60 dark:bg-purple-950/20">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-xs font-semibold text-purple-800 outline-none hover:bg-purple-100/60 focus-visible:ring-2 focus-visible:ring-ring dark:text-purple-200 dark:hover:bg-purple-950/40 [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center gap-2"><Bot className="size-4" /> View why · operational reasoning</span>
+            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="grid gap-2 border-t border-purple-200/70 p-3 sm:grid-cols-2 xl:grid-cols-3 dark:border-purple-900/60">
+            {[
+              { title: 'Observation', text: isDeviated ? `Vehicle is ${Math.round(deviationMeters)} m from the planned route.` : `Current route deviation: ${Math.round(deviationMeters)} m.` },
+              { title: 'Inference', text: topIncident ? `${topIncident.type.replace(/_/g, ' ')} · ${topIncident.description || 'correlated incident'}` : `Traffic state: ${trafficLevel}.` },
+              { title: 'Alternative', text: recommendedAlt ? `${recommendedAlt.name || 'Recommended route'} · ${recommendedAlt.durationMinutes ?? predictedDurationMin} min` : 'No alternative route in the supplied comparison.' },
+              { title: 'Decision', text: decision?.primaryAction || decision?.action || 'No authoritative decision record loaded.' },
+              { title: 'Expected outcome', text: delayMinutes > 0 ? `Current estimate includes +${delayMinutes.toFixed(1)} min delay.` : `Estimated journey time: ${predictedDurationMin} min.` },
+              { title: 'Confidence', text: prediction?.confidence ? `${prediction.confidence}${prediction.confidenceScore ? ` · ${Math.round(prediction.confidenceScore * 100)}%` : ''}` : 'Not provided by prediction data.' },
+            ].map((step, index) => (
+              <div key={step.title} className="flex gap-2 rounded-lg bg-card p-2.5">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-purple-100 text-[10px] font-bold text-purple-800 dark:bg-purple-900 dark:text-purple-100">{index + 1}</span>
+                <span><span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{step.title}</span><span className="mt-0.5 block text-xs leading-snug text-foreground">{step.text}</span></span>
+              </div>
+            ))}
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {/* What Happened */}
-            <div className="rounded-lg bg-card border border-border p-3">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold mb-1">
-                WHAT HAPPENED?
-              </p>
-              <p className="text-foreground font-medium leading-relaxed">
-                {isDeviated
-                  ? `Ambulance diverged ${Math.round(deviationMeters)}m from planned corridor.`
-                  : delayMinutes > 3
-                    ? `Corridor congestion increased transit time by ${delayMinutes.toFixed(1)} min.`
-                    : 'Corridor progression is nominal and aligned with planned route.'}
-              </p>
-            </div>
-
-            {/* Why */}
-            <div className="rounded-lg bg-card border border-border p-3">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold mb-1">
-                WHY?
-              </p>
-              <p className="text-foreground font-medium leading-relaxed">
-                {topIncident
-                  ? `Active ${topIncident.type} (${topIncident.description || 'obstruction'}) intersecting route.`
-                  : trafficLevel === 'SEVERE' || trafficLevel === 'HEAVY'
-                    ? `Peak congestion bottleneck on arterial link with speed reduced to ${situationAnalysis?.traffic?.speedKmh || 12} km/h.`
-                    : 'No active hazards or abnormal delays identified along corridor.'}
-              </p>
-            </div>
-
-            {/* Impact */}
-            <div className="rounded-lg bg-card border border-border p-3">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground font-bold mb-1">
-                IMPACT
-              </p>
-              <p className="text-foreground font-medium leading-relaxed">
-                {delayMinutes > 2
-                  ? `Patient handoff delayed by +${delayMinutes.toFixed(1)} min. Trauma bay notification window shifted.`
-                  : 'Transit duration remains within safe therapeutic parameters.'}
-              </p>
-            </div>
-
-            {/* Recommendation */}
-            <div className="rounded-lg bg-card border border-border p-3">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-bold mb-1">
-                RECOMMENDATION
-              </p>
-              <p className="text-foreground font-semibold leading-relaxed">
-                {recommendedAlt
-                  ? `Authorize ${recommendedAlt.name || 'Alternative 2'} to recover ${Math.abs(recommendedAlt.timeDiffMinutes || 3.5).toFixed(1)} min.`
-                  : backupNeeded
-                    ? 'Dispatch secondary backup unit AMB-02 immediately.'
-                    : 'Maintain current corridor; monitor telemetry for changes.'}
-              </p>
-            </div>
-          </div>
-        </div>
+        </details>
 
         {/* Human-in-the-Loop Operator Action Bar (Phase 20) */}
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/50 px-4 py-3">

@@ -28,7 +28,9 @@ import {
   Building2,
   Route as RouteIcon,
   XCircle,
-  Siren
+  Siren,
+  PanelLeft,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DriverManeuverCard } from './driver-maneuver-card'
@@ -46,6 +48,7 @@ import { DriverLiveSituation } from './driver-live-situation'
 import { DriverAlternativeRoutes } from './driver-alternative-routes'
 import { DriverEmergencyClearance } from './driver-emergency-clearance'
 import { DriverSmsButton } from './driver-sms-button'
+import { Disclosure } from '@/components/ui/disclosure'
 import {
   BENGALURU_HOSPITALS,
   BENGALURU_LANDMARKS,
@@ -121,6 +124,7 @@ interface DriverNavigationProps {
   className?: string
   onOpenPriorityRadio?: () => void
   onOpenTelemetry?: () => void
+  onMapFocusChange?: (focused: boolean) => void
 }
 
 function haversineMeters(coord1: [number, number], coord2: [number, number]): number {
@@ -234,7 +238,8 @@ export function DriverNavigation({
   ambulanceId: propAmbulanceId = 'AMB-01',
   className = '',
   onOpenPriorityRadio,
-  onOpenTelemetry
+  onOpenTelemetry,
+  onMapFocusChange
 }: DriverNavigationProps) {
   // Navigation Mode: 'EMERGENCY_MISSION' (Mode A: 2-Leg) vs 'MANUAL_ROUTE' (Mode B: My Location -> Destination)
   const [navigationMode, setNavigationMode] = useState<'EMERGENCY_MISSION' | 'MANUAL_ROUTE'>('EMERGENCY_MISSION')
@@ -309,7 +314,9 @@ export function DriverNavigation({
   // Modals & Panels UI
   const [isIncidentModalOpen, setIsIncidentModalOpen] = useState<boolean>(false)
   const [isComparisonOpen, setIsComparisonOpen] = useState<boolean>(false)
-  const [mobileActiveTab, setMobileActiveTab] = useState<'COCKPIT' | 'MAP' | 'V2X'>('COCKPIT')
+  const [mobileActiveTab, setMobileActiveTab] = useState<'COCKPIT' | 'MAP' | 'V2X'>('MAP')
+  const [isCockpitOpen, setIsCockpitOpen] = useState(false)
+  const [isMapFocused, setIsMapFocused] = useState(false)
   const [routeIncidents, setRouteIncidents] = useState<Incident[]>([])
   const [voiceMuted, setVoiceMuted] = useState<boolean>(false)
   const [isLoadingRoute, setIsLoadingRoute] = useState<boolean>(false)
@@ -1077,7 +1084,12 @@ export function DriverNavigation({
             initializeScenarioCorridors(currentScenario)
           }}
           isRoutePlannerVisible={isRoutePlannerVisible}
-          onToggleRoutePlanner={() => setIsRoutePlannerVisible(!isRoutePlannerVisible)}
+          onToggleRoutePlanner={() => {
+            const nextOpen = !isRoutePlannerVisible
+            setIsRoutePlannerVisible(nextOpen)
+            setIsCockpitOpen(true)
+            setMobileActiveTab('COCKPIT')
+          }}
           gpsMode={gpsMode}
           onToggleGpsMode={() => {
             if (gpsMode === 'SIMULATION') {
@@ -1100,6 +1112,14 @@ export function DriverNavigation({
           onOpenTelemetry={onOpenTelemetry}
           isLoadingRoute={isLoadingRoute}
           onEndNavigation={handleEndNavigation}
+          mapFocusActive={isMapFocused}
+          onToggleMapFocus={() => {
+            const focused = !isMapFocused
+            setIsMapFocused(focused)
+            setIsCockpitOpen(false)
+            setMobileActiveTab('MAP')
+            onMapFocusChange?.(focused)
+          }}
         />
       </div>
 
@@ -1113,13 +1133,30 @@ export function DriverNavigation({
         </div>
       )}
 
-      {/* 2. MAIN DRIVER WORKSPACE: 2-Column Split View filling full remaining viewport */}
-      <div className="flex-1 min-h-0 relative w-full flex flex-col lg:flex-row overflow-hidden bg-background">
+      {/* 2. MAP-FIRST DRIVER WORKSPACE */}
+      <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-background">
         
         {/* LEFT COLUMN: Compact Operational Panel (32-36%, max 420px) */}
-        <div className={`w-full lg:w-[380px] xl:w-[420px] shrink-0 flex flex-col z-20 overflow-y-auto custom-scrollbar border-r border-border bg-card/95 text-card-foreground backdrop-blur-md p-3 sm:p-4 space-y-3 ${
-          mobileActiveTab === 'MAP' ? 'hidden lg:flex' : 'flex'
+        <div className={`absolute left-2 top-2 bottom-2 z-40 w-[min(92vw,390px)] flex flex-col overflow-y-auto custom-scrollbar rounded-2xl border border-border bg-card/95 text-card-foreground p-3 sm:p-3.5 space-y-2.5 shadow-2xl backdrop-blur-xl ${
+          isCockpitOpen && mobileActiveTab === 'COCKPIT' && !isMapFocused ? 'flex' : 'hidden'
         }`}>
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border pb-2">
+            <div>
+              <p className="text-sm font-bold text-foreground">Mission details</p>
+              <p className="text-[11px] text-muted-foreground">Route, telemetry & emergency controls</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCockpitOpen(false)
+                setMobileActiveTab('MAP')
+              }}
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+              aria-label="Close mission details"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
           
           {/* ROUTE PLANNER VIEW (Shown when user clicks Route Planner) */}
           {isRoutePlannerVisible ? (
@@ -1198,85 +1235,11 @@ export function DriverNavigation({
                 </div>
               </div>
 
-              {/* #3 COLLAPSIBLE GEOAGENT INTELLIGENCE PANEL */}
+              {/* GeoAgent advice is shown as a compact map-context alert. */}
               {navigationMode === 'EMERGENCY_MISSION' && (
                 <>
-                  {geoAgentState === 'BACKUP_RECOMMENDED' ? (
-                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-foreground shadow-md space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" />
-                          <span className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-300">
-                            GeoAgent Advisory: Backup Dispatched
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/40">
-                          AMB-06 Standby
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Primary corridor delayed by multi-vehicle bottleneck. Secondary unit AMB-06 at St John&apos;s recommended to reduce arrival time by 8 minutes.
-                      </p>
-                    </div>
-                  ) : geoAgentState !== 'ROUTE_UPDATED' && routePlan?.alternative ? (
-                    <DriverGeoAgentPanel
-                      state={geoAgentState}
-                      likelyCause={currentScenario.hasRoadClosure ? 'Full road closure ahead on primary corridor' : 'Severe congestion & bottleneck ahead'}
-                      confidence={0.94}
-                      currentEtaMinutes={currentEtaMin}
-                      alternativeEtaMinutes={altEtaMin}
-                      timeSavedMinutes={timeSavedMin}
-                      explanation={`Bottleneck detected on corridor. GeoAgent evaluated alternative route, circumventing delay with clear arterial telemetry.`}
-                      evidence={[
-                        `Ambulance trajectory offset: +${Math.round(deviationDistance)}m`,
-                        'Corridor traffic congestion index: 84% (Severe delay)',
-                        'Accident/Closure reported: Multiple lanes restricted ahead',
-                        `Alternative Route saves ~${timeSavedMin} minutes transit time`,
-                        '3 simulated connected vehicles alerted in emergency radius'
-                      ]}
-                      onAcceptReroute={handleAcceptReroute}
-                      onKeepCurrentRoute={() => {
-                        setIsDeviated(false)
-                        setGeoAgentState('MONITOR')
-                      }}
-                      onViewRoute={() => setIsComparisonOpen(!isComparisonOpen)}
-                      isAccepting={isAcceptingReroute}
-                    />
-                  ) : (
-                    <div className="p-3 rounded-2xl bg-card border border-border text-foreground flex items-center justify-between shadow-xs">
-                      <div className="flex items-center gap-2.5">
-                        <div className="p-1.5 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                          <CheckCircle2 className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-                              Corridor Status
-                            </span>
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                              OPTIMAL
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">
-                            Following recommended active corridor. Zero active hazards.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsDeviated(true)
-                          setGeoAgentState('REROUTE_RECOMMENDED')
-                        }}
-                        className="px-2 py-1 rounded-lg bg-muted hover:bg-muted/80 text-[10px] text-muted-foreground font-semibold border border-border shrink-0 transition-colors cursor-pointer"
-                        title="Simulate deviation to trigger GeoAgent"
-                      >
-                        Simulate Detour
-                      </button>
-                    </div>
-                  )}
-
                   {/* #4 2-LEG JOURNEY STATUS */}
+                  <Disclosure title="Journey progress" summary={`Leg ${activeLegNumber} · ${currentStage.replace(/_/g, ' ').toLowerCase()}`}>
                   <DriverJourneyStatus
                     ambulanceId={activeAmbulanceId}
                     currentLocationName={currentScenario.originName}
@@ -1294,13 +1257,16 @@ export function DriverNavigation({
                     onAdvanceStage={handleAdvanceStage}
                     isSimulating={isSimulating}
                   />
+                  </Disclosure>
 
                   {/* #5 EMERGENCY CLEARANCE PANEL */}
+                  <Disclosure title="Emergency clearance" summary="Connected-vehicle corridor status">
                   <DriverEmergencyClearance
                     session={clearanceSession}
                     onAdvanceCycle={handleAdvanceClearance}
                     isAdvancing={isAdvancingClearance}
                   />
+                  </Disclosure>
                 </>
               )}
 
@@ -1334,24 +1300,40 @@ export function DriverNavigation({
         </div>
 
         {/* RIGHT COLUMN: Map Viewport */}
-        <div className={`flex-1 relative h-full w-full min-h-[500px] z-10 ${
-          mobileActiveTab === 'COCKPIT' ? 'hidden lg:block' : 'block'
-        }`}>
+        <div className="absolute inset-0 z-10 h-full w-full min-h-0">
           
           {/* Top Floating Map Controls */}
-          <div className="absolute top-2 right-2 sm:top-3 sm:right-4 z-30 flex items-center gap-1.5 pointer-events-auto">
+          <div className="absolute right-2 top-44 z-[500] flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1.5 pointer-events-auto md:right-4 md:top-3">
+            {!isMapFocused && <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const open = !isCockpitOpen
+                setIsCockpitOpen(open)
+                setMobileActiveTab(open ? 'COCKPIT' : 'MAP')
+              }}
+              className="hidden min-h-11 min-w-11 gap-1.5 border-border bg-card/95 px-3 text-foreground shadow-lg backdrop-blur-md lg:inline-flex"
+              aria-expanded={isCockpitOpen}
+              aria-label={isCockpitOpen ? 'Close mission details' : 'Open mission details'}
+            >
+              <PanelLeft className="size-4" />
+              <span>Mission</span>
+            </Button>}
+
             {/* Plan Route Button */}
             <Button
               size="sm"
               onClick={() => {
-                setIsRoutePlannerVisible(!isRoutePlannerVisible)
-                if (mobileActiveTab === 'MAP') setMobileActiveTab('COCKPIT')
+                const open = !isRoutePlannerVisible
+                setIsRoutePlannerVisible(open)
+                setIsCockpitOpen(open)
+                setMobileActiveTab(open ? 'COCKPIT' : 'MAP')
               }}
-              className="min-h-[36px] px-2.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-lg backdrop-blur-xl border border-emerald-400 transition-all"
+              className="min-h-11 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-lg backdrop-blur-xl border border-emerald-400 transition-colors"
               title="Open Route Planner"
             >
               <RouteIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{isRoutePlannerVisible ? 'Hide' : 'Plan'}</span>
+              <span className="hidden lg:inline">{isRoutePlannerVisible ? 'Hide' : 'Plan'}</span>
             </Button>
 
             {/* Scenario Button */}
@@ -1359,11 +1341,11 @@ export function DriverNavigation({
               <Button
                 size="sm"
                 onClick={() => setIsScenarioSelectorOpen(true)}
-                className="min-h-[36px] px-2.5 rounded-lg bg-blue-600/90 hover:bg-blue-600 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-lg backdrop-blur-xl border border-blue-400 transition-all"
+                className="min-h-11 px-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-lg backdrop-blur-xl border border-blue-400 transition-colors"
                 title="Select Demo Scenario"
               >
                 <Sparkles className="h-3 w-3" />
-                <span className="hidden sm:inline">{currentScenario.id}</span>
+                <span className="hidden lg:inline">{currentScenario.id}</span>
               </Button>
             )}
 
@@ -1371,7 +1353,7 @@ export function DriverNavigation({
             <Button
               size="sm"
               onClick={toggleSimulation}
-              className={`min-h-[36px] px-2.5 rounded-lg shadow-lg font-bold text-[11px] flex items-center gap-1.5 border backdrop-blur-xl transition-all ${
+              className={`min-h-11 px-3 rounded-lg shadow-lg font-bold text-[11px] flex items-center gap-1.5 border backdrop-blur-xl transition-colors ${
                 isSimulating
                   ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 animate-pulse'
                   : 'bg-slate-900/90 hover:bg-slate-800 text-white border-slate-700/80'
@@ -1381,12 +1363,12 @@ export function DriverNavigation({
               {isSimulating ? (
                 <>
                   <Pause className="h-3 w-3 fill-current" />
-                  <span className="hidden sm:inline">Pause</span>
+                  <span className="hidden lg:inline">Pause</span>
                 </>
               ) : (
                 <>
                   <Play className="h-3 w-3 fill-current" />
-                  <span className="hidden sm:inline">Simulate</span>
+                  <span className="hidden lg:inline">Simulate</span>
                 </>
               )}
             </Button>
@@ -1395,7 +1377,7 @@ export function DriverNavigation({
             <button
               type="button"
               onClick={() => setRecenterTrigger((prev) => prev + 1)}
-              className="min-h-[36px] min-w-[36px] rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white shadow-lg flex items-center justify-center backdrop-blur-xl transition-all"
+              className="min-h-11 min-w-11 rounded-lg bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-white shadow-lg flex items-center justify-center backdrop-blur-xl transition-colors"
               aria-label="Recenter map"
               title="Recenter"
             >
@@ -1406,7 +1388,7 @@ export function DriverNavigation({
             <button
               type="button"
               onClick={() => setVoiceMuted(!voiceMuted)}
-              className="min-h-[36px] min-w-[36px] rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700/80 text-white shadow-lg flex items-center justify-center backdrop-blur-xl transition-all"
+              className="min-h-11 min-w-11 rounded-lg bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-white shadow-lg flex items-center justify-center backdrop-blur-xl transition-colors"
               aria-label={voiceMuted ? 'Unmute voice' : 'Mute voice'}
             >
               {voiceMuted ? (
@@ -1416,6 +1398,69 @@ export function DriverNavigation({
               )}
             </button>
           </div>
+
+          {navigationMode === 'EMERGENCY_MISSION' && (
+            <div className="pointer-events-auto absolute right-2 top-[14rem] z-30 w-[min(calc(100%-1rem),26rem)] md:right-4 md:top-16">
+              {geoAgentState === 'BACKUP_RECOMMENDED' ? (
+                <section className="rounded-xl border border-amber-500/50 bg-card/95 p-3 text-foreground shadow-xl backdrop-blur-md" aria-live="polite">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <p className="min-w-0 flex-1 text-sm font-bold">GeoAgent recommends backup dispatch</p>
+                    <span className="rounded-md bg-amber-500/15 px-2 py-1 text-xs font-bold text-amber-800 dark:text-amber-200">AMB-06</span>
+                  </div>
+                  <p className="mt-1 text-xs leading-snug text-muted-foreground">Congestion on the primary corridor · estimated arrival improvement 8 min.</p>
+                </section>
+              ) : geoAgentState !== 'ROUTE_UPDATED' && routePlan?.alternative ? (
+                <DriverGeoAgentPanel
+                  state={geoAgentState}
+                  likelyCause={routeIncidents[0]?.description || (currentScenario.hasRoadClosure ? 'Full road closure ahead on primary corridor' : 'Severe congestion & bottleneck ahead')}
+                  confidence={null}
+                  currentEtaMinutes={currentEtaMin}
+                  alternativeEtaMinutes={altEtaMin}
+                  timeSavedMinutes={timeSavedMin}
+                  explanation="Bottleneck detected on corridor. GeoAgent evaluated an alternative route around the delay."
+                  evidence={[
+                    `Ambulance trajectory offset: +${Math.round(deviationDistance)}m`,
+                    'Corridor traffic congestion index: 84% (Severe delay)',
+                    'Accident/Closure reported: Multiple lanes restricted ahead',
+                    `Alternative route estimated to save ~${timeSavedMin} minutes`,
+                    '3 simulated connected vehicles alerted in emergency radius'
+                  ]}
+                  onAcceptReroute={handleAcceptReroute}
+                  onKeepCurrentRoute={() => {
+                    setIsDeviated(false)
+                    setGeoAgentState('MONITOR')
+                  }}
+                  onViewRoute={() => setIsComparisonOpen(!isComparisonOpen)}
+                  isAccepting={isAcceptingReroute}
+                  className="bg-card/95 shadow-xl backdrop-blur-md"
+                />
+              ) : (
+                <section className="flex items-center gap-2.5 rounded-xl border border-border bg-card/95 p-3 text-foreground shadow-xl backdrop-blur-md" aria-live="polite">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                    <CheckCircle2 className="size-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">{geoAgentState === 'ROUTE_UPDATED' ? 'GeoAgent route accepted' : 'Route clear · monitoring'}</p>
+                    <p className="text-xs text-muted-foreground">{geoAgentState === 'ROUTE_UPDATED' ? 'Alternative corridor is active.' : 'No route action required.'}</p>
+                  </div>
+                  {geoAgentState !== 'ROUTE_UPDATED' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDeviated(true)
+                        setGeoAgentState('REROUTE_RECOMMENDED')
+                      }}
+                      className="min-h-11 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+                      title="Simulate deviation to trigger GeoAgent"
+                    >
+                      Simulate
+                    </button>
+                  )}
+                </section>
+              )}
+            </div>
+          )}
 
           {/* HUGE Leaflet Map (Multi-Leg: Leg 1 BLUE, Leg 2 GREEN, or Single Active Line) */}
           <DriverNavigationMap
@@ -1446,16 +1491,20 @@ export function DriverNavigation({
             speed={currentLocation.speed}
             isVoiceActive={!voiceMuted}
             onToggleVoice={() => setVoiceMuted(!voiceMuted)}
+            vehicleCallsign={activeAmbulanceId}
             height="100%"
           />
         </div>
       </div>
 
       {/* 3. MOBILE BOTTOM NAVIGATION BAR */}
-      <div className="lg:hidden z-30 w-full bg-slate-950 border-t border-slate-800 flex items-center p-1.5 gap-1.5">
+      <div className={`${isMapFocused ? 'hidden' : 'flex lg:hidden'} z-30 w-full bg-slate-950 border-t border-slate-800 items-center p-1.5 gap-1.5`}>
         <button
           type="button"
-          onClick={() => setMobileActiveTab('COCKPIT')}
+          onClick={() => {
+            setMobileActiveTab('COCKPIT')
+            setIsCockpitOpen(true)
+          }}
           className={`flex-1 min-h-[44px] py-1.5 flex flex-col items-center justify-center rounded-lg text-[11px] font-bold transition-all ${
             mobileActiveTab === 'COCKPIT'
               ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30'
@@ -1468,7 +1517,10 @@ export function DriverNavigation({
 
         <button
           type="button"
-          onClick={() => setMobileActiveTab('MAP')}
+          onClick={() => {
+            setMobileActiveTab('MAP')
+            setIsCockpitOpen(false)
+          }}
           className={`flex-1 min-h-[44px] py-1.5 flex flex-col items-center justify-center rounded-lg text-[11px] font-bold transition-all ${
             mobileActiveTab === 'MAP'
               ? 'bg-emerald-600/15 text-emerald-400 border border-emerald-500/30'

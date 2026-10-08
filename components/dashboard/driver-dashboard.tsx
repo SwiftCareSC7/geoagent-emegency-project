@@ -46,6 +46,7 @@ export function DriverDashboard({ data }: DriverDashboardProps) {
   const [showRecommended, setShowRecommended] = useState<boolean>(true)
   const [contactOpen, setContactOpen] = useState<boolean>(false)
   const [contactSent, setContactSent] = useState<boolean>(false)
+  const [mapFocusMode, setMapFocusMode] = useState<boolean>(false)
 
   // Full-Page Telemetry Mode (Optional inspection view for deep telematics)
   if (fullTelemetryMode) {
@@ -171,16 +172,19 @@ export function DriverDashboard({ data }: DriverDashboardProps) {
 
   // Default Primary Experience: Focused, Full-Bleed Live Navigation Cockpit
   return (
-    <div className="flex flex-col h-screen w-full bg-background text-foreground overflow-hidden">
+    <div className="flex flex-col h-dvh w-full bg-background text-foreground overflow-hidden">
       {/* 1. GLOBAL HEADER (Tier 1: DashboardTopbar) */}
-      <DashboardTopbar
-        ambulanceId={ambulanceId}
-        driverName={driverName}
-        emergencyActive={effectiveData.emergencyActive ?? true}
-      />
+      {!mapFocusMode && (
+        <DashboardTopbar
+          ambulanceId={ambulanceId}
+          driverName={driverName}
+          emergencyActive={effectiveData.emergencyActive ?? true}
+          driverMode
+        />
+      )}
 
       {/* 2. MISSION BAR & MAIN WORKSPACE (Tier 2 & 3: DriverNavigation) */}
-      <main className="flex-1 min-h-0 relative w-full h-[calc(100vh-theme(spacing.14))] overflow-hidden">
+      <main className="flex-1 min-h-0 relative w-full overflow-hidden">
         <DriverNavigation
           ambulanceId={ambulanceId}
           initialEmergency={
@@ -196,6 +200,7 @@ export function DriverDashboard({ data }: DriverDashboardProps) {
             setContactOpen(true)
           }}
           onOpenTelemetry={() => setTelemetryDrawerOpen(true)}
+          onMapFocusChange={setMapFocusMode}
         />
       </main>
 

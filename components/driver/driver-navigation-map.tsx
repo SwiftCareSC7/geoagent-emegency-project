@@ -92,6 +92,7 @@ interface DriverNavigationMapProps {
   steps?: NavigationStep[]
   navState?: NavigationState
   speed?: number | null
+  vehicleCallsign?: string
   isVoiceActive?: boolean
   onToggleVoice?: () => void
 }
@@ -124,6 +125,7 @@ export function DriverNavigationMap({
   steps = [],
   navState = 'NAVIGATING',
   speed,
+  vehicleCallsign = 'AMB-001',
   isVoiceActive = true,
   onToggleVoice
 }: DriverNavigationMapProps) {
@@ -848,7 +850,7 @@ function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
         speed={speed}
         navState={navState}
         activeLegNumber={activeLegNumber}
-        vehicleCallsign="AMB-001"
+        vehicleCallsign={vehicleCallsign}
         isUserPanning={isUserPanning}
         isVoiceActive={isVoiceActive}
         onToggleVoice={onToggleVoice}

@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
+import { Disclosure } from '@/components/ui/disclosure'
 import { getDashboard } from '@/lib/dashboard-api'
 import { vehicleApi } from '@/lib/api/vehicles'
 import { emergencyApi } from '@/lib/api/emergencies'
@@ -493,34 +494,19 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
               loading={loadingLive}
             />
 
-            {/* Quick-Access Corridor Telemetry & Mock Data Banner */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-card to-card p-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
-                  <Navigation className="size-4 animate-pulse" />
-                </span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">AMB-01 MOCK CORRIDOR ACTIVE</span>
-                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/25">Deviation Detected</span>
-                    <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">-6m Saved via Route B</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Unit KA-01-AMB-108 (Officer Ananya Rao) en route to Manipal Hospital · Road accident on 100 Feet Road
-                  </p>
-                </div>
-              </div>
-              <Button
-                size="sm"
-                onClick={() => setActiveTab('telemetry')}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs"
-              >
-                <span>Inspect Full Telemetry & Timeline</span>
-              </Button>
-            </div>
+            {/* Operational map is the primary control-room workspace. */}
+            <MapPlaceholder
+              showRecommended={showRecommended}
+              selectedEmergencyId={selectedEmergencyId}
+              onSelectEmergency={setSelectedEmergencyId}
+              emergencies={emergencies}
+              vehicles={vehicles}
+              incidents={incidents}
+              height="460px"
+            />
 
-            {/* 5-Question Mission Assessment HUD */}
             <MissionAssessmentHUD
+              compact
               emergency={selectedEmergency}
               vehicle={selectedVehicle}
               route={selectedRoute}
@@ -534,20 +520,25 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
               onExecuteDecision={handleExecuteDecision}
             />
 
-            {/* Real-time Metropolitan Map Viewport */}
-            <MapPlaceholder
-              showRecommended={showRecommended}
-              selectedEmergencyId={selectedEmergencyId}
-              onSelectEmergency={setSelectedEmergencyId}
-              emergencies={emergencies}
-              vehicles={vehicles}
-              incidents={incidents}
-              height="460px"
-            />
+            <details className="rounded-xl border border-border bg-card">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-foreground outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                <span>Demo corridor walkthrough</span>
+                <span className="text-xs font-normal text-muted-foreground">Local example · not live mission data</span>
+              </summary>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Navigation className="size-4 text-primary" />
+                  AMB-01 example for inspecting the telemetry presentation.
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setActiveTab('telemetry')}>
+                  Inspect demo telemetry
+                </Button>
+              </div>
+            </details>
 
             {/* Operations Grid */}
             <div className="grid gap-6 lg:grid-cols-5">
-              {/* Left Column: Live Emergency Stream & Road Hazards */}
+              {/* Left Column: Live Emergency Stream */}
               <div className="space-y-6 lg:col-span-3">
                 <ActiveEmergenciesPanel
                   emergencies={emergencies}
@@ -555,23 +546,29 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
                   error={liveError && emergencies.length === 0 ? liveError : null}
                   onRetry={fetchLiveData}
                 />
-                <RoadIncidentsPanel
-                  incidents={incidents}
-                  loading={loadingLive}
-                  error={liveError && incidents.length === 0 ? liveError : null}
-                  onRetry={fetchLiveData}
-                />
               </div>
 
               {/* Right Column: Fleet Unit Registry & Clearance Monitoring */}
               <div className="space-y-6 lg:col-span-2">
-                <EmergencyClearanceMonitor ambulanceId="AMB-01" />
-                <VehicleFleetPanel
-                  vehicles={vehicles}
-                  loading={loadingLive}
-                  error={liveError && vehicles.length === 0 ? liveError : null}
-                  onRetry={fetchLiveData}
-                />
+                <Disclosure title="Corridor clearance" summary="Connected vehicle response status">
+                  <EmergencyClearanceMonitor ambulanceId="AMB-01" />
+                </Disclosure>
+                <Disclosure title="Fleet units" summary={`${vehicles.length} vehicle(s)`}>
+                  <VehicleFleetPanel
+                    vehicles={vehicles}
+                    loading={loadingLive}
+                    error={liveError && vehicles.length === 0 ? liveError : null}
+                    onRetry={fetchLiveData}
+                  />
+                </Disclosure>
+                <Disclosure title="Road incidents" summary={`${incidents.length} active incident(s)`}>
+                  <RoadIncidentsPanel
+                    incidents={incidents}
+                    loading={loadingLive}
+                    error={liveError && incidents.length === 0 ? liveError : null}
+                    onRetry={fetchLiveData}
+                  />
+                </Disclosure>
               </div>
             </div>
           </div>
@@ -580,6 +577,7 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
           <div className="space-y-6">
             {/* 5-Question Mission Assessment HUD in Telemetry View */}
             <MissionAssessmentHUD
+              compact
               emergency={selectedEmergency}
               vehicle={selectedVehicle}
               route={selectedRoute}

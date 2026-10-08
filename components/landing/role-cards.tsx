@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import {
   ArrowRight,
-  Beaker,
   HeartPulse,
   Navigation,
   Shield,
@@ -40,15 +39,6 @@ export function RoleCards() {
       icon: HeartPulse,
       features: ['Patient condition monitoring', 'Hospital trauma bay handoff', 'Real-time ETA sync'],
       accent: 'border-rose-500/30 text-rose-600 dark:text-rose-400 bg-rose-500/10'
-    },
-    {
-      title: 'Emergency Lab Specialist',
-      href: '/emergency-lab',
-      roleCode: 'SIMULATION',
-      desc: 'Interactive scenario workbench to test 18 stress test simulations, inject road closures or hazards, and audit deterministic GeoAgent logic in real-time.',
-      icon: Beaker,
-      features: ['18 seeded test scenarios', 'Live event injection', 'Step-by-step playback'],
-      accent: 'border-purple-500/30 text-purple-600 dark:text-purple-400 bg-purple-500/10'
     },
     {
       title: 'System Administrator',

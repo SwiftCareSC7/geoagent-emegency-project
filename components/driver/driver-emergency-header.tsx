@@ -16,7 +16,9 @@ import {
   Radio,
   PhoneCall,
   RefreshCw,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Maximize2,
+  Minimize2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -43,6 +45,8 @@ interface DriverEmergencyHeaderProps {
   smsButtonNode?: React.ReactNode
   isLoadingRoute?: boolean
   onEndNavigation?: () => void
+  mapFocusActive?: boolean
+  onToggleMapFocus?: () => void
   className?: string
 }
 
@@ -67,6 +71,8 @@ export function DriverEmergencyHeader({
   smsButtonNode,
   isLoadingRoute = false,
   onEndNavigation,
+  mapFocusActive = false,
+  onToggleMapFocus,
   className = ''
 }: DriverEmergencyHeaderProps) {
   const getPriorityBadge = (p: EmergencyPriority) => {
@@ -108,13 +114,13 @@ export function DriverEmergencyHeader({
         <div className="flex items-center gap-2.5 shrink-0">
           {/* Ambulance Badge */}
           <div className="flex items-center gap-1.5 rounded-xl bg-red-600 px-2.5 py-1 text-white font-black font-mono text-xs tracking-wider shadow-xs">
-            <Siren className="size-3.5 animate-spin" style={{ animationDuration: '2s' }} />
+            <Siren className="size-3.5" />
             <span>{ambulanceId}</span>
           </div>
 
           {/* Emergency Status */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted border border-border">
-            <span className={`size-1.5 rounded-full ${emergencyActive ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted border border-border">
+            <span className={`size-1.5 rounded-full ${emergencyActive ? 'bg-red-500' : 'bg-emerald-500'}`} />
             <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">
               {emergencyActive ? 'ACTIVE DISPATCH' : 'STANDBY'}
             </span>
@@ -195,8 +201,22 @@ export function DriverEmergencyHeader({
 
         {/* Right: ETA + Priority + Quick Operator Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {onToggleMapFocus && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onToggleMapFocus}
+              className="h-11 gap-1.5 border-border bg-card px-3 text-foreground hover:bg-muted"
+              aria-label={mapFocusActive ? 'Exit fullscreen map' : 'Fullscreen map'}
+              title={mapFocusActive ? 'Exit fullscreen map' : 'Fullscreen map'}
+            >
+              {mapFocusActive ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+              <span>{mapFocusActive ? 'Exit map' : 'Fullscreen map'}</span>
+            </Button>
+          )}
+
           {/* Priority */}
-          <div className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black tracking-wide ${priorityMeta.classes}`}>
+          <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-black tracking-wide ${priorityMeta.classes}`}>
             {priorityMeta.icon}
             <span>{priorityMeta.label}</span>
           </div>

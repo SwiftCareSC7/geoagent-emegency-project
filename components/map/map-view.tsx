@@ -48,6 +48,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   const tileLayersRef = useRef<{ [key in TileLayerProvider]?: L.TileLayer }>({})
   const activeTileLayerRef = useRef<TileLayerProvider>('carto_dark')
   const layerGroupsRef = useRef<Map<string, L.LayerGroup>>(new Map())
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
 
   // Initialize Map
@@ -177,6 +178,14 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         map.invalidateSize()
       }, 100)
 
+      if (containerRef.current && typeof ResizeObserver !== 'undefined') {
+        const observer = new ResizeObserver(() => {
+          if (map.getContainer().offsetParent) map.invalidateSize()
+        })
+        observer.observe(containerRef.current)
+        resizeObserverRef.current = observer
+      }
+
       if (onMapReady) onMapReady()
     }
 
@@ -184,6 +193,8 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
 
     return () => {
       isMounted = false
+      resizeObserverRef.current?.disconnect()
+      resizeObserverRef.current = null
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove()
         mapInstanceRef.current = null

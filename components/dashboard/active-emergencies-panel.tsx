@@ -5,6 +5,8 @@ import {
   AlertCircle,
   ArrowRight,
   Clock,
+  ChevronDown,
+  ChevronUp,
   Flame,
   HeartPulse,
   MapPin,
@@ -99,6 +101,7 @@ export function ActiveEmergenciesPanel({
   onRetry,
 }: ActiveEmergenciesPanelProps) {
   const [selectedPriority, setSelectedPriority] = useState<string>('ALL')
+  const [showAllEmergencies, setShowAllEmergencies] = useState(false)
 
   const filterOptions = [
     { key: 'ALL', label: 'All Emergencies' },
@@ -112,6 +115,22 @@ export function ActiveEmergenciesPanel({
     if (selectedPriority === 'ALL') return true
     return e.priority === selectedPriority
   })
+
+  const priorityRank: Record<string, number> = {
+    CRITICAL: 0,
+    HIGH: 1,
+    MEDIUM: 2,
+    LOW: 3,
+  }
+  const prioritizedEmergencies = [...filteredEmergencies].sort((a, b) => {
+    const priorityDifference = (priorityRank[a.priority] ?? 4) - (priorityRank[b.priority] ?? 4)
+    if (priorityDifference !== 0) return priorityDifference
+    const aUpdatedAt = Date.parse(a.updatedAt || a.createdAt || '') || 0
+    const bUpdatedAt = Date.parse(b.updatedAt || b.createdAt || '') || 0
+    return bUpdatedAt - aUpdatedAt
+  })
+  const visibleEmergencies = prioritizedEmergencies.slice(0, 3)
+  const remainingCount = filteredEmergencies.length - (showAllEmergencies ? filteredEmergencies.length : visibleEmergencies.length)
 
   return (
     <div className="flex flex-col rounded-2xl border-2 border-border bg-card p-6 shadow-md hover:shadow-lg transition-all text-card-foreground">
@@ -142,7 +161,10 @@ export function ActiveEmergenciesPanel({
           <button
             key={opt.key}
             type="button"
-            onClick={() => setSelectedPriority(opt.key)}
+            onClick={() => {
+              setSelectedPriority(opt.key)
+              setShowAllEmergencies(false)
+            }}
             className={cn(
               'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
               selectedPriority === opt.key
@@ -200,8 +222,12 @@ export function ActiveEmergenciesPanel({
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredEmergencies.map((e) => {
+          <>
+          <div className={cn(
+            'space-y-3',
+            showAllEmergencies && 'max-h-[min(65vh,40rem)] overflow-y-auto',
+          )}>
+            {prioritizedEmergencies.map((e, index) => {
               const Icon = typeIcons[e.type] || Siren
               const priority = priorityBadges[e.priority] || {
                 label: e.priority,
@@ -223,7 +249,7 @@ export function ActiveEmergenciesPanel({
                   ? e.assignedVehicle
                   : assignedVehicle?.vehicleId
 
-              return (
+              const card = (
                 <article
                   key={e.id || e.emergencyId}
                   className="flex flex-col rounded-xl border border-border/80 bg-background/50 p-4 transition-all hover:border-primary/40 hover:bg-background"
@@ -358,8 +384,34 @@ export function ActiveEmergenciesPanel({
                   </div>
                 </article>
               )
+              if (index < 3) return card
+              return (
+                <div
+                  key={e.id || e.emergencyId}
+                  aria-hidden={!showAllEmergencies}
+                  inert={!showAllEmergencies}
+                  className={cn(
+                    'overflow-hidden transition-[max-height,opacity,margin] duration-200 ease-out motion-reduce:transition-none',
+                    showAllEmergencies ? 'mt-3 max-h-96 opacity-100' : '!mt-0 max-h-0 opacity-0',
+                  )}
+                >
+                  {card}
+                </div>
+              )
             })}
           </div>
+          {filteredEmergencies.length > 3 && (
+            <button
+              type="button"
+              aria-expanded={showAllEmergencies}
+              onClick={() => setShowAllEmergencies((expanded) => !expanded)}
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/40 px-4 text-sm font-semibold text-primary transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {showAllEmergencies ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              {showAllEmergencies ? 'Show fewer' : `Show ${remainingCount} more incidents`}
+            </button>
+          )}
+          </>
         )}
       </div>
     </div>
