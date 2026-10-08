@@ -56,13 +56,6 @@ export function Hero() {
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
-              href="/signup"
-              className="group inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm sm:text-base font-bold text-white shadow-lg shadow-emerald-950/50 transition-all hover:bg-emerald-500 active:scale-[0.98]"
-            >
-              <span>REGISTER NOW</span>
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-            <Link
               href="/driver/dashboard"
               className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-6 py-3.5 text-sm sm:text-base font-semibold text-white transition-all hover:bg-white/15 hover:border-white/30 active:scale-[0.98]"
             >

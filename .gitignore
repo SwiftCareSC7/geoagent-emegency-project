@@ -50,3 +50,7 @@ docker-compose.override.yml
 # Playwright Test Artifacts
 test-results/
 playwright-report/
+.agents/claims/
+
+# Impeccable engine binaries (re-downloaded by `npx impeccable update`)
+**/skills/impeccable/scripts/bin/

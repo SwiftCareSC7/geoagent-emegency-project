@@ -363,7 +363,7 @@ class PredictionService {
    * @param {String} vehicleId
    * @returns {Promise<Object>}
    */
-  async predictForVehicle(vehicleId) {
+  async predictForVehicle(vehicleId, { triggerDecision = true } = {}) {
     const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
     if (!vehicle) {
       const error = new Error('Vehicle not found');
@@ -496,7 +496,8 @@ class PredictionService {
     }
 
     // Trigger operational decision re-evaluation if conditions warrant (reroute recommended, high risk, or deviation)
-    if (emergencyId) {
+    // GeoAgent passes triggerDecision:false: decision -> GeoAgent -> prediction -> decision would recurse.
+    if (emergencyId && triggerDecision) {
       const warrantsDecision =
         prediction.rerouteAdvised === true ||
         ['HIGH', 'CRITICAL'].includes(prediction.delayRisk) ||

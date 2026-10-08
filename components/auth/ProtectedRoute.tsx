@@ -2,7 +2,7 @@
 
 import { Ambulance, Loader2, ShieldAlert } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import React, { useEffect } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -20,22 +20,20 @@ interface ProtectedRouteProps {
  * Prevents content flashing by rendering an accessible loading state while the
  * session is being verified against GET /api/auth/me.
  *
- * Redirects unauthenticated users to /login?redirect=<current_path>.
+ * Redirects unauthenticated users to /.
  */
 export function ProtectedRoute({
   children,
   allowedRoles,
 }: ProtectedRouteProps) {
   const router = useRouter()
-  const pathname = usePathname()
   const { user, loading, authenticated } = useAuth()
 
   useEffect(() => {
     if (!loading && !authenticated) {
-      const redirectQuery = pathname ? `?redirect=${encodeURIComponent(pathname)}` : ''
-      router.replace(`/login${redirectQuery}`)
+      router.replace('/')
     }
-  }, [loading, authenticated, router, pathname])
+  }, [loading, authenticated, router])
 
   // 1. Session verification in progress
   if (loading) {
@@ -83,11 +81,6 @@ export function ProtectedRoute({
             <Link href="/" className="w-full sm:w-auto">
               <Button variant="outline" className="w-full">
                 Return to Home
-              </Button>
-            </Link>
-            <Link href="/login" className="w-full sm:w-auto">
-              <Button className="w-full">
-                Switch Account
               </Button>
             </Link>
           </div>

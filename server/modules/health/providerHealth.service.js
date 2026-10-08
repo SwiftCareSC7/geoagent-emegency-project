@@ -10,6 +10,7 @@
 import mongoose from 'mongoose';
 import realtimeService from '../realtime/realtime.service.js';
 import pythonRoutingBridge from '../routes/pythonRoutingBridge.service.js';
+import geoAgentService from '../geoagents/geoAgent.service.js';
 
 class ProviderHealthService {
   /**
@@ -141,7 +142,21 @@ class ProviderHealthService {
           status: cartoStatus,
           configured: cartoKeyConfigured,
           message: cartoMessage
-        }
+        },
+        // Free-model LLM providers (OpenCode / OpenRouter): last known state, no network call
+        geoAgentAI: (() => {
+          const models = geoAgentService.getAIHealth();
+          return {
+            provider: process.env.AI_PROVIDER || 'auto',
+            status: models.length === 0 ? 'NOT_CONFIGURED' : (models.some((m) => m.available) ? 'AVAILABLE' : 'DEGRADED'),
+            configured: models.length > 0,
+            freeOnly: true,
+            providers: models,
+            message: models.length === 0
+              ? 'No free AI provider key configured (deterministic fallback active)'
+              : 'Free-model AI providers configured server-side'
+          };
+        })()
       }
     };
   }

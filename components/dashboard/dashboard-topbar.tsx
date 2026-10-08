@@ -40,9 +40,9 @@ export function DashboardTopbar({
     setLoggingOut(true)
     try {
       await logout()
-      router.push('/login')
+      router.push('/')
     } catch {
-      router.push('/login')
+      router.push('/')
     } finally {
       setLoggingOut(false)
     }

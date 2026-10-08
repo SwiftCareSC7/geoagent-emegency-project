@@ -14,7 +14,7 @@ export const sanitizeText = (text) => {
 };
 
 /**
- * Validates and normalizes structured GeoAgent output from Gemini
+ * Validates and normalizes structured GeoAgent output from the model
  * @param {Object} rawOutput Parsed JSON output from LLM
  * @param {Object} fallbackContext Context to safely complete missing fields
  * @returns {Object} Validated and normalized response

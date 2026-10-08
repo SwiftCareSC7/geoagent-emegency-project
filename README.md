@@ -1,6 +1,6 @@
 # SwiftCare GeoAgent — Emergency Vehicle Movement & Corridor Clearance System
 
-The **SwiftCare GeoAgentic Emergency Response System** is an intelligent decision-support and dispatch platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify spatial causes (such as traffic bottlenecks or road incidents), predict delays, evaluate V2X green-wave corridor clearances, run advisory Gemini AI reasoning, and evaluate authoritative operational decisions in real time.
+The **SwiftCare GeoAgentic Emergency Response System** is an intelligent decision-support and dispatch platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify spatial causes (such as traffic bottlenecks or road incidents), predict delays, evaluate V2X green-wave corridor clearances, run advisory free-model LLM reasoning (OpenRouter / OpenCode), and evaluate authoritative operational decisions in real time.
 
 **Repository**: [github.com/SwiftCareSC7/geoagent-emegency-project](https://github.com/SwiftCareSC7/geoagent-emegency-project)
 
@@ -61,7 +61,7 @@ Trajectories          Routes                     │         │
                        Situation Analysis                  │
                                  │                         │
                                  ▼                         │
-                       GeoAgent AI (Gemini)                │
+                       GeoAgent AI (free LLM)              │
                            (Advisory)                      │
                                  │                         │
                                  ▼                         │
@@ -101,7 +101,7 @@ Trajectories          Routes                     │         │
 | Database | MongoDB (v6.0+) | Mongoose 8, 2dsphere spatial indexing |
 | Auth | bcryptjs + jsonwebtoken | 12 salt rounds, HTTP-only cookies + Bearer |
 | Geospatial | @turf/turf (v7.4+) | WGS84, GeoJSON Point & LineString |
-| AI | @google/genai (v2.19+) | Gemini 2.5 Flash, structured function calling |
+| AI | OpenAI-compatible HTTP (no SDK) | Provider abstraction over **free** OpenRouter / OpenCode models, tool calling, deterministic fallback |
 | Dev Port | `http://localhost:5000` | — |
 
 ### Python Spatial Routing Engine (Member 2)
@@ -233,7 +233,7 @@ Trajectories          Routes                     │         │
 │   │   ├── deviation/                        # Route deviation detection & jitter filtering
 │   │   ├── traffic/                          # Traffic abstraction & Google Traffic provider
 │   │   ├── analysis/                         # Situation analysis & prediction engine v1.3
-│   │   ├── geoagents/                        # Gemini 2.5 Flash function-calling (9 tools)
+│   │   ├── geoagents/                        # Free-model LLM tool loop via provider abstraction
 │   │   ├── decisions/                        # Authoritative Decision Engine & state machine
 │   │   ├── orchestration/                    # Full end-to-end mission coordinator
 │   │   ├── admin/                            # Secure admin stats & collection explorer
@@ -277,7 +277,7 @@ Trajectories          Routes                     │         │
 | 6 | **Geospatial & Routing** | ✅ Done | Turf.js calculations, GeoJSON LineStrings, provider abstraction (Mock / Google / Mapbox / OSRM) |
 | 7 | **Deviation Detection** | ✅ Done | Cross-track distance, bearing divergence, GPS jitter filtering, rolling stability window, threshold classification |
 | 7 | **Traffic & ETA** | ✅ Done | Speed blending, zero-speed guards, congestion ratios, arithmetic delay calculations |
-| 8 | **GeoAgent AI** | ✅ Done | Gemini 2.5 Flash function-calling, 9 operational tools, strict JSON schema, prompt injection defense, deterministic fallback |
+| 8 | **GeoAgent AI** | ✅ Done | Provider-agnostic free-model tool calling (OpenRouter / OpenCode), 9+ operational tools, strict JSON schema, prompt injection defense, deterministic fallback |
 | 9 | **Real-Time Push** | ✅ Done | Socket.IO handshake JWT auth, room isolation (`control-room`, `emergency:${id}`, `vehicle:${id}`), server-emitted events |
 | 10 | **Interactive Geospatial Map** | ✅ Done | Modular Leaflet GIS engine (`components/map/`), zero fake data, in-place coordinate mutations, 3 basemaps, live telemetry freshness |
 | 11 | **Full System Hardening** | ✅ Done | Canonical 23-step lifecycle suite, 14-domain security/RBAC/anomaly suite, provider failure matrix (Scenarios A–E), zero secret leakage |
@@ -363,7 +363,7 @@ Authentication, Dashboard REST domain feeds, Real Interactive Leaflet GIS Map, B
 | 9 | **External Google Traffic Provider** | ✅ Done | Deterministic delay and congestion calculation from Google Routes duration comparisons, tagged with `epistemicType: 'DERIVED'`. |
 | 10 | **Telemetry Hardening & Teleport Defense** | ✅ Done | Ingestion bounds checks (`[-180, 180]`, `[-90, 90]`), speed checks (`0 - 250 km/h`), heading (`0 - 360°`), and teleport jitter anomaly detection (> 1000m jump in 10s). |
 | 11 | **Real-Time Prediction Engine** | ✅ Done | Rolling EMA speed trend, remaining route distance slicing, traffic/deviation delay penalties, delay risk enum, confidence scoring, Mongoose persistence, and REST endpoint `GET /api/analysis/vehicle/:id/prediction`. |
-| 12 | **GeoAgent & Decision Engine Rationale** | ✅ Done | Comparative trade-off matrix ("Why did the route change?", "What if we do nothing?"), advisory Gemini 2.5 Flash reasoning, and `PENDING_OPERATOR_ACTION` state machine requiring operator approval. |
+| 12 | **GeoAgent & Decision Engine Rationale** | ✅ Done | Comparative trade-off matrix ("Why did the route change?", "What if we do nothing?"), advisory free-model LLM reasoning, and `PENDING_OPERATOR_ACTION` state machine requiring operator approval. |
 | 13 | **Socket.IO Real-Time Client & Streaming** | ✅ Done | Authenticated WebSocket connection (token & cookies), room isolation (`control-room`, `emergency:${id}`, `vehicle:${id}`), live `prediction.updated` push stream, and React hooks `useSocketStatus` and `useRealtimeEmergency`. |
 | 14 | **Provider Health & Safe Evaluation** | ✅ Done | `GET /api/health/providers` returning safe evaluation (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`) without exposing API keys. |
 | 15 | **Admin Database Administration & Observability** | ✅ Done | Secure ADMIN-only layer (`/admin`) with real system counts across all 8 verified collections, live database latency ping, tabbed collection browser with safe projection and bounded pagination, and strict RBAC (`protect` + `requireRole('ADMIN')`). |
@@ -419,11 +419,30 @@ NODE_ENV=development
 MONGO_URI=mongodb://127.0.0.1:27017/geoagent-emergency
 CLIENT_URL=http://localhost:3000
 JWT_SECRET=your_long_random_jwt_secret_key_here
-GEMINI_API_KEY=your_gemini_api_key_here
+AI_PROVIDER=auto            # auto | openrouter | opencode
+OPENROUTER_API_KEY=         # backend-only, never NEXT_PUBLIC_
+OPENROUTER_MODEL=           # optional; must be a free model
+OPENCODE_API_KEY=
+OPENCODE_MODEL=
 ROUTING_PROVIDER=mock
 TRAFFIC_PROVIDER=mock
 ```
 *(For complete environment reference, see [`docs/environment.md`](docs/environment.md)).*
+
+#### GeoAgent AI providers (free models only)
+```text
+GeoAgent
+→ provider abstraction (server/modules/geoagents/geoagent.provider.js)
+→ OpenRouter free models   (tried first in AI_PROVIDER=auto)
+→ OpenCode free models
+→ deterministic SwiftCare fallback
+```
+- **Only free models are ever selected.** A model is called only if the provider's live model catalog confirms it is free: OpenRouter = every listed price is `0` and `tools` is supported; OpenCode = the `-free` model id suffix. A configured `*_MODEL` that is not confirmed free is never called.
+- **Paid models must never be used.** OpenRouter requests also send `provider.max_price = 0` and `require_parameters: true`, so OpenRouter refuses any paid or tool-less endpoint.
+- **OpenRouter free models are supported** (verified with live tool calling). Free models have daily quotas; when the quota is exhausted (`429 free-models-per-day`) the provider is paused and the deterministic fallback is used.
+- **OpenCode free models may return `403 FreeTierError`** for server-side requests ("free tier can only be used from within OpenCode"). This is a provider restriction and is not bypassed; the provider is paused and the next option is used.
+- Failed models are cooled down (no retry storms); at most 4 model attempts per call. The AI remains advisory: the Decision Engine and human approval are authoritative.
+- Status: `GET /api/health/providers` → `providers.geoAgentAI` (provider, model, free, tool-calling, availability, last failure; never keys).
 
 ### 3. Configure Frontend Map Basemap (`.env.local`)
 To eliminate the CARTO "API KEY REQUIRED" raster tile watermark:
@@ -433,7 +452,7 @@ To eliminate the CARTO "API KEY REQUIRED" raster tile watermark:
 NEXT_PUBLIC_CARTO_API_KEY=your_carto_basemap_key
 ```
 3. For production on Vercel: Add `NEXT_PUBLIC_CARTO_API_KEY` under **Vercel Project Dashboard → Settings → Environment Variables**, then trigger a redeploy.
-4. *Security boundary*: `NEXT_PUBLIC_CARTO_API_KEY` is strictly for browser raster tiles. Never expose backend secrets (`GOOGLE_MAPS_API_KEY`, `GEMINI_API_KEY`, `MONGO_URI`, `JWT_SECRET`) in frontend variables.
+4. *Security boundary*: `NEXT_PUBLIC_CARTO_API_KEY` is strictly for browser raster tiles. Never expose backend secrets (`GOOGLE_MAPS_API_KEY`, `OPENROUTER_API_KEY`, `OPENCODE_API_KEY`, `MONGO_URI`, `JWT_SECRET`) in frontend variables.
 
 ### 4. Run Applications
 
@@ -472,7 +491,7 @@ node server/demo-telemetry-player.js --all --interval 3000
 curl http://localhost:5000/api/health
 # Response: {"success":true,"message":"GeoAgentic backend is running"}
 
-# 6-Provider status evaluation (MongoDB, Google Routes, Google Roads, Gemini, Python/V2X, Socket.IO)
+# 6-Provider status evaluation (MongoDB, Google Routes, Google Roads, Python/V2X, Socket.IO, GeoAgent AI providers)
 curl http://localhost:5000/api/health/providers
 ```
 
@@ -580,7 +599,7 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 | **Frontend ↔ Backend** | **Fully Connected** | Typed API modules (`lib/api/`), HTTP-only cookie session, Socket.IO streaming hooks, and graceful offline fallback |
 | **Admin Observability** | **Implemented** | Strict ADMIN-only RBAC (`/admin`), real MongoDB stats, ping latency measurements, and sanitized collection browser |
 | **Trajectory Archiving** | Ingests to MongoDB | Configure MongoDB TTL index or time-series collection for multi-month data lifecycle |
-| **Secret Management** | `.env` file | Store `JWT_SECRET`, `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY` in AWS Secrets Manager / Vault / GCP Secret Manager |
+| **Secret Management** | `.env` file | Store `JWT_SECRET`, `OPENROUTER_API_KEY`, `OPENCODE_API_KEY`, `GOOGLE_MAPS_API_KEY` in AWS Secrets Manager / Vault / GCP Secret Manager |
 | **Process Management** | Node HTTP Server | Deploy behind Nginx reverse proxy with PM2 or Kubernetes cluster |
 | **Frontend Deployment** | Next.js dev server | Deploy root Next.js app to Vercel with Root Directory set to `./` |
 | **Rate Limiting** | Not implemented | Add `express-rate-limit` for login endpoints and API abuse prevention |

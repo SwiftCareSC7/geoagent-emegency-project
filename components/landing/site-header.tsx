@@ -4,10 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   HelpCircle,
-  LogIn,
   Menu,
   Phone,
-  UserPlus,
   X,
 } from 'lucide-react'
 import { BrandLogo } from '@/components/brand-logo'
@@ -71,20 +69,6 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
 
           <ThemeToggleCompact />
 
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <LogIn className="size-3.5" />
-            <span>Sign In</span>
-          </Link>
-          <Link
-            href="/signup"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm shadow-emerald-600/20 transition-colors hover:bg-emerald-500"
-          >
-            <UserPlus className="size-3.5" />
-            <span>Register</span>
-          </Link>
         </div>
 
         {/* Mobile Hamburger Button */}
@@ -130,22 +114,6 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
               Operational Guide
             </button>
           )}
-          <div className="flex items-center gap-2 pt-2 border-t border-border">
-            <Link
-              href="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex-1 text-center rounded-lg border border-border bg-card py-2 text-xs font-semibold text-muted-foreground"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex-1 text-center rounded-lg bg-emerald-600 py-2 text-xs font-bold text-white"
-            >
-              Register
-            </Link>
-          </div>
         </div>
       )}
     </header>

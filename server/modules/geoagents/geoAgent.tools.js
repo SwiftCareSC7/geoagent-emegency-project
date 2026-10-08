@@ -9,23 +9,38 @@ import Route from '../routes/route.model.js';
 import Trajectory from '../trajectories/trajectory.model.js';
 import Decision from '../decisions/decision.model.js';
 import Incident from '../incidents/incident.model.js';
-import { createPoint, calculateDistance } from '../../shared/services/geospatial.service.js';
+import { createPoint, calculateDistance, validateCoordinates } from '../../shared/services/geospatial.service.js';
 import { geoAgentConstants } from './geoagent.constants.js';
+import { sanitizeText } from './geoagent.schemas.js';
+
+const SAFE_SCOPE_MESSAGE = 'Requested resource is outside the current analysis scope';
+const SAFE_ARG_MESSAGE = 'Invalid tool argument';
 
 /**
- * Declarative Tool Definitions for Google Gemini Function Calling
- * Explicitly exposes 9 core intelligence tools + operational helpers
+ * Operational tool error — never include stack/DB details in message for model/clients.
+ */
+export class GeoAgentToolError extends Error {
+  constructor(code, message = SAFE_SCOPE_MESSAGE) {
+    super(message);
+    this.name = 'GeoAgentToolError';
+    this.code = code;
+    this.isOperational = true;
+  }
+}
+
+/**
+ * Declarative Tool Definitions for LLM Function Calling (OpenAI-compatible JSON schema)
  */
 export const geoAgentToolDeclarations = [
   {
     name: 'getEmergencyState',
-    description: 'Retrieve current operational status, caller description, priority, location, and assigned resources for an emergency incident.',
+    description: 'Retrieve current operational status, priority, location, and assigned resources for the scoped emergency incident.',
     parameters: {
       type: 'object',
       properties: {
         emergencyId: {
           type: 'string',
-          description: 'The emergency identifier, e.g. EMG-0001'
+          description: 'Must match the current analysis emergency identifier'
         }
       },
       required: ['emergencyId']
@@ -33,13 +48,13 @@ export const geoAgentToolDeclarations = [
   },
   {
     name: 'getVehicleState',
-    description: 'Retrieve real-time operational status, driver info, telemetry timestamp, and latest coordinates for a specific emergency vehicle.',
+    description: 'Retrieve real-time operational status, telemetry timestamp, and latest coordinates for the scoped emergency vehicle.',
     parameters: {
       type: 'object',
       properties: {
         vehicleId: {
           type: 'string',
-          description: 'The vehicle identifier, e.g. AMB-001'
+          description: 'Must match the current analysis vehicle identifier'
         }
       },
       required: ['vehicleId']
@@ -47,13 +62,13 @@ export const geoAgentToolDeclarations = [
   },
   {
     name: 'getRecentTrajectory',
-    description: 'Retrieve recent chronological GPS trajectory fixes for a vehicle to evaluate speed trends, trajectory jitter, and heading changes.',
+    description: 'Retrieve recent chronological GPS trajectory fixes for the scoped vehicle.',
     parameters: {
       type: 'object',
       properties: {
         vehicleId: {
           type: 'string',
-          description: 'The vehicle identifier, e.g. AMB-001'
+          description: 'Must match the current analysis vehicle identifier'
         },
         limit: {
           type: 'number',
@@ -65,56 +80,54 @@ export const geoAgentToolDeclarations = [
   },
   {
     name: 'getCurrentRoute',
-    description: 'Retrieve active planned route corridor details (origin, destination, distance, duration, provider, status) for a vehicle or emergency.',
+    description: 'Retrieve active planned route corridor details for the scoped vehicle / emergency.',
     parameters: {
       type: 'object',
       properties: {
         vehicleId: {
           type: 'string',
-          description: 'The vehicle identifier'
+          description: 'Must match the current analysis vehicle identifier'
         },
         routeId: {
           type: 'string',
-          description: 'Optional explicit route identifier'
+          description: 'Optional route identifier that must belong to the scoped vehicle'
         }
       }
     }
   },
   {
     name: 'getRouteAlternatives',
-    description: 'Calculate real alternative candidate routes between origin and destination with traffic-aware duration and distance comparison.',
+    description: 'Calculate alternative candidate routes for the scoped emergency using server-authoritative origin and destination (model coordinates are ignored).',
     parameters: {
       type: 'object',
       properties: {
-        originLng: { type: 'number', description: 'Origin longitude' },
-        originLat: { type: 'number', description: 'Origin latitude' },
-        destLng: { type: 'number', description: 'Destination longitude' },
-        destLat: { type: 'number', description: 'Destination latitude' }
-      },
-      required: ['originLng', 'originLat', 'destLng', 'destLat']
+        originLng: { type: 'number', description: 'Ignored; origin comes from scoped mission' },
+        originLat: { type: 'number', description: 'Ignored; origin comes from scoped mission' },
+        destLng: { type: 'number', description: 'Ignored; destination comes from scoped mission' },
+        destLat: { type: 'number', description: 'Ignored; destination comes from scoped mission' }
+      }
     }
   },
   {
     name: 'getTrafficAnalysis',
-    description: 'Query live traffic conditions, congestion level, and estimated flow speed for a specific geographic coordinate.',
+    description: 'Query live traffic near the scoped mission. Coordinates must be near the mission; otherwise use vehicle/emergency location.',
     parameters: {
       type: 'object',
       properties: {
-        longitude: { type: 'number', description: 'Target longitude' },
-        latitude: { type: 'number', description: 'Target latitude' }
-      },
-      required: ['longitude', 'latitude']
+        longitude: { type: 'number', description: 'Target longitude near the scoped mission' },
+        latitude: { type: 'number', description: 'Target latitude near the scoped mission' }
+      }
     }
   },
   {
     name: 'getPrediction',
-    description: 'Retrieve quantitative ETA and delay prediction metrics including delay risk, rolling speed trend, and evidence-based confidence for an emergency vehicle.',
+    description: 'Retrieve quantitative ETA and delay prediction for the scoped emergency vehicle.',
     parameters: {
       type: 'object',
       properties: {
         vehicleId: {
           type: 'string',
-          description: 'The vehicle identifier, e.g. AMB-101'
+          description: 'Must match the current analysis vehicle identifier'
         }
       },
       required: ['vehicleId']
@@ -122,38 +135,37 @@ export const geoAgentToolDeclarations = [
   },
   {
     name: 'getNearbyIncidents',
-    description: 'Query active road incidents (accidents, closures, road work) within a specified distance of coordinates.',
+    description: 'Query active road incidents near the scoped mission with a bounded search radius.',
     parameters: {
       type: 'object',
       properties: {
-        longitude: { type: 'number', description: 'Target longitude' },
-        latitude: { type: 'number', description: 'Target latitude' },
-        radiusMeters: { type: 'number', description: 'Search radius in meters (default: 1000)' }
-      },
-      required: ['longitude', 'latitude']
+        longitude: { type: 'number', description: 'Target longitude near the scoped mission' },
+        latitude: { type: 'number', description: 'Target latitude near the scoped mission' },
+        radiusMeters: { type: 'number', description: 'Search radius in meters (capped)' }
+      }
     }
   },
   {
     name: 'getDecisionHistory',
-    description: 'Retrieve historical operational decisions made for an emergency or vehicle including actions and operator status.',
+    description: 'Retrieve historical operational decisions for the scoped emergency only.',
     parameters: {
       type: 'object',
       properties: {
-        emergencyId: { type: 'string', description: 'Filter by emergency identifier' },
-        vehicleId: { type: 'string', description: 'Filter by vehicle identifier' },
+        emergencyId: { type: 'string', description: 'Must match the current analysis emergency identifier' },
+        vehicleId: { type: 'string', description: 'Must match the current analysis vehicle identifier if provided' },
         limit: { type: 'number', description: 'Maximum records to return (default: 10)' }
       }
     }
   },
   {
     name: 'getVehicleSituation',
-    description: 'Retrieve complete real-time situation analysis for an emergency vehicle including route deviation status, traffic congestion, nearby incidents, and ETA.',
+    description: 'Retrieve complete real-time situation analysis for the scoped emergency vehicle.',
     parameters: {
       type: 'object',
       properties: {
         vehicleId: {
           type: 'string',
-          description: 'The vehicle identifier, e.g. AMB-001'
+          description: 'Must match the current analysis vehicle identifier'
         }
       },
       required: ['vehicleId']
@@ -161,26 +173,25 @@ export const geoAgentToolDeclarations = [
   },
   {
     name: 'getNearbyAvailableVehicles',
-    description: 'Find available backup emergency ambulances near a given geographic coordinate with distance and estimated arrival time.',
+    description: 'Find AVAILABLE backup ambulances near the scoped emergency location using observed telemetry and derived distance/ETA (or UNKNOWN when unavailable).',
     parameters: {
       type: 'object',
       properties: {
-        longitude: { type: 'number', description: 'Target longitude' },
-        latitude: { type: 'number', description: 'Target latitude' },
-        maxDistanceKm: { type: 'number', description: 'Maximum search radius in kilometers (default: 10)' }
-      },
-      required: ['longitude', 'latitude']
+        longitude: { type: 'number', description: 'Ignored; search center is scoped emergency location' },
+        latitude: { type: 'number', description: 'Ignored; search center is scoped emergency location' },
+        maxDistanceKm: { type: 'number', description: 'Maximum search radius in kilometers (capped)' }
+      }
     }
   },
   {
     name: 'getCorridorGreenWaveStatus',
-    description: 'Retrieve real-time V2X traffic signal preemption, green-wave clearance status, and civilian vehicle yield alerts along the emergency response corridor.',
+    description: 'Retrieve V2X corridor green-wave status for the scoped emergency vehicle.',
     parameters: {
       type: 'object',
       properties: {
         vehicleId: {
           type: 'string',
-          description: 'The vehicle identifier, e.g. AMB-001'
+          description: 'Must match the current analysis vehicle identifier'
         }
       },
       required: ['vehicleId']
@@ -188,27 +199,199 @@ export const geoAgentToolDeclarations = [
   }
 ];
 
+/** Normalize and freeze analysis scope established by the application (never by the model). */
+export function normalizeAnalysisScope(scope) {
+  if (!scope || typeof scope !== 'object') {
+    throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+  }
+  const emergencyId = typeof scope.emergencyId === 'string' ? scope.emergencyId.trim() : '';
+  const vehicleId = typeof scope.vehicleId === 'string' ? scope.vehicleId.trim() : '';
+  if (!emergencyId || !vehicleId) {
+    throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+  }
+  return Object.freeze({ emergencyId, vehicleId });
+}
+
+function assertSafeId(value) {
+  if (typeof value !== 'string') {
+    throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+  }
+  const id = value.trim();
+  if (!id || id.length > 64 || /[$\0{}]/.test(id)) {
+    throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+  }
+  return id;
+}
+
+function isObjectIdString(value) {
+  return typeof value === 'string' && /^[0-9a-fA-F]{24}$/.test(value);
+}
+
+function parseFiniteNumber(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function clampInt(value, fallback, min, max) {
+  const n = parseInt(value, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function pointFromGeoJson(point) {
+  if (!point || !Array.isArray(point.coordinates) || point.coordinates.length < 2) return null;
+  const [lng, lat] = point.coordinates;
+  if (!validateCoordinates([lng, lat])) return null;
+  return createPoint(lng, lat);
+}
+
+async function loadScopedEmergency(scope) {
+  const emergency = await Emergency.findOne({
+    emergencyId: scope.emergencyId,
+    isDeleted: false
+  }).populate('assignedVehicle', 'vehicleId registrationNumber status');
+
+  if (!emergency) {
+    throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+  }
+  return emergency;
+}
+
+async function loadScopedVehicle(scope) {
+  const vehicle = await Vehicle.findOne({
+    vehicleId: scope.vehicleId,
+    isDeleted: false
+  });
+  if (!vehicle) {
+    throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+  }
+  return vehicle;
+}
+
+/**
+ * Ensure requested emergency id refers to the scoped emergency (friendly id or its ObjectId).
+ * Fail closed without revealing whether other emergencies exist.
+ */
+async function assertEmergencyInScope(requestedId, scope) {
+  const id = assertSafeId(requestedId || scope.emergencyId);
+  if (id === scope.emergencyId) {
+    return loadScopedEmergency(scope);
+  }
+  if (isObjectIdString(id)) {
+    const emergency = await Emergency.findOne({ _id: id, isDeleted: false })
+      .populate('assignedVehicle', 'vehicleId registrationNumber status');
+    if (emergency && emergency.emergencyId === scope.emergencyId) {
+      return emergency;
+    }
+  }
+  throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+}
+
+/**
+ * Ensure requested vehicle id is the scoped assigned vehicle only.
+ * Related vehicles are not inventable — only the mission vehicleId is allowed for vehicle tools.
+ */
+async function assertVehicleInScope(requestedId, scope) {
+  const id = assertSafeId(requestedId || scope.vehicleId);
+  if (id === scope.vehicleId) {
+    return loadScopedVehicle(scope);
+  }
+  if (isObjectIdString(id)) {
+    const vehicle = await Vehicle.findOne({ _id: id, isDeleted: false });
+    if (vehicle && vehicle.vehicleId === scope.vehicleId) {
+      return vehicle;
+    }
+  }
+  throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+}
+
+async function getMissionAnchorPoint(scope, emergency) {
+  const emg = emergency || (await loadScopedEmergency(scope));
+  const emgPoint = pointFromGeoJson(emg.location);
+  if (emgPoint) return { point: emgPoint, source: 'emergency' };
+
+  const vehicle = await loadScopedVehicle(scope);
+  const latestTraj = await Trajectory.findOne({ vehicle: vehicle._id }).sort({ timestamp: -1 });
+  const vehPoint = latestTraj ? pointFromGeoJson(latestTraj.location) : null;
+  if (vehPoint) return { point: vehPoint, source: 'vehicle' };
+
+  throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+}
+
+/**
+ * Resolve a geo query point: prefer validated model coords only if within mission offset;
+ * otherwise use authoritative mission anchor. Never allows unbounded geo escape.
+ */
+async function resolveMissionGeoPoint(args, scope) {
+  const anchor = await getMissionAnchorPoint(scope);
+  const lng = parseFiniteNumber(args.longitude ?? args.originLng);
+  const lat = parseFiniteNumber(args.latitude ?? args.originLat);
+
+  if (lng !== null && lat !== null && validateCoordinates([lng, lat])) {
+    const requested = createPoint(lng, lat);
+    const offsetM = calculateDistance(anchor.point, requested).meters;
+    if (offsetM <= geoAgentConstants.maxMissionGeoOffsetMeters) {
+      return requested;
+    }
+  }
+
+  return anchor.point;
+}
+
+async function resolveScopedRouteEndpoints(scope) {
+  const emergency = await loadScopedEmergency(scope);
+  const vehicle = await loadScopedVehicle(scope);
+
+  const activeRoute = await Route.findOne({
+    vehicle: vehicle._id,
+    status: 'ACTIVE'
+  }).sort({ createdAt: -1 });
+
+  let origin = activeRoute ? pointFromGeoJson(activeRoute.origin) : null;
+  let destination = activeRoute ? pointFromGeoJson(activeRoute.destination) : null;
+
+  if (!origin) origin = pointFromGeoJson(emergency.location);
+  if (!destination) destination = pointFromGeoJson(emergency.destination);
+
+  if (!origin || !destination) {
+    throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+  }
+
+  return { origin, destination, emergency, vehicle, activeRoute };
+}
+
 /**
  * Tool Execution Handlers
+ * @param {string} name
+ * @param {object} args — UNTRUSTED (model-generated)
+ * @param {object} analysisScope — TRUSTED, application-established { emergencyId, vehicleId }
  */
-export const executeGeoAgentTool = async (name, args = {}) => {
+export const executeGeoAgentTool = async (name, args = {}, analysisScope) => {
+  const scope = normalizeAnalysisScope(analysisScope);
+  const safeArgs = args && typeof args === 'object' && !Array.isArray(args) ? args : {};
+
   switch (name) {
     case 'getEmergencyState': {
-      const { emergencyId } = args;
-      if (!emergencyId) throw new Error('emergencyId parameter is required');
-      const isObjectId = typeof emergencyId === 'string' && emergencyId.match(/^[0-9a-fA-F]{24}$/);
-      const query = isObjectId ? { _id: emergencyId, isDeleted: false } : { emergencyId, isDeleted: false };
-      const emergency = await Emergency.findOne(query).populate('assignedVehicle', 'vehicleId registrationNumber status');
-      if (!emergency) throw new Error(`Emergency not found: ${emergencyId}`);
+      const emergency = await assertEmergencyInScope(safeArgs.emergencyId, scope);
+      const untrustedDescription = emergency.description
+        ? sanitizeText(String(emergency.description)).slice(0, 300)
+        : null;
+
       return {
         emergencyId: emergency.emergencyId,
         type: emergency.type,
         priority: emergency.priority,
         status: emergency.status,
-        description: emergency.description,
+        untrustedCallerDescription: untrustedDescription,
         location: emergency.location,
         destination: emergency.destination,
-        destinationHospital: emergency.destinationHospital,
+        destinationHospital: emergency.destinationHospital
+          ? sanitizeText(String(emergency.destinationHospital)).slice(0, 120)
+          : null,
         assignedVehicle: emergency.assignedVehicle ? {
           vehicleId: emergency.assignedVehicle.vehicleId,
           registrationNumber: emergency.assignedVehicle.registrationNumber,
@@ -219,37 +402,39 @@ export const executeGeoAgentTool = async (name, args = {}) => {
     }
 
     case 'getVehicleState': {
-      const { vehicleId } = args;
-      if (!vehicleId) throw new Error('vehicleId parameter is required');
-      const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
-      if (!vehicle) throw new Error(`Vehicle not found: ${vehicleId}`);
+      const vehicle = await assertVehicleInScope(safeArgs.vehicleId, scope);
       const latestTraj = await Trajectory.findOne({ vehicle: vehicle._id }).sort({ timestamp: -1 });
       return {
         vehicleId: vehicle.vehicleId,
         registrationNumber: vehicle.registrationNumber,
         type: vehicle.type,
         status: vehicle.status,
-        driverName: vehicle.driverName,
-        hospitalName: vehicle.hospitalName,
+        hospitalName: vehicle.hospitalName
+          ? sanitizeText(String(vehicle.hospitalName)).slice(0, 120)
+          : null,
         location: latestTraj ? latestTraj.location : null,
-        speed: latestTraj ? latestTraj.speed : 0,
-        heading: latestTraj ? latestTraj.heading : 0,
+        locationType: latestTraj ? geoAgentConstants.observationTypes.OBSERVED : geoAgentConstants.observationTypes.UNKNOWN,
+        speed: latestTraj ? latestTraj.speed : null,
+        heading: latestTraj ? latestTraj.heading : null,
         lastFixAt: latestTraj ? latestTraj.timestamp : null
       };
     }
 
     case 'getRecentTrajectory': {
-      const { vehicleId, limit = 20 } = args;
-      if (!vehicleId) throw new Error('vehicleId parameter is required');
-      const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
-      if (!vehicle) throw new Error(`Vehicle not found: ${vehicleId}`);
-      const safeLimit = Math.min(Math.max(1, parseInt(limit, 10) || 20), 100);
+      const vehicle = await assertVehicleInScope(safeArgs.vehicleId, scope);
+      const safeLimit = clampInt(
+        safeArgs.limit,
+        20,
+        1,
+        geoAgentConstants.maxTrajectoryPoints
+      );
       const trajectories = await Trajectory.find({ vehicle: vehicle._id })
         .sort({ timestamp: -1 })
         .limit(safeLimit);
       return {
-        vehicleId,
+        vehicleId: vehicle.vehicleId,
         count: trajectories.length,
+        pointsType: geoAgentConstants.observationTypes.OBSERVED,
         points: trajectories.map((t) => ({
           location: t.location,
           speed: t.speed,
@@ -260,19 +445,40 @@ export const executeGeoAgentTool = async (name, args = {}) => {
     }
 
     case 'getCurrentRoute': {
-      const { vehicleId, routeId } = args;
-      let query = { status: 'ACTIVE' };
-      if (routeId) {
-        const isObjectId = typeof routeId === 'string' && routeId.match(/^[0-9a-fA-F]{24}$/);
-        query = isObjectId ? { _id: routeId } : { routeId };
-      } else if (vehicleId) {
-        const v = await Vehicle.findOne({ vehicleId, isDeleted: false });
-        if (v) query.vehicle = v._id;
+      if (safeArgs.vehicleId) {
+        await assertVehicleInScope(safeArgs.vehicleId, scope);
       }
-      const route = await Route.findOne(query).sort({ createdAt: -1 });
+      const vehicle = await loadScopedVehicle(scope);
+      const emergency = await loadScopedEmergency(scope);
+
+      let route = null;
+      if (safeArgs.routeId) {
+        const routeId = assertSafeId(safeArgs.routeId);
+        const routeQuery = isObjectIdString(routeId)
+          ? { _id: routeId }
+          : { routeId };
+        route = await Route.findOne(routeQuery);
+        if (!route) {
+          throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+        }
+        const routeVehicleId = route.vehicle ? route.vehicle.toString() : null;
+        if (routeVehicleId !== vehicle._id.toString()) {
+          throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+        }
+        if (route.emergency && route.emergency.toString() !== emergency._id.toString()) {
+          throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+        }
+      } else {
+        route = await Route.findOne({
+          vehicle: vehicle._id,
+          status: 'ACTIVE'
+        }).sort({ createdAt: -1 });
+      }
+
       if (!route) {
         return { found: false, message: 'No active route found' };
       }
+
       return {
         found: true,
         routeId: route.routeId,
@@ -287,29 +493,31 @@ export const executeGeoAgentTool = async (name, args = {}) => {
     }
 
     case 'getTrafficAnalysis': {
-      const { longitude, latitude } = args;
-      if (typeof longitude !== 'number' || typeof latitude !== 'number') {
-        throw new Error('Valid longitude and latitude numbers are required');
-      }
-      const point = createPoint(longitude, latitude);
+      const point = await resolveMissionGeoPoint(safeArgs, scope);
       return await trafficService.getTrafficForLocation(point);
     }
 
     case 'getDecisionHistory': {
-      const { emergencyId, vehicleId, limit = 10 } = args;
-      const query = {};
-      if (emergencyId) {
-        const isObjectId = typeof emergencyId === 'string' && emergencyId.match(/^[0-9a-fA-F]{24}$/);
-        const emgQuery = isObjectId ? { _id: emergencyId, isDeleted: false } : { emergencyId, isDeleted: false };
-        const emg = await Emergency.findOne(emgQuery);
-        if (emg) query.emergency = emg._id;
+      if (safeArgs.emergencyId) {
+        await assertEmergencyInScope(safeArgs.emergencyId, scope);
       }
-      if (vehicleId) {
-        const veh = await Vehicle.findOne({ vehicleId, isDeleted: false });
-        if (veh) query.vehicle = veh._id;
+      if (safeArgs.vehicleId) {
+        await assertVehicleInScope(safeArgs.vehicleId, scope);
       }
-      const safeLimit = Math.min(Math.max(1, parseInt(limit, 10) || 10), 50);
-      const decisions = await Decision.find(query)
+
+      const emergency = await loadScopedEmergency(scope);
+      const vehicle = await loadScopedVehicle(scope);
+      const safeLimit = clampInt(
+        safeArgs.limit,
+        10,
+        1,
+        geoAgentConstants.maxDecisionHistory
+      );
+
+      const decisions = await Decision.find({
+        emergency: emergency._id,
+        vehicle: vehicle._id
+      })
         .sort({ createdAt: -1 })
         .limit(safeLimit)
         .populate('emergency', 'emergencyId')
@@ -325,30 +533,25 @@ export const executeGeoAgentTool = async (name, args = {}) => {
           primaryAction: d.primaryAction,
           status: d.status,
           reasonCodes: d.reasonCodes,
-          rationale: d.rationale,
+          rationale: d.rationale ? sanitizeText(String(d.rationale)).slice(0, 500) : null,
           createdAt: d.createdAt
         }))
       };
     }
 
     case 'getVehicleSituation': {
-      const { vehicleId } = args;
-      if (!vehicleId) throw new Error('vehicleId parameter is required');
-      return await analysisService.getVehicleSituation(vehicleId);
+      const vehicle = await assertVehicleInScope(safeArgs.vehicleId, scope);
+      return await analysisService.getVehicleSituation(vehicle.vehicleId);
     }
 
     case 'getPrediction': {
-      const { vehicleId } = args;
-      if (!vehicleId) throw new Error('vehicleId parameter is required');
-      return await predictionService.predictForVehicle(vehicleId);
+      const vehicle = await assertVehicleInScope(safeArgs.vehicleId, scope);
+      return await predictionService.predictForVehicle(vehicle.vehicleId, { triggerDecision: false });
     }
 
     case 'getAlternativeRoutes':
     case 'getRouteAlternatives': {
-      const { originLng, originLat, destLng, destLat } = args;
-      const origin = createPoint(originLng, originLat);
-      const destination = createPoint(destLng, destLat);
-      
+      const { origin, destination } = await resolveScopedRouteEndpoints(scope);
       const routeResult = await routingService.getRouteWithAlternatives(origin, destination);
       const primary = routeResult.primary;
       const alternatives = routeResult.alternatives || [];
@@ -360,68 +563,140 @@ export const executeGeoAgentTool = async (name, args = {}) => {
           etaMinutes: Math.max(1, Math.round(primary.durationSeconds / 60)),
           traffic: primary.trafficDelaySeconds > 120 ? 'HEAVY' : 'MODERATE',
           incidentExposure: 'EVALUATED',
-          description: primary.description || 'Current active response corridor'
+          description: primary.description
+            ? sanitizeText(String(primary.description)).slice(0, 200)
+            : 'Current active response corridor',
+          metricsType: geoAgentConstants.observationTypes.DERIVED
         },
         ...alternatives.map((alt, idx) => ({
           name: alt.description || `Alternative Route ${idx + 1}`,
           distanceMeters: alt.distanceMeters,
           etaMinutes: Math.max(1, Math.round(alt.durationSeconds / 60)),
           traffic: (alt.trafficDelaySeconds || 0) > 120 ? 'HEAVY' : 'LIGHT',
-          incidentExposure: 'LOW',
-          description: alt.description || `Alternative corridor via bypass ${idx + 1}`
+          incidentExposure: geoAgentConstants.observationTypes.UNKNOWN,
+          description: alt.description
+            ? sanitizeText(String(alt.description)).slice(0, 200)
+            : `Alternative corridor ${idx + 1}`,
+          metricsType: geoAgentConstants.observationTypes.DERIVED
         }))
       ];
 
       return {
         origin: origin.coordinates,
         destination: destination.coordinates,
+        originSource: 'SCOPED_MISSION',
+        destinationSource: 'SCOPED_MISSION',
         provider: primary.provider,
         candidateRoutes
       };
     }
 
     case 'getNearbyAvailableVehicles': {
-      const { longitude, latitude, maxDistanceKm = geoAgentConstants.backupMaxDistanceKm } = args;
+      const emergency = await loadScopedEmergency(scope);
+      const targetPoint = pointFromGeoJson(emergency.location);
+      if (!targetPoint) {
+        throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+      }
+
+      const requestedRadius = parseFiniteNumber(safeArgs.maxDistanceKm);
+      const maxDistanceKm = Math.min(
+        geoAgentConstants.backupMaxDistanceKm,
+        requestedRadius !== null && requestedRadius > 0
+          ? requestedRadius
+          : geoAgentConstants.backupMaxDistanceKm
+      );
+      if (!(maxDistanceKm > 0)) {
+        throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+      }
 
       const availableVehicles = await Vehicle.find({
-        status: 'AVAILABLE'
-      });
+        status: 'AVAILABLE',
+        isDeleted: false,
+        vehicleId: { $ne: scope.vehicleId }
+      }).limit(geoAgentConstants.backupMaxCandidatesExamined);
 
-      const candidates = [];
+      const ranked = [];
 
       for (const v of availableVehicles) {
-        // Approximate base distance calculation using vehicleId hash
-        const distKm = Number((2 + Math.random() * (maxDistanceKm - 2)).toFixed(1));
-        const etaMinutes = Math.max(2, Math.round((distKm / 45) * 60)); // assuming 45 km/h avg speed
+        const latestTraj = await Trajectory.findOne({ vehicle: v._id }).sort({ timestamp: -1 });
+        const location = latestTraj ? pointFromGeoJson(latestTraj.location) : null;
 
-        candidates.push({
+        let distanceKm = null;
+        let distanceType = geoAgentConstants.observationTypes.UNKNOWN;
+
+        if (location) {
+          distanceKm = Number(calculateDistance(targetPoint, location).kilometers.toFixed(2));
+          distanceType = geoAgentConstants.observationTypes.DERIVED;
+          if (distanceKm > maxDistanceKm) {
+            continue;
+          }
+        }
+
+        ranked.push({
           vehicleId: v.vehicleId,
           type: v.type,
-          driverName: v.driverName,
-          hospitalName: v.hospitalName || 'Base Station',
-          distanceKm: distKm,
-          estimatedArrivalMinutes: etaMinutes
+          availability: v.status,
+          location: location
+            ? { lng: location.coordinates[0], lat: location.coordinates[1] }
+            : null,
+          locationType: location
+            ? geoAgentConstants.observationTypes.OBSERVED
+            : geoAgentConstants.observationTypes.UNKNOWN,
+          distanceKm,
+          distanceType,
+          etaSeconds: null,
+          etaType: geoAgentConstants.observationTypes.UNKNOWN,
+          _sortDistance: distanceKm === null ? Number.POSITIVE_INFINITY : distanceKm,
+          _locationPoint: location
         });
       }
 
-      // Sort by fastest arrival
-      candidates.sort((a, b) => a.estimatedArrivalMinutes - b.estimatedArrivalMinutes);
+      ranked.sort((a, b) => a._sortDistance - b._sortDistance);
+      const top = ranked.slice(0, geoAgentConstants.backupMaxResults);
+
+      let etaLookups = 0;
+      for (const candidate of top) {
+        if (!candidate._locationPoint) continue;
+        if (etaLookups >= geoAgentConstants.backupMaxEtaLookups) break;
+        etaLookups += 1;
+        try {
+          const route = await routingService.getRoute(candidate._locationPoint, targetPoint);
+          if (route && typeof route.durationSeconds === 'number' && Number.isFinite(route.durationSeconds)) {
+            candidate.etaSeconds = Math.max(0, Math.round(route.durationSeconds));
+            candidate.etaType = geoAgentConstants.observationTypes.DERIVED;
+          }
+        } catch {
+          candidate.etaSeconds = null;
+          candidate.etaType = geoAgentConstants.observationTypes.UNKNOWN;
+        }
+      }
 
       return {
-        targetCoordinates: [longitude, latitude],
-        availableCount: candidates.length,
-        candidates: candidates.slice(0, 3)
+        targetCoordinates: targetPoint.coordinates,
+        targetSource: 'SCOPED_EMERGENCY_LOCATION',
+        searchRadiusKm: maxDistanceKm,
+        availableCount: top.length,
+        candidates: top.map(({ _sortDistance, _locationPoint, ...safe }) => safe)
       };
     }
 
     case 'getNearbyIncidents': {
-      const { longitude, latitude, radiusMeters = 1000 } = args;
-      const targetPoint = createPoint(longitude, latitude);
+      const targetPoint = await resolveMissionGeoPoint(safeArgs, scope);
+      const requestedRadius = parseFiniteNumber(safeArgs.radiusMeters);
+      const radiusMeters = Math.min(
+        geoAgentConstants.maxIncidentRadiusMeters,
+        requestedRadius !== null && requestedRadius > 0
+          ? requestedRadius
+          : 1000
+      );
+      if (!(radiusMeters > 0)) {
+        throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+      }
 
       const activeIncidents = await Incident.find({
         status: 'ACTIVE',
         isDeleted: false
-      });
+      }).limit(geoAgentConstants.maxIncidentsExamined);
 
       const nearby = [];
       for (const incident of activeIncidents) {
@@ -432,8 +707,11 @@ export const executeGeoAgentTool = async (name, args = {}) => {
             incidentId: incident.incidentId,
             type: incident.type,
             severity: incident.severity,
-            description: incident.description,
-            distanceMeters: distMeters
+            untrustedDescription: incident.description
+              ? sanitizeText(String(incident.description)).slice(0, 300)
+              : null,
+            distanceMeters: Math.round(distMeters),
+            distanceType: geoAgentConstants.observationTypes.DERIVED
           });
         }
       }
@@ -446,10 +724,10 @@ export const executeGeoAgentTool = async (name, args = {}) => {
     }
 
     case 'getCorridorGreenWaveStatus': {
-      const { vehicleId } = args;
-      const corridor = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicleId, { silent: true });
+      const vehicle = await assertVehicleInScope(safeArgs.vehicleId, scope);
+      const corridor = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicle.vehicleId, { silent: true });
       return {
-        vehicleId,
+        vehicleId: vehicle.vehicleId,
         corridorHealth: corridor.corridorSummary.corridorHealth,
         preemptedCount: corridor.corridorSummary.preemptedCount,
         totalSignals: corridor.corridorSummary.totalSignals,
@@ -461,6 +739,6 @@ export const executeGeoAgentTool = async (name, args = {}) => {
     }
 
     default:
-      throw new Error(`Unknown tool: ${name}`);
+      throw new GeoAgentToolError('UNKNOWN_TOOL', SAFE_ARG_MESSAGE);
   }
 };
