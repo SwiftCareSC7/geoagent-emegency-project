@@ -158,15 +158,16 @@ export function ControlRoomMap({
   const { resolvedTheme } = useTheme()
 
   // Display Controls State
-  const [activeTile, setActiveTile] = useState<TileLayerProvider>(
-    resolvedTheme === 'light' ? 'google_streets' : 'carto_dark'
-  )
+  const [activeTile, setActiveTile] = useState<TileLayerProvider>('google_streets')
 
   useEffect(() => {
-    const targetTile: TileLayerProvider = resolvedTheme === 'light' ? 'google_streets' : 'carto_dark'
-    setActiveTile(targetTile)
-    mapViewRef.current?.setTileLayer(targetTile)
-  }, [resolvedTheme])
+    // Only auto-synchronize if a CARTO tile was specifically chosen
+    if (activeTile === 'carto_dark' || activeTile === 'carto_light') {
+      const targetTile: TileLayerProvider = resolvedTheme === 'light' ? 'carto_light' : 'carto_dark'
+      setActiveTile(targetTile)
+      mapViewRef.current?.setTileLayer(targetTile)
+    }
+  }, [resolvedTheme, activeTile])
   const [basemapHealth, setBasemapHealth] = useState<MapProviderHealth>('AVAILABLE')
   const [basemapNoticeDismissed, setBasemapNoticeDismissed] = useState(false)
   const [visibility, setVisibility] = useState<MapLayerVisibility>({

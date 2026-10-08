@@ -133,7 +133,7 @@ export function RealInteractiveMap({
     mapInstanceRef.current.setView(coord, 16)
   }
 
-  const [mapStyle, setMapStyle] = useState<'dark' | 'google_traffic' | 'satellite'>('google_traffic')
+  const [mapStyle, setMapStyle] = useState<'google_streets' | 'google_traffic' | 'dark' | 'satellite'>('google_streets')
   const [futurePredictionMinutes, setFuturePredictionMinutes] = useState<0 | 10 | 20 | 30>(10)
   const [patientSeverity, setPatientSeverity] = useState<'CRITICAL_CARDIAC' | 'SEVERE_TRAUMA' | 'MODERATE'>('CRITICAL_CARDIAC')
   
@@ -187,7 +187,13 @@ export function RealInteractiveMap({
       L.control.zoom({ position: 'topright' }).addTo(map)
       mapInstanceRef.current = map
 
-      // Base Tile Layer Providers (including Google Maps Live Traffic & CARTO Dark & Satellite)
+      // Base Tile Layer Providers (Google Streets default, Live Traffic, CARTO Dark, Satellite)
+      const googleStreetsTiles = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps',
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
+      })
+
       const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
         maxZoom: 19,
@@ -206,8 +212,9 @@ export function RealInteractiveMap({
         subdomains: ['0', '1', '2', '3'],
       })
 
-      googleTrafficTiles.addTo(map)
+      googleStreetsTiles.addTo(map)
       mapInstanceRef.current.tileLayers = {
+        google_streets: googleStreetsTiles,
         dark: darkTiles,
         google_traffic: googleTrafficTiles,
         satellite: satelliteTiles,
@@ -413,14 +420,16 @@ export function RealInteractiveMap({
   // Map Tile Style Switcher
   useEffect(() => {
     if (!mapInstanceRef.current || !mapInstanceRef.current.tileLayers) return
-    const { dark, google_traffic, satellite } = mapInstanceRef.current.tileLayers
+    const { google_streets, dark, google_traffic, satellite } = mapInstanceRef.current.tileLayers
     const map = mapInstanceRef.current
 
-    map.removeLayer(dark)
-    map.removeLayer(google_traffic)
-    map.removeLayer(satellite)
+    if (google_streets) map.removeLayer(google_streets)
+    if (dark) map.removeLayer(dark)
+    if (google_traffic) map.removeLayer(google_traffic)
+    if (satellite) map.removeLayer(satellite)
 
-    if (mapStyle === 'dark') dark.addTo(map)
+    if (mapStyle === 'google_streets') (google_streets || dark).addTo(map)
+    else if (mapStyle === 'dark') dark.addTo(map)
     else if (mapStyle === 'google_traffic') google_traffic.addTo(map)
     else if (mapStyle === 'satellite') satellite.addTo(map)
   }, [mapStyle])
@@ -559,6 +568,16 @@ export function RealInteractiveMap({
 
           {/* Map Style Selector */}
           <div className="inline-flex rounded-lg border border-border bg-muted p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setMapStyle('google_streets')}
+              className={cn(
+                'rounded-md px-2.5 py-1 font-medium transition-colors',
+                mapStyle === 'google_streets' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground',
+              )}
+            >
+              Google Streets
+            </button>
             <button
               type="button"
               onClick={() => setMapStyle('google_traffic')}

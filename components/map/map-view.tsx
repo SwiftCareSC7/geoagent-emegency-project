@@ -46,7 +46,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   const containerRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<L.Map | null>(null)
   const tileLayersRef = useRef<{ [key in TileLayerProvider]?: L.TileLayer }>({})
-  const activeTileLayerRef = useRef<TileLayerProvider>('carto_dark')
+  const activeTileLayerRef = useRef<TileLayerProvider>('google_streets')
   const layerGroupsRef = useRef<Map<string, L.LayerGroup>>(new Map())
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
@@ -156,9 +156,8 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         esri_satellite: satelliteTiles,
       }
 
-      const isLightMode = resolvedTheme === 'light'
-      const initialTileKey: TileLayerProvider = isLightMode ? 'google_streets' : 'carto_dark'
-      const initialLayer = tileLayersRef.current[initialTileKey] || darkTiles
+      const initialTileKey: TileLayerProvider = 'google_streets'
+      const initialLayer = tileLayersRef.current[initialTileKey] || googleStreets
       initialLayer.addTo(map)
       activeTileLayerRef.current = initialTileKey
 

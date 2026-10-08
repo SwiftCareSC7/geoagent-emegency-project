@@ -52,7 +52,7 @@ export const DiffMap = forwardRef<DiffMapHandle, DiffMapProps>(function DiffMap(
 
   const [mapReady, setMapReady] = useState(false)
   const [autoFollowVehicle, setAutoFollowVehicle] = useState(false)
-  const [basemapStyle, setBasemapStyle] = useState<'carto' | 'google'>('carto')
+  const [basemapStyle, setBasemapStyle] = useState<'carto' | 'google'>('google')
 
   // Initialize Map
   useEffect(() => {

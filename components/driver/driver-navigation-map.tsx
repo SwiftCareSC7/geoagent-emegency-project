@@ -207,16 +207,13 @@ export function DriverNavigationMap({
         attributionControl: false
       })
 
-      // High-resolution basemap tiles adapting to light / dark theme:
-      // Google Streets for crisp daylight visibility, CARTO Dark for night operations
-      const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
-      const lightTileUrl = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
-      const initialTileUrl = isDark ? darkTileUrl : lightTileUrl
+      // High-resolution basemap tiles: Google Streets HD as default everywhere
+      const googleStreetsUrl = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
 
-      const tileLayer = L.tileLayer(initialTileUrl, {
+      const tileLayer = L.tileLayer(googleStreetsUrl, {
         maxZoom: 20,
-        subdomains: isDark ? 'abcd' : ['0', '1', '2', '3'],
-        attribution: isDark ? '&copy; OpenStreetMap &copy; CARTO' : '&copy; Google Maps'
+        subdomains: ['0', '1', '2', '3'],
+        attribution: '&copy; Google Maps'
       })
 
       // Graceful fallback to OpenStreetMap if tiles fail
@@ -273,12 +270,11 @@ export function DriverNavigationMap({
     }
   }, [])
 
-  // Dynamic Tile URL update when global theme switches (LIGHT <-> DARK)
+  // Dynamic Tile URL update / map resize when global theme switches (LIGHT <-> DARK)
   useEffect(() => {
     if (!tileLayerRef.current) return
-    const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
-    const lightTileUrl = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
-    tileLayerRef.current.setUrl(isDark ? darkTileUrl : lightTileUrl)
+    const googleStreetsUrl = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+    tileLayerRef.current.setUrl(googleStreetsUrl)
     if (mapRef.current) {
       mapRef.current.invalidateSize()
     }
