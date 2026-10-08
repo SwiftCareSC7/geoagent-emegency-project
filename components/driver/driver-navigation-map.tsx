@@ -216,11 +216,6 @@ export function DriverNavigationMap({
         attribution: '&copy; Google Maps'
       })
 
-      // Graceful fallback to OpenStreetMap if tiles fail
-      tileLayer.on('tileerror', () => {
-        tileLayer.setUrl('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-      })
-
       tileLayer.addTo(map)
       tileLayerRef.current = tileLayer
 

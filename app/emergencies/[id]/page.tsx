@@ -1,3 +1,6 @@
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { EmergencyDetailView } from '@/components/emergency-detail/emergency-detail-view'
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'

@@ -1,3 +1,6 @@
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { DriverDashboard } from '@/components/dashboard/driver-dashboard'
 import { getDashboard } from '@/lib/dashboard-api'
