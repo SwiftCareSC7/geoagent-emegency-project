@@ -13,7 +13,11 @@ router.post('/calculate', calculateRoute);
 router.use(protect);
 router.use(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'));
 
-router.post('/:routeId/accept-reroute', acceptReroute);
+router.post(
+  '/:routeId/accept-reroute',
+  requireRole('CONTROL_ROOM', 'ADMIN'),
+  acceptReroute
+);
 
 router.route('/')
   .post(validateRouteCreate, createRoute)
@@ -32,4 +36,3 @@ router.route('/:routeId/corridor-v2x')
   .get(getCorridorV2X);
 
 export default router;
-

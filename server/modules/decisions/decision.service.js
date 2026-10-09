@@ -3,6 +3,7 @@ import Decision from './decision.model.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Route from '../routes/route.model.js';
+import routeService from '../routes/route.service.js';
 import analysisService from '../analysis/analysis.service.js';
 import geoAgentService from '../geoagents/geoAgent.service.js';
 import routingService from '../routes/routing.service.js';
@@ -15,8 +16,11 @@ import {
   DECISION_TRANSITIONS
 } from './decision.constants.js';
 import {
-  evaluateDecisionRules
+  evaluateDecisionRules,
+  pickBestAlternative,
+  scoreAlternativeRoutes
 } from './decision.rules.js';
+import { createRerouteCandidate, isRerouteCandidateUnchanged } from './rerouteCandidate.js';
 
 /**
  * Decision & Dispatch Engine
@@ -75,6 +79,10 @@ const computeSituationHash = (snapshot) => {
     es: snapshot.emergencyStatus,
     vs: snapshot.vehicleStatus,
     rs: snapshot.routeStatus,
+    rv: snapshot.routeVersion,
+    rid: snapshot.routeId,
+    rut: snapshot.routeUpdatedAt ? new Date(snapshot.routeUpdatedAt).toISOString() : null,
+    rc: snapshot.rerouteCandidateId,
     ds: snapshot.deviationStatus,
     ddm: snapshot.deviationDistanceMeters,
     tl: snapshot.trafficLevel,
@@ -99,16 +107,12 @@ class DecisionService {
    * @private
    */
   async _findActiveRoute(vehicle, emergency) {
-    if (emergency && emergency.assignedVehicle) {
-      const isSameVehicle = emergency.assignedVehicle.toString() === vehicle._id.toString();
-      if (isSameVehicle) {
-        const route = await Route.findOne({
-          vehicle: vehicle._id,
-          emergency: emergency._id,
-          status: 'ACTIVE'
-        }).sort({ createdAt: -1 });
-        if (route) return route;
-      }
+    if (emergency) {
+      return Route.findOne({
+        vehicle: vehicle._id,
+        emergency: emergency._id,
+        status: 'ACTIVE'
+      }).sort({ createdAt: -1 });
     }
     return Route.findOne({ vehicle: vehicle._id, status: 'ACTIVE' }).sort({ createdAt: -1 });
   }
@@ -200,6 +204,7 @@ class DecisionService {
 
     // Compute alternative candidate routes against emergency destination
     let alternativeRoutes = [];
+    let routeCandidates = [];
     const destPoint = (emergency.destination && emergency.destination.coordinates)
       ? emergency.destination
       : null;
@@ -212,6 +217,7 @@ class DecisionService {
         );
         const primary = routeResult.primary;
         const alts = routeResult.alternatives || [];
+        routeCandidates = [primary, ...alts];
         alternativeRoutes = [
           {
             name: primary.description || 'Route A (Primary Corridor)',
@@ -271,7 +277,12 @@ class DecisionService {
         id: vehicle.vehicleId,
         status: vehicle.status
       },
-      route: route ? { id: route.routeId, status: route.status } : null,
+      route: route ? {
+        id: route.routeId,
+        status: route.status,
+        version: route.__v,
+        updatedAt: route.updatedAt
+      } : null,
       deviation: situation ? {
         status: situation.deviation.status,
         distanceFromRouteMeters: situation.deviation.distanceFromRouteMeters
@@ -284,6 +295,7 @@ class DecisionService {
       } : null,
       correlatedIncidents: situation ? situation.incidents : [],
       alternativeRoutes,
+      routeCandidates,
       availableBackupVehicles: backupVehicles,
       geoAgentRecommendation,
       v2xCorridor
@@ -313,6 +325,15 @@ class DecisionService {
     const context = await this.buildContext(emergency);
 
     const evaluation = evaluateDecisionRules(context);
+    const bestAlternative = pickBestAlternative(
+      scoreAlternativeRoutes(context.alternativeRoutes),
+      context.eta?.currentMinutes ?? null
+    );
+    const rerouteCandidate = evaluation.actions.includes(DECISION_ACTIONS.REROUTE) &&
+      bestAlternative &&
+      context.routeCandidates?.[bestAlternative.candidateIndex]
+      ? createRerouteCandidate(context.routeCandidates[bestAlternative.candidateIndex])
+      : null;
 
     // Build compact snapshot for persistence and hash
     const snapshot = {
@@ -320,6 +341,9 @@ class DecisionService {
       emergencyStatus: context.emergency ? context.emergency.status : null,
       vehicleStatus: context.vehicle ? context.vehicle.status : null,
       routeStatus: context.route ? context.route.status : null,
+      routeId: context.route ? context.route.id : null,
+      routeVersion: context.route ? context.route.version : null,
+      routeUpdatedAt: context.route ? context.route.updatedAt : null,
       deviationStatus: context.deviation ? context.deviation.status : null,
       deviationDistanceMeters: context.deviation ? context.deviation.distanceFromRouteMeters : null,
       trafficLevel: context.traffic ? context.traffic.level : null,
@@ -331,7 +355,8 @@ class DecisionService {
         : [],
       alternativeRoutesConsidered: Array.isArray(context.alternativeRoutes)
         ? context.alternativeRoutes.length
-        : 0
+        : 0,
+      rerouteCandidateId: rerouteCandidate?.candidateId || null
     };
 
     const situationHash = computeSituationHash(snapshot);
@@ -358,6 +383,7 @@ class DecisionService {
           emergency: emergency._id,
           vehicle: context.vehicle ? (await Vehicle.findOne({ vehicleId: context.vehicle.id }))._id : null,
           route: context.route ? (await Route.findOne({ routeId: context.route.id }))._id : null,
+          rerouteCandidate,
           severity: evaluation.severity,
           actions: evaluation.actions,
           primaryAction: evaluation.primaryAction,
@@ -471,14 +497,43 @@ class DecisionService {
    * (enforced upstream by route middleware; service still records actor).
    * Atomically transitions state to prevent concurrent approval race conditions.
    */
-  async approveDecision(decisionId, userId) {
+  async approveDecision(decisionId, userId, candidateId = null) {
+    const pending = await Decision.findOne({ decisionId, status: DECISION_STATUS.PENDING_OPERATOR_ACTION });
+    if (!pending) {
+      const existing = await Decision.findOne({ decisionId });
+      if (!existing) {
+        throwOperational('Decision not found', 404);
+      }
+      this._assertTransition(existing.status, DECISION_STATUS.APPROVED);
+    }
+
+    const requiresRerouteCandidate = pending.actions.includes(DECISION_ACTIONS.REROUTE);
+    if (requiresRerouteCandidate) {
+      if (
+        !pending.rerouteCandidate?.candidateId ||
+        !isRerouteCandidateUnchanged(pending.rerouteCandidate) ||
+        candidateId !== pending.rerouteCandidate.candidateId
+      ) {
+        throwOperational('The reviewed reroute candidate is missing or changed; reanalyze before approval', 409);
+      }
+    }
+
     const decision = await Decision.findOneAndUpdate(
-      { decisionId, status: DECISION_STATUS.PENDING_OPERATOR_ACTION },
+      {
+        decisionId,
+        status: DECISION_STATUS.PENDING_OPERATOR_ACTION,
+        ...(requiresRerouteCandidate
+          ? { 'rerouteCandidate.candidateId': candidateId }
+          : {})
+      },
       {
         $set: {
           status: DECISION_STATUS.APPROVED,
           approvedBy: userId,
-          approvedAt: new Date()
+          approvedAt: new Date(),
+          approvedCandidateId: requiresRerouteCandidate
+            ? candidateId
+            : null
         }
       },
       { new: true }
@@ -569,10 +624,9 @@ class DecisionService {
    * records. Execution goes through actionService which validates each action
    * against allowed actions and may reject unsupported ones.
    *
-   * Currently supported post-approval actions (all read-only by default unless
-   * future code wires a concrete side effect):
+   * Currently supported post-approval actions:
    *   - ALERT_CONTROL_ROOM: emits a real-time alert event for operators.
-   *   - REROUTE: marks the suggested alternative as next planned route.
+   *   - REROUTE: validates and activates the approved route candidate.
    *   - CONSIDER_BACKUP: records a backup recommendation marker.
    *
    * No autonomous vehicle dispatch is performed.
@@ -591,7 +645,13 @@ class DecisionService {
     const executionLog = [];
 
     for (const action of existing.actions) {
-      const sideEffect = await this._executeAction(action, existing, emergency, vehicle);
+      const sideEffect = await this._executeAction(
+        action,
+        existing,
+        emergency,
+        vehicle,
+        userId
+      );
       executionLog.push(sideEffect);
     }
 
@@ -632,6 +692,35 @@ class DecisionService {
     return decision;
   }
 
+  async executeRerouteForRoute(routeId, userId, decisionId = null) {
+    const route = await Route.findOne({ routeId });
+    if (!route) {
+      throwOperational('Route not found', 404);
+    }
+
+    const decisionQuery = {
+      route: route._id,
+      emergency: route.emergency,
+      vehicle: route.vehicle,
+      primaryAction: DECISION_ACTIONS.REROUTE,
+      actions: DECISION_ACTIONS.REROUTE,
+      status: DECISION_STATUS.APPROVED
+    };
+    const decision = decisionId
+      ? await Decision.findOne({
+          decisionId,
+          ...decisionQuery
+        })
+      : await Decision.findOne(decisionQuery).sort({ createdAt: -1 });
+
+    if (!decision) {
+      throwOperational('No approved REROUTE decision is associated with this route', 409);
+    }
+
+    await this.executeDecision(decision.decisionId, userId);
+    return Route.findOne({ routeId });
+  }
+
   /**
    * Controlled action dispatcher. Each branch is explicitly handled; unknown
    * actions are recorded but produce no side effect (fail safe).
@@ -639,7 +728,13 @@ class DecisionService {
    * Returns a short string describing the side effect for the audit log.
    * @private
    */
-  async _executeAction(action, decision, emergency, vehicle) {
+  async _executeAction(
+    action,
+    decision,
+    emergency,
+    vehicle,
+    userId = null
+  ) {
     switch (action) {
       case DECISION_ACTIONS.ALERT_CONTROL_ROOM: {
         // Emit a decision event so operators see the alert in real time.
@@ -662,25 +757,23 @@ class DecisionService {
       }
 
       case DECISION_ACTIONS.REROUTE: {
-        // We do NOT auto-create a new Route. The recommendation is recorded
-        // on the decision and surfaced via realtime. A future dispatcher may
-        // build a new ALTERNATIVE route using routingService here.
-        if (emergency && vehicle) {
-          try {
-            realtimeService.emitRouteUpdated(
-              emergency.emergencyId,
-              vehicle.vehicleId,
-              {
-                decisionId: decision.decisionId,
-                suggestion: 'REROUTE',
-                primaryAction: DECISION_ACTIONS.REROUTE
-              }
-            );
-          } catch (err) {
-            return `REROUTE: emission_failed(${err.message})`;
-          }
+        const route = decision.route ? await Route.findById(decision.route) : null;
+        if (!route) {
+          throwOperational('Approved REROUTE decision has no associated route', 409);
         }
-        return `REROUTE:suggestion_recorded`;
+        if (
+          !decision.approvedCandidateId ||
+          decision.approvedCandidateId !== decision.rerouteCandidate?.candidateId ||
+          !isRerouteCandidateUnchanged(decision.rerouteCandidate)
+        ) {
+          throwOperational('The approved reroute candidate is missing or changed; reanalyze and approve again', 409);
+        }
+        await routeService.acceptReroute(
+          route.routeId,
+          userId,
+          decision.decisionId
+        );
+        return `REROUTE:activated(${route.routeId})`;
       }
 
       case DECISION_ACTIONS.CONSIDER_BACKUP: {

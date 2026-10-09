@@ -95,7 +95,7 @@ if (etaFaster.delayMinutes !== 0 || etaFaster.timeSavedMinutes <= 0) throw new E
 // 5. Test Evidence Builder
 const evidence = analysisService.buildEvidenceList(
   { status: 'DEVIATED', gpsStability: 'STABLE' },
-  { level: 'HEAVY' },
+  { level: 'HEAVY', source: 'MOCK', retrievedAt: new Date().toISOString() },
   [{ type: 'ACCIDENT' }],
   10
 );

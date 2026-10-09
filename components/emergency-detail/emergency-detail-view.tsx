@@ -141,9 +141,9 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
             emergencyId: liveDecision.emergencyId,
             vehicle: assignedVehId || '',
             vehicleId: assignedVehId || '',
-            primaryAction: (liveDecision.primaryAction || liveDecision.action || 'MAINTAIN_ROUTE') as any,
-            action: (liveDecision.action || liveDecision.primaryAction || 'MAINTAIN_ROUTE') as any,
-            severity: (liveDecision.severity || 'INFO') as any,
+            primaryAction: (liveDecision.primaryAction || liveDecision.action || 'CONTINUE') as any,
+            action: (liveDecision.action || liveDecision.primaryAction || 'CONTINUE') as any,
+            severity: (liveDecision.severity || 'NORMAL') as any,
             status: liveDecision.status as any,
             reasonCodes: liveDecision.reasonCodes || [],
             situationHash: '',
@@ -589,8 +589,8 @@ export function EmergencyDetailView({ emergencyId }: EmergencyDetailViewProps) {
         decision={decision}
         orchestrationResult={orchestrationResult}
         comparisonData={comparisonData}
-        onApproveDecision={async (decId, comment) => {
-          const res = await decisionApi.approve(decId, comment)
+        onApproveDecision={async (decId, comment, candidateId) => {
+          const res = await decisionApi.approve(decId, comment, candidateId)
           if (res.data) setDecision(res.data)
         }}
         onRejectDecision={async (decId, reason) => {

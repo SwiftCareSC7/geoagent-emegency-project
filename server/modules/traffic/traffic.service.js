@@ -5,6 +5,27 @@ import { trafficConfig } from './traffic.config.js';
 class TrafficService {
   constructor() {
     this.providerName = trafficConfig.provider;
+    this.maxTrafficAgeMs = 2 * 60 * 1000;
+  }
+
+  /** Classifies provider traffic by its source timestamp; fallback values are never treated as clear traffic. */
+  assessTrafficFreshness(traffic, nowMs = Date.now()) {
+    if (!traffic) return { status: 'UNAVAILABLE', ageSeconds: null };
+    if (
+      traffic.level === 'UNKNOWN' || traffic.epistemicType === 'UNKNOWN' ||
+      ['UNKNOWN', 'FALLBACK', 'GOOGLE_UNAVAILABLE'].includes(traffic.source)
+    ) {
+      return { status: 'UNAVAILABLE', ageSeconds: null };
+    }
+
+    const retrievedAtMs = Date.parse(traffic.retrievedAt);
+    if (!Number.isFinite(retrievedAtMs)) return { status: 'UNKNOWN', ageSeconds: null };
+
+    const ageMs = nowMs - retrievedAtMs;
+    if (ageMs < 0) return { status: 'UNKNOWN', ageSeconds: null };
+    const ageSeconds = Math.floor(ageMs / 1000);
+    if (ageMs > this.maxTrafficAgeMs) return { status: 'STALE', ageSeconds };
+    return { status: 'FRESH', ageSeconds };
   }
 
   /**

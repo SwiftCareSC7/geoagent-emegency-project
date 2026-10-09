@@ -56,6 +56,16 @@ export interface RealtimePredictionUpdate {
   predictedDurationSeconds?: number;
   modelVersion?: string;
   trafficSource?: string;
+  trafficFreshness?: 'FRESH' | 'STALE' | 'UNAVAILABLE' | 'UNKNOWN';
+  routeDegradationSignal?: {
+    status: 'CLEAR' | 'PENDING' | 'SUSTAINED' | 'RECOVERING' | 'RECOVERED';
+    active: boolean;
+    confirmed: boolean;
+    reasonCodes: string[];
+    observations: number;
+    shouldReevaluate: boolean;
+    decisionRequestPending?: boolean;
+  };
   predictedAt: string;
 }
 

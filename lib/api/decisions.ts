@@ -55,8 +55,11 @@ export const decisionApi = {
   /**
    * Approve a pending operational decision
    */
-  approve(decisionId: string, notes?: string): Promise<DecisionResponse> {
-    return patch<DecisionResponse>(`/decisions/${encodeURIComponent(decisionId)}/approve`, { notes })
+  approve(decisionId: string, notes?: string, candidateId?: string): Promise<DecisionResponse> {
+    return patch<DecisionResponse>(`/decisions/${encodeURIComponent(decisionId)}/approve`, {
+      notes,
+      candidateId
+    })
   },
 
   /**

@@ -1,4 +1,5 @@
 import routeService from './route.service.js';
+import decisionService from '../decisions/decision.service.js';
 import analysisService from '../analysis/analysis.service.js';
 import corridorGreenWaveService from './corridorGreenWave.service.js';
 import Route from './route.model.js';
@@ -7,7 +8,7 @@ import Vehicle from '../vehicles/vehicle.model.js';
 /**
  * @desc    Calculate route plan with turn-by-turn maneuvers (Fastest vs Shortest)
  * @route   POST /api/routes/calculate
- * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ * @access  Public
  */
 export const calculateRoute = async (req, res, next) => {
   try {
@@ -42,7 +43,7 @@ export const calculateRoute = async (req, res, next) => {
 /**
  * @desc    Generate and create a new route
  * @route   POST /api/routes
- * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ * @access  Private (CONTROL_ROOM, ADMIN)
  */
 export const createRoute = async (req, res, next) => {
   try {
@@ -214,15 +215,15 @@ export const getCorridorV2X = async (req, res, next) => {
 /**
  * @desc    Accept and activate a recommended reroute
  * @route   POST /api/routes/:routeId/accept-reroute
- * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ * @access  Private (CONTROL_ROOM, ADMIN)
  */
 export const acceptReroute = async (req, res, next) => {
   try {
     const { routeId } = req.params;
-    const rerouteData = req.body;
+    const { decisionId } = req.body || {};
     const userId = req.user._id;
 
-    const route = await routeService.acceptReroute(routeId, rerouteData, userId);
+    const route = await decisionService.executeRerouteForRoute(routeId, userId, decisionId);
 
     res.status(200).json({
       success: true,
@@ -233,4 +234,3 @@ export const acceptReroute = async (req, res, next) => {
     next(error);
   }
 };
-

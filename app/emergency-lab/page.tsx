@@ -417,8 +417,23 @@ export default function EmergencyLabPage() {
     decisionId: `DEC-${selectedScenario.id}`,
     emergencyId: selectedScenario.emergencyId,
     vehicleId: selectedScenario.vehicleId,
-    primaryAction: isBreakdown ? 'DISPATCH_BACKUP' : lateralDeviationMeters > 50 ? 'REROUTE' : 'MAINTAIN_ROUTE',
-    severity: lateralDeviationMeters > 50 || isBreakdown ? 'CRITICAL' : 'INFO',
+    primaryAction: isBreakdown ? 'CONSIDER_BACKUP' : lateralDeviationMeters > 50 ? 'REROUTE' : 'CONTINUE',
+    actions: isBreakdown
+      ? ['CONSIDER_BACKUP']
+      : lateralDeviationMeters > 50
+        ? ['REROUTE']
+        : ['CONTINUE'],
+    rerouteCandidate: lateralDeviationMeters > 50
+      ? {
+          candidateId: `SIM-${selectedScenario.id}`,
+          geometry: mockRoute.geometry,
+          distanceMeters: mockRoute.distance,
+          durationSeconds: mockRoute.duration,
+          provider: 'SIMULATOR',
+          description: 'Simulated alternate emergency corridor'
+        }
+      : null,
+    severity: lateralDeviationMeters > 50 || isBreakdown ? 'CRITICAL' : 'NORMAL',
     status: decisionState,
     reasonCodes: lateralDeviationMeters > 50 ? ['CORRIDOR_DEVIATION_DETECTED', 'HAZARD_INTERSECTION'] : ['NOMINAL_PROGRESSION'],
     evaluatedAt: new Date().toISOString()
