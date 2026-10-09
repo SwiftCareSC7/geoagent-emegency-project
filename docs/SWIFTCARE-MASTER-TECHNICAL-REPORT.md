@@ -52,7 +52,7 @@
 
 - **Project Title:** SwiftCare GeoAgent (GeoAgentic Emergency Response System)
 - **Document Type:** Full-Stack Master Audit, Architecture Blueprint & Operational Handbook
-- **System Version:** 2.0.0 (Production Hardened)
+- **System Version:** 2.6.0 (Production Hardened)
 - **Primary Operational Domain:** Metropolitan Emergency Vehicle Fleet Dispatch, Live Telemetry Tracking, Route Corridor Deviation Detection, Traffic Hazard Correlation, AI Epistemic Decision Support, and What-If Re-Routing Simulation.
 - **Reference City Testbed:** Bengaluru (Bangalore), Karnataka, India (Focus Corridors: MG Road, Trinity Circle, Indiranagar 100ft Road, Old Airport Road, Domlur Flyover, and Manipal Hospital HAL).
 

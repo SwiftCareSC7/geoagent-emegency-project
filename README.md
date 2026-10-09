@@ -337,11 +337,15 @@ Trajectories          Routes                     │         │
 | **Prediction Intelligence Panel** | ✅ Done | Predicted ETA, delay risk badges, model confidence score, structural predictive factor breakdown, and live freshness indicators |
 | **Authoritative Decision Approval** | ✅ Done | `DecisionApprovalCard` enforcing human-in-the-loop operator approval (`/approve`, `/reject`) before dispatch execution |
 | **3-Tier Epistemic Breakdown** | ✅ Done | Explicit visual separation of verified physical observations (`OBSERVED`), algorithmic inferences (`INFERRED`), and unobserved operational variables (`UNKNOWN`) |
+| **Master Control Room** (`/control-room`) | ✅ Done | Dispatcher console featuring centerpiece 5-Question Mission Assessment HUD, live incident queue, tactical Leaflet map, and human-in-the-loop action gate |
+| **Pre-Hospital Paramedic Triage** (`/paramedic`) | ✅ Done | Dedicated clinical triage workspace with real-time vitals telemetry (HR, BP, SpO2, GCS), intervention logging, and hospital trauma bay readiness |
+| **Interactive Emergency Lab** (`/emergency-lab`) | ✅ Done | Scenario workbench with 18 seeded stress tests, simulation clock (`T+00:00`), playback speed multipliers (1x, 2x, 5x), and real-time event injection |
+| **What-If Scenario Simulator** (`/diff`) | ✅ Done | Map-first comparative simulator with 5-color visual hierarchy evaluating route diffs and alternative corridors |
 | **Admin Observability Console** (`/admin`) | ✅ Done | System metrics overview across all 8 verified collections, live database latency ping, upstream provider health grid, and tabbed dataset explorer with safe projection |
 | **Analytics UI Polish** | ✅ Done | Executive takeaways, progress meters, and confidence badges across GeoAgent cards and analysis panels |
 | **Centralized API Client** | ✅ Done | `lib/api/client.ts` with `credentials: 'include'`, network error normalization, OpenAPI types, and typed client modules for `auth`, `vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `analysis`, `decisions`, `orchestration`, `admin` |
 | **Brand Assets** | ✅ Done | Logo, hero image, icons, favicons |
-| **UI Component Library** | ✅ Done | Button (CVA), Modal, BrandLogo, LoginForm, SignupForm, ProtectedRoute, EmergencySummaryCards, VehicleFleetPanel, ActiveEmergenciesPanel, RoadIncidentsPanel, EmergencyOverviewCard, VehicleMovementPanel, RouteAnalysisPanel, DeviationAnalysisPanel, CorrelatedIncidentsPanel, EpistemicBreakdownCard, EmergencyDetailView, RealInteractiveMap, AdminOverview, AdminDatabaseExplorer |
+| **UI Component Library** | ✅ Done | Button (CVA), Modal, BrandLogo, LoginForm, SignupForm, ProtectedRoute, EmergencySummaryCards, VehicleFleetPanel, ActiveEmergenciesPanel, RoadIncidentsPanel, EmergencyOverviewCard, VehicleMovementPanel, RouteAnalysisPanel, DeviationAnalysisPanel, CorrelatedIncidentsPanel, EpistemicBreakdownCard, EmergencyDetailView, RealInteractiveMap, AdminOverview, AdminDatabaseExplorer, MissionAssessmentHUD |
 
 ---
 
@@ -379,7 +383,7 @@ Authentication, Dashboard REST domain feeds, Real Interactive Leaflet GIS Map, B
 
 | # | Task | Priority | Details |
 |---|---|---|---|
-| 21 | **Multi-Call Control Room Overview** | 🟠 High | Dedicated multi-emergency overview page (`/control-room/overview`) showing simultaneous active corridors across an entire metropolitan area. |
+| 21 | **Multi-Monitor CAD Wall Display** | 🟠 High | Dedicated multi-emergency tiled video-wall view (`/control-room/overview`) complementing the active single-corridor `/control-room` dispatch console. |
 | 22 | **Direct Emergency Intake Modal** | 🟡 Medium | Operator modal form to intake and dispatch emergency calls directly from the dashboard topbar. |
 | 23 | **Automated Python Microservice Bridge** | 🟡 Medium | Optional FastAPI wrapper around `routing-engine/routes_engine.py` for headless batch calculations if needed outside Node.js. |
 | 24 | **Docker Compose Environment** | 🔵 Low | Create unified `docker-compose.yml` defining frontend, backend, MongoDB, and Python services. |

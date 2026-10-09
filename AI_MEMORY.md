@@ -761,6 +761,36 @@ Trajectories          Routes                     │         │
 
 - **Verification**: `server/test-final-integration-audit.js` (37/37 passed, 100%).
 
+---
+
+## 20. GeoAgent Free-Model LLM Provider Abstraction & OpenRouter Diagnostics
+
+- **Provider Abstraction Architecture** (`server/modules/geoagents/geoagent.provider.js`):
+  - Standardized OpenAI-compatible HTTP `fetch` client (zero SDK overhead, pure native ES module).
+  - Enforces strict server-side zero-price guards (`max_price: { prompt: 0, completion: 0, request: 0 }`).
+  - Implements dynamic catalog discovery querying `/api/v1/models` to discover tool-capable free models with minimum context window ($\ge 16,000$ tokens).
+  - Configurable priority via `AI_PROVIDER` (`auto`, `openrouter`, or `opencode`). Default `auto` prioritizes OpenRouter, then OpenCode, then deterministic rules.
+  - Multi-tier error resilience:
+    - 401/403 or daily 429 quota errors trigger `AUTH_COOLDOWN_MS` (10-minute cooldown) to protect upstream hosts.
+    - Rate limits (429) back off dynamically based on `retry-after` header.
+    - Model-specific failures automatically roll over to the next eligible free model in the live catalog.
+    - OpenCode 403 `FreeTierError` server-side blocks are safely caught and routed to fallback.
+- **OpenRouter Connectivity & Diagnostic Verification**:
+  - Investigated reported `UND_ERR_CONNECT_TIMEOUT` and curl edge stalls:
+    - Diagnosed as transient external Cloudflare edge stalls (`104.18.3.115`), not codebase defects or bad credentials.
+    - Node.js 24 native `fetch` confirmed healthy and connected in 197ms.
+    - Verified proxy environment: `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` confirmed unset; documented that Node 24 requires `--use-env-proxy` if a proxy is configured in enterprise environments.
+  - API Key Validation:
+    - Authenticated `GET https://openrouter.ai/api/v1/key` responded `200 OK` in 427ms.
+    - Confirmed free tier active (`is_free_tier: true`, zero quota consumption, no balance deducted).
+  - Live Free Model Inference:
+    - Validated live tool-calling reasoning using `inclusionai/ling-3.1-flash` (confirmed 0 pricing).
+    - Single prompt returned clean `PONG` response in 3218ms at $0 cost.
+- **Automated Verification**:
+  - `tests/geoagent-provider.test.mjs`: 12/12 passing (catalog filtering, price guards, fallback order, cooldowns).
+  - `tests/geoagent-agent.test.mjs`: 11/11 passing (epistemic reasoning loop, tool invocation, fallback safety).
+  - `npm run lint` (`tsc --noEmit`): 0 errors.
+
 - **Future Roadmap**:
   1. Field-driver mobile app (React Native / Android).
   2. Direct city traffic signal controller integration (NTCIP / SCATS protocol).
