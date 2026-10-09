@@ -56,56 +56,67 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 ## 2. Part-by-Part Development Deep Dive
 
 ### Part 1: Backend Foundation & Security
+
 - **Goal**: Establish a hardened Express server, MongoDB connection, CORS, Helmet headers, and centralized error handling.
 - **Key Files**: `server/server.js`, `server/config/db.js`, `server/shared/middleware/errorHandler.js`.
 - **Decisions**: Centralized error middleware catches unhandled rejections and preserves exact operational status codes (400, 401, 403, 404, 409).
 
 ### Part 2: Authentication & RBAC
+
 - **Goal**: Secure user registration, login, JWT token issuance, and role-based permissions (`ADMIN`, `CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`).
 - **Key Files**: `server/modules/auth/user.model.js`, `server/modules/auth/auth.service.js`, `server/modules/auth/auth.middleware.js`, `server/modules/auth/jwt.utils.js`.
 - **Decisions**: Dual authentication transport supports both HTTP-only cookies (`token=...`) and standard `Authorization: Bearer <token>` headers. Passwords hashed with bcrypt (12 rounds) and never returned in API payloads.
 
 ### Part 3: Vehicle Management
+
 - **Goal**: Emergency vehicle fleet registry, lifecycle state management (`AVAILABLE`, `DISPATCHED`, `EN_ROUTE`, `AT_SCENE`, `TRANSPORTING`, `MAINTENANCE`), and soft deletion.
 - **Key Files**: `server/modules/vehicles/vehicle.model.js`, `server/modules/vehicles/vehicle.service.js`, `server/modules/vehicles/vehicle.controller.js`.
 - **Decisions**: Unique business IDs (`vehicleId: "AMB-101"`) and compound index `{ status: 1, isDeleted: 1 }` ensure fast allocation without loading entire collections.
 
 ### Part 4: Emergency Call Intake & Incidents
+
 - **Goal**: Intake emergency calls, triage priority (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), vehicle dispatch assignment, and road incident reporting.
 - **Key Files**: `server/modules/emergencies/emergency.model.js`, `server/modules/emergencies/emergency.service.js`, `server/modules/incidents/incident.model.js`, `server/modules/incidents/incident.service.js`.
 - **Decisions**: Spatial `2dsphere` indexes on `location` and `destination` GeoJSON points. Soft deletion prevents accidental data loss.
 
 ### Part 5: GPS Tracking & Trajectory Ingestion
+
 - **Goal**: Ingest high-frequency vehicle GPS fixes and retrieve windowed trajectory histories.
 - **Key Files**: `server/modules/trajectories/trajectory.model.js`, `server/modules/trajectories/trajectory.service.js`.
 - **Decisions**: Compound index `{ vehicle: 1, timestamp: -1 }` enables sub-millisecond retrieval of the latest position and rolling historical windows. Sanitized pagination guards against `NaN` and negative limits.
 
 ### Part 6: Geospatial Analytics & Routing Engine
+
 - **Goal**: Provider abstraction for navigation routing (Mock, Google, Mapbox, OSRM) and Turf.js spatial operations.
 - **Key Files**: `server/modules/routes/route.model.js`, `server/modules/routes/routing.service.js`, `server/shared/services/geospatial.service.js`.
 - **Decisions**: Enforces standard WGS84 GeoJSON coordinate ordering (`[longitude, latitude]`). LineString geometries stored with `2dsphere` indexes.
 
 ### Part 7: Route Deviation, Traffic & ETA Engine
+
 - **Goal**: Detect cross-track route deviations, bearing divergence, incident proximity correlation, and speed-blended ETA calculations.
 - **Key Files**: `server/modules/deviation/deviation.service.js`, `server/modules/traffic/traffic.service.js`, `server/modules/analysis/analysis.service.js`.
 - **Decisions**: Rolling multi-sample window filters momentary GPS jitter. Speed blending (`Math.max(speed, 5)`) prevents division-by-zero or infinite ETA. Standardized SI units: distance in `meters`, speed in `km/h`, duration in `seconds`, ETA in `minutes`.
 
 ### Part 8: GeoAgent AI (OpenRouter / OpenCode Free-Tier Provider Abstraction)
+
 - **Goal**: Integrate catalog-confirmed free LLM models (OpenRouter / OpenCode) with controlled tool calling as an advisory decision-support assistant.
 - **Key Files**: `server/modules/geoagents/geoagent.provider.js`, `server/modules/geoagents/geoAgent.service.js`, `server/modules/geoagents/geoAgent.tools.js`, `server/modules/geoagents/geoagent.schemas.js`.
 - **Decisions**: AI operates through controlled read-only tools (`getVehicleSituation`, `getAlternativeRoutes`, `getNearbyAvailableVehicles`, `getNearbyIncidents`). Strict zero-cost financial guards (`max_price: 0`). Strict JSON schema validation and prompt injection defense. Deterministic fallback ensures the pipeline never fails if the LLM is unreachable.
 
 ### Part 9: Real-Time Communication Layer (Socket.IO)
+
 - **Goal**: Bidirectional, room-isolated live event streaming for fleet tracking, deviation alerts, and operational decisions.
 - **Key Files**: `server/modules/realtime/realtime.service.js`, `server/modules/realtime/realtime.events.js`.
 - **Decisions**: Handshake JWT authentication verifies user roles before allowing connection. Room isolation (`control-room`, `emergency:${id}`, `vehicle:${id}`) prevents global message leakage.
 
 ### Part 10: Authoritative Decision & Dispatch Engine
+
 - **Goal**: Deterministic rules engine that reconciles AI recommendations with strict operational safety policies.
 - **Key Files**: `server/modules/decisions/decision.model.js`, `server/modules/decisions/decision.service.js`, `server/modules/decisions/decision.rules.js`.
 - **Decisions**: AI recommendations remain advisory; Decision Engine is authoritative. Finite state machine (`PENDING_OPERATOR_ACTION` → `APPROVED` / `REJECTED` → `EXECUTED`). SHA-256 `situationHash` enforces 30-second decision idempotency.
 
 ### Part 11: Full Backend Integration & Orchestration
+
 - **Goal**: Unified orchestration coordinator executing the entire operational pipeline with a single call.
 - **Key Files**: `server/modules/orchestration/orchestration.service.js`, `server/modules/orchestration/orchestration.routes.js`.
 - **Decisions**: Generates a **Three-Tier Epistemic Breakdown**:
@@ -114,11 +125,13 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - `UNKNOWN`: Missing operational context (driver intent, hospital ER bed capacity).
 
 ### Part 12: Core Hardening, Performance & Regression Testing
+
 - **Goal**: Parameter boundary protection, status code preservation in error middleware, compound index optimizations, and comprehensive test suites.
 - **Key Files**: `server/shared/middleware/errorHandler.js`, `server/test-part12.js`, `server/test-security.js`.
 - **Decisions**: Hardened query boundaries against `NaN` and unbounded limits. Graceful `SIGINT`/`SIGTERM` shutdown handlers close HTTP, Socket.IO, and Mongoose connections cleanly.
 
 ### Part 13: Real Frontend Authentication & Session Management
+
 - **Goal**: Connect Next.js 16 frontend to existing Express + MongoDB backend with production login, signup, session persistence via HTTP-only cookies, protected routes, and role awareness.
 - **Key Files**: `lib/api/client.ts`, `lib/api/auth.ts`, `lib/auth/context.tsx`, `lib/auth/session.ts`, `components/auth/LoginForm.tsx`, `components/auth/SignupForm.tsx`, `components/auth/ProtectedRoute.tsx`, `components/dashboard/dashboard-topbar.tsx`, `server/test-auth-e2e.js`.
 - **Decisions**:
@@ -130,6 +143,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - **Verification**: 31 / 31 assertions passing in `server/test-auth-e2e.js` covering registration, duplicate conflicts, invalid passwords, login, cookie setting, session refresh, logout, and post-logout protection.
 
 ### Part 14: Live Backend REST Integration & Operations Dashboard
+
 - **Goal**: Connect the driver and operator dashboard directly to real live Express REST endpoints backed by MongoDB for vehicles, emergencies, and road incidents, eliminating mock dependency for operational views while preserving telemetry views.
 - **Key Files**:
   - `lib/api/types.ts`: Strictly typed models for `Vehicle`, `Emergency`, `Incident`, `ListResponse<T>`.
@@ -146,6 +160,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 - **Verification**: 47 / 47 assertions passing in `server/test-dashboard-e2e.js`, 31 / 31 assertions passing in `server/test-auth-e2e.js`, 23 / 23 assertions passing in `server/test-security.js`, and clean Next.js build compilation.
 
 ### Part 15: Emergency Detail & Corridor Analysis View (`/emergencies/[id]`)
+
 - **Goal**: Build a dedicated operational corridor analysis page answering:
   1. What emergency is happening (type, priority, caller, coordinates)
   2. What incidents affect it (corridor hazards within 500m of route or 2000m of vehicle)
@@ -170,6 +185,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 - **Verification**: 63 / 63 assertions passing in `server/test-emergency-detail-e2e.js`, 0 TypeScript errors (`npx tsc --noEmit`), clean Next.js production build (`npm run build`).
 
 ### Part 16: Real-Time Intelligence Pipeline & Route Candidate Comparison
+
 - **Goal**: Connect live GPS telemetry, trajectory processing, Google Routes traffic-aware routing, ETA prediction, route candidate comparison ("What if we do nothing?"), structured evidence, GeoAgent AI advisory tools registry, deterministic decision engine, operator approval, and Socket.IO streaming.
 - **Key Modules & Files**:
   - `server/modules/routes/providers/googleRoutingProvider.js`: WGS84 coordinate boundary validation, 25-waypoint limit enforcement, `TRAFFIC_AWARE_OPTIMAL` routing preference, polyline decoding, explicit 503 error on missing credentials (no silent mock fallback).
@@ -182,6 +198,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 - **Verification**: 26 / 26 passing in `server/test-intelligence-pipeline.js`.
 
 ### Part 17: Admin Database Administration & Observability Layer
+
 - **Goal**: Provide an exclusive, hardened system administration and database observability console (`/admin`) for system administrators with real operational metrics and zero database credential leakage.
 - **Key Modules & Files**:
   - `server/modules/admin/admin.validation.js`: Strict input sanitization stripping reserved MongoDB operators (`$`, `.`), bounded pagination (`limit <= 100`), allowlisted sort fields.
@@ -195,6 +212,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 - **Verification**: 60 / 60 passing in `server/test-admin-e2e.js`.
 
 ### Part 18: Real Interactive Leaflet GIS Map & Bengaluru Corridor Simulation
+
 - **Goal**: Replace static placeholder graphics with a fully interactive, production-grade Leaflet GIS map visualizing live ambulance telemetry, planned corridors, road deviations, and simulation controls.
 - **Key Modules & Files**:
   - `components/dashboard/real-interactive-map.tsx`: Dynamic Leaflet interactive map centered on Bengaluru (`[12.968, 77.622]`).
@@ -208,6 +226,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   - `components/dashboard/map-placeholder.tsx`: Converted into a seamless wrapper delegating to `RealInteractiveMap`.
 
 ### Part 19: Spatio-Temporal Forecasting, Traffic Layers & V2X Preemption
+
 - **Goal**: Introduce advanced geospatial intelligence capabilities into the map interface:
   1. Multi-tile map switching: Dark mode, Google Traffic layer (live congestion color-coding), and Satellite imagery.
   2. Spatio-Temporal Future Traffic Forecasting: Time-horizon selector (+0m, +10m, +20m, +30m) projecting upcoming corridor congestion friction.
@@ -215,6 +234,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
   4. Patient Severity Triage Routing: Emergency condition selection (`CRITICAL_CARDIAC`, `SEVERE_TRAUMA`, `MODERATE`) adjusting routing logic, hospital facility readiness alerts, and specialized trauma center prioritization.
 
 ### Part 20: Analytics UI Polish, Offline Graceful Degradation & Local Session Resilience
+
 - **Goal**: Elevate UI clarity with executive takeaways, progress meters, and confidence badges, while safeguarding the application against offline or disconnected local development environments.
 - **Key Modules & Files**:
   - `components/dashboard/geoagent-card.tsx`: Added executive takeaway callouts and visual progress meters for route efficiency.
@@ -285,7 +305,7 @@ Here is the exact step-by-step lifecycle of an emergency mission from intake to 
 
 ### Deployment Flow
 
-```
+```text
 Developer pushes to main
    ↓
 GitHub Actions CI (.github/workflows/ci.yml)
@@ -312,7 +332,7 @@ Cloud Run Service
 ### Health Endpoint Hierarchy
 
 | Endpoint | Purpose | Dependencies | Cloud Run Use |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `GET /api/health/live` | Process alive | None | Liveness probe |
 | `GET /api/health/ready` | Can serve traffic | MongoDB | Readiness probe |
 | `GET /api/health` | Version, uptime, commit | None | Status dashboard |
@@ -320,7 +340,7 @@ Cloud Run Service
 
 ### Cross-Domain Authentication
 
-```
+```text
 Vercel (*.vercel.app)                Cloud Run (*.run.app)
    ↓ POST /api/auth/login              ↓
    ←── Set-Cookie: token=JWT ──────────┘
@@ -345,7 +365,7 @@ Vercel (*.vercel.app)                Cloud Run (*.run.app)
 
 ### Sequential Data Flow
 
-```
+```text
 Vehicle GPS
     ↓
 Node.js Telemetry Ingestion (MongoDB + Vehicle State Update)
@@ -569,12 +589,14 @@ node server/demo-telemetry-player.js
 ## 4. Canonical Demonstration Scenario & Operator Walkthrough
 
 ### 1. The Scenario (`E-DEMO-001`)
+
 - **Patient Condition**: Critical acute myocardial infarction reported near Mayo Hall Junction, Bengaluru.
 - **Dispatched Vehicle**: Ambulance `AMB-DEMO-01` assigned to transport patient to Manipal Hospital HAL Old Airport Rd.
 - **Initial Planned Corridor**: `ROUTE-DEMO-01` (5.5 km via MG Road → Trinity Circle → Domlur).
 - **Incident Occurrence**: Multi-vehicle collision `INC-DEMO-01` blocks Trinity Circle overpass.
 
 ### 2. Live Sequence of Events
+
 1. **Login**: Operator logs in via `/login` with `operator@swiftcare.local` (`Operator123!`).
 2. **Control Room Overview**: Navigates to `/driver/dashboard` or `/emergencies/E-DEMO-001`. The operational Leaflet map displays `AMB-DEMO-01` operating at 45 km/h on `ROUTE-DEMO-01`.
 3. **Traffic Deterioration**: Approaching Trinity Circle, speed drops to 26 km/h, then 11 km/h as the vehicle enters the traffic queue.
@@ -591,6 +613,7 @@ node server/demo-telemetry-player.js
 ## 5. Part 18: Map Basemap Auth, Ground-Truth Validation & Production Hardening
 
 ### 1. Leaflet + CARTO Basemap Authentication Repair
+
 - **Root Cause Diagnosed**: CARTO raster tile endpoints (`https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png`) require an API key parameter (`?key=...` or `?api_key=...`) to avoid rate watermarking ("API KEY REQUIRED").
 - **Fix Implemented**:
   - Added `NEXT_PUBLIC_CARTO_API_KEY` to public frontend configuration without leaking any backend secrets (`JWT_SECRET`, `MONGO_URI`, `OPENROUTER_API_KEY`, `GOOGLE_MAPS_API_KEY`).
@@ -599,6 +622,7 @@ node server/demo-telemetry-player.js
   - Preserved existing high-contrast dark operational styling, subdomains `abcd`, maxZoom 19, and full OSM/CARTO attribution.
 
 ### 2. Real-World Prediction Ground-Truth & Performance Analytics
+
 - **Ground-Truth Measurement**: Compares predicted ETA against actual completion timestamp (`updatedAt - createdAt`) for completed emergencies (`RESOLVED`, `AT_SCENE`).
 - **Statistical Integrity**:
   - Sample size protection: $N < 5$ is strictly surfaced as `INSUFFICIENT_DATA`.
@@ -607,6 +631,7 @@ node server/demo-telemetry-player.js
   - Explicitly labels alternative routes as `ESTIMATED / COUNTERFACTUAL` to prevent counterfactual overclaiming.
 
 ### 3. Verification Suite
+
 ```bash
 # Final Integration Audit (37 checks across Map, Secrets, RBAC, Data, Prediction, & Fallbacks)
 node server/test-final-integration-audit.js
@@ -618,7 +643,9 @@ node server/test-final-integration-audit.js
 ## 6. Part 19: Full-Stack RBAC, Registration Desk, Multi-Workspace Navigation & User Lifecycle Management
 
 ### 1. The Four Authoritative System Roles
+
 SwiftCare defines four authoritative roles across backend JWT sessions, MongoDB models, API authorization middleware, and frontend views:
+
 1. **`ADMIN` (Systems Administrator)**:
    - **Default Landing Page**: `/admin`
    - **Capabilities**: Complete system observability, provider health monitoring, database record exploration, pending user registration approvals, role elevation, workspace assignments, and account suspensions.
@@ -633,6 +660,7 @@ SwiftCare defines four authoritative roles across backend JWT sessions, MongoDB 
    - **Capabilities**: Pre-hospital patient vital signs telemetry (HR, BP, SpO2, GCS), intervention and medication logging, trauma severity scoring, and receiving hospital trauma bay handoff coordination.
 
 ### 2. Personnel Registration Desk (`/registration` & `/signup`)
+
 - **Responsive 4-Role Grid Selector**:
   - `Admin` (`ADMIN`): Shield icon, system administration & telemetry.
   - `Control` (`CONTROL_ROOM`): Radio icon, corridor surveillance & dispatch.
@@ -643,6 +671,7 @@ SwiftCare defines four authoritative roles across backend JWT sessions, MongoDB 
 - **Assigned Vehicle Identifier**:
   - Dynamic input field (`assignedVehicleId`) displayed when Driver role or Driver workspace is selected.
 - **Account Quarantining & Status Flow**:
+
   ```text
   Public Registration Desk (/registration or /signup)
       ↓
@@ -662,12 +691,14 @@ SwiftCare defines four authoritative roles across backend JWT sessions, MongoDB 
   ```
 
 ### 3. Resource Ownership Boundary Protection
+
 - **`ownershipMiddleware.js`**: Enforces zero lateral movement across vehicle assets.
 - A Driver assigned to `AMB-01` can update `AMB-01` telemetry, status, and location (`200 OK`).
 - If that same Driver attempts to update unassigned vehicle `AMB-02`, the request is denied immediately (`403 Forbidden: Drivers can only update their assigned vehicle (AMB-01)`).
 - Control Room dispatchers and Admins retain global fleet management authority.
 
 ### 4. Admin User Management Console (`/admin`)
+
 - Embedded in the `/admin` console via `components/admin/admin-user-management.tsx`.
 - Real-time tabular review of pending, approved, and suspended accounts.
 - 1-click Approval (`PATCH /api/admin/users/:id/approve`).
@@ -675,6 +706,7 @@ SwiftCare defines four authoritative roles across backend JWT sessions, MongoDB 
 - Modal role and workspace reassignment (`PATCH /api/admin/users/:id/role`).
 
 ### 5. Verification Suites
+
 ```bash
 # Complete Auth, RBAC & Ownership Test Suite (46 checks)
 node server/test-auth-rbac-complete.js

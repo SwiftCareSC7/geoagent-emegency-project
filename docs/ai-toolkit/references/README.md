@@ -3,7 +3,7 @@
 This directory indexes external repositories specified in the AI Coding Toolkit that are architectural references, upstream specifications, API gateways, or public catalogues rather than stand-alone local skills.
 
 | Name | Upstream Repository | Role in Project | License |
-|------|---------------------|-----------------|---------|
+| ------ | --------------------- | ----------------- | --------- |
 | [BuildWithClaude](buildwithclaude.md) | `davepoon/buildwithclaude` | Prompt & Plugin Reference | MIT |
 | [ECC](ecc.md) | `affaan-m/ECC` | Harness Optimization Reference | MIT |
 | [GSD Core](gsd-core.md) | `open-gsd/gsd-core` | Execution Workflow Pattern | MIT |

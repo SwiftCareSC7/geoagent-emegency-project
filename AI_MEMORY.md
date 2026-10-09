@@ -1,9 +1,11 @@
 # GeoAgentic Emergency Response System — AI Memory
 
 ## 1. Project Purpose & Scope
+
 The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intelligent decision-support and dispatch platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic congestion or road hazards, calculate delays, recommend alternative routes, evaluate V2X green-wave corridor clearances, run advisory free-model LLM reasoning (OpenRouter / OpenCode), and evaluate authoritative operational decisions in real time.
 
 **Repository Scope**:
+
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Lucide React (located at root `/app`, `/components`, `/lib`, `/public`).
 - **Backend Core**: Node.js (ESM), Express, MongoDB + Mongoose 8, Socket.IO 4.8 (located at `/server`).
 - **Spatial Routing Engine**: Python standalone spatial analysis, corridor deviation, and V2X engine (located at `/routing-engine`).
@@ -14,12 +16,14 @@ The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intellig
 ## 2. Technology Stack
 
 ### Frontend Core
+
 - **Framework**: Next.js 16 (Turbopack, App Router)
 - **UI Components**: React 19, Tailwind CSS v4, Lucide React, Base UI
 - **Language**: TypeScript (`@/*` path aliasing)
 - **Target Port**: `http://localhost:3000`
 
 ### Backend Core
+
 - **Runtime**: Node.js (ES Modules)
 - **Framework**: Express.js + Node HTTP Server
 - **Real-Time Layer**: Socket.IO 4.8 (room-isolated push streaming, handshake JWT authentication)
@@ -31,6 +35,7 @@ The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intellig
 - **Target Port**: `http://localhost:5001`
 
 ### Python Spatial Routing Engine (Member 2)
+
 - **Runtime**: Python 3.11+
 - **Algorithms**: Haversine formula, cross-track error, bearing, corridor intersection, V2X green-wave signal clearance scoring
 - **Visualizer**: Leaflet.js interactive map (`routing-engine/map_visualizer.html`)
@@ -626,6 +631,7 @@ Trajectories          Routes                     │         │
   - `DRIVER`: Assigned vehicle telemetry ingestion, turn-by-turn waypoint tracking, navigation guidance.
   - `PARAMEDIC`: Clinical triage priority updates, patient status transmission, hospital bay readiness monitoring.
 - **Role Access Matrix**:
+
   | Resource / Endpoint | ADMIN | CONTROL_ROOM | DRIVER | PARAMEDIC | Unauthenticated |
   | :--- | :--- | :--- | :--- | :--- | :--- |
   | `GET /api/admin/*` | READ | 403 Forbidden | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
@@ -634,9 +640,10 @@ Trajectories          Routes                     │         │
   | `POST /api/emergencies` | CREATE | CREATE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
   | `GET /api/emergencies/:id` | READ | READ | READ | READ | 401 Unauthorized |
   | `POST /api/trajectories` | CREATE | CREATE | CREATE | 403 Forbidden | 401 Unauthorized |
-  | `POST /api/decisions/:id/approve`| APPROVE | APPROVE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/decisions/:id/approve` | APPROVE | APPROVE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
   | `POST /api/decisions/:id/reject` | REJECT | REJECT | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
-  | `POST /api/decisions/:id/execute`| EXECUTE | EXECUTE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/decisions/:id/execute` | EXECUTE | EXECUTE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+
 - **Security & Reliability Domains Verified** (`server/test-part11-security-hardening.js` — 14/14 Passed):
   1. *Role Access Matrix & Independent Backend Authorization*: Strict endpoint-level middleware enforcement blocks privilege escalation.
   2. *IDOR Prevention & Resource Isolation*: Non-existent/unowned entities return 404; path traversal/SQL/Mongo injection payloads safely rejected.

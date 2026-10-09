@@ -1,6 +1,7 @@
 # SwiftCare GeoAgent: UI/UX Design & Architecture Research
 
 ## 1. Executive Summary & Problem Context
+
 SwiftCare GeoAgent is an emergency medical operations and AI-augmented routing platform. Emergency dispatchers and field drivers operate under extreme cognitive pressure where seconds dictate patient outcomes. The redesign replaces visual disorder, clashing light/dark palettes, and unstructured card grids with a unified, high-trust, calm, operational command design system.
 
 ---
@@ -8,6 +9,7 @@ SwiftCare GeoAgent is an emergency medical operations and AI-augmented routing p
 ## 2. Research Sources & Applied Decisions
 
 ### 2.1 Computer-Aided Dispatch (CAD) & Mission Control Systems
+
 - **Research Source:** Human-Factors Guidelines for Emergency Dispatch Operations (APCO, US Dept. of Homeland Security, ITU CAD ergonomics guidelines).
 - **Finding:** In safety-critical environments, interfaces must maximize rapid visual scanning, minimize decorative visual noise, and reduce cognitive latency. Operators scan for *anomalies* (deviations, traffic surges, delays) rather than inspecting uniform rows of data.
 - **SwiftCare Design Decision:**
@@ -16,6 +18,7 @@ SwiftCare GeoAgent is an emergency medical operations and AI-augmented routing p
   - Elimination of clashing light-cream backgrounds on dark command shells.
 
 ### 2.2 Epistemic Status (Observed vs. Inferred vs. Unknown)
+
 - **Research Source:** Cognitive Systems Engineering (Woods & Hollnagel, NASA Ames Mission Control UI standards).
 - **Finding:** High-stakes automated systems fail when operators cannot distinguish between *measured telemetry* (GPS coordinates, speed, ping time) and *model inferences* (predicted delay, probable cause, AI reroute recommendations). False certainty causes mistrust and delayed operator intervention.
 - **SwiftCare Design Decision:**
@@ -26,6 +29,7 @@ SwiftCare GeoAgent is an emergency medical operations and AI-augmented routing p
   - GeoAgent AI reasoning is presented with transparent evidence citations and confidence scores.
 
 ### 2.3 The 5 Core Operational Questions
+
 - **Research Source:** Operational Question-Led Decision Support Frameworks for Rapid Triage.
 - **Finding:** When an operator selects an active emergency, they require answers to five specific operational questions without hunting through navigation tabs:
   1. *Has the ambulance deviated from its planned route?*
@@ -38,6 +42,7 @@ SwiftCare GeoAgent is an emergency medical operations and AI-augmented routing p
   - Direct 1-to-1 visual cards answering each of the 5 questions, backed directly by backend calculation (`/api/analysis/vehicle/:id` and `/api/decisions/active`).
 
 ### 2.4 Cartographic Hierarchy & Color Conventions (Phase 21 Compliance)
+
 - **Research Source:** Cartography & Geovisualization Specialist Guidance (`cartography-geoviz`), ColorBrewer2, and Leaflet tactical styling standards.
 - **Finding:** Map layers must have unambiguous semantic color coding. Combining green for routes and green for availability creates fatal confusion. Basemaps must remain muted (CartoDB Positron / Dark Matter) so tactical vector data clearly dominates.
 - **SwiftCare Map Standard:**
@@ -50,6 +55,7 @@ SwiftCare GeoAgent is an emergency medical operations and AI-augmented routing p
   - Strict Leaflet coordinate order handling `[lat, lng]` vs GeoJSON `[lng, lat]`.
 
 ### 2.5 Driver Navigation-First Ergonomics
+
 - **Research Source:** In-Vehicle Information Systems (IVIS) & SAE J2364 Reach and Glancability Standards.
 - **Finding:** Drivers in moving emergency vehicles need large glanceable typography, immediate next-maneuver vectors, distance-to-turn countdowns, and tactile emergency triggers. Heavy administrative dashboards cause distraction and navigation errors.
 - **SwiftCare Design Decision:**
@@ -59,6 +65,7 @@ SwiftCare GeoAgent is an emergency medical operations and AI-augmented routing p
   - Fix the `(NaNm)` maneuver calculation bug in driver navigation.
 
 ### 2.6 Human-in-the-Loop Decision State Architecture
+
 - **Research Source:** IEEE Transactions on Human-Machine Systems: Safety-Critical Decision Support.
 - **Finding:** AI proposals must never execute destructively or re-dispatch ambulances without explicit human confirmation. The interface must visually differentiate a *Pending Recommendation* from an *Executed Action*.
 - **SwiftCare Design Decision:**

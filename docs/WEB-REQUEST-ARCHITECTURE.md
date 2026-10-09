@@ -8,7 +8,7 @@
 
 ## 1. Executive Summary
 
-This document specifies the end-to-end web request lifecycle and entire website infrastructure designed according to the **Cache-Aside Pattern (Lazy Loading)**. 
+This document specifies the end-to-end web request lifecycle and entire website infrastructure designed according to the **Cache-Aside Pattern (Lazy Loading)**.
 
 When a user in a modern browser triggers an action (e.g., loading an active emergency incident or fetching real-time dispatch routes), the request travels through an edge CDN to the API server. The API first inspects **Redis In-Memory Cache (Port 6379)**. On a **cache miss**, the API falls back to **PostgreSQL Primary Database (Port 5432)** as the ACID source of truth, serializes the fresh records, populates the Redis cache with a bounded TTL (`SETEX`), and returns the payload to the browser.
 
@@ -170,6 +170,7 @@ export async function getActiveEmergencies(req, res) {
 ```
 
 ### 5.2 Cache Invalidation & Stampede Protection
+
 1. **Explicit Mutation Invalidation (`DEL` / `UNLINK`):**
    When a new emergency is reported (`POST /api/emergencies`) or an emergency is resolved (`PUT /api/emergencies/:id/status`), the controller immediately invokes `await redis.del("emergencies:active")`.
 2. **TTL Safety Net:**
@@ -188,20 +189,21 @@ The architecture and sequence diagrams have been validated and compiled using **
    - Interactive Rendered Output: [`docs/architecture-web-request.html`](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/architecture-web-request.html)
    - Quality Profile: `showcase` (0 errors, 0 warnings, orthogonal routing, automated route clearances)
    - Features 3 focused interactive views:
-     * *Web Request & Cache Path*
-     * *Identity & Security*
-     * *Async Background Work*
+     - *Web Request & Cache Path*
+     - *Identity & Security*
+     - *Async Background Work*
 
 2. **Web Request Sequence Lifecycle:**
    - Source Specification: [`docs/sequence-cache-miss.sequence.json`](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/sequence-cache-miss.sequence.json)
    - Interactive Rendered Output: [`docs/sequence-cache-miss.html`](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/sequence-cache-miss.html)
    - Quality Profile: `showcase` (0 errors, 0 warnings, animated trace lines, activation boxes)
    - Features 3 sequential interactive views:
-     * *Request & Authentication*
-     * *Redis Cache Miss Fallback*
-     * *Cache Fill & Client Response*
+     - *Request & Authentication*
+     - *Redis Cache Miss Fallback*
+     - *Cache Fill & Client Response*
 
 To re-validate or re-render these files at any time:
+
 ```bash
 # Validate schemas and layout geometry
 node ~/.agents/skills/archify/bin/archify.mjs validate architecture docs/architecture-web-request.architecture.json

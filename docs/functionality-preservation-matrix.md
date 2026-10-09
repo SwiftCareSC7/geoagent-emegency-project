@@ -3,7 +3,7 @@
 ## 1. Route & Page Inventory
 
 | Route | Page / Module | Current Implementation | Dependencies | New Design Location | Verification Required |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `/` | Landing Page | `app/page.tsx`, `components/landing/*` | Next.js, Auth | Redesigned `app/page.tsx` + `components/landing/*` | Hero, Core Loop (Monitor->Detect->Explain->Predict->Recommend->Decide->Act->Verify), Who Uses It, Role CTAs |
 | `/login` | Authentication | `app/login/page.tsx`, `components/auth/LoginForm.tsx` | `useAuth`, `authApi.login` | Redesigned `components/auth/LoginForm.tsx` | Role detection, validation, error messages, rate-limited credentials authentication |
 | `/registration` & `/signup` | User Registration & Quarantine Desk | `app/registration/page.tsx`, `components/auth/SignupForm.tsx` | `useAuth`, `authApi.register` | Production `components/auth/SignupForm.tsx` | 4-Role grid selector (CONTROL_ROOM, DRIVER, PARAMEDIC, ADMIN), vehicle binding, multi-workspace gating, quarantine review |
@@ -21,7 +21,7 @@
 ## 2. Real-Time Socket.IO Event Preservation
 
 | Event Name | Direction | Payload | Preserved Handler |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `vehicle.location.updated` | Server -> Client | `{ vehicleId, location, speed, heading, status }` | Map vehicle marker updates, HUD speed |
 | `vehicle.status.updated` | Server -> Client | `{ vehicleId, status, timestamp }` | Fleet panel status badges |
 | `trajectory.created` | Server -> Client | `{ vehicleId, point, crossTrackDistance }` | Map trajectory breadcrumbs, deviation detection |
@@ -46,6 +46,7 @@
 ## 3. Backend REST API Preservation
 
 All existing endpoints in `server/modules` remain 100% active and untouched or enhanced with strict backward compatibility:
+
 - `GET /api/health`, `GET /api/health/providers`
 - `POST /api/auth/login`, `POST /api/auth/register`, `POST /api/auth/logout`, `GET /api/auth/me`
 - `GET /api/vehicles`, `GET /api/vehicles/:id`
