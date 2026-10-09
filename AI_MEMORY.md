@@ -689,7 +689,7 @@ Trajectories          Routes                     │         │
   - **Planned Route**: `ROUTE-DEMO-01` (5.5 km primary corridor via Mayo Hall → Trinity Circle → Manipal Hospital HAL).
   - **Alternative Bypass**: `ROUTE-DEMO-ALT` (5.2 km via 100ft Rd bypass corridor with V2X signal preemption).
   - **Road Incident**: `INC-DEMO-01` (Multi-vehicle collision blocking Trinity Overpass).
-  - **Personnel**: Operator `operator@swiftcare.local` (Password: `Operator123!`), Admin `admin@swiftcare.local` (Password: `AdminPassword123!`).
+  - **Personnel**: Operator `operator@swiftcare.local` (Password: `<OPERATOR_PASSWORD from env>`), Admin `admin@swiftcare.local` (Password: `<ADMIN_PASSWORD from env>`).
   - **Canonical Seeder**: `node server/seed-demo-scenario.js [--clean]` (Isolated, repeatable, non-destructive to production).
   - **Controlled Telemetry Playback Engine**: `node server/demo-telemetry-player.js`
     - Stage 0 (`00:00`): Normal speed (45 km/h, ON_ROUTE, 0m cross-track, LOW risk).

@@ -77,7 +77,7 @@ Authenticates credentials and sets an HTTP-only JWT cookie.
 ```json
 {
   "success": true,
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
+  "token": "<jwt>",
   "user": {
     "id": "65f8a1b2c3d4e5f6a7b8c9d0",
     "name": "Head Dispatcher",

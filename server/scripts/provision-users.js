@@ -22,6 +22,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import Vehicle from '../modules/vehicles/vehicle.model.js';
 import User from '../modules/auth/user.model.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -49,14 +50,14 @@ const ACCOUNTS_SPEC = [
     name: 'Chief Systems Administrator',
     role: 'ADMIN',
     permittedWorkspaces: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
-    pass: process.env.ADMIN_PASSWORD || 'AdminPassword123!'
+    pass: process.env.ADMIN_PASSWORD
   },
   {
     email: 'operator@swiftcare.local',
     name: 'Central Control Operator',
     role: 'CONTROL_ROOM',
     permittedWorkspaces: ['CONTROL_ROOM', 'DRIVER'],
-    pass: process.env.OPERATOR_PASSWORD || 'Operator123!'
+    pass: process.env.OPERATOR_PASSWORD
   },
   {
     email: 'driver@swiftcare.local',
@@ -64,7 +65,7 @@ const ACCOUNTS_SPEC = [
     role: 'DRIVER',
     permittedWorkspaces: ['DRIVER'],
     assignedVehicleId: 'AMB-01',
-    pass: process.env.DRIVER_PASSWORD || 'DriverPassword123!'
+    pass: process.env.DRIVER_PASSWORD
   },
   {
     email: 'paramedic@swiftcare.local',
@@ -72,7 +73,7 @@ const ACCOUNTS_SPEC = [
     role: 'PARAMEDIC',
     permittedWorkspaces: ['PARAMEDIC'],
     assignedVehicleId: 'AMB-01',
-    pass: process.env.PARAMEDIC_PASSWORD || 'Paramedic123!'
+    pass: process.env.PARAMEDIC_PASSWORD
   }
 ];
 
@@ -131,6 +132,15 @@ export async function provisionUsers() {
       console.log(`[Provision] Created account: ${normalizedEmail} -> Role: ${acc.role}`);
       results.push({ email: normalizedEmail, role: acc.role, status: 'CREATED' });
     }
+  }
+
+  // Minimal deterministic vehicles the RBAC suite PATCHes (fresh CI DB has none); never overwrites existing ones.
+  for (const n of [1, 2, 3]) {
+    await Vehicle.updateOne(
+      { vehicleId: `AMB-0${n}` },
+      { $setOnInsert: { vehicleId: `AMB-0${n}`, registrationNumber: `TEST-AMB-0${n}`, type: 'AMBULANCE', driverName: `Test Driver ${n}`, capacity: 2 } },
+      { upsert: true }
+    );
   }
 
   // Verification audit query

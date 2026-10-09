@@ -51,7 +51,7 @@ async function seed() {
   let operator = await User.findOne({ email: 'operator@swiftcare.local' });
   if (!operator) {
     console.log('[Seed] Creating demo operator: operator@swiftcare.local');
-    const hashedPassword = await bcrypt.hash('Operator123!', 10);
+    const hashedPassword = await bcrypt.hash(process.env.OPERATOR_PASSWORD, 10);
     operator = await User.create({
       name: 'Central Control Operator',
       email: 'operator@swiftcare.local',

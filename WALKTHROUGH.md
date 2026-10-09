@@ -597,7 +597,7 @@ node server/demo-telemetry-player.js
 
 ### 2. Live Sequence of Events
 
-1. **Login**: Operator logs in via `/login` with `operator@swiftcare.local` (`Operator123!`).
+1. **Login**: Operator logs in via `/login` with `operator@swiftcare.local` (`<OPERATOR_PASSWORD from env>`).
 2. **Control Room Overview**: Navigates to `/driver/dashboard` or `/emergencies/E-DEMO-001`. The operational Leaflet map displays `AMB-DEMO-01` operating at 45 km/h on `ROUTE-DEMO-01`.
 3. **Traffic Deterioration**: Approaching Trinity Circle, speed drops to 26 km/h, then 11 km/h as the vehicle enters the traffic queue.
 4. **Prediction Engine Alerts**: Real-time delay prediction surges from +1.7m to +8.4m (`CRITICAL` delay risk).

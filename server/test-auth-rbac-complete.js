@@ -99,7 +99,7 @@ async function runSuite() {
   // Admin Login
   const adminLogin = await request('/auth/login', {
     method: 'POST',
-    body: { email: 'admin@swiftcare.local', password: 'AdminPassword123!' }
+    body: { email: 'admin@swiftcare.local', password: process.env.ADMIN_PASSWORD }
   });
   assert(adminLogin.status === 200, 'ADMIN login succeeds with 200 OK');
   assert(adminLogin.data?.user?.role === 'ADMIN', 'ADMIN user role verified as ADMIN');
@@ -108,7 +108,7 @@ async function runSuite() {
   // Control Room Login
   const opLogin = await request('/auth/login', {
     method: 'POST',
-    body: { email: 'operator@swiftcare.local', password: 'Operator123!' }
+    body: { email: 'operator@swiftcare.local', password: process.env.OPERATOR_PASSWORD }
   });
   assert(opLogin.status === 200, 'CONTROL_ROOM login succeeds with 200 OK');
   assert(opLogin.data?.user?.role === 'CONTROL_ROOM', 'CONTROL_ROOM user role verified');
@@ -117,7 +117,7 @@ async function runSuite() {
   // Driver Login
   const driverLogin = await request('/auth/login', {
     method: 'POST',
-    body: { email: 'driver@swiftcare.local', password: 'DriverPassword123!' }
+    body: { email: 'driver@swiftcare.local', password: process.env.DRIVER_PASSWORD }
   });
   assert(driverLogin.status === 200, 'DRIVER login succeeds with 200 OK');
   assert(driverLogin.data?.user?.role === 'DRIVER', 'DRIVER user role verified');
@@ -127,7 +127,7 @@ async function runSuite() {
   // Paramedic Login
   const paramLogin = await request('/auth/login', {
     method: 'POST',
-    body: { email: 'paramedic@swiftcare.local', password: 'Paramedic123!' }
+    body: { email: 'paramedic@swiftcare.local', password: process.env.PARAMEDIC_PASSWORD }
   });
   assert(paramLogin.status === 200, 'PARAMEDIC login succeeds with 200 OK');
   assert(paramLogin.data?.user?.role === 'PARAMEDIC', 'PARAMEDIC user role verified');

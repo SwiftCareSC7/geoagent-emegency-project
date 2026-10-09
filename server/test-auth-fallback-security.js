@@ -52,10 +52,10 @@ async function run() {
   const serverStoreContent = fs.readFileSync(serverStorePath, 'utf8');
 
   assert(
-    !serverStoreContent.includes('AdminPassword123!') &&
-    !serverStoreContent.includes('Operator123!') &&
-    !serverStoreContent.includes('DriverPassword123!') &&
-    !serverStoreContent.includes('Paramedic123!'),
+    !serverStoreContent.includes(process.env.ADMIN_PASSWORD) &&
+    !serverStoreContent.includes(process.env.OPERATOR_PASSWORD) &&
+    !serverStoreContent.includes(process.env.DRIVER_PASSWORD) &&
+    !serverStoreContent.includes(process.env.PARAMEDIC_PASSWORD),
     'server-store.ts contains no hardcoded fallback demo passwords'
   );
 
@@ -153,7 +153,7 @@ async function run() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: 'admin@swiftcare.local',
-        password: process.env.ADMIN_PASSWORD || 'AdminPassword123!'
+        password: process.env.ADMIN_PASSWORD
       })
     });
     const validLoginData = await validLoginRes.json();

@@ -104,7 +104,7 @@ async function run() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: 'operator@swiftcare.local',
-      password: 'Operator123!'
+      password: process.env.OPERATOR_PASSWORD
     })
   });
 

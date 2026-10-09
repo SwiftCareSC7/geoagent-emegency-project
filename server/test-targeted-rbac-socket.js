@@ -97,7 +97,7 @@ async function run() {
     method: 'POST',
     body: {
       email: 'admin@swiftcare.local',
-      password: process.env.ADMIN_PASSWORD || 'AdminPassword123!'
+      password: process.env.ADMIN_PASSWORD
     }
   });
   assert(adminLogin.status === 200, 'Admin logs in with 200 OK');
@@ -273,7 +273,7 @@ async function run() {
     body: {
       name: 'Ambulance Driver Ravi',
       email: driverEmail,
-      password: 'DriverPassword123!',
+      password: process.env.DRIVER_PASSWORD,
       role: 'DRIVER',
       requestedWorkspaces: ['DRIVER'],
       assignedVehicleId: 'AMB-01'
@@ -292,7 +292,7 @@ async function run() {
 
   const driverLogin = await request('/auth/login', {
     method: 'POST',
-    body: { email: driverEmail, password: 'DriverPassword123!' }
+    body: { email: driverEmail, password: process.env.DRIVER_PASSWORD }
   });
   const driverToken = extractToken(driverLogin.headers['set-cookie']);
 

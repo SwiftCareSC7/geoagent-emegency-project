@@ -506,7 +506,7 @@ async function runPart11SystemIntegrationTest() {
       adminUser = await User.create({
         name: 'System Auditor',
         email: adminEmail,
-        password: 'AdminPassword123!',
+        password: process.env.ADMIN_PASSWORD,
         role: 'ADMIN',
       })
 

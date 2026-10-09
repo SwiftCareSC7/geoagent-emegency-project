@@ -18,7 +18,7 @@ import { io } from 'socket.io-client';
 // Option A: Passing Bearer Token in Auth Object
 const socket = io('http://localhost:5001', {
   auth: {
-    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+    token: '<jwt>'
   },
   transports: ['websocket', 'polling']
 });

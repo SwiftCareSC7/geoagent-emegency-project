@@ -162,7 +162,7 @@ async function runAuthSuite() {
       body: {
         name: 'Test Ambulance Driver',
         email: driverEmail,
-        password: 'DriverPassword123!',
+        password: process.env.DRIVER_PASSWORD,
         role: 'DRIVER'
       }
     });
@@ -194,7 +194,7 @@ async function runAuthSuite() {
       body: {
         name: 'Duplicate Attempt',
         email: driverEmail,
-        password: 'DriverPassword123!',
+        password: process.env.DRIVER_PASSWORD,
         role: 'DRIVER'
       }
     });
@@ -241,7 +241,7 @@ async function runAuthSuite() {
       headers: { 'Content-Type': 'application/json' },
       body: {
         email: 'operator@swiftcare.local',
-        password: process.env.OPERATOR_PASSWORD || 'Operator123!'
+        password: process.env.OPERATOR_PASSWORD
       }
     });
     assert(dispLogin.status === 200, 'Dispatcher login succeeds with 200');
@@ -255,7 +255,7 @@ async function runAuthSuite() {
       headers: { 'Content-Type': 'application/json' },
       body: {
         email: 'driver@swiftcare.local',
-        password: process.env.DRIVER_PASSWORD || 'DriverPassword123!'
+        password: process.env.DRIVER_PASSWORD
       }
     });
     assert(drvLogin.status === 200, 'Driver login succeeds with 200');
@@ -269,7 +269,7 @@ async function runAuthSuite() {
       headers: { 'Content-Type': 'application/json' },
       body: {
         email: 'paramedic@swiftcare.local',
-        password: process.env.PARAMEDIC_PASSWORD || 'Paramedic123!'
+        password: process.env.PARAMEDIC_PASSWORD
       }
     });
     assert(pmLogin.status === 200, 'Paramedic login succeeds with 200');

@@ -65,7 +65,7 @@ export async function seedDemoScenario(options = {}) {
 
   // 2. Ensure Demo Users
   console.log('\n[1/6] Provisioning Demo Personnel...');
-  const opPasswordHash = await bcrypt.hash('Operator123!', 10);
+  const opPasswordHash = await bcrypt.hash(process.env.OPERATOR_PASSWORD, 10);
   let operator = await User.findOne({ email: 'operator@swiftcare.local' });
   if (!operator) {
     operator = await User.create({
@@ -79,7 +79,7 @@ export async function seedDemoScenario(options = {}) {
     console.log('  ✓ Found existing Demo Operator: operator@swiftcare.local');
   }
 
-  const adminPasswordHash = await bcrypt.hash('AdminPassword123!', 10);
+  const adminPasswordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
   let admin = await User.findOne({ email: 'admin@swiftcare.local' });
   if (!admin) {
     admin = await User.create({
@@ -258,8 +258,8 @@ export async function seedDemoScenario(options = {}) {
   console.log('\n================================================================');
   console.log('DEMO SEEDING COMPLETE');
   console.log('Available Credentials:');
-  console.log('  Operator: operator@swiftcare.local / Operator123!');
-  console.log('  Admin:    admin@swiftcare.local    / AdminPassword123!');
+  console.log('  Operator: operator@swiftcare.local / (value of OPERATOR_PASSWORD env)');
+  console.log('  Admin:    admin@swiftcare.local    / (value of ADMIN_PASSWORD env)');
   console.log('Active Demo Mission:');
   console.log(`  Emergency ID: ${emergency.emergencyId}`);
   console.log(`  Vehicle ID:   ${vehicle.vehicleId}`);

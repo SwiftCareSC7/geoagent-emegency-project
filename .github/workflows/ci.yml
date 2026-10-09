@@ -27,8 +27,13 @@ jobs:
           echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tgz" | sha256sum -c -
           tar -xzf gitleaks.tgz gitleaks
 
-      - name: Scan full git history for secrets
-        run: ./gitleaks git --redact --verbose --exit-code 1 .
+      # Current files must be clean (no baseline). History is scanned against a baseline holding only the
+      # reviewed legacy findings (.gitleaks-baseline.json, values redacted), so any NEW secret fails the job.
+      - name: Scan current checkout
+        run: ./gitleaks dir --redact --no-banner --exit-code 1 .
+
+      - name: Scan git history (new findings only)
+        run: ./gitleaks git --redact --no-banner --exit-code 1 --baseline-path .gitleaks-baseline.json .
 
   lint-and-build:
     name: Lint, Typecheck & Frontend Build
@@ -93,6 +98,8 @@ jobs:
           DISABLE_RATE_LIMITS: "true"
           PORT: 5001
         run: |
+          # Throwaway fixture passwords, generated per run (never committed)
+          for v in ADMIN OPERATOR DRIVER PARAMEDIC; do export ${v}_PASSWORD="$(openssl rand -hex 12)Aa1!"; done
           # Start the backend server in background
           node server/server.js &
           SERVER_PID=$!

@@ -402,7 +402,7 @@ class DemoService {
    * Ensures standard personnel exist in MongoDB
    */
   async ensurePersonnel() {
-    const operatorPassword = await bcrypt.hash('Operator123!', 10);
+    const operatorPassword = await bcrypt.hash(process.env.OPERATOR_PASSWORD, 10);
     let operator = await User.findOne({ email: 'operator@swiftcare.local' });
     if (!operator) {
       operator = await User.create({
@@ -413,7 +413,7 @@ class DemoService {
       });
     }
 
-    const adminPassword = await bcrypt.hash('AdminPassword123!', 10);
+    const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
     let admin = await User.findOne({ email: 'admin@swiftcare.local' });
     if (!admin) {
       admin = await User.create({

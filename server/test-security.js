@@ -128,7 +128,7 @@ const operatorToken = generateToken(dbUser._id, 'CONTROL_ROOM');
 const adminUser = new User({
   name: 'System Admin',
   email: 'admin@geoagent.test',
-  password: 'AdminPassword123!',
+  password: process.env.ADMIN_PASSWORD,
   role: 'ADMIN'
 });
 await adminUser.save();

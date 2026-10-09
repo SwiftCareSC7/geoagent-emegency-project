@@ -13,6 +13,7 @@
  * 9. GeoJSON coordinates conform to [longitude, latitude] format
  */
 
+import crypto from 'crypto';
 import http from 'http';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -42,7 +43,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = 'test_jwt_secret_for_part10_verification';
+  process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex');
 }
 
 const MONGO_TEST_URI = 'mongodb://127.0.0.1:27017/geoagent-dashboard-e2e-test';

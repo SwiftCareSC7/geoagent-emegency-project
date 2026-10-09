@@ -93,7 +93,7 @@ async function runTests() {
     method: 'POST',
     body: {
       email: 'admin@swiftcare.local',
-      password: process.env.ADMIN_PASSWORD || 'AdminPassword123!'
+      password: process.env.ADMIN_PASSWORD
     }
   });
   assert(adminLoginRes.status === 200, 'Admin logs in with 200 OK');

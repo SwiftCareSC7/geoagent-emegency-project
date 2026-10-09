@@ -118,7 +118,7 @@ async function runPart11SecurityHardeningSuite() {
     baseUrl = `http://127.0.0.1:${port}`
 
     // Setup role fixtures with cryptographically hashed passwords
-    const adminHashed = await bcrypt.hash('AdminPassword123!', 10)
+    const adminHashed = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10)
     adminUser = await User.create({
       name: 'Security Admin',
       email: 'admin@security-test.internal',
@@ -136,7 +136,7 @@ async function runPart11SecurityHardeningSuite() {
     })
     controlRoomToken = generateToken(controlRoomUser)
 
-    const driverHashed = await bcrypt.hash('DriverPassword123!', 10)
+    const driverHashed = await bcrypt.hash(process.env.DRIVER_PASSWORD, 10)
     driverUser = await User.create({
       name: 'Ambulance Driver',
       email: 'driver@security-test.internal',
@@ -360,7 +360,7 @@ async function runPart11SecurityHardeningSuite() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'admin@security-test.internal',
-          password: 'AdminPassword123!',
+          password: process.env.ADMIN_PASSWORD,
         }),
       })
 
