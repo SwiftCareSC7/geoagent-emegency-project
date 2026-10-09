@@ -37,8 +37,8 @@ This matrix provides the verified, strict status classification of every feature
 | | Polyline Decoding & Validation | Map Renderer | `validateRouteGeometry` | None | None | None | Sanitized Polyline | `test-polyline-decoding.mjs` | **IMPLEMENTED** |
 | **Traffic System** | Live Traffic Ratio Query | Traffic Level Pill | `GET /api/traffic/level` | In-memory cache | None | None | Heatmap / Overlay | `test-control-room-e2e.js`| **IMPLEMENTED** |
 | | Traffic-Aware ETA Penalties | Prediction Card | `prediction.service.js` | `Prediction` | None | Realtime ETA | None | `test-intelligence-pipeline.js` | **IMPLEMENTED** |
-| **GeoAgent AI** | 3-Tier Epistemic Reasoning | `GeoAgentCard.tsx` | `POST /api/geoagent/analyze` | `Decision` | Gemini 2.5 Flash | Socket broadcast | HUD Callout | `test-intelligence-pipeline.js` | **IMPLEMENTED** |
-| | 12 Declarative Tools | Internal Engine | `geoAgent.tools.js` | Multiple | Google GenAI | None | None | `test-intelligence-pipeline.js` | **IMPLEMENTED** |
+| **GeoAgent AI** | 3-Tier Epistemic Reasoning | `GeoAgentCard.tsx` | `POST /api/geoagent/analyze` | `Decision` | OpenRouter / OpenCode | Socket broadcast | HUD Callout | `test-intelligence-pipeline.js` | **IMPLEMENTED** |
+| | 9 Declarative Tools | Internal Engine | `geoAgent.tools.js` | Multiple | Free LLM Loop | None | None | `test-intelligence-pipeline.js` | **IMPLEMENTED** |
 | | Deterministic Fallback Engine | Fallback Banner | `generateFallbackResponse` | None | Fallback Rules | None | None | `test-control-room-e2e.js`| **IMPLEMENTED** |
 | **Decision Engine** | Human-in-the-Loop Action UI | Decision Modal | `decision.service.js` | `Decision` | None | `decision:pending` | Action Prompt | `test-control-room-e2e.js`| **IMPLEMENTED** |
 | | Deterministic Rules Policy | Rules Evaluator | `decision.rules.js` | `Decision` | Advisory Check | None | None | Unit tests | **IMPLEMENTED** |

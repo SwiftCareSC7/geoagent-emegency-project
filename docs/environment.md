@@ -26,12 +26,22 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 
 ---
 
-## 3. GeoAgent AI (Google Gemini)
+## 3. GeoAgent AI (Free Models: OpenRouter / OpenCode Zen)
 
 | Variable | Required? | Default | Purpose | Fallback Behavior |
 |---|---|---|---|---|
-| `GEMINI_API_KEY` | Optional | None | API Key for Google Gemini LLM SDK (`@google/genai`) | If missing or invalid, falls back to deterministic decision engine (`fallback: true`) |
-| `GEMINI_MODEL` | Optional | `gemini-2.5-flash` | Gemini model name for function-calling reasoning | Uses fast multimodal/reasoning flash model |
+| `AI_PROVIDER` | Optional | `auto` | Provider priority: `auto` (OpenRouter, then OpenCode), `openrouter`, or `opencode` | Falls back across models then providers; deterministic fallback if none available |
+| `OPENROUTER_API_KEY` | Optional | None | API Key for OpenRouter (`https://openrouter.ai/api/v1`) | Free models only; verified via live catalog check (`pricing == 0`) |
+| `OPENROUTER_MODEL` | Optional | None | Preferred OpenRouter model ID | If unconfirmed free or absent, auto-selects first confirmed free tool-capable model from catalog |
+| `OPENROUTER_BASE_URL` | Optional | `https://openrouter.ai/api/v1` | Custom endpoint base URL for OpenRouter | — |
+| `OPENCODE_API_KEY` | Optional | None | API Key for OpenCode Zen (`https://opencode.ai/zen/v1`) | Free models only (`-free` suffix verified in catalog) |
+| `OPENCODE_MODEL` | Optional | None | Preferred OpenCode model ID | Auto-selects from catalog |
+| `OPENCODE_BASE_URL` | Optional | `https://opencode.ai/zen/v1` | Custom endpoint base URL for OpenCode | — |
+
+> **Financial & Safety Guards**:
+> - Backend-only: Never prefix AI keys with `NEXT_PUBLIC_`.
+> - Zero-Cost Policy: Calls are strictly guarded with `max_price: { prompt: 0, completion: 0, request: 0 }`. Only catalog-confirmed free models are ever executed.
+> - If all free AI providers fail or are unconfigured, the system automatically uses the deterministic fallback rules without interrupting emergency dispatch operations.
 
 ---
 
@@ -73,7 +83,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 > CARTO provides free browser basemap API keys for development and operational dispatch (up to 5 million tile requests/month) at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey).
 > Set `NEXT_PUBLIC_CARTO_API_KEY` in `.env.local` for local development and in the **Vercel Project Dashboard → Settings → Environment Variables** for production.
 >
-> **Security Rule**: `NEXT_PUBLIC_CARTO_API_KEY` is strictly a public browser client credential for rendering raster map tiles. **Never** prefix backend secrets (`GOOGLE_MAPS_API_KEY`, `GEMINI_API_KEY`, `MONGO_URI`, `JWT_SECRET`) with `NEXT_PUBLIC_`.
+> **Security Rule**: `NEXT_PUBLIC_CARTO_API_KEY` is strictly a public browser client credential for rendering raster map tiles. **Never** prefix backend secrets (`OPENROUTER_API_KEY`, `OPENCODE_API_KEY`, `GOOGLE_MAPS_API_KEY`, `MONGO_URI`, `JWT_SECRET`) with `NEXT_PUBLIC_`.
 
 > **Local Development Note**:
 > If the backend is running on port `5000` (the default in `server/server.js`), configure `NEXT_PUBLIC_API_URL=http://localhost:5000/api` and `NEXT_PUBLIC_SOCKET_URL=http://localhost:5000` in `.env.local` to match. If unconfigured or backend is offline, the frontend gracefully falls back to demonstration data fixtures.

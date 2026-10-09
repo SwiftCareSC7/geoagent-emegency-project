@@ -33,7 +33,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 │  ├── End-to-End Orchestration Layer (Part 11)           │
 │  ├── Authoritative Decision & Dispatch Engine (Part 10) │
 │  ├── Real-Time Push Layer (Part 9 - Socket.IO)          │
-│  ├── GeoAgent AI Advisory Engine (Part 8 - Gemini 2.5)  │
+│  ├── GeoAgent AI Advisory Engine (Part 8 - Free Models) │
 │  ├── Deterministic Intelligence Engine (Part 7)         │
 │  ├── Modular Domain Services (Auth, Vehicles,           │
 │  │   Emergencies, Incidents, Trajectories, Routes)      │
@@ -85,10 +85,10 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 - **Key Files**: `server/modules/deviation/deviation.service.js`, `server/modules/traffic/traffic.service.js`, `server/modules/analysis/analysis.service.js`.
 - **Decisions**: Rolling multi-sample window filters momentary GPS jitter. Speed blending (`Math.max(speed, 5)`) prevents division-by-zero or infinite ETA. Standardized SI units: distance in `meters`, speed in `km/h`, duration in `seconds`, ETA in `minutes`.
 
-### Part 8: GeoAgent AI (Google Gemini 2.5 Flash)
-- **Goal**: Integrate Google Gemini LLM with controlled function calling as an advisory decision-support assistant.
-- **Key Files**: `server/modules/geoagents/geoAgent.service.js`, `server/modules/geoagents/geoAgent.tools.js`, `server/modules/geoagents/geoagent.schemas.js`.
-- **Decisions**: AI operates through controlled read-only tools (`getVehicleSituation`, `getAlternativeRoutes`, `getNearbyAvailableVehicles`, `getNearbyIncidents`). Strict JSON schema validation and prompt injection defense. Deterministic fallback ensures the pipeline never fails if the LLM is unreachable.
+### Part 8: GeoAgent AI (OpenRouter / OpenCode Free-Tier Provider Abstraction)
+- **Goal**: Integrate catalog-confirmed free LLM models (OpenRouter / OpenCode) with controlled tool calling as an advisory decision-support assistant.
+- **Key Files**: `server/modules/geoagents/geoagent.provider.js`, `server/modules/geoagents/geoAgent.service.js`, `server/modules/geoagents/geoAgent.tools.js`, `server/modules/geoagents/geoagent.schemas.js`.
+- **Decisions**: AI operates through controlled read-only tools (`getVehicleSituation`, `getAlternativeRoutes`, `getNearbyAvailableVehicles`, `getNearbyIncidents`). Strict zero-cost financial guards (`max_price: 0`). Strict JSON schema validation and prompt injection defense. Deterministic fallback ensures the pipeline never fails if the LLM is unreachable.
 
 ### Part 9: Real-Time Communication Layer (Socket.IO)
 - **Goal**: Bidirectional, room-isolated live event streaming for fleet tracking, deviation alerts, and operational decisions.
@@ -165,7 +165,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 - **Verification**: 63 / 63 assertions passing in `server/test-emergency-detail-e2e.js`, 0 TypeScript errors (`npx tsc --noEmit`), clean Next.js production build (`npm run build`).
 
 ### Part 16: Real-Time Intelligence Pipeline & Route Candidate Comparison
-- **Goal**: Connect live GPS telemetry, trajectory processing, Google Routes traffic-aware routing, ETA prediction, route candidate comparison ("What if we do nothing?"), structured evidence, Gemini 2.5 Flash advisory tools registry, deterministic decision engine, operator approval, and Socket.IO streaming.
+- **Goal**: Connect live GPS telemetry, trajectory processing, Google Routes traffic-aware routing, ETA prediction, route candidate comparison ("What if we do nothing?"), structured evidence, GeoAgent AI advisory tools registry, deterministic decision engine, operator approval, and Socket.IO streaming.
 - **Key Modules & Files**:
   - `server/modules/routes/providers/googleRoutingProvider.js`: WGS84 coordinate boundary validation, 25-waypoint limit enforcement, `TRAFFIC_AWARE_OPTIMAL` routing preference, polyline decoding, explicit 503 error on missing credentials (no silent mock fallback).
   - `server/modules/routes/routeComparison.service.js`: Deterministic route comparison matrix (`distanceDeltaMeters`, `durationSeconds`, `etaMinutes`, `trafficDelaySeconds`, `timeSavedMinutes`, `whatIfDoNothing`, `whyRouteChanged`).
@@ -260,7 +260,7 @@ Here is the exact step-by-step lifecycle of an emergency mission from intake to 
    Deviation status classified as "DEVIATED" (Stability: STABLE)
 
 6. AI REASONING & ADVISORY RECOMMENDATIONS
-   Gemini AI analyzes the corridor and proposes alternative route via Richmond Road (+2m faster)
+   GeoAgent AI analyzes the corridor and proposes alternative route via Richmond Road (+2m faster)
    Advisory recommendation output: "Recommend reroute to alternative route ALT-02"
 
 7. AUTHORITATIVE DECISION EVALUATION
@@ -311,7 +311,7 @@ Cloud Run Service
 | `GET /api/health/live` | Process alive | None | Liveness probe |
 | `GET /api/health/ready` | Can serve traffic | MongoDB | Readiness probe |
 | `GET /api/health` | Version, uptime, commit | None | Status dashboard |
-| `GET /api/health/providers` | Google, Gemini, MongoDB | All | Ops monitoring |
+| `GET /api/health/providers` | Google, AI Providers, MongoDB | All | Ops monitoring |
 
 ### Cross-Domain Authentication
 
@@ -355,7 +355,7 @@ Prediction Engine (ETA & Delay with Green-Wave Offset)
     ↓
 Route Comparison (Deterministic What-If Matrix)
     ↓
-Gemini Reasoning (Grounded in getCorridorGreenWaveStatus)
+GeoAgent Reasoning (Grounded in getCorridorGreenWaveStatus)
     ↓
 Decision Engine (Deterministic Rules: CORRIDOR_BLOCKED / GREEN_WAVE_ACTIVE)
     ↓
@@ -387,8 +387,8 @@ Control Room (Socket.IO v2x.green_wave.updated + Interactive Map)
    - `prediction.service.js`: Subtracts green-wave clearance time from corridor travel duration and explicitly records `traffic_light_preemption_active` in 3-tier epistemic observed factors.
    - `routeComparison.service.js`: Incorporates corridor green-wave feasibility into deterministic "What if we do nothing?" scenario analysis.
 
-5. **Gemini Grounding & Decision Engine**:
-   - Exposes `getCorridorGreenWaveStatus` tool to Gemini 2.5 Flash.
+5. **GeoAgent Grounding & Decision Engine**:
+   - Exposes `getCorridorGreenWaveStatus` tool to GeoAgent AI.
    - Evaluates authoritative rules `CORRIDOR_BLOCKED` and `GREEN_WAVE_PREEMPTION_ACTIVE` in `decision.rules.js`.
 
 6. **Interactive Leaflet Map & Control Room Wiring**:
@@ -494,10 +494,10 @@ Prove that the entire SwiftCare GeoAgent system works safely, correctly, securel
    - Rejects future timestamps (`> 2 min` ahead of server clock).
    - Filtered GPS jitter and erratic jumps using rolling stability windows.
 
-6. **Gemini Prompt Injection Defense & Transparent AI Fallback**:
+6. **GeoAgent Prompt Injection Defense & Transparent AI Fallback**:
    - Caller/emergency descriptions are sanitized via `sanitizeText` to strip script tags and HTML markup.
    - Adversarial text is strictly segregated under `untrustedCallerDescription` inside a structured JSON payload, with system prompts explicitly instructing the AI to treat it as untrusted data.
-   - When Gemini is offline, the system marks status as `AI_ANALYSIS_UNAVAILABLE` with `fallback: true` rather than faking AI reasoning.
+   - When AI providers are offline or return 401/403/timeout, the system marks status as `AI_ANALYSIS_UNAVAILABLE` with `fallback: true` rather than faking AI reasoning.
 
 7. **Python / V2X Subprocess Resilience**:
    - Fallback V2X engine (`fallbackV2XEngine`) executes within the Node.js process with zero shell execution risk while matching the exact Python schema.
@@ -507,9 +507,9 @@ Prove that the entire SwiftCare GeoAgent system works safely, correctly, securel
    - Atomic database state transitions prevent concurrent double-actions (e.g. race conditions between two operators).
 
 9. **Provider Failure Matrix (Scenarios A through E)**:
-   - Scenario A: Google ✓, Gemini ✓, Python ✓, Mongo ✓ (Nominal operation).
+   - Scenario A: Google ✓, OpenRouter/OpenCode ✓, Python ✓, Mongo ✓ (Nominal operation).
    - Scenario B: Google ✗ (Automatic graceful degradation to mock/cached routes).
-   - Scenario C: Gemini ✗ (Automatic graceful degradation to deterministic rule engine).
+   - Scenario C: AI Provider ✗ (Automatic graceful degradation to deterministic rule engine).
    - Scenario D: Python ✗ (Automatic graceful degradation to in-process JS V2X engine).
    - Scenario E: Mongo ✗ (Readiness probe returns 503; fails fast without silent data corruption).
 
@@ -588,7 +588,7 @@ node server/demo-telemetry-player.js
 ### 1. Leaflet + CARTO Basemap Authentication Repair
 - **Root Cause Diagnosed**: CARTO raster tile endpoints (`https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png`) require an API key parameter (`?key=...` or `?api_key=...`) to avoid rate watermarking ("API KEY REQUIRED").
 - **Fix Implemented**:
-  - Added `NEXT_PUBLIC_CARTO_API_KEY` to public frontend configuration without leaking any backend secrets (`JWT_SECRET`, `MONGO_URI`, `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`).
+  - Added `NEXT_PUBLIC_CARTO_API_KEY` to public frontend configuration without leaking any backend secrets (`JWT_SECRET`, `MONGO_URI`, `OPENROUTER_API_KEY`, `GOOGLE_MAPS_API_KEY`).
   - Added automatic tile error listener `darkTiles.on('tileerror')` to detect dropouts and notify map components.
   - Implemented non-intrusive fallback banner with instant 1-click fallback to OpenStreetMap (`osm`) if CARTO key is missing or tiles fail.
   - Preserved existing high-contrast dark operational styling, subdomains `abcd`, maxZoom 19, and full OSM/CARTO attribution.

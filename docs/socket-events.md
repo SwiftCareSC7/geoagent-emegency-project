@@ -169,7 +169,7 @@ All server-emitted events are authoritative and emitted only after state changes
 
 #### `geoagent.analyzed`
 - **Room**: `control-room`, `emergency:${emergencyId}`
-- **Trigger**: Gemini GeoAgent completes reasoning (`POST /api/geoagent/analyze`)
+- **Trigger**: GeoAgent AI completes reasoning (`POST /api/geoagent/analyze`)
 - **Payload**:
   ```json
   {

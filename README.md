@@ -611,7 +611,7 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 
 | Member | Responsibility | Key Deliverables |
 |---|---|---|
-| **Member 1** | Backend Core & AI (Node.js) | Express server, 13 domain modules (auth → admin), MongoDB models, Gemini 2.5 Flash advisory tools, 7 automated test suites (298 assertions), documentation, security hardening |
+| **Member 1** | Backend Core & AI (Node.js) | Express server, 13 domain modules (auth → admin), MongoDB models, GeoAgent free-model AI provider abstraction (OpenRouter / OpenCode) with zero-cost guards, 7 automated test suites (298 assertions), documentation, security hardening |
 | **Member 2** | Python Spatial Engine & V2X | Routing engine, V2X green-wave scoring, GeoJSON export, Leaflet visualizer, telemetry simulator |
 | **Member 3** | Frontend UI & Interactive Map (Next.js) | Next.js 16 setup, landing page, login/signup, driver dashboard, real Leaflet GIS map with Bengaluru routing & V2X, emergency detail corridor analysis, admin console, design tokens |
 

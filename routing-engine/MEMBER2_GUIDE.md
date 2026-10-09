@@ -66,7 +66,7 @@ You will see:
 The algorithms and concepts prototyped here have been operationalized in the Node.js backend:
 - `deviation.service.js`: Cross-track distance, bearing divergence, and rolling jitter stability window.
 - `routeComparison.service.js`: Candidate alternative scoring and "What if we do nothing?" deterministic delay projection.
-- `geoAgent.tools.js`: Exposes 9 advisory tools to Gemini 2.5 Flash including `getRecentTrajectory` and `getRouteAlternatives`.
+- `geoAgent.tools.js`: Exposes 9 advisory tools to the GeoAgent AI tool loop including `getRecentTrajectory` and `getRouteAlternatives`.
 
 ### 2. For Frontend & Interactive GIS Map (`components/dashboard/real-interactive-map.tsx`)
 Member 2's Bengaluru coordinates, corridor polylines, V2X traffic signals, and Leaflet visualizer have been fully integrated into the Next.js React application as `RealInteractiveMap`, featuring:

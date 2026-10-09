@@ -239,7 +239,7 @@ Fetch real road candidate alternative routes avoiding active corridor blockages.
 ## 7. GeoAgent & Intelligence Endpoints (`/api/geoagent`)
 
 ### POST `/api/geoagent/analyze`
-Triggers Gemini 2.5 Flash operational reasoning with 3-tier epistemic output.
+Triggers GeoAgent free-model LLM operational reasoning (OpenRouter / OpenCode) with 3-tier epistemic output and deterministic fallback.
 - **Request Body**:
 ```json
 {

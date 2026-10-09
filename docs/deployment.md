@@ -21,7 +21,7 @@ Cloud Run (Backend)
    ├── Node.js / Express / Socket.IO
    ├── Google Routes API
    ├── Google Roads API
-   └── Gemini 2.5 Flash
+   └── GeoAgent Free LLM (OpenRouter / OpenCode)
    ↓
 MongoDB Atlas
 
@@ -225,7 +225,7 @@ curl ${SERVICE_URL}/api/health/ready
 # Full health (version, uptime, commit)
 curl ${SERVICE_URL}/api/health
 
-# Provider health (Google, Gemini, MongoDB)
+# Provider health (Google, AI Providers, MongoDB)
 curl ${SERVICE_URL}/api/health/providers
 ```
 
@@ -329,7 +329,7 @@ gcloud run services update-traffic geoagent-backend \
 | Artifact Registry | ~$1–3/month |
 | Vercel (Hobby) | $0 |
 | Google Routes API | Pay per request |
-| Gemini API | Pay per request |
+| OpenRouter / OpenCode (Free Tier) | $0 (enforced via max_price: 0) |
 
 To minimize costs:
 - Use `--min-instances=0` (accept cold starts) instead of `--min-instances=1`

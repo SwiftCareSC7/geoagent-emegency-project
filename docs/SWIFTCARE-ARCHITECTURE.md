@@ -6,7 +6,7 @@ This document provides the authoritative, complete technical architecture and da
 
 ## 1. High-Level System Architecture
 
-SwiftCare GeoAgent is built as a hybrid edge-and-cloud emergency operations platform comprising a Next.js 16 frontend, an Express 4 REST & WebSocket backend, a MongoDB persistent database, a deterministic decision engine, and Google Gemini 2.5 Flash for operational epistemic reasoning.
+SwiftCare GeoAgent is built as a hybrid edge-and-cloud emergency operations platform comprising a Next.js 16 frontend, an Express 4 REST & WebSocket backend, a MongoDB persistent database, a deterministic decision engine, and GeoAgent free-tier LLM provider abstraction (OpenRouter / OpenCode) for operational epistemic reasoning.
 
 ```mermaid
 graph TB
@@ -46,8 +46,8 @@ graph TB
         end
 
         subgraph GenerativeAgent["GeoAgent Reasoning Layer (Advisory)"]
-            GeminiClient["Google GenAI (Gemini 2.5 Flash)"]
-            AgentTools["12 Declarative Tools (geoAgent.tools.js)"]
+            GeoAgentClient["GeoAgent Provider (OpenRouter / OpenCode Free Tier)"]
+            AgentTools["9 Declarative Tools (geoAgent.tools.js)"]
             EpistemicPrompt["3-Tier Epistemic Prompting (Observed, Inferred, Unknown)"]
         end
     end
@@ -174,7 +174,7 @@ flowchart TD
         CheckBackup -->|No| RecAction
     end
 
-    subgraph GeoAgentFlow["Advisory Reasoning (Gemini 2.5 Flash)"]
+    subgraph GeoAgentFlow["Advisory Reasoning (OpenRouter / OpenCode Free Tier)"]
         GeoAgentEngine --> Tools["Tool Calls: getVehicleState, getNearbyIncidents, etc."]
         Tools --> Epistemic["Synthesize 3-Tier Output: OBSERVED, INFERRED, UNKNOWN"]
         Epistemic --> GenAdvice["Advisory Recommendation & 2-sentence Executive Summary"]

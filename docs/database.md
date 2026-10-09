@@ -276,7 +276,7 @@ Planned and alternative navigation paths for emergencies.
 
 ### 2.7 `decisions`
 **Model**: `server/modules/decisions/decision.model.js`  
-Authoritative operational decisions produced by the deterministic Decision Engine, reconciled with Gemini advisory recommendations.
+Authoritative operational decisions produced by the deterministic Decision Engine, reconciled with GeoAgent AI advisory recommendations.
 
 ```javascript
 {
