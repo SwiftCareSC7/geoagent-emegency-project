@@ -5,7 +5,7 @@ import * as incidentService from './incident.service.js';
  */
 export const createIncident = async (req, res, next) => {
   try {
-    const incident = await incidentService.createIncident(req.body, req.user._id);
+    const incident = await incidentService.createIncident(req.body);
     
     res.status(201).json({
       success: true,

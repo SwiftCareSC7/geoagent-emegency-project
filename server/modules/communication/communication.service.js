@@ -21,7 +21,7 @@ class CommunicationService {
    * @param {string} [options.recipientMobile] Optional recipient mobile override
    * @returns {Promise<Object>}
    */
-  async sendEmergencyStatusSms(emergencyId, user, options = {}) {
+  async sendEmergencyStatusSms(emergencyId, options = {}) {
     // 1. Fetch Emergency with assigned vehicle
     const emergency = await Emergency.findOne({ 
       $or: [{ emergencyId }, { _id: emergencyId.match(/^[0-9a-fA-F]{24}$/) ? emergencyId : null }],
@@ -44,35 +44,6 @@ class CommunicationService {
     }
 
     const assignedVehicle = emergency.assignedVehicle;
-
-    // 3. Authorization & RBAC Checks
-    // CONTROL_ROOM and ADMIN have universal operational dispatch privileges.
-    // DRIVER and PARAMEDIC can only send SMS for emergencies assigned to their own vehicle.
-    if (user.role === 'DRIVER' || user.role === 'PARAMEDIC') {
-      const userAssignedVehicleId = user.assignedVehicle || user.vehicleId;
-      const isVehicleMatched = 
-        userAssignedVehicleId && (
-          userAssignedVehicleId.toString() === assignedVehicle._id.toString() ||
-          userAssignedVehicleId === assignedVehicle.vehicleId
-        );
-      
-      // Also match if user's driver contact or name matches vehicle driver details
-      const isDriverMatched = 
-        (user.driverContact && assignedVehicle.driverContact && user.driverContact === assignedVehicle.driverContact) ||
-        (user.name && assignedVehicle.driverName && user.name.toLowerCase() === assignedVehicle.driverName.toLowerCase());
-
-      if (!isVehicleMatched && !isDriverMatched) {
-        const error = new Error('Forbidden: Drivers can only dispatch status SMS for their assigned emergency vehicle');
-        error.status = 403;
-        error.isOperational = true;
-        throw error;
-      }
-    } else if (user.role !== 'ADMIN' && user.role !== 'CONTROL_ROOM') {
-      const error = new Error('Forbidden: Insufficient privileges to send emergency SMS');
-      error.status = 403;
-      error.isOperational = true;
-      throw error;
-    }
 
     // 4. Extract Real Backend Telemetry (No fabrication)
     const vehicleCallsign = assignedVehicle.vehicleId || assignedVehicle.registrationNumber || 'AMB-01';

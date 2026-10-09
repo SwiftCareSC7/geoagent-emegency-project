@@ -9,8 +9,6 @@
  *   Leg 2: Emergency Location -> Hospital Destination (GREEN)
  */
 
-import bcrypt from 'bcryptjs';
-import User from '../auth/user.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Incident from '../incidents/incident.model.js';
@@ -399,46 +397,6 @@ class DemoService {
   }
 
   /**
-   * Ensures standard personnel exist in MongoDB
-   */
-  async ensurePersonnel() {
-    const operatorPassword = await bcrypt.hash(process.env.OPERATOR_PASSWORD, 10);
-    let operator = await User.findOne({ email: 'operator@swiftcare.local' });
-    if (!operator) {
-      operator = await User.create({
-        name: 'Central Control Operator',
-        email: 'operator@swiftcare.local',
-        password: operatorPassword,
-        role: 'CONTROL_ROOM'
-      });
-    }
-
-    const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
-    let admin = await User.findOne({ email: 'admin@swiftcare.local' });
-    if (!admin) {
-      admin = await User.create({
-        name: 'Chief Systems Administrator',
-        email: 'admin@swiftcare.local',
-        password: adminPassword,
-        role: 'ADMIN'
-      });
-    }
-
-    const driverPassword = await bcrypt.hash('Driver123!', 10);
-    let driver = await User.findOne({ email: 'driver@swiftcare.local' });
-    if (!driver) {
-      driver = await User.create({
-        name: 'Ambulance Officer Ramesh',
-        email: 'driver@swiftcare.local',
-        password: driverPassword,
-        role: 'DRIVER'
-      });
-    }
-
-    return { operator, admin, driver };
-  }
-
-  /**
    * Complete reset of demo records
    */
   async resetDemoData() {
@@ -459,7 +417,6 @@ class DemoService {
    */
   async seedDemoScenarios(options = {}) {
     const { clean = true } = options;
-    const { operator, driver } = await this.ensurePersonnel();
 
     if (clean) {
       await this.resetDemoData();
@@ -1001,8 +958,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6483, 12.9582] }, // Manipal
         assignedVehicle: seededVehicles['AMB-01']._id,
         callerContact: '+91 98451 00111',
-        callerName: 'Sunita Murthy',
-        createdBy: operator._id
+        callerName: 'Sunita Murthy'
       },
       {
         emergencyId: 'E-DEMO-002',
@@ -1014,8 +970,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5739, 12.9634] },
         assignedVehicle: seededVehicles['AMB-02']._id,
         callerContact: '+91 98452 00222',
-        callerName: 'Traffic Inspector Hebbal',
-        createdBy: operator._id
+        callerName: 'Traffic Inspector Hebbal'
       },
       {
         emergencyId: 'E-DEMO-003',
@@ -1027,8 +982,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6890, 12.9288] },
         assignedVehicle: seededVehicles['AMB-03']._id,
         callerContact: '+91 98453 00333',
-        callerName: 'Deepa Nair',
-        createdBy: operator._id
+        callerName: 'Deepa Nair'
       },
       {
         emergencyId: 'E-DEMO-004',
@@ -1040,8 +994,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6033, 12.9833] },
         assignedVehicle: seededVehicles['AMB-04']._id,
         callerContact: '+91 98454 00444',
-        callerName: 'Kishore Kumar',
-        createdBy: operator._id
+        callerName: 'Kishore Kumar'
       },
       {
         emergencyId: 'E-DEMO-005',
@@ -1053,8 +1006,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6200, 12.9315] },
         assignedVehicle: seededVehicles['AMB-05']._id,
         callerContact: '+91 98455 00555',
-        callerName: 'Highway Patrol Officer',
-        createdBy: operator._id
+        callerName: 'Highway Patrol Officer'
       },
       {
         emergencyId: 'E-DEMO-006',
@@ -1066,8 +1018,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
         assignedVehicle: seededVehicles['AMB-07']._id,
         callerContact: '+91 98456 00666',
-        callerName: 'Ananya Roy',
-        createdBy: operator._id
+        callerName: 'Ananya Roy'
       },
       {
         emergencyId: 'E-DEMO-007',
@@ -1079,8 +1030,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6200, 12.9315] },
         assignedVehicle: seededVehicles['AMB-09']._id,
         callerContact: '+91 98457 00777',
-        callerName: 'Vikas Rao',
-        createdBy: operator._id
+        callerName: 'Vikas Rao'
       },
       {
         emergencyId: 'E-DEMO-008',
@@ -1092,8 +1042,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6890, 12.9288] },
         assignedVehicle: seededVehicles['AMB-10']._id,
         callerContact: '+91 98458 00888',
-        callerName: 'Factory Safety Officer',
-        createdBy: operator._id
+        callerName: 'Factory Safety Officer'
       },
       {
         emergencyId: 'E-DEMO-009',
@@ -1105,8 +1054,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5739, 12.9634] },
         assignedVehicle: seededVehicles['AMB-11']._id,
         callerContact: '+91 98459 00999',
-        callerName: 'Lakshmi Narayan',
-        createdBy: operator._id
+        callerName: 'Lakshmi Narayan'
       },
       {
         emergencyId: 'E-DEMO-010',
@@ -1118,8 +1066,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5980, 12.8920] },
         assignedVehicle: seededVehicles['AMB-12']._id,
         callerContact: '+91 98460 01010',
-        callerName: 'Dr. Sudhir K',
-        createdBy: operator._id
+        callerName: 'Dr. Sudhir K'
       },
       {
         emergencyId: 'E-DEMO-011',
@@ -1131,8 +1078,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5855, 13.0310] },
         assignedVehicle: seededVehicles['AMB-13']._id,
         callerContact: '+91 98461 01111',
-        callerName: 'Meera Deshpande',
-        createdBy: operator._id
+        callerName: 'Meera Deshpande'
       },
       {
         emergencyId: 'E-DEMO-012',
@@ -1144,8 +1090,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5684, 13.0305] },
         assignedVehicle: seededVehicles['AMB-08']._id,
         callerContact: '+91 98462 01212',
-        callerName: 'Staff Nurse Geeta',
-        createdBy: operator._id
+        callerName: 'Staff Nurse Geeta'
       },
       {
         emergencyId: 'E-DEMO-013',
@@ -1157,8 +1102,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
         assignedVehicle: seededVehicles['AMB-01']._id,
         callerContact: '+91 98463 01313',
-        callerName: 'Site Supervisor Murugan',
-        createdBy: operator._id
+        callerName: 'Site Supervisor Murugan'
       },
       {
         emergencyId: 'E-DEMO-014',
@@ -1170,8 +1114,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6890, 12.9288] },
         assignedVehicle: seededVehicles['AMB-16']._id,
         callerContact: '+91 98464 01414',
-        callerName: 'Raghavan Iyer',
-        createdBy: operator._id
+        callerName: 'Raghavan Iyer'
       },
       {
         emergencyId: 'E-DEMO-015',
@@ -1183,8 +1126,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
         assignedVehicle: seededVehicles['AMB-07']._id,
         callerContact: '+91 98465 01515',
-        callerName: 'Traffic Constable Sarjapur',
-        createdBy: operator._id
+        callerName: 'Traffic Constable Sarjapur'
       },
       {
         emergencyId: 'E-DEMO-016',
@@ -1196,8 +1138,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5684, 13.0305] },
         assignedVehicle: seededVehicles['AMB-13']._id,
         callerContact: '+91 98466 01616',
-        callerName: 'Workshop Manager Anand',
-        createdBy: operator._id
+        callerName: 'Workshop Manager Anand'
       },
       {
         emergencyId: 'E-DEMO-017',
@@ -1209,8 +1150,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5739, 12.9634] },
         assignedVehicle: seededVehicles['AMB-02']._id,
         callerContact: '+91 98467 01717',
-        callerName: 'BMTC Depot In-charge',
-        createdBy: operator._id
+        callerName: 'BMTC Depot In-charge'
       },
       {
         emergencyId: 'E-DEMO-018',
@@ -1222,8 +1162,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6033, 12.9833] },
         assignedVehicle: seededVehicles['AMB-04']._id,
         callerContact: '+91 98468 01818',
-        callerName: 'Dr. Shalini K',
-        createdBy: operator._id
+        callerName: 'Dr. Shalini K'
       },
       {
         emergencyId: 'E-DEMO-019',
@@ -1235,8 +1174,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6890, 12.9288] },
         assignedVehicle: seededVehicles['AMB-10']._id,
         callerContact: '+91 98469 01919',
-        callerName: 'Tech Park Medic',
-        createdBy: operator._id
+        callerName: 'Tech Park Medic'
       },
       {
         emergencyId: 'E-DEMO-020',
@@ -1248,8 +1186,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5906, 13.0560] },
         assignedVehicle: seededVehicles['AMB-02']._id,
         callerContact: '+91 98470 02020',
-        callerName: 'Facility Lead Manyata',
-        createdBy: operator._id
+        callerName: 'Facility Lead Manyata'
       },
       {
         emergencyId: 'E-DEMO-021',
@@ -1261,8 +1198,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5739, 12.9634] },
         assignedVehicle: seededVehicles['AMB-11']._id,
         callerContact: '+91 98471 02121',
-        callerName: 'Family Physician Dr. Varma',
-        createdBy: operator._id
+        callerName: 'Family Physician Dr. Varma'
       },
       {
         emergencyId: 'E-DEMO-022',
@@ -1274,8 +1210,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6200, 12.9315] },
         assignedVehicle: seededVehicles['AMB-05']._id,
         callerContact: '+91 98472 02222',
-        callerName: 'Security Guard BTM',
-        createdBy: operator._id
+        callerName: 'Security Guard BTM'
       },
       {
         emergencyId: 'E-DEMO-023',
@@ -1287,8 +1222,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6483, 12.9582] },
         assignedVehicle: seededVehicles['AMB-01']._id,
         callerContact: '+91 98473 02323',
-        callerName: 'Campus Receptionist EGL',
-        createdBy: operator._id
+        callerName: 'Campus Receptionist EGL'
       },
       {
         emergencyId: 'E-DEMO-024',
@@ -1300,8 +1234,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6033, 12.9833] },
         assignedVehicle: seededVehicles['AMB-04']._id,
         callerContact: '+91 98474 02424',
-        callerName: 'Brigade Rd Resident',
-        createdBy: operator._id
+        callerName: 'Brigade Rd Resident'
       },
       {
         emergencyId: 'E-DEMO-025',
@@ -1313,8 +1246,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6912, 12.8123] },
         assignedVehicle: seededVehicles['AMB-05']._id,
         callerContact: '+91 98475 02525',
-        callerName: 'NH City ER Triage',
-        createdBy: operator._id
+        callerName: 'NH City ER Triage'
       },
       {
         emergencyId: 'E-DEMO-026',
@@ -1326,8 +1258,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5560, 12.9250] },
         assignedVehicle: seededVehicles['AMB-17']._id,
         callerContact: '+91 98476 02626',
-        callerName: 'Dr. Ramesh Bellary',
-        createdBy: operator._id
+        callerName: 'Dr. Ramesh Bellary'
       },
       {
         emergencyId: 'E-DEMO-027',
@@ -1339,8 +1270,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5980, 12.9180] },
         assignedVehicle: seededVehicles['AMB-18']._id,
         callerContact: '+91 98477 02727',
-        callerName: 'Gym Manager Vinod',
-        createdBy: operator._id
+        callerName: 'Gym Manager Vinod'
       },
       {
         emergencyId: 'E-DEMO-028',
@@ -1352,8 +1282,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5739, 12.9634] },
         assignedVehicle: seededVehicles['AMB-19']._id,
         callerContact: '+91 98478 02828',
-        callerName: 'Traffic Constable Vijayanagar',
-        createdBy: operator._id
+        callerName: 'Traffic Constable Vijayanagar'
       },
       {
         emergencyId: 'E-DEMO-029',
@@ -1365,8 +1294,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6480, 13.0180] },
         assignedVehicle: seededVehicles['AMB-20']._id,
         callerContact: '+91 98479 02929',
-        callerName: 'Kammanahalli Clinic Doctor',
-        createdBy: operator._id
+        callerName: 'Kammanahalli Clinic Doctor'
       },
       {
         emergencyId: 'E-DEMO-030',
@@ -1378,8 +1306,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.4950, 12.8950] },
         assignedVehicle: seededVehicles['AMB-21']._id,
         callerContact: '+91 98480 03030',
-        callerName: 'BMRCL Safety Engineer',
-        createdBy: operator._id
+        callerName: 'BMRCL Safety Engineer'
       },
       {
         emergencyId: 'E-DEMO-031',
@@ -1391,8 +1318,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5500, 13.0220] },
         assignedVehicle: seededVehicles['AMB-22']._id,
         callerContact: '+91 98481 03131',
-        callerName: 'Station Superintendent IR',
-        createdBy: operator._id
+        callerName: 'Station Superintendent IR'
       },
       {
         emergencyId: 'E-DEMO-032',
@@ -1404,8 +1330,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6960, 13.0020] },
         assignedVehicle: seededVehicles['AMB-23']._id,
         callerContact: '+91 98482 03232',
-        callerName: 'Fire Officer KR Puram',
-        createdBy: operator._id
+        callerName: 'Fire Officer KR Puram'
       },
       {
         emergencyId: 'E-DEMO-033',
@@ -1417,8 +1342,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6750, 12.9200] },
         assignedVehicle: seededVehicles['AMB-24']._id,
         callerContact: '+91 98483 03333',
-        callerName: 'Sarjapur Patrol',
-        createdBy: operator._id
+        callerName: 'Sarjapur Patrol'
       },
       {
         emergencyId: 'E-DEMO-034',
@@ -1430,8 +1354,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5740, 12.9420] },
         assignedVehicle: seededVehicles['AMB-25']._id,
         callerContact: '+91 98484 03434',
-        callerName: 'Dr. Savitha Murthy',
-        createdBy: operator._id
+        callerName: 'Dr. Savitha Murthy'
       },
       {
         emergencyId: 'E-DEMO-035',
@@ -1443,8 +1366,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6033, 12.9833] },
         assignedVehicle: seededVehicles['AMB-26']._id,
         callerContact: '+91 98485 03535',
-        callerName: 'Resident Coles Road',
-        createdBy: operator._id
+        callerName: 'Resident Coles Road'
       },
       {
         emergencyId: 'E-DEMO-036',
@@ -1456,8 +1378,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6480, 12.9550] },
         assignedVehicle: seededVehicles['AMB-27']._id,
         callerContact: '+91 98486 03636',
-        callerName: 'Traffic Constable Domlur',
-        createdBy: operator._id
+        callerName: 'Traffic Constable Domlur'
       },
       {
         emergencyId: 'E-DEMO-037',
@@ -1469,8 +1390,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5080, 12.9620] },
         assignedVehicle: seededVehicles['AMB-28']._id,
         callerContact: '+91 98487 03737',
-        callerName: 'Factory Owner Nagarbhavi',
-        createdBy: operator._id
+        callerName: 'Factory Owner Nagarbhavi'
       },
       {
         emergencyId: 'E-DEMO-038',
@@ -1482,8 +1402,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6950, 12.9850] },
         assignedVehicle: seededVehicles['AMB-29']._id,
         callerContact: '+91 98488 03838',
-        callerName: 'Dr. Chaitra Rao',
-        createdBy: operator._id
+        callerName: 'Dr. Chaitra Rao'
       },
       {
         emergencyId: 'E-DEMO-039',
@@ -1495,8 +1414,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6400, 13.0100] },
         assignedVehicle: seededVehicles['AMB-30']._id,
         callerContact: '+91 98489 03939',
-        callerName: 'BESCOM Line Inspector',
-        createdBy: operator._id
+        callerName: 'BESCOM Line Inspector'
       },
       {
         emergencyId: 'E-DEMO-040',
@@ -1508,8 +1426,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.5855, 13.0310] },
         assignedVehicle: seededVehicles['AMB-31']._id,
         callerContact: '+91 98490 04040',
-        callerName: 'RT Nagar Clinic Chief',
-        createdBy: operator._id
+        callerName: 'RT Nagar Clinic Chief'
       },
       {
         emergencyId: 'E-DEMO-041',
@@ -1521,8 +1438,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6880, 12.8420] },
         assignedVehicle: seededVehicles['AMB-32']._id,
         callerContact: '+91 98491 04141',
-        callerName: 'Expressway Toll Authority',
-        createdBy: operator._id
+        callerName: 'Expressway Toll Authority'
       },
       {
         emergencyId: 'E-DEMO-042',
@@ -1534,8 +1450,7 @@ class DemoService {
         destination: { type: 'Point', coordinates: [77.6180, 13.0480] },
         assignedVehicle: seededVehicles['AMB-33']._id,
         callerContact: '+91 98492 04242',
-        callerName: 'Manyata Security Desk',
-        createdBy: operator._id
+        callerName: 'Manyata Security Desk'
       }
     ];
 
@@ -1563,8 +1478,7 @@ class DemoService {
         description: 'Overturned commercial truck blocking 2 out of 3 lanes on Intermediate Ring Road near Domlur Flyover.',
         location: { type: 'Point', coordinates: [77.6395, 12.9510] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-001']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-001']._id
       },
       {
         incidentId: 'INC-DEMO-002',
@@ -1574,8 +1488,7 @@ class DemoService {
         description: 'Emergency pipeline excavation and water main burst on Palace Road near Mekhri Circle.',
         location: { type: 'Point', coordinates: [77.5850, 13.0020] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-002']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-002']._id
       },
       {
         incidentId: 'INC-DEMO-003',
@@ -1585,8 +1498,7 @@ class DemoService {
         description: 'Severe 2.4 km gridlock and broken-down BMTC bus at Marathahalli junction underpass.',
         location: { type: 'Point', coordinates: [77.6850, 12.9560] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-003']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-003']._id
       },
       {
         incidentId: 'INC-DEMO-004',
@@ -1596,8 +1508,7 @@ class DemoService {
         description: 'Multi-axle container collision at Central Silk Board junction causing standstill traffic toward Madiwala.',
         location: { type: 'Point', coordinates: [77.6320, 12.9180] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-005']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-005']._id
       },
       {
         incidentId: 'INC-DEMO-005',
@@ -1607,8 +1518,7 @@ class DemoService {
         description: 'Fallen roadside tree branches blocking left corridor lane on Indiranagar 100ft Road.',
         location: { type: 'Point', coordinates: [77.6420, 12.9720] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-006']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-006']._id
       },
       {
         incidentId: 'INC-DEMO-006',
@@ -1618,8 +1528,7 @@ class DemoService {
         description: 'Flash waterlogging and flooded underpass near HSR Layout 14th Main.',
         location: { type: 'Point', coordinates: [77.6380, 12.9130] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-007']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-007']._id
       },
       {
         incidentId: 'INC-DEMO-007',
@@ -1629,8 +1538,7 @@ class DemoService {
         description: 'Broken-down heavy dumper on elevated flyover heading toward Bellandur.',
         location: { type: 'Point', coordinates: [77.6980, 12.9500] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-008']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-008']._id
       },
       {
         incidentId: 'INC-DEMO-008',
@@ -1640,8 +1548,7 @@ class DemoService {
         description: 'Metro line barricade repair on Bannerghatta Road near JP Nagar 3rd Phase.',
         location: { type: 'Point', coordinates: [77.5920, 12.9000] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-010']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-010']._id
       },
       {
         incidentId: 'INC-DEMO-009',
@@ -1651,8 +1558,7 @@ class DemoService {
         description: 'Heavy market festival crowd spillover near Malleshwaram 8th Cross circle.',
         location: { type: 'Point', coordinates: [77.5710, 13.0010] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-012']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-012']._id
       },
       {
         incidentId: 'INC-DEMO-010',
@@ -1662,8 +1568,7 @@ class DemoService {
         description: 'Tin Factory KR Puram expansion work with major lane restriction on highway approach.',
         location: { type: 'Point', coordinates: [77.6750, 12.9980] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-013']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-013']._id
       },
       {
         incidentId: 'INC-DEMO-011',
@@ -1673,8 +1578,7 @@ class DemoService {
         description: 'Bitumen resurfacing on Sarjapur road near Carmelaram railway gate.',
         location: { type: 'Point', coordinates: [77.6900, 12.9150] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-015']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-015']._id
       },
       {
         incidentId: 'INC-DEMO-012',
@@ -1684,8 +1588,7 @@ class DemoService {
         description: 'Overheated passenger auto blocking Hennur service lane.',
         location: { type: 'Point', coordinates: [77.6350, 13.0250] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-018']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-018']._id
       },
       {
         incidentId: 'INC-DEMO-013',
@@ -1695,8 +1598,7 @@ class DemoService {
         description: 'IT corridor shift change congestion along Mahadevapura ring road.',
         location: { type: 'Point', coordinates: [77.6920, 12.9800] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-019']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-019']._id
       },
       {
         incidentId: 'INC-DEMO-014',
@@ -1706,8 +1608,7 @@ class DemoService {
         description: 'Two-car rear end collision near Manyata Tech Park Gate 2.',
         location: { type: 'Point', coordinates: [77.6100, 13.0480] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-020']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-020']._id
       },
       {
         incidentId: 'INC-DEMO-015',
@@ -1717,8 +1618,7 @@ class DemoService {
         description: 'Cleared earlier minor fender bender near Yelahanka bypass.',
         location: { type: 'Point', coordinates: [77.5950, 13.0900] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-004']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-004']._id
       },
       {
         incidentId: 'INC-DEMO-016',
@@ -1728,8 +1628,7 @@ class DemoService {
         description: 'South End Jayanagar arterial lane cleared of temporary delivery van stoppage.',
         location: { type: 'Point', coordinates: [77.5810, 12.9320] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-009']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-009']._id
       },
       {
         incidentId: 'INC-DEMO-017',
@@ -1739,8 +1638,7 @@ class DemoService {
         description: 'Navrang Rajajinagar corridor running smooth with green wave active.',
         location: { type: 'Point', coordinates: [77.5560, 12.9970] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-011']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-011']._id
       },
       {
         incidentId: 'INC-DEMO-018',
@@ -1750,8 +1648,7 @@ class DemoService {
         description: 'Bellandur Green Glen access road clear with optimal vehicle flow.',
         location: { type: 'Point', coordinates: [77.6760, 12.9240] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-014']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-014']._id
       },
       {
         incidentId: 'INC-DEMO-019',
@@ -1761,8 +1658,7 @@ class DemoService {
         description: 'Peenya Industrial Ring Road drain cover installation in progress.',
         location: { type: 'Point', coordinates: [77.5250, 13.0220] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-016']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-016']._id
       },
       {
         incidentId: 'INC-DEMO-020',
@@ -1772,8 +1668,7 @@ class DemoService {
         description: 'Hosur highway clear near Bommasandra industrial gate.',
         location: { type: 'Point', coordinates: [77.6900, 12.8100] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-025']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-025']._id
       },
       {
         incidentId: 'INC-DEMO-021',
@@ -1783,8 +1678,7 @@ class DemoService {
         description: 'Pipeline burst flooding underpass near Banashankari 2nd stage signal.',
         location: { type: 'Point', coordinates: [77.5580, 12.9280] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-026']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-026']._id
       },
       {
         incidentId: 'INC-DEMO-022',
@@ -1794,8 +1688,7 @@ class DemoService {
         description: 'Overturned sand tipper lorry at BTM Udupi Garden signal blocking 2 lanes.',
         location: { type: 'Point', coordinates: [77.6110, 12.9160] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-027']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-027']._id
       },
       {
         incidentId: 'INC-DEMO-023',
@@ -1805,8 +1698,7 @@ class DemoService {
         description: 'Massive standstill on Mysore Road approaching tollgate due to signal outage.',
         location: { type: 'Point', coordinates: [77.5360, 12.9720] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-028']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-028']._id
       },
       {
         incidentId: 'INC-DEMO-024',
@@ -1816,8 +1708,7 @@ class DemoService {
         description: 'Tree branch collapse blocking one lane on Kalyan Nagar Ring Road service lane.',
         location: { type: 'Point', coordinates: [77.6450, 13.0150] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-029']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-029']._id
       },
       {
         incidentId: 'INC-DEMO-025',
@@ -1827,8 +1718,7 @@ class DemoService {
         description: 'Crane deployment for metro pier segment at Kengeri Satellite town road.',
         location: { type: 'Point', coordinates: [77.4880, 12.9120] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-030']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-030']._id
       },
       {
         incidentId: 'INC-DEMO-026',
@@ -1838,8 +1728,7 @@ class DemoService {
         description: 'Broken-down intercity bus near Yeshwanthpur flyover approach.',
         location: { type: 'Point', coordinates: [77.5490, 13.0210] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-031']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-031']._id
       },
       {
         incidentId: 'INC-DEMO-027',
@@ -1849,8 +1738,7 @@ class DemoService {
         description: 'Chemical tanker collision causing hazmat containment perimeter near KR Puram.',
         location: { type: 'Point', coordinates: [77.6970, 13.0030] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-032']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-032']._id
       },
       {
         incidentId: 'INC-DEMO-028',
@@ -1860,8 +1748,7 @@ class DemoService {
         description: 'Choke point on Sarjapur road due to school bus breakdown near Kaikondrahalli.',
         location: { type: 'Point', coordinates: [77.6840, 12.9100] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-033']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-033']._id
       },
       {
         incidentId: 'INC-DEMO-029',
@@ -1871,8 +1758,7 @@ class DemoService {
         description: 'Stormwater drain desilting on Gandhi Bazaar main road Basavanagudi.',
         location: { type: 'Point', coordinates: [77.5730, 12.9410] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-034']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-034']._id
       },
       {
         incidentId: 'INC-DEMO-030',
@@ -1882,8 +1768,7 @@ class DemoService {
         description: 'Religious festival pandal restricting vehicular movement in Fraser Town.',
         location: { type: 'Point', coordinates: [77.6110, 12.9970] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-035']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-035']._id
       },
       {
         incidentId: 'INC-DEMO-031',
@@ -1893,8 +1778,7 @@ class DemoService {
         description: 'Cement mixer stalled on Domlur intermediate ring road flyover ramp.',
         location: { type: 'Point', coordinates: [77.6460, 12.9540] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-036']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-036']._id
       },
       {
         incidentId: 'INC-DEMO-032',
@@ -1904,8 +1788,7 @@ class DemoService {
         description: 'Culvert reconstruction blocking through-traffic on Nagarbhavi main road.',
         location: { type: 'Point', coordinates: [77.5060, 12.9610] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-037']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-037']._id
       },
       {
         incidentId: 'INC-DEMO-033',
@@ -1915,8 +1798,7 @@ class DemoService {
         description: 'Ring road underpass bottleneck near Mahadevapura railway bridge.',
         location: { type: 'Point', coordinates: [77.6940, 12.9830] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-038']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-038']._id
       },
       {
         incidentId: 'INC-DEMO-034',
@@ -1926,8 +1808,7 @@ class DemoService {
         description: 'Optical fiber trenching on Banaswadi 100ft road near sub-registrar office.',
         location: { type: 'Point', coordinates: [77.6390, 13.0090] },
         source: 'AUTOMATED_SYSTEM',
-        emergency: seededEmergencies['E-DEMO-039']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-039']._id
       },
       {
         incidentId: 'INC-DEMO-035',
@@ -1937,8 +1818,7 @@ class DemoService {
         description: 'Auto-rickshaw and bike crash causing queue on RT Nagar main road.',
         location: { type: 'Point', coordinates: [77.5910, 13.0230] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-040']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-040']._id
       },
       {
         incidentId: 'INC-DEMO-036',
@@ -1948,8 +1828,7 @@ class DemoService {
         description: 'Three-vehicle collision on Electronic City expressway flyover descent.',
         location: { type: 'Point', coordinates: [77.6860, 12.8410] },
         source: 'TRAFFIC_POLICE',
-        emergency: seededEmergencies['E-DEMO-041']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-041']._id
       },
       {
         incidentId: 'INC-DEMO-037',
@@ -1959,8 +1838,7 @@ class DemoService {
         description: 'Severe peak hour congestion at Manyata Tech Park Gate 1 signal.',
         location: { type: 'Point', coordinates: [77.6170, 13.0460] },
         source: 'SENSOR',
-        emergency: seededEmergencies['E-DEMO-042']._id,
-        reportedBy: operator._id
+        emergency: seededEmergencies['E-DEMO-042']._id
       },
       {
         incidentId: 'INC-DEMO-038',
@@ -1969,8 +1847,7 @@ class DemoService {
         status: 'ACTIVE',
         description: 'White-topping work on Kumaraswamy Layout 50ft road.',
         location: { type: 'Point', coordinates: [77.5640, 12.9040] },
-        source: 'AUTOMATED_SYSTEM',
-        reportedBy: operator._id
+        source: 'AUTOMATED_SYSTEM'
       },
       {
         incidentId: 'INC-DEMO-039',
@@ -1979,8 +1856,7 @@ class DemoService {
         status: 'RESOLVED',
         description: 'Cleared earlier vehicle stoppage on Brookefield main road.',
         location: { type: 'Point', coordinates: [77.7170, 12.9650] },
-        source: 'TRAFFIC_POLICE',
-        reportedBy: operator._id
+        source: 'TRAFFIC_POLICE'
       },
       {
         incidentId: 'INC-DEMO-040',
@@ -1989,8 +1865,7 @@ class DemoService {
         status: 'RESOLVED',
         description: 'Magadi Road tollgate corridor free-flowing with clear lanes.',
         location: { type: 'Point', coordinates: [77.5440, 12.9770] },
-        source: 'SENSOR',
-        reportedBy: operator._id
+        source: 'SENSOR'
       },
       {
         incidentId: 'INC-DEMO-041',
@@ -1999,8 +1874,7 @@ class DemoService {
         status: 'RESOLVED',
         description: 'Hebbal flyover central spine clear with rapid green wave transit.',
         location: { type: 'Point', coordinates: [77.5930, 13.0360] },
-        source: 'AUTOMATED_SYSTEM',
-        reportedBy: operator._id
+        source: 'AUTOMATED_SYSTEM'
       },
       {
         incidentId: 'INC-DEMO-042',
@@ -2009,8 +1883,7 @@ class DemoService {
         status: 'RESOLVED',
         description: 'Old Airport Road Manipal approach running clear with priority corridor active.',
         location: { type: 'Point', coordinates: [77.6470, 12.9570] },
-        source: 'TRAFFIC_POLICE',
-        reportedBy: operator._id
+        source: 'TRAFFIC_POLICE'
       }
     ];
 
@@ -2139,8 +2012,7 @@ class DemoService {
       routeType: 'PLANNED',
       preference: 'FASTEST',
       status: 'CANCELLED',
-      steps: [...leg001_1.steps, ...leg001_2_congested.steps],
-      createdBy: operator._id
+      steps: [...leg001_1.steps, ...leg001_2_congested.steps]
     });
 
     // Active GeoAgent Recommended Route for DEMO-001 (Bypass on Leg 2)
@@ -2175,8 +2047,7 @@ class DemoService {
         durationSeconds: leg001_2_congested.duration,
         preference: 'FASTEST',
         description: 'Original bottleneck route via Intermediate Ring Rd (+6m delay)'
-      },
-      createdBy: operator._id
+      }
     });
 
     // Scenario corridor mappings for realistic road geometry
@@ -2269,8 +2140,7 @@ class DemoService {
           durationSeconds: activeCorridor.alt.duration + 360,
           preference: 'FASTEST',
           description: `Slower congested corridor (+${scConfig.expectedTimeSavedMinutes || 4} min delay)`
-        } : null,
-        createdBy: operator._id
+        } : null
       });
     }
 
@@ -2328,8 +2198,7 @@ class DemoService {
           steps: defaultCorridor.steps || [
             { maneuver: 'DEPART', instruction: 'Depart scene', distance: 1000, duration: 120 },
             { maneuver: 'ARRIVE', instruction: 'Arrive at hospital', distance: 0, duration: 0 }
-          ],
-          createdBy: operator._id
+          ]
         });
       }
     }

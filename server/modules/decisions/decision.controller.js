@@ -75,7 +75,7 @@ export const approveDecision = async (req, res, next) => {
     const { candidateId } = req.body || {};
     const decision = await decisionService.approveDecision(
       decisionId,
-      req.user._id,
+      null,
       candidateId
     );
 
@@ -98,7 +98,7 @@ export const rejectDecision = async (req, res, next) => {
   try {
     const { decisionId } = req.params;
     const { reason } = req.body || {};
-    const decision = await decisionService.rejectDecision(decisionId, req.user._id, reason);
+    const decision = await decisionService.rejectDecision(decisionId, null, reason);
 
     res.status(200).json({
       success: true,
@@ -120,7 +120,7 @@ export const rejectDecision = async (req, res, next) => {
 export const executeDecision = async (req, res, next) => {
   try {
     const { decisionId } = req.params;
-    const decision = await decisionService.executeDecision(decisionId, req.user._id);
+    const decision = await decisionService.executeDecision(decisionId, null);
 
     res.status(200).json({
       success: true,

@@ -82,16 +82,6 @@ function request(method, path, body = null, headers = {}) {
 async function runTests() {
   console.log('=== SwiftCare GeoAgent — Emergency Detail E2E Test Suite ===\n');
 
-  // Test 1: Authenticate
-  console.log('1. Authentication');
-  const loginRes = await request('POST', '/auth/login', {
-    email: 'operator@swiftcare.local',
-    password: process.env.OPERATOR_PASSWORD,
-  });
-  assert(loginRes.status === 200, 'Login returns 200 OK');
-  assert(loginRes.body.success === true, 'Login response has success: true');
-  assert(sessionCookie.length > 0, 'Received session cookie');
-
   // Test 2: Emergency Retrieval
   console.log('\n2. Emergency Retrieval (/api/emergencies/:id)');
   const emgRes = await request('GET', '/emergencies/EMG-2026-001');

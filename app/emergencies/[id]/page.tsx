@@ -1,7 +1,6 @@
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { EmergencyDetailView } from '@/components/emergency-detail/emergency-detail-view'
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'
 
@@ -14,7 +13,7 @@ export default async function EmergencyDetailPage({ params }: EmergencyDetailPag
   const decodedId = decodeURIComponent(id)
 
   return (
-    <ProtectedRoute allowedRoles={['CONTROL_ROOM', 'ADMIN']}>
+    <>
       <div className="min-h-screen bg-background flex flex-col">
         <DashboardTopbar
           ambulanceId="CONTROL-CENTER"
@@ -26,6 +25,6 @@ export default async function EmergencyDetailPage({ params }: EmergencyDetailPag
           <EmergencyDetailView emergencyId={decodedId} />
         </main>
       </div>
-    </ProtectedRoute>
+    </>
   )
 }

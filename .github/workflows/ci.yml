@@ -91,15 +91,12 @@ jobs:
           node server/test-db-safety.js
           node server/test-telemetry-retention.js
 
-      - name: Run Backend Auth & RBAC Security Tests
+      - name: Run Open-Access API & Real-Time Tests (no authentication)
         env:
           MONGO_URI: mongodb://127.0.0.1:27017/geoagent-emergency-test
-          JWT_SECRET: test-jwt-secret-for-ci-security-testing-only-12345
           DISABLE_RATE_LIMITS: "true"
           PORT: 5001
         run: |
-          # Throwaway fixture passwords, generated per run (never committed)
-          for v in ADMIN OPERATOR DRIVER PARAMEDIC; do export ${v}_PASSWORD="$(openssl rand -hex 12)Aa1!"; done
           # Start the backend server in background
           node server/server.js &
           SERVER_PID=$!
@@ -126,18 +123,13 @@ jobs:
             exit 1
           fi
 
-          # Provision required test users in test database
-          node server/scripts/provision-users.js
-
           # Run test suites against live server
-          node server/test-auth-rbac-complete.js
-          node server/test-targeted-rbac-socket.js
-          node server/test-auth-fallback-security.js
+          node server/test-no-auth.js
+          node server/test-admin-e2e.js
 
       - name: Run Navigation Engine & Emergency Lifecycle Tests
         env:
           MONGO_URI: mongodb://127.0.0.1:27017/geoagent-emergency-test
-          JWT_SECRET: test-jwt-secret-for-ci-security-testing-only-12345
         run: |
           node server/test-google-osrm-routing.js
           node server/test-navigation-engine.js

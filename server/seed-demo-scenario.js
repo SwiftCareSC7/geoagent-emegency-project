@@ -10,11 +10,9 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import User from './modules/auth/user.model.js';
 import Vehicle from './modules/vehicles/vehicle.model.js';
 import Emergency from './modules/emergencies/emergency.model.js';
 import Incident from './modules/incidents/incident.model.js';
@@ -63,36 +61,6 @@ export async function seedDemoScenario(options = {}) {
     console.log('[Clean] Previous demo records purged cleanly.');
   }
 
-  // 2. Ensure Demo Users
-  console.log('\n[1/6] Provisioning Demo Personnel...');
-  const opPasswordHash = await bcrypt.hash(process.env.OPERATOR_PASSWORD, 10);
-  let operator = await User.findOne({ email: 'operator@swiftcare.local' });
-  if (!operator) {
-    operator = await User.create({
-      name: 'Central Control Operator',
-      email: 'operator@swiftcare.local',
-      password: opPasswordHash,
-      role: 'CONTROL_ROOM',
-    });
-    console.log('  ✓ Created Demo Operator: operator@swiftcare.local');
-  } else {
-    console.log('  ✓ Found existing Demo Operator: operator@swiftcare.local');
-  }
-
-  const adminPasswordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
-  let admin = await User.findOne({ email: 'admin@swiftcare.local' });
-  if (!admin) {
-    admin = await User.create({
-      name: 'Chief Systems Administrator',
-      email: 'admin@swiftcare.local',
-      password: adminPasswordHash,
-      role: 'ADMIN',
-    });
-    console.log('  ✓ Created Demo Admin: admin@swiftcare.local');
-  } else {
-    console.log('  ✓ Found existing Demo Admin: admin@swiftcare.local');
-  }
-
   // 3. Demo Vehicle: AMB-DEMO-01
   console.log('\n[2/6] Provisioning Demo Vehicle AMB-DEMO-01...');
   let vehicle = await Vehicle.findOne({ vehicleId: 'AMB-DEMO-01' });
@@ -138,7 +106,6 @@ export async function seedDemoScenario(options = {}) {
         coordinates: [77.6483, 12.9582], // Manipal Hospital HAL
       },
       assignedVehicle: vehicle._id,
-      createdBy: operator._id,
       isDeleted: false,
     });
     console.log('  ✓ Created Emergency E-DEMO-001 (Priority: CRITICAL, Type: MEDICAL)');
@@ -174,7 +141,6 @@ export async function seedDemoScenario(options = {}) {
       },
       polyline: mgCorridor.polyline,
       steps: mgCorridor.steps,
-      createdBy: operator._id,
     });
     console.log(`  ✓ Created Primary Corridor Route: ROUTE-DEMO-01 (${mgCorridor.coordinates.length} authentic road points)`);
   } else {
@@ -206,7 +172,6 @@ export async function seedDemoScenario(options = {}) {
       },
       polyline: mgAltCorridor.polyline,
       steps: mgAltCorridor.steps,
-      createdBy: operator._id,
     });
     console.log(`  ✓ Created Alternative Corridor Bypass: ROUTE-DEMO-ALT (${mgAltCorridor.coordinates.length} authentic road points)`);
   } else {
@@ -233,7 +198,6 @@ export async function seedDemoScenario(options = {}) {
         type: 'Point',
         coordinates: [77.6180, 12.9690], // Directly on planned corridor
       },
-      reportedBy: operator._id,
       isDeleted: false,
     });
     console.log('  ✓ Created Road Incident: INC-DEMO-01 (Trinity Overpass Bottleneck)');
@@ -257,9 +221,6 @@ export async function seedDemoScenario(options = {}) {
 
   console.log('\n================================================================');
   console.log('DEMO SEEDING COMPLETE');
-  console.log('Available Credentials:');
-  console.log('  Operator: operator@swiftcare.local / (value of OPERATOR_PASSWORD env)');
-  console.log('  Admin:    admin@swiftcare.local    / (value of ADMIN_PASSWORD env)');
   console.log('Active Demo Mission:');
   console.log(`  Emergency ID: ${emergency.emergencyId}`);
   console.log(`  Vehicle ID:   ${vehicle.vehicleId}`);
@@ -267,8 +228,6 @@ export async function seedDemoScenario(options = {}) {
   console.log('================================================================\n');
 
   return {
-    operator,
-    admin,
     vehicle,
     emergency,
     primaryRoute,

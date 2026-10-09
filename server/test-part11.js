@@ -1,8 +1,6 @@
 import mongoose from 'mongoose';
 import http from 'http';
 import express from 'express';
-import cookieParser from 'cookie-parser';
-import User from './modules/auth/user.model.js';
 import Vehicle from './modules/vehicles/vehicle.model.js';
 import Emergency from './modules/emergencies/emergency.model.js';
 import Incident from './modules/incidents/incident.model.js';
@@ -12,19 +10,16 @@ import Decision from './modules/decisions/decision.model.js';
 import orchestrationService from './modules/orchestration/orchestration.service.js';
 import orchestrationRoutes from './modules/orchestration/orchestration.routes.js';
 import realtimeService from './modules/realtime/realtime.service.js';
-import { generateToken } from './modules/auth/jwt.utils.js';
 
 console.log('=== RUNNING PART 11 FULL BACKEND INTEGRATION & ORCHESTRATION TESTS ===\n');
 
 // 1. Connect to isolated in-memory or test database
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_for_part11_orchestration';
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geoagent-emergency-test';
 await mongoose.connect(MONGO_URI);
 console.log(`Connected to MongoDB: ${MONGO_URI}`);
 
 
 // Clean collections before test run
-await User.deleteMany({});
 await Vehicle.deleteMany({});
 await Emergency.deleteMany({});
 await Incident.deleteMany({});
@@ -35,21 +30,11 @@ await Decision.deleteMany({});
 // 2. Setup test Express app with Socket.IO
 const app = express();
 app.use(express.json());
-app.use(cookieParser());
 app.use('/api/orchestration', orchestrationRoutes);
 
 const httpServer = http.createServer(app);
 realtimeService.init(httpServer);
 
-// Create test operator user
-const operator = new User({
-  name: 'Orchestration Operator',
-  email: 'operator@geoagent.test',
-  password: 'Password123!',
-  role: 'CONTROL_ROOM'
-});
-await operator.save();
-const operatorToken = generateToken(operator._id);
 
 
 // 3. Test 1: Full Happy Path End-to-End Workflow
@@ -72,8 +57,7 @@ const testEmergency = new Emergency({
   status: 'DISPATCHED',
   location: { type: 'Point', coordinates: [77.5946, 12.9716] },
   destination: { type: 'Point', coordinates: [77.62, 12.935] },
-  assignedVehicle: testVehicle._id,
-  createdBy: operator._id
+  assignedVehicle: testVehicle._id
 });
 await testEmergency.save();
 
@@ -98,8 +82,7 @@ const testRoute = new Route({
   duration: 600, // 10 minutes
   provider: 'MOCK',
   routeType: 'PLANNED',
-  status: 'ACTIVE',
-  createdBy: operator._id
+  status: 'ACTIVE'
 });
 await testRoute.save();
 
@@ -122,8 +105,7 @@ const testIncident = new Incident({
   severity: 'HIGH',
   status: 'ACTIVE',
   location: { type: 'Point', coordinates: [77.6025, 12.9602] },
-  description: 'Multi-vehicle collision blocking two lanes',
-  reportedBy: operator._id
+  description: 'Multi-vehicle collision blocking two lanes'
 });
 await testIncident.save();
 
@@ -166,8 +148,7 @@ const unassignedEmergency = new Emergency({
   type: 'FIRE',
   priority: 'MEDIUM',
   status: 'PENDING',
-  location: { type: 'Point', coordinates: [77.5946, 12.9716] },
-  createdBy: operator._id
+  location: { type: 'Point', coordinates: [77.5946, 12.9716] }
 });
 await unassignedEmergency.save();
 
@@ -194,8 +175,7 @@ const noRouteEmergency = new Emergency({
   priority: 'LOW',
   status: 'DISPATCHED',
   location: { type: 'Point', coordinates: [77.5946, 12.9716] },
-  assignedVehicle: noRouteVehicle._id,
-  createdBy: operator._id
+  assignedVehicle: noRouteVehicle._id
 });
 await noRouteEmergency.save();
 
@@ -220,8 +200,7 @@ const testRoute2 = new Route({
   distance: 3000,
   duration: 400,
   provider: 'MOCK',
-  status: 'ACTIVE',
-  createdBy: operator._id
+  status: 'ACTIVE'
 });
 await testRoute2.save();
 
@@ -232,19 +211,7 @@ if (noTrajectoryResult.workflowStatus !== 'PARTIAL' || noTrajectoryResult.reason
 }
 
 // 5. Test 3: Security & Operational Input Tampering
-console.log('\n3. Testing Security, Authorization, and Input Tampering...');
-
-// 3a. Missing Auth Token -> 401
-const unauthRes = await fetch('http://localhost:53129/api/orchestration/emergencies/EMG-1001/analyze', {
-  method: 'POST'
-}).catch(() => null);
-
-// Test via direct route invocation / mock request
-const mockReqUnauth = {
-  params: { emergencyId: 'EMG-1001' },
-  headers: {},
-  cookies: {}
-};
+console.log('\n3. Testing Input Tampering...');
 
 // 3b. Forbidden Operational Inputs Tampering -> 400
 import { validateOrchestrationRequest } from './modules/orchestration/orchestration.validation.js';

@@ -145,7 +145,6 @@ const decisionSchema = new mongoose.Schema(
 
     approvedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
       default: null
     },
 
@@ -156,7 +155,6 @@ const decisionSchema = new mongoose.Schema(
 
     rejectedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
       default: null
     },
 

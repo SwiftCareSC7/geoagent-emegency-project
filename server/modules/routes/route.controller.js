@@ -48,9 +48,7 @@ export const calculateRoute = async (req, res, next) => {
 export const createRoute = async (req, res, next) => {
   try {
     const routeData = req.body;
-    const userId = req.user._id;
-
-    const route = await routeService.createRoute(routeData, userId);
+    const route = await routeService.createRoute(routeData);
 
     res.status(201).json({
       success: true,
@@ -221,9 +219,7 @@ export const acceptReroute = async (req, res, next) => {
   try {
     const { routeId } = req.params;
     const { decisionId } = req.body || {};
-    const userId = req.user._id;
-
-    const route = await decisionService.executeRerouteForRoute(routeId, userId, decisionId);
+    const route = await decisionService.executeRerouteForRoute(routeId, null, decisionId);
 
     res.status(200).json({
       success: true,

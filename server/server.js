@@ -5,10 +5,8 @@ import dotenv from 'dotenv';
 
 import cors from 'cors';
 import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 import { errorHandler, notFoundHandler } from './shared/middleware/errorHandler.js';
-import authRoutes from './modules/auth/auth.routes.js';
 import vehicleRoutes from './modules/vehicles/vehicle.routes.js';
 import emergencyRoutes from './modules/emergencies/emergency.routes.js';
 import incidentRoutes from './modules/incidents/incident.routes.js';
@@ -37,7 +35,7 @@ dotenv.config();
 // --- Environment Validation ---
 const validateEnvironment = () => {
   const env = process.env.NODE_ENV || 'development';
-  const required = ['JWT_SECRET', 'MONGO_URI'];
+  const required = ['MONGO_URI'];
   const missing = required.filter((v) => !process.env[v]);
 
   if (env === 'production' && missing.length > 0) {
@@ -108,8 +106,6 @@ app.use(cors(corsOptions));
 // Parse incoming JSON requests safely
 app.use(express.json());
 
-// Parse HTTP-only cookies
-app.use(cookieParser());
 
 
 // --- Health & Observability Routes ---
@@ -177,7 +173,6 @@ app.get('/api/health/providers', async (req, res) => {
 // --- Domain Routes ---
 
 // Routes
-app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/emergencies', emergencyRoutes);
 app.use('/api/incidents', incidentRoutes);

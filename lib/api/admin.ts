@@ -5,7 +5,6 @@
  *   GET /api/admin/stats          — Real system counts and recent activity
  *   GET /api/admin/health         — Live database ping latency & connection state
  *   GET /api/admin/providers      — External provider statuses
- *   GET /api/admin/users          — Paginated, sanitized users (no passwords)
  *   GET /api/admin/vehicles       — Paginated vehicles
  *   GET /api/admin/emergencies    — Paginated emergencies
  *   GET /api/admin/incidents      — Paginated incidents
@@ -22,10 +21,6 @@ import type {
   AdminSystemHealthSummary,
   AdminPaginatedResponse,
   AdminQueryParams,
-  User,
-  UserRole,
-  UserStatus,
-  Workspace,
   Vehicle,
   Emergency,
   Incident,
@@ -50,35 +45,6 @@ export const adminApi = {
     return get<{ success: boolean; data: AdminSystemHealthSummary }>('/admin/providers')
   },
 
-  /** List users (sanitized, password hashes never returned) */
-  getUsers(params?: AdminQueryParams): Promise<AdminPaginatedResponse<User>> {
-    return get<AdminPaginatedResponse<User>>('/admin/users', params)
-  },
-
-  /** Update user status (APPROVED, SUSPENDED, PENDING) */
-  updateUserStatus(userId: string, status: UserStatus): Promise<{ success: boolean; message: string; data: User }> {
-    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/status`, { status })
-  },
-
-  /** Update user role and optional vehicle assignment */
-  updateUserRole(userId: string, data: { role?: UserRole; permittedWorkspaces?: Workspace[]; assignedVehicleId?: string }): Promise<{ success: boolean; message: string; data: User }> {
-    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/role`, data)
-  },
-
-  /** Approve pending user registration with optional role and workspace assignments */
-  approveUser(userId: string, data?: { role?: UserRole; permittedWorkspaces?: Workspace[]; assignedVehicleId?: string }): Promise<{ success: boolean; message: string; data: User }> {
-    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/approve`, data || {})
-  },
-
-  /** Reject user registration */
-  rejectUser(userId: string): Promise<{ success: boolean; message: string; data: User }> {
-    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/reject`)
-  },
-
-  /** Suspend user account */
-  suspendUser(userId: string): Promise<{ success: boolean; message: string; data: User }> {
-    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/suspend`)
-  },
 
   /** List vehicles with pagination & filtering */
   getVehicles(params?: AdminQueryParams): Promise<AdminPaginatedResponse<Vehicle>> {

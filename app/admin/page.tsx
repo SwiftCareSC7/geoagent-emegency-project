@@ -1,18 +1,16 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'
 import { AdminOverview } from '@/components/admin/admin-overview'
 import { AdminDatabaseExplorer } from '@/components/admin/admin-database-explorer'
-import { AdminUserManagement } from '@/components/admin/admin-user-management'
-import { Shield, Activity, Database, Users, Terminal } from 'lucide-react'
+import { Shield, Activity, Database, Terminal } from 'lucide-react'
 
 export default function AdminPage() {
-  const [activeSection, setActiveSection] = useState<'overview' | 'explorer' | 'users'>('overview')
+  const [activeSection, setActiveSection] = useState<'overview' | 'explorer'>('overview')
 
   return (
-    <ProtectedRoute allowedRoles={['ADMIN']}>
+    <>
       <div className="min-h-screen bg-background text-foreground flex flex-col">
         {/* Top bar with authenticated admin user info */}
         <DashboardTopbar />
@@ -53,17 +51,6 @@ export default function AdminPage() {
                 System Overview
               </button>
               <button
-                onClick={() => setActiveSection('users')}
-                className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                  activeSection === 'users'
-                    ? 'bg-primary text-primary-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Users className="size-3.5" />
-                Personnel & Access
-              </button>
-              <button
                 onClick={() => setActiveSection('explorer')}
                 className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
                   activeSection === 'explorer'
@@ -80,7 +67,6 @@ export default function AdminPage() {
           {/* Section View */}
           {activeSection === 'overview' && <AdminOverview />}
           {activeSection === 'explorer' && <AdminDatabaseExplorer />}
-          {activeSection === 'users' && <AdminUserManagement />}
 
           {/* Safe Observability Notice */}
           <footer className="mt-12 rounded-xl border border-border/30 bg-muted/10 p-4 text-center text-xs text-muted-foreground">
@@ -95,6 +81,6 @@ export default function AdminPage() {
           </footer>
         </main>
       </div>
-    </ProtectedRoute>
+    </>
   )
 }

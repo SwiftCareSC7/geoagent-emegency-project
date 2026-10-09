@@ -2,7 +2,6 @@
  * SwiftCare GeoAgent — Real-Time Socket.IO Client
  *
  * Provides a managed singleton connection to the Socket.IO server:
- * - Cookie session authentication (withCredentials: true)
  * - Automatic reconnection with exponential backoff
  * - Event envelope unwrapping
  * - Room subscription management
@@ -65,7 +64,6 @@ export function getSocket(): Socket {
   if (!socketInstance) {
     const targetUrl = getSocketUrl();
     socketInstance = io(targetUrl, {
-      withCredentials: true,
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,

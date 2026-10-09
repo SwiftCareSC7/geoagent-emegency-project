@@ -24,13 +24,12 @@ const generateIncidentId = async () => {
 /**
  * Create a new incident
  */
-export const createIncident = async (incidentData, userId) => {
+export const createIncident = async (incidentData) => {
   const incidentId = await generateIncidentId();
 
   const newIncident = new Incident({
     ...incidentData,
     incidentId,
-    reportedBy: userId,
     status: 'ACTIVE',
     isDeleted: false
   });
@@ -73,7 +72,6 @@ export const getIncidents = async (filters = {}) => {
  */
 export const getIncidentById = async (incidentId) => {
   const incident = await Incident.findOne({ incidentId, isDeleted: false })
-    .populate('reportedBy', 'name email')
     .populate('emergency', 'emergencyId status');
     
   if (!incident) {

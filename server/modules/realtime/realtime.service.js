@@ -1,7 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { REALTIME_EVENTS, REALTIME_ROOMS } from './realtime.constants.js';
 import { createEventEnvelope } from './realtime.events.js';
-import { socketAuthMiddleware, registerSocketHandlers } from './realtime.handlers.js';
+import { registerSocketHandlers } from './realtime.handlers.js';
 
 class RealtimeService {
   constructor() {
@@ -41,9 +41,6 @@ class RealtimeService {
       pingTimeout: 20000,
       pingInterval: 25000
     });
-
-    // 1. Handshake Authentication Middleware
-    this.io.use(socketAuthMiddleware);
 
     // 2. Connection event
     this.io.on('connection', (socket) => {

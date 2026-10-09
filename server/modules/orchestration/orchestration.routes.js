@@ -1,13 +1,9 @@
 import express from 'express';
-import { protect } from '../auth/auth.middleware.js';
-import { requireRole } from '../../shared/middleware/roleMiddleware.js';
 import { validateOrchestrationRequest } from './orchestration.validation.js';
 import { analyzeEmergencyWorkflow } from './orchestration.controller.js';
 
 const router = express.Router();
 
-// Apply authentication to all orchestration routes
-router.use(protect);
 
 /**
  * @route   POST /api/orchestration/emergencies/:emergencyId/analyze
@@ -16,7 +12,6 @@ router.use(protect);
  */
 router.post(
   '/emergencies/:emergencyId/analyze',
-  requireRole('CONTROL_ROOM', 'ADMIN'),
   validateOrchestrationRequest,
   analyzeEmergencyWorkflow
 );

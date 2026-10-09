@@ -57,9 +57,3 @@ playwright-report/
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
-
-# Local SQLite auth database
-/data/
-*.db
-*.db-wal
-*.db-shm

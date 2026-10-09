@@ -11,7 +11,6 @@ import { DiffHeader } from '@/components/diff/DiffHeader'
 import { DiffTimeline } from '@/components/diff/DiffTimeline'
 import { DiffTacticalHUD } from '@/components/diff/DiffTacticalHUD'
 import type { DiffMapHandle } from '@/components/diff/DiffMap'
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 // Dynamically import Leaflet map component with SSR disabled
 const DiffMap = dynamic(
@@ -134,7 +133,7 @@ export default function DiffScenarioPage() {
   }, [handleTogglePlay, handleReset, handleStepForward])
 
   return (
-    <ProtectedRoute allowedRoles={['CONTROL_ROOM', 'ADMIN']}>
+    <>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground antialiased select-none">
         {/* Top Header */}
         <DiffHeader
@@ -178,6 +177,6 @@ export default function DiffScenarioPage() {
           onFocusMilestone={handleFocusMilestone}
         />
       </div>
-    </ProtectedRoute>
+    </>
   )
 }

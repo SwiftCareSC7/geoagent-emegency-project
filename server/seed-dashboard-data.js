@@ -11,9 +11,7 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
 
-import User from './modules/auth/user.model.js';
 import Vehicle from './modules/vehicles/vehicle.model.js';
 import Emergency from './modules/emergencies/emergency.model.js';
 import Incident from './modules/incidents/incident.model.js';
@@ -45,21 +43,6 @@ async function seed() {
     await Incident.deleteMany({});
     await Route.deleteMany({});
     await Trajectory.deleteMany({});
-  }
-
-  // 1. Ensure Operator User exists for createdBy / reportedBy references
-  let operator = await User.findOne({ email: 'operator@swiftcare.local' });
-  if (!operator) {
-    console.log('[Seed] Creating demo operator: operator@swiftcare.local');
-    const hashedPassword = await bcrypt.hash(process.env.OPERATOR_PASSWORD, 10);
-    operator = await User.create({
-      name: 'Central Control Operator',
-      email: 'operator@swiftcare.local',
-      password: hashedPassword,
-      role: 'CONTROL_ROOM',
-    });
-  } else {
-    console.log(`[Seed] Found existing operator: ${operator.email}`);
   }
 
   // 2. Seed Vehicles
@@ -152,7 +135,6 @@ async function seed() {
         coordinates: [73.8742, 18.5312],
       },
       assignedVehicle: vehicleDocs['AMB-102']?._id || null,
-      createdBy: operator._id,
     },
     {
       emergencyId: 'EMG-2026-002',
@@ -171,7 +153,6 @@ async function seed() {
         coordinates: [73.8742, 18.5312],
       },
       assignedVehicle: vehicleDocs['AMB-103']?._id || null,
-      createdBy: operator._id,
     },
     {
       emergencyId: 'EMG-2026-003',
@@ -187,7 +168,6 @@ async function seed() {
       },
       destination: null,
       assignedVehicle: null,
-      createdBy: operator._id,
     },
     {
       emergencyId: 'EMG-2026-004',
@@ -206,7 +186,6 @@ async function seed() {
         coordinates: [73.8688, 18.5284],
       },
       assignedVehicle: vehicleDocs['AMB-101']?._id || null,
-      createdBy: operator._id,
     },
   ];
 
@@ -235,7 +214,6 @@ async function seed() {
         coordinates: [73.8298, 18.5342],
       },
       source: 'TRAFFIC_POLICE',
-      reportedBy: operator._id,
     },
     {
       incidentId: 'INC-2026-002',
@@ -248,7 +226,6 @@ async function seed() {
         coordinates: [73.8267, 18.5412],
       },
       source: 'AUTOMATED_SYSTEM',
-      reportedBy: operator._id,
     },
     {
       incidentId: 'INC-2026-003',
@@ -261,7 +238,6 @@ async function seed() {
         coordinates: [73.8395, 18.5167],
       },
       source: 'SENSOR',
-      reportedBy: operator._id,
     },
   ];
 
@@ -307,7 +283,6 @@ async function seed() {
       provider: 'MOCK',
       routeType: 'PLANNED',
       status: 'ACTIVE',
-      createdBy: operator._id,
     },
     {
       routeId: 'ROUTE-2026-002',
@@ -335,7 +310,6 @@ async function seed() {
       provider: 'MOCK',
       routeType: 'PLANNED',
       status: 'ACTIVE',
-      createdBy: operator._id,
     },
   ];
 

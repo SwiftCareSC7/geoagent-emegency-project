@@ -1,14 +1,13 @@
 'use client'
 
-import { LogOut, Navigation, Shield, Siren, UserRound, Menu, X, HeartPulse, GitCompare } from 'lucide-react'
+import { Navigation, Shield, Siren, UserRound, Menu, X, HeartPulse, GitCompare } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import React, { useState, useEffect } from 'react'
 
 import { BrandLogo } from '@/components/brand-logo'
 import { ThemeToggleCompact } from '@/components/theme-toggle'
-import { useAuth } from '@/lib/auth/context'
-import { getAuthorizedNavItems } from '@/lib/auth/roles'
+import { ALL_NAV_ITEMS } from '@/lib/nav-items'
 import { cn } from '@/lib/utils'
 
 interface DashboardTopbarProps {
@@ -26,10 +25,7 @@ export function DashboardTopbar({
   lastRefreshed = '',
   driverMode = false,
 }: DashboardTopbarProps = {}) {
-  const router = useRouter()
   const pathname = usePathname()
-  const { user, logout } = useAuth()
-  const [loggingOut, setLoggingOut] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
@@ -37,21 +33,8 @@ export function DashboardTopbar({
     setMounted(true)
   }, [])
 
-  const handleLogout = async () => {
-    setLoggingOut(true)
-    try {
-      await logout()
-      router.push('/')
-    } catch {
-      router.push('/')
-    } finally {
-      setLoggingOut(false)
-    }
-  }
-
-  const displayName = mounted && user?.name ? user.name : driverName
-  const userRole = mounted && user?.role ? user.role : 'DRIVER'
-  const navItems = mounted ? getAuthorizedNavItems(user) : []
+  const displayName = driverName
+  const navItems = ALL_NAV_ITEMS
 
   return (
     <header className="border-b border-border bg-card/95 text-foreground backdrop-blur-md transition-colors">
@@ -153,10 +136,6 @@ export function DashboardTopbar({
               <div className="flex items-center gap-1.5 text-[11px]">
                 <UserRound className="size-3.5 text-muted-foreground" />
                 <span suppressHydrationWarning className="text-foreground font-medium">{displayName}</span>
-                <span suppressHydrationWarning className="inline-flex items-center gap-0.5 rounded bg-muted border border-border px-1.5 py-0.5 text-[9px] font-mono font-bold text-foreground uppercase tracking-wider">
-                  <Shield className="size-2.5" />
-                  {userRole}
-                </span>
               </div>
             </div>
 
@@ -166,18 +145,6 @@ export function DashboardTopbar({
                 {lastRefreshed}
               </span>
             )}
-
-            {/* Logout */}
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
-              aria-label="Log out"
-            >
-              <LogOut className="size-3" />
-              <span>{loggingOut ? 'Exiting...' : 'Log out'}</span>
-            </button>
           </div>
 
           {/* Mobile: Theme Toggle + Hamburger Menu */}
@@ -203,9 +170,6 @@ export function DashboardTopbar({
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/60 border border-border">
               <UserRound className="size-4 text-muted-foreground" />
               <span suppressHydrationWarning className="text-sm font-medium text-foreground">{displayName}</span>
-              <span suppressHydrationWarning className="inline-flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[9px] font-bold text-foreground border border-border uppercase">
-                {userRole}
-              </span>
               {emergencyActive ? (
                 <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-400 border border-red-500/30">
                   <Siren className="size-2.5" />
@@ -256,17 +220,6 @@ export function DashboardTopbar({
                 })}
               </div>
             )}
-
-            {/* Mobile Logout */}
-            <button
-              type="button"
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/70 px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
-            >
-              <LogOut className="size-4" />
-              {loggingOut ? 'Logging out...' : 'Log out'}
-            </button>
           </div>
         </div>
       )}

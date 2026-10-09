@@ -25,7 +25,6 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import User from './modules/auth/user.model.js';
 import Vehicle from './modules/vehicles/vehicle.model.js';
 import Emergency from './modules/emergencies/emergency.model.js';
 import Route from './modules/routes/route.model.js';
@@ -143,7 +142,6 @@ export async function runDemoStage(stageIndex, context = {}) {
   const emergency = await Emergency.findOne({ emergencyId: 'E-DEMO-001' });
   const primaryRoute = await Route.findOne({ routeId: 'ROUTE-DEMO-01' });
   const altRoute = await Route.findOne({ routeId: 'ROUTE-DEMO-ALT' });
-  const operator = await User.findOne({ role: 'CONTROL_ROOM' });
 
   if (!vehicle || !emergency || !primaryRoute) {
     console.log('Demo fixtures missing. Running auto-seed first...');
@@ -210,10 +208,10 @@ export async function runDemoStage(stageIndex, context = {}) {
     }).sort({ createdAt: -1 });
 
     if (existingDecision) {
-      const approved = await decisionService.approveDecision(existingDecision.decisionId, operator._id);
-      console.log(`  ✓ Decision ${existingDecision.decisionId} APPROVED by operator`);
+      const approved = await decisionService.approveDecision(existingDecision.decisionId, null);
+      console.log(`  ✓ Decision ${existingDecision.decisionId} APPROVED`);
 
-      const executed = await decisionService.executeDecision(existingDecision.decisionId, operator._id);
+      const executed = await decisionService.executeDecision(existingDecision.decisionId, null);
       console.log(`  ✓ Decision ${existingDecision.decisionId} EXECUTED successfully`);
       console.log(`    Route switched to Alternative Bypass: ROUTE-DEMO-ALT`);
       decisionResult = executed;

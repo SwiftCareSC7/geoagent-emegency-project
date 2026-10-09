@@ -4,11 +4,9 @@
  * Every frontend API call goes through this client. It handles:
  * - Base URL from environment variable
  * - JSON headers
- * - Cookie-based authentication (credentials: 'include')
  * - Response parsing and error normalization
  *
- * The backend authenticates via HTTP-only cookies set at login.
- * No Bearer token management is needed on the client side.
+ * No authentication: requests carry no tokens.
  */
 
 import { ApiError } from './types'
@@ -59,8 +57,6 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return body as T
 }
 
-const LOCAL_AUTH_PATH = /^\/(auth|admin\/users)(\/|$)/
-
 /**
  * Build a full URL with optional query parameters.
  */
@@ -69,12 +65,7 @@ function buildUrl(
   params?: Record<string, string | number | undefined>,
 ): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  // Auth + user management are Next route handlers (local SQLite). In the browser they must stay same-origin even when
-  // NEXT_PUBLIC_API_URL points at the Express origin, or login/register would bypass them.
-  const base =
-    typeof window !== 'undefined' && LOCAL_AUTH_PATH.test(normalizedPath)
-      ? `${window.location.origin}/api`
-      : getBaseUrl()
+  const base = getBaseUrl()
   const fullBase =
     base.endsWith('/api') && normalizedPath.startsWith('/api/')
       ? base.slice(0, -4)

@@ -25,7 +25,6 @@ import communicationService from './modules/communication/communication.service.
 import Emergency from './modules/emergencies/emergency.model.js';
 import Vehicle from './modules/vehicles/vehicle.model.js';
 import Route from './modules/routes/route.model.js';
-import User from './modules/auth/user.model.js';
 
 console.log('====================================================');
 console.log('  SWIFTCARE MSG91 SMS INTEGRATION TEST SUITE        ');
@@ -304,25 +303,6 @@ async function runTests() {
         capacity: 2
       });
 
-      const testUserAdmin = { id: 'usr_admin', _id: 'usr_admin', role: 'ADMIN', name: 'Admin User' };
-      const testUserControlRoom = { id: 'usr_cr', _id: 'usr_cr', role: 'CONTROL_ROOM', name: 'Dispatcher 1' };
-      const testUserAssignedDriver = { 
-        id: 'usr_drv1', 
-        _id: 'usr_drv1', 
-        role: 'DRIVER', 
-        name: 'Suresh Kumar',
-        assignedVehicle: testVehicle._id,
-        vehicleId: testVehId
-      };
-      const testUserUnassignedDriver = { 
-        id: 'usr_drv2', 
-        _id: 'usr_drv2', 
-        role: 'DRIVER', 
-        name: 'Other Driver',
-        assignedVehicle: new mongoose.Types.ObjectId(),
-        vehicleId: 'AMB-DIFFERENT'
-      };
-
       const testEmgId = `EMG-SMS-${Date.now()}`;
       const testEmergency = await Emergency.create({
         emergencyId: testEmgId,
@@ -344,12 +324,12 @@ async function runTests() {
       process.env.MSG91_API_URL = mockEndpoint;
       process.env.MSG91_PROVIDER = 'mock';
 
-      await itAsync('ADMIN can dispatch emergency status SMS', async () => {
+      await itAsync('Status SMS dispatches without any user identity', async () => {
         receivedRequests = [];
         mockStatusCode = 200;
         mockResponseBody = { type: 'success', message: 'Flow initiated', request_id: 'adm_001' };
 
-        const res = await communicationService.sendEmergencyStatusSms(testEmgId, testUserAdmin);
+        const res = await communicationService.sendEmergencyStatusSms(testEmgId);
         assert.strictEqual(res.success, true);
         assert.strictEqual(res.status, 'SUBMITTED');
         assert.strictEqual(res.data.vehicle, testVehId);
@@ -358,25 +338,6 @@ async function runTests() {
         // Check emergency document was updated with communication status
         const updated = await Emergency.findOne({ emergencyId: testEmgId });
         assert.strictEqual(updated.communication.lastSmsStatus, 'SUBMITTED');
-      });
-
-      await itAsync('Assigned DRIVER can dispatch emergency status SMS', async () => {
-        receivedRequests = [];
-        mockStatusCode = 200;
-        mockResponseBody = { type: 'success', message: 'Flow initiated', request_id: 'drv_001' };
-
-        const res = await communicationService.sendEmergencyStatusSms(testEmgId, testUserAssignedDriver);
-        assert.strictEqual(res.success, true);
-        assert.strictEqual(res.status, 'SUBMITTED');
-      });
-
-      await itAsync('Unassigned DRIVER is rejected with 403 Forbidden', async () => {
-        await assert.rejects(
-          async () => {
-            await communicationService.sendEmergencyStatusSms(testEmgId, testUserUnassignedDriver);
-          },
-          /Forbidden: Drivers can only dispatch status SMS for their assigned emergency vehicle/
-        );
       });
 
       // Cleanup fixtures
