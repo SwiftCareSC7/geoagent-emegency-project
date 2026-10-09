@@ -11,8 +11,7 @@
     "test:nav": "playwright test lib/navigation/__tests__",
     "test:e2e": "playwright test e2e/",
     "seed:demo": "node server/seed-demo-scenarios.js",
-    "seed:demo:reset": "node server/seed-demo-scenarios.js --reset",
-    "create-admin": "node scripts/create-admin.mjs"
+    "seed:demo:reset": "node server/seed-demo-scenarios.js --reset"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
