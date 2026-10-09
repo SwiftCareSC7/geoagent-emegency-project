@@ -2,6 +2,24 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
+## [2.6.0] - GeoAgent Free-Model AI Provider Abstraction & OpenRouter Verification
+
+### Added
+- **GeoAgent Free-Model LLM Provider Abstraction** (`server/modules/geoagents/geoagent.provider.js`):
+  - Zero-cost provider abstraction supporting OpenRouter and OpenCode Zen via native OpenAI-compatible HTTP `fetch` without external SDK dependencies.
+  - Enforced strict server-side zero-price guards (`max_price: { prompt: 0, completion: 0, request: 0 }`).
+  - Implemented live model catalog query and validation (`isFree`, `supportsTools`, minimum context window $\ge 16000$).
+  - Automatic model and provider fallback (`AI_PROVIDER=auto`: OpenRouter $\to$ OpenCode $\to$ deterministic rule engine).
+  - Exponential cooldowns for failed models and provider-wide blocks (401/403/daily 429).
+  - OpenCode 403 FreeTierError safety handling ensuring server-side requests are caught and safely redirected to fallback.
+- **OpenRouter Connectivity & Network Diagnostic Verification**:
+  - Full diagnostic comparison of `curl` and Node.js `fetch` against OpenRouter official API endpoints.
+  - Verified valid `OPENROUTER_API_KEY` authentication (`200 OK`) and confirmed zero quota consumption.
+  - Successfully validated live free-model inference using `inclusionai/ling-3.1-flash` with zero cost incurred.
+  - All automated test suites passing: `tests/geoagent-provider.test.mjs` (12/12), `tests/geoagent-agent.test.mjs` (11/11), `tsc --noEmit` (0 errors).
+- **Comprehensive Documentation Synchronization**:
+  - Updated all system documentation across `docs/`, `WALKTHROUGH.md`, `README.md`, `AI_MEMORY.md`, and configuration guides to accurately describe the free-model provider architecture.
+
 ## [2.5.0] - Combined Final Integration & Prediction Validation Phase
 
 ### Added

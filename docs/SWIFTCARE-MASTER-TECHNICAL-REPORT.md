@@ -64,7 +64,7 @@
 
 The software bridges the gap between raw vehicle GPS coordinates and life-or-death dispatch decisions through a **Dual-Engine Decision Architecture**:
 1. **The Deterministic Safety Rules Engine** (`decision.rules.js`): Pure algorithmic logic that calculates cross-track distances, verifies thresholds, computes candidate alternative route scores, evaluates backup ambulance travel time advantages, and ensures no database changes ever take place without human verification.
-2. **The Advisory Epistemic GeoAgent** (`geoAgent.service.js`): Powered by Google Gemini 2.5 Flash, this layer acts as an expert intelligence analyst. Rather than outputting chatty or hallucinated text, it takes structured data (speeds, incidents, cross-track offsets) and structures its operational briefing into **Observed** (raw factual data), **Inferred** (logical operational deduction), and **Unknown** (missing or uncertain parameters).
+2. **The Advisory Epistemic GeoAgent** (`geoAgent.service.js` / `geoagent.provider.js`): Powered by catalog-confirmed free models (OpenRouter / OpenCode), this layer acts as an expert intelligence analyst. Rather than outputting chatty or hallucinated text, it takes structured data (speeds, incidents, cross-track offsets) and structures its operational briefing into **Observed** (raw factual data), **Inferred** (logical operational deduction), and **Unknown** (missing or uncertain parameters).
 
 The application features a modern **Next.js 16 / React 19** frontend, an **Express 4 / Node.js 22** API and WebSocket server, a **MongoDB** geospatial document store, and a dedicated **What-If Scenario Simulator (`/diff`)**.
 
@@ -131,7 +131,7 @@ The platform serves four distinct operational roles:
 - **Driver Navigation HUD (`/driver/dashboard`):** In-cab turn-by-turn guidance with two-leg mission progression: Leg 1 (Station $\to$ Patient Scene) and Leg 2 (Patient Scene $\to$ Destination Hospital).
 - **Paramedic Clinical Triage (`/paramedic`):** Rapid vitals logging (Heart Rate, Blood Pressure, SpO2, Glasgow Coma Scale) and hospital emergency department readiness coordination.
 - **V2X Corridor Clearance ("Green Wave"):** Simulated traffic signal preemption along active emergency routes to clear intersections.
-- **Admin System Monitor (`/admin`):** Hardware/software observability dashboard monitoring CPU, memory, database latency, and Google/Gemini API provider health.
+- **Admin System Monitor (`/admin`):** Hardware/software observability dashboard monitoring CPU, memory, database latency, and Google/AI API provider health.
 
 ---
 
@@ -149,7 +149,7 @@ In simple, accessible terms:
 | **Realtime Engine** | **Socket.IO 4.8** | A technology allowing instantaneous, two-way communication between server and browser without refreshing the page. | Streams vehicle GPS coordinates, alert notifications, and decision requests in real time. |
 | **Database** | **MongoDB 7.0+** | A flexible database that stores data as documents (JSON-like records) and excels at geographic searches. | Stores users, vehicles, emergencies, routes, GPS breadcrumbs, incidents, and decisions. |
 | **Database ODM** | **Mongoose 8** | A code library that defines strict rules, data types, and safety checks for everything saved into MongoDB. | Manages database models, validation constraints, and geospatial `2dsphere` indexes. |
-| **Artificial Intelligence** | **Google Gemini 2.5 Flash** | An advanced AI model created by Google that reads complex operational situations and writes executive summaries. | Powers GeoAgent (`geoAgent.service.js`), evaluating incidents and providing 3-tier epistemic briefings. |
+| **Artificial Intelligence** | **OpenRouter / OpenCode (Free Tier)** | Zero-cost LLM provider abstraction executing catalog-confirmed free models with strict price guards. | Powers GeoAgent (`geoAgent.service.js`), evaluating incidents and providing 3-tier epistemic briefings. |
 | **End-to-End Testing** | **Playwright 1.63** | A robotic browser testing tool that clicks buttons, tests screens, and checks for bugs automatically. | Executes automated E2E tests for `/diff` and authentication flows (`e2e/diff-scenario.spec.ts`). |
 | **Type Safety** | **TypeScript 5** | An enhanced version of JavaScript that catches spelling mistakes and code errors before the app runs. | Validates type definitions (`lib/api/types.ts`) across all frontend and shared components. |
 
@@ -184,7 +184,7 @@ The project employs a clean, layered architectural design:
    │
    ├── DUAL-ENGINE DECISION ARCHITECTURE:
    │     ├── Deterministic Safety Rules Engine (Authoritative)
-   │     └── GeoAgent Advisory Reasoning Engine (Gemini 2.5 Flash)
+   │     └── GeoAgent Advisory Reasoning Engine (OpenRouter / OpenCode Free Tier)
    │
    └── Realtime Socket.IO Broadcast Server
                │
@@ -257,7 +257,7 @@ geoagent-emegency-project/
 │   │   ├── trajectories/                   # Trajectory model, GPS fix ingestion, speed calculations
 │   │   ├── deviation/                      # Cross-track distance calculation and status thresholding
 │   │   ├── analysis/                       # Spatial incident correlator and quantitative ETA prediction
-│   │   ├── geoagents/                      # Gemini AI client, 12 declarative tools, system prompts
+│   │   ├── geoagents/                      # Free-model LLM provider abstraction, 9 declarative tools, prompts
 │   │   ├── decisions/                      # Deterministic decision rules (decision.rules.js), FSM
 │   │   ├── clearance/                      # V2X traffic signal preemption model and service
 │   │   ├── admin/                          # System health, telemetry performance, database inspection
@@ -475,7 +475,7 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.6 GeoAgent Intelligence Endpoints (`/api/geoagent`)
 
 #### 16. POST `/api/geoagent/analyze`
-- **Purpose:** Invokes Google Gemini 2.5 Flash with 12 declarative tools to analyze vehicle situation.
+- **Purpose:** Invokes GeoAgent free LLM loop with declarative tools to analyze vehicle situation.
 - **Request Body:** `{ vehicleId: "AMB-01", emergencyId: "EMG-0001" }`.
 - **Response `200 OK`:**
 ```json
@@ -530,7 +530,7 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Google Routes API** | Google Maps Platform | Calculates real-time traffic-aware road routes between coordinates. | `POST https://routes.googleapis.com/directions/v2:computeRoutes` | `X-Goog-Api-Key` header | Falls back to OSRM Public Router or Canonical Bengaluru road fixtures. |
 | **Google Roads API** | Google Maps Platform | Snaps noisy GPS coordinates to verified road centerlines. | `GET https://roads.googleapis.com/v1/snapToRoads` | `key` query parameter | Falls back to raw GPS fixes if key is missing or quota is exceeded. |
-| **Gemini 2.5 Flash** | Google Cloud / Google AI | Generates 3-tier epistemic operational briefings and tool calls. | `@google/genai` SDK | `GEMINI_API_KEY` | Falls back to deterministic rule engine (`generateFallbackResponse`). |
+| **OpenRouter / OpenCode** | OpenRouter / OpenCode Zen | Generates 3-tier epistemic operational briefings and tool calls. | Native HTTP `fetch` (OpenAI-compatible) | `OPENROUTER_API_KEY` / `OPENCODE_API_KEY` | Falls back to deterministic rule engine (`generateFallbackResponse`). |
 | **OSRM Routing** | OpenStreetMap / Project-OSRM | Open-source alternative road routing engine. | `GET http://router.project-osrm.org/route/v1/driving/...` | Public / None | Falls back to Canonical Road Corridors (`lib/canonical-road-corridors.ts`). |
 
 ---
@@ -703,15 +703,16 @@ This produces an operations-room aesthetic with visible street names and zero co
 | `MONGO_URI` | MongoDB connection connection string with credentials | `server/config/db.js` | Yes | **YES** |
 | `JWT_SECRET` | Cryptographic secret for signing session tokens | `auth.service.js` | Yes | **YES** |
 | `GOOGLE_MAPS_API_KEY` | Authenticates Google Routes and Google Roads API requests | Routing & Snapping | Optional | **YES** |
-| `GEMINI_API_KEY` | Authenticates Google Gemini 2.5 Flash model API requests | `geoAgent.service.js` | Optional | **YES** |
-| `ROUTING_PROVIDER` | Selects active router (`google`, `osrm`, or `mock`) | `routing.service.js` | No | No |
+| `OPENROUTER_API_KEY` | Authenticates OpenRouter free model API requests | `geoagent.provider.js` | Optional | **YES** |
+| `OPENCODE_API_KEY` | Authenticates OpenCode Zen free model API requests | `geoagent.provider.js` | Optional | **YES** |
+| `AI_PROVIDER` | Selects AI provider priority (`auto`, `openrouter`, or `opencode`) | `geoagent.provider.js` | No | No |
 
 ---
 
 ## 25. Configuration Files Analysis
 
 - **`package.json`**: Configured with Next.js 16.3.3, React 19, Leaflet, and `@googlemaps/js-api-loader`. Includes `"lint": "tsc --noEmit"` to guarantee static type safety.
-- **`server/package.json`**: Configured as ES Modules (`"type": "module"`), bundling Express, Mongoose, Socket.IO, Helmet, and `@google/genai`.
+- **`server/package.json`**: Configured as ES Modules (`"type": "module"`), bundling Express, Mongoose, Socket.IO, Helmet, and native fetch without external LLM SDK overhead.
 - **`playwright.config.ts`**: Configures headless Chromium browser testing against `http://localhost:3000` with 30-second timeouts and automatic video/screenshot capture.
 - **`render.yaml` & `server/Dockerfile`**: Container definitions for deploying the Node.js backend to Google Cloud Run or Render.
 
@@ -720,7 +721,7 @@ This produces an operations-room aesthetic with visible street names and zero co
 ## 26. Dependencies Audit
 
 - **`leaflet` (1.9.4)**: Lightweight client map renderer chosen for high performance, mobile touch support, and zero commercial API lock-in.
-- **`@google/genai` (0.1.1)**: Official Google GenAI SDK used to interface with Gemini 2.5 Flash for function calling and 3-tier epistemic output.
+- **OpenAI-Compatible Native Fetch**: Direct HTTP chat completions client using native `fetch` with zero SDK dependencies, automated key scrubbing, and price-guard headers.
 - **`socket.io` & `socket.io-client` (4.8.3)**: Provides real-time bi-directional event transport with low latency and room isolation.
 - **`bcryptjs` (2.4.3)**: Implements password hashing with 12 salt rounds without requiring native C++ build tools.
 
@@ -732,7 +733,7 @@ This produces an operations-room aesthetic with visible street names and zero co
 - **Provider Fallback Matrix**:
   - Missing `GOOGLE_MAPS_API_KEY` $\to$ Automatically falls back to OpenStreetMap / OSRM public router.
   - OSRM network timeout $\to$ Automatically falls back to Canonical Bengaluru Road Corridors (`lib/canonical-road-corridors.ts`).
-  - Missing `GEMINI_API_KEY` $\to$ Automatically falls back to deterministic rule engine (`generateFallbackResponse`).
+  - Missing AI provider keys $\to$ Automatically falls back to deterministic rule engine (`generateFallbackResponse`).
 
 ---
 
@@ -810,8 +811,9 @@ All automated test suites execute with 100% pass rates:
 6. **`components/dashboard/control-room-dashboard.tsx`**: Central operations dashboard orchestrating live fleet surveillance.
 7. **`server/server.js`**: Express backend server entrypoint, security middleware, and Socket.IO initialization.
 8. **`server/modules/decisions/decision.rules.js`**: Authoritative deterministic safety rules engine and route scoring algorithms.
-9. **`server/modules/geoagents/geoAgent.service.js`**: Gemini AI client synthesizing 3-tier epistemic situation briefings.
-10. **`server/modules/geoagents/geoAgent.tools.js`**: Declarative tool declarations and handlers for Google Gemini function calling.
+9. **`server/modules/geoagents/geoAgent.service.js`**: Advisory service synthesizing 3-tier epistemic situation briefings.
+10. **`server/modules/geoagents/geoAgent.tools.js`**: Declarative tool declarations and handlers for GeoAgent tool calling.
+10b. **`server/modules/geoagents/geoagent.provider.js`**: Provider abstraction over OpenRouter / OpenCode free models with price guards.
 11. **`server/modules/deviation/deviation.service.js`**: Mathematical cross-track distance and deviation thresholding engine.
 12. **`server/modules/analysis/prediction.service.js`**: Quantitative ETA and arrival delay forecasting service.
 13. **`server/modules/routes/routing.service.js`**: Multi-provider routing engine (Google, OSRM, Canonical).
@@ -872,7 +874,7 @@ Here is how it works step-by-step:
 ## 37. Final Project Summary
 
 - **Project Purpose:** Real-time metropolitan emergency vehicle fleet surveillance, route disruption detection, quantitative delay prediction, and road-constrained detour optimization.
-- **Technology Stack:** Next.js 16, React 19, Tailwind CSS v4, Leaflet 1.9.4, Express 4, Node.js 22, Socket.IO 4.8, MongoDB 7.0+, Mongoose 8, Google Gemini 2.5 Flash, Playwright 1.63, TypeScript 5.
+- **Technology Stack:** Next.js 16, React 19, Tailwind CSS v4, Leaflet 1.9.4, Express 4, Node.js 24, Socket.IO 4.8, MongoDB 7.0+, Mongoose 8, OpenRouter / OpenCode Free LLMs, Playwright 1.63, TypeScript 5.
 - **Main Features:** Central Control Room operations dashboard, `/diff` map-first what-if scenario simulator, in-cab Driver Navigation HUD, Paramedic clinical triage, V2X green-wave corridor clearance, and administrative system health diagnostics.
 - **Architecture:** Dual-Engine Decision Architecture separating authoritative deterministic safety rules from advisory generative AI briefings.
 - **Current State:** 100% operational, fully hardened, statically typechecked (0 errors), covered by automated Playwright and unit test suites, and deployed to production.

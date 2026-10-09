@@ -27,7 +27,7 @@ The redesigned product delivers a **calm, high-trust, operational, human-centere
 | `/emergencies/[id]` | **Redesigned** | Deep Mission Telemetry & Corridor Analysis | Embedded MissionAssessmentHUD, real-time Socket.IO telematics sync, prediction change tracker, deterministic what-if route comparison, and chronological event audit timeline. |
 | `/paramedic` | **NEW Route** | Pre-Hospital Clinical Triage Workspace | Dedicated clinical dashboard featuring continuous vitals telemetry (HR, BP, SpO2, GCS), pre-hospital intervention notes, and destination ER trauma bay readiness synchronization. |
 | `/emergency-lab` | **NEW Route** | Simulation & Stress-Test Workbench | Interactive scenario workbench with 18 seeded test cases, simulation clock (`T+00:00`), speed multiplier controls (1x, 2x, 5x), real-time event injection toolbar, and end-to-end 12-stage response demonstration. |
-| `/admin` | **Preserved & Polished** | Administration & Observability Console | System health diagnostics, provider health status (OSRM, Google, Gemini 3.8 Flash), vehicle fleet management, database seeding/reset controllers, and audit logging. |
+| `/admin` | **Preserved & Polished** | Administration & Observability Console | System health diagnostics, provider health status (OSRM, Google, OpenRouter / OpenCode), vehicle fleet management, database seeding/reset controllers, and audit logging. |
 
 ---
 
@@ -58,7 +58,7 @@ Every question card is expandable: clicking **"Inspect"** reveals verifiable und
 To eliminate false AI certainty, every metric, insight, and advisory is stamped with an explicit epistemic badge:
 
 1. **`OBSERVED`** (Blue Badge): Direct hardware sensors, raw GPS telemetry fixes, municipal loop detectors, and physical vehicle speed.
-2. **`INFERRED`** (Purple Badge): Spatial correlations, statistical delay models, Gemini 3.8 Flash advisory reasoning, and traffic congestion projections.
+2. **`INFERRED`** (Purple Badge): Spatial correlations, statistical delay models, GeoAgent AI advisory reasoning, and traffic congestion projections.
 3. **`DERIVED`** (Cyan Badge): Deterministic shortest-path calculations (OSRM/Google Routes API), mathematical distance deltas, and speed ratios.
 4. **`UNKNOWN`** (Amber Badge): Unverified detours, missing GPS fixes, or unconfirmed hazards.
 
@@ -86,7 +86,7 @@ All tests executed with 100% pass rates across unit, integration, and end-to-end
 | :--- | :--- | :---: | :--- |
 | **TypeScript Typecheck** | `npx tsc --noEmit` | **0 Errors** | Strict type safety across all components and pages. |
 | **Final Integration Audit** | `node server/test-final-integration-audit.js` | **37/37 PASSED** | Provider health, CARTO status, prediction ground-truth, security audit, secret scan, error status codes. |
-| **Control Room E2E** | `node server/test-control-room-e2e.js` | **12/12 PASSED** | Telemetry ingestion, route matching, deviation detection, hazard correlation, ETA prediction, Gemini advisory reasoning, operator approval/rejection/execution, concurrency safety. |
+| **Control Room E2E** | `node server/test-control-room-e2e.js` | **12/12 PASSED** | Telemetry ingestion, route matching, deviation detection, hazard correlation, ETA prediction, GeoAgent advisory reasoning, operator approval/rejection/execution, concurrency safety. |
 | **Dashboard Backend E2E** | `node server/test-dashboard-e2e.js` | **47/47 PASSED** | Unauthenticated route protection, session cookies, vehicles API, emergencies API, incidents API, filters. |
 | **Frontend Route Check** | Node HTTP GET across all 9 routes | **9/9 (200 OK)** | `/`, `/login`, `/signup`, `/control-room`, `/driver/dashboard`, `/paramedic`, `/emergency-lab`, `/admin`, `/emergencies/E-DEMO-001`. |
 | **Visual QA Browser Subagent** | Real Chromium automation session | **VERIFIED** | Systematically inspected visual hierarchy, layout responsiveness, DOM structure, and console logs. |

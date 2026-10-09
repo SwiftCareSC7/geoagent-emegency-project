@@ -1,7 +1,7 @@
 # GeoAgentic Emergency Response System — AI Memory
 
 ## 1. Project Purpose & Scope
-The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intelligent decision-support and dispatch platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic congestion or road hazards, calculate delays, recommend alternative routes, evaluate V2X green-wave corridor clearances, run advisory Gemini AI reasoning, and evaluate authoritative operational decisions in real time.
+The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intelligent decision-support and dispatch platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic congestion or road hazards, calculate delays, recommend alternative routes, evaluate V2X green-wave corridor clearances, run advisory free-model LLM reasoning (OpenRouter / OpenCode), and evaluate authoritative operational decisions in real time.
 
 **Repository Scope**:
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Lucide React (located at root `/app`, `/components`, `/lib`, `/public`).
@@ -27,7 +27,7 @@ The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intellig
 - **ODM**: Mongoose (v8.4+)
 - **Security**: `bcryptjs` (salt rounds: 12), `jsonwebtoken`, `helmet`, `cors`, `cookie-parser`
 - **Geospatial Processing**: `@turf/turf` (v7.4+, WGS84, GeoJSON Point & LineString)
-- **AI Decision Support**: `@google/genai` (v2.19+, Google Gemini 2.5 Flash SDK)
+- **AI Decision Support**: OpenAI-compatible HTTP fetch over catalog-verified free models (OpenRouter / OpenCode Zen) with zero-cost price guards (`max_price: 0`)
 - **Target Port**: `http://localhost:5000`
 
 ### Python Spatial Routing Engine (Member 2)
@@ -76,7 +76,7 @@ Trajectories          Routes                     │         │
                        Situation Analysis                  │
                                  │                         │
                                  ▼                         │
-                       GeoAgent AI (Gemini)                │
+                       GeoAgent AI (Free LLM)              │
                            (Advisory)                      │
                                  │                         │
                                  ▼                         │
@@ -188,7 +188,7 @@ Trajectories          Routes                     │         │
 │   │   ├── deviation/                        # Route deviation detection & jitter filtering
 │   │   ├── traffic/                          # Traffic abstraction & Google Traffic provider
 │   │   ├── analysis/                         # Situation analysis & prediction engine v1.3
-│   │   ├── geoagents/                        # Gemini 2.5 Flash function-calling (9 tools)
+│   │   ├── geoagents/                        # Free-model LLM provider abstraction & 9 tools
 │   │   ├── decisions/                        # Authoritative Decision Engine & state machine
 │   │   ├── orchestration/                    # Full end-to-end mission coordinator
 │   │   ├── admin/                            # Secure admin stats & collection explorer
@@ -308,7 +308,7 @@ Trajectories          Routes                     │         │
 
 - **Architecture & System Flow**:
   - The system has moved from mock routing/traffic behavior to real external data and real-time intelligence:
-    `Real Vehicle Telemetry → Trajectory Processing → Google Roads / Routes → Real Traffic-Aware Routing → ETA / Delay Prediction → Gemini Decision Reasoning → Decision Engine → Socket.IO → Control Room Frontend`.
+    `Real Vehicle Telemetry → Trajectory Processing → Google Roads / Routes → Real Traffic-Aware Routing → ETA / Delay Prediction → GeoAgent Advisory Reasoning → Decision Engine → Socket.IO → Control Room Frontend`.
 - **Backend External Providers**:
   - **Google Routes Provider** (`server/modules/routes/providers/googleRoutingProvider.js`):
     - Implements Google Routes API (`computeRoutes`) with explicit field masks: `routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs,routes.warnings,routes.description`.
@@ -325,7 +325,7 @@ Trajectories          Routes                     │         │
     - Derives traffic congestion ratio deterministically from Google Routes `durationSeconds` vs `staticDurationSeconds`.
     - Explicitly categorizes `epistemicType: 'DERIVED'` (distinguishing `OBSERVED`, `DERIVED`, and `UNKNOWN`).
   - **Provider Health & Safety** (`server/modules/health/providerHealth.service.js` & `GET /api/health/providers`):
-    - Evaluates Google Routes, Google Roads, and Gemini AI status (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`).
+    - Evaluates Google Routes, Google Roads, and AI Provider status (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`).
     - Zero credential leak: never returns API keys or internal secrets in JSON payloads.
 - **Telemetry Ingestion Hardening** (`server/modules/trajectories/trajectory.service.js`):
   - Validates coordinate bounds: longitude in `[-180, 180]`, latitude in `[-90, 90]`.
@@ -340,7 +340,7 @@ Trajectories          Routes                     │         │
   - Persists prediction snapshots in MongoDB with index on `vehicleId` and `createdAt`.
   - Exposes `GET /api/analysis/vehicle/:vehicleId/prediction` REST endpoint.
 - **GeoAgent & Decision Engine Integration** (`server/modules/geoagents/geoAgent.service.js` & `decision.service.js`):
-  - Gemini 2.5 Flash acts as advisory reasoning engine; deterministic safety rules make authoritative decisions.
+  - GeoAgent free-model LLM acts as advisory reasoning engine; deterministic safety rules make authoritative decisions.
   - Generates comparative trade-off matrix: "Why did the route change?" (evidence-based triggers) and "What if we do nothing?" (delay and risk penalties).
   - Enforces state machine requiring operator approval: decisions transition to `PENDING_OPERATOR_ACTION` and require operator `/approve` or `/reject` actions before execution.
 - **Socket.IO Real-Time Streaming** (`server/modules/realtime/` & `lib/socket/`):
@@ -380,7 +380,7 @@ Trajectories          Routes                     │         │
   - `admin.service.js`:
     - `getSystemStats()`: Real operational counts across all 8 verified collections (`users`, `vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `decisions`, `predictions`). Uses `Trajectory.estimatedDocumentCount()` for $O(1)$ constant-time count over high-frequency GPS fixes.
     - `getDatabaseHealth()`: Safe ping latency test via `mongoose.connection.db.admin().ping()`. Reports `CONNECTED`, `DEGRADED`, or `DISCONNECTED` with roundtrip latency in ms without exposing credentials.
-    - `getSystemHealthSummary()`: Combines database health with provider statuses (Google Routes, Google Roads, Gemini 2.5 Flash, Socket.IO).
+    - `getSystemHealthSummary()`: Combines database health with provider statuses (Google Routes, Google Roads, AI Providers, Socket.IO).
     - Paginated readers with safe projection: `getUsers` (strictly omits `password`), `getVehicles`, `getEmergencies`, `getIncidents`, `getRoutes`, `getTrajectories` (bounded slices), `getPredictions`, `getDecisions`.
   - `admin.controller.js`: Request handlers with structured JSON audit logging (endpoint, userId, action, resource, durationMs, statusCode).
   - `admin.routes.js`: Protected by `protect` and `requireRole('ADMIN')`.
@@ -412,7 +412,7 @@ Trajectories          Routes                     │         │
 ## 14. Real-Time Intelligence Pipeline & Route Comparison Engine
 
 - **End-to-End Pipeline**:
-  `Real GPS Telemetry → Trajectory Processing → Deviation Analysis → Current Vehicle State → Google Routes API (Traffic-Aware) → ETA / Delay Prediction → Candidate Route Comparison ("What if we do nothing?") → Structured Evidence → Gemini 2.5 Flash Advisory Reasoning → Deterministic Decision Engine → Operator Approval → Execution → Socket.IO Streaming → Control Room Frontend`.
+  `Real GPS Telemetry → Trajectory Processing → Deviation Analysis → Current Vehicle State → Google Routes API (Traffic-Aware) → ETA / Delay Prediction → Candidate Route Comparison ("What if we do nothing?") → Structured Evidence → GeoAgent Advisory Reasoning → Deterministic Decision Engine → Operator Approval → Execution → Socket.IO Streaming → Control Room Frontend`.
 - **Google Routes Provider Hardening** (`server/modules/routes/providers/googleRoutingProvider.js`):
   - Pre-request coordinate validation (`validateCoordinates`) enforcing WGS84 boundaries: longitude `[-180, 180]`, latitude `[-90, 90]`.
   - Enforces maximum 25 intermediate waypoints supported by computeRoutes.
@@ -576,7 +576,7 @@ Trajectories          Routes                     │         │
   5. `Google Traffic-Aware Routes`: `server/modules/routes/providers/googleRoutingProvider.js` evaluates live congestion on primary corridor vs alternative bypass routes.
   6. `Prediction Engine`: `server/modules/analysis/prediction.service.js` incorporates V2X green-wave delay reductions into ETA calculations.
   7. `Route Comparison`: `server/modules/routes/routeComparison.service.js` factors corridor clearance and green-wave feasibility into deterministic "What if we do nothing?" scenario analysis.
-  8. `Gemini Reasoning`: Gemini 2.5 Flash grounded with tools including `getCorridorGreenWaveStatus`.
+  8. `GeoAgent Reasoning`: Free-model LLM loop grounded with tools including `getCorridorGreenWaveStatus`.
   9. `Decision Engine`: `server/modules/decisions/decision.service.js` authoritative deterministic rules evaluating `CORRIDOR_BLOCKED` and `GREEN_WAVE_PREEMPTION_ACTIVE` reason codes.
   10. `Control Room`: Real-time Socket.IO emission (`v2x.green_wave.updated`, `orchestration.completed`) updating the Control Room operator dashboard with 3-tier epistemic breakdown and dynamic signal states.
 - **Test Suite**: `server/test-v2x-corridor-pipeline.js` (11/11 tests passing).
@@ -639,7 +639,7 @@ Trajectories          Routes                     │         │
   6. *GPS Telemetry Anomaly Hardening*: Rejects out-of-bound coordinates (`lat < -90` or `> 90`, `lng < -180` or `> 180`), negative speeds (`< 0`), impossible speeds (`> 250 km/h`), invalid headings (`< 0` or `>= 360`), and future timestamps (`> 2 min`). GPS jitter analyzed via temporal windowing.
   7. *Route & Traffic Fault Tolerance*: Zero-distance and zero-speed edge conditions calculate gracefully without divide-by-zero or NaN bugs.
   8. *Prediction Determinism*: Identical telemetry, route, and traffic inputs produce deterministic delay projections and confidence metrics.
-  9. *Prompt Injection Defense & Transparent AI Fallback*: `sanitizeText` strips executable scripts/markup; untrusted descriptions encapsulated in `untrustedCallerDescription`; offline Gemini triggers explicit `AI_ANALYSIS_UNAVAILABLE` status without spoofing AI reasoning.
+  9. *Prompt Injection Defense & Transparent AI Fallback*: `sanitizeText` strips executable scripts/markup; untrusted descriptions encapsulated in `untrustedCallerDescription`; offline AI providers trigger explicit `AI_ANALYSIS_UNAVAILABLE` status without spoofing AI reasoning.
   10. *Python / V2X Subprocess Security & Status*: In-process JS fallback engine guarantees zero shell injection vectors while matching Python schema.
   11. *Concurrency & Idempotency*: `situationHash` prevents duplicate proposal generation; atomic state transitions reject concurrent double-approvals.
   12. *Socket.IO Handshake Security & Payload Integrity*: Unauthenticated socket handshakes rejected; payloads strictly typed without leaking internal DB hashes.
@@ -656,7 +656,7 @@ Trajectories          Routes                     │         │
   - Step 10: Quantitative prediction engine ETA & delay projection.
   - Step 11: Python / V2X corridor green-wave preemption calculation.
   - Steps 12 & 13: Deterministic route candidate comparison & 3-tier epistemic evidence.
-  - Step 14: Gemini advisory reasoning / honest fallback generation.
+  - Step 14: GeoAgent advisory reasoning / honest fallback generation.
   - Steps 15 & 16: Deterministic decision engine proposal generation & situation hash validation.
   - Step 17: Real-time operator notification contract emission.
   - Steps 18, 19 & 20: Operator approval & atomic state transition (`PENDING_OPERATOR_ACTION` -> `APPROVED`).
@@ -694,7 +694,7 @@ Trajectories          Routes                     │         │
     1. `mongodb`: Connection state and live latency ping.
     2. `googleRoutes`: Google Routes API key validation and mode.
     3. `googleRoads`: Google Roads API key validation and mode.
-    4. `gemini`: Google Gemini 2.5 Flash SDK and advisory reasoning status.
+    4. `aiProviders`: OpenRouter / OpenCode Zen status and advisory reasoning readiness.
     5. `pythonV2X`: Python 3.12 subprocess availability vs in-process JS fallback engine.
     6. `socketIO`: Live broadcast push readiness.
   - Admin Overview dashboard (`components/admin/admin-overview.tsx`) renders dedicated status badges for all 6 subsystems.
@@ -743,7 +743,7 @@ Trajectories          Routes                     │         │
     - Alternative route time savings are explicitly marked `ESTIMATED / COUNTERFACTUAL`.
     - Untraversed alternative routes are never claimed as observed physical facts.
   - **AI Governance & Epistemic Separation**:
-    - Explicitly decouples: (1) Gemini advisory recommendation, (2) Deterministic safety policy action, (3) Human operator decision (`APPROVED`/`REJECTED`), and (4) Actual physical outcome.
+    - Explicitly decouples: (1) GeoAgent advisory recommendation, (2) Deterministic safety policy action, (3) Human operator decision (`APPROVED`/`REJECTED`), and (4) Actual physical outcome.
     - Tracks agreement rates while emphasizing that agreement with deterministic safety rules reflects policy alignment, not ground-truth physical accuracy.
   - **Model Governance**:
     - Model weights are frozen and deterministic. Live emergency data is never used for automatic uncontrolled model retraining.
@@ -756,7 +756,7 @@ Trajectories          Routes                     │         │
 
 - **Security & Secret Scan**:
   - Scanned repository for secret leaks: 0 real credentials committed.
-  - Verified no backend secrets (`GOOGLE_MAPS_API_KEY`, `GEMINI_API_KEY`, `JWT_SECRET`, `MONGO_URI`) exist in client-side code or under `NEXT_PUBLIC_*`.
+  - Verified no backend secrets (`GOOGLE_MAPS_API_KEY`, `OPENROUTER_API_KEY`, `JWT_SECRET`, `MONGO_URI`) exist in client-side code or under `NEXT_PUBLIC_*`.
   - Only `NEXT_PUBLIC_CARTO_API_KEY` is permitted client-side for raster basemap tiles.
 
 - **Verification**: `server/test-final-integration-audit.js` (37/37 passed, 100%).

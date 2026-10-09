@@ -13,7 +13,7 @@
 
 Rather than acting as an unconstrained consumer chatbot or relying on black-box heuristics, SwiftCare GeoAgent implements a **dual-engine decision architecture**:
 1. **An Authoritative Deterministic Safety Rules Engine** (`decision.rules.js`) that enforces hard operational safety policies, evaluates candidate route scores, verifies threshold margins, and prevents unauthorized database mutations.
-2. **An Advisory Generative Intelligence Engine** (powered by Google Gemini 2.5 Flash through `geoAgent.service.js`) that synthesizes complex, chaotic situation contexts (traffic congestion ratios, road incidents, driver telemetry trends) into structured, natural-language executive briefings divided into **Observed**, **Inferred**, and **Unknown** epistemic categories.
+2. **An Advisory Generative Intelligence Engine** (powered by GeoAgent free-model provider abstraction over OpenRouter / OpenCode through `geoAgent.service.js`) that synthesizes complex, chaotic situation contexts (traffic congestion ratios, road incidents, driver telemetry trends) into structured, natural-language executive briefings divided into **Observed**, **Inferred**, and **Unknown** epistemic categories.
 
 The platform includes a Next.js 16 frontend with dedicated interfaces for Control Room dispatchers, ambulance drivers, hospital paramedics, and system administrators, an Express 4 REST and Socket.IO backend, a MongoDB database with geospatial 2dsphere indexes, a multi-provider routing engine (Google Routes API, OSRM, and canonical Bengaluru road corridors), and a deterministic what-if scenario simulator at **`/diff`**.
 
@@ -140,7 +140,7 @@ The platform follows a layered architectural design:
 - **API & Orchestration Layer**: Express 4 server (port 5001) + Next.js Server Route Handlers for serverless execution.
 - **Intelligence Layer**:
   - Authoritative: Deterministic Decision Engine (`decision.rules.js`).
-  - Advisory: Google Gemini 2.5 Flash (`geoAgent.service.js`) with 12 declarative tools.
+  - Advisory: GeoAgent Free LLM (`geoAgent.service.js` / `geoagent.provider.js`) with 9 declarative tools.
 - **Persistence Layer**: MongoDB 7.0+ with Mongoose ODM, utilizing 2dsphere spatial indexes.
 - **Realtime Layer**: Socket.IO 4.8 with room-based broadcast topology (`control-room`, `vehicle:{id}`, `emergency:{id}`).
 
@@ -160,7 +160,7 @@ The platform follows a layered architectural design:
 
 - **Server Architecture**: Node.js ES Module environment (`server/server.js`) running Express 4.
 - **Security Middleware**: Helmet security headers, CORS origin verification with regex support for Vercel subdomains, HTTP-only cookie parsing.
-- **Provider Health Service**: Proactively monitors Google Routes API, Google Roads API, and Gemini AI endpoints, exposing statuses (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`) via `GET /api/health/providers`.
+- **Provider Health Service**: Proactively monitors Google Routes API, Google Roads API, and AI Provider endpoints, exposing statuses (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`) via `GET /api/health/providers`.
 
 ---
 
@@ -264,10 +264,10 @@ The deviation engine (`server/modules/deviation/deviation.service.js`) operates 
 ## 20. GeoAgent Intelligence Layer
 
 GeoAgent is an advisory operational reasoning agent:
-- **Model**: Google Gemini 2.5 Flash via `@google/genai`.
+- **Model**: Free-tier models via OpenRouter or OpenCode Zen (`geoagent.provider.js`), catalog-verified free with `max_price: 0`.
 - **Epistemic Discipline**: Explicitly organizes insights into **Observed** (raw sensor facts), **Inferred** (deductive conclusions), and **Unknown** (information gaps).
 - **Deterministic Boundary**: The LLM does NOT calculate distances or ETAs, and cannot modify database records directly.
-- **Fallback**: If `GEMINI_API_KEY` is absent or the API fails, `generateFallbackResponse` executes a deterministic rule-based assessment with confidence 0.80.
+- **Fallback**: If AI keys are absent or providers fail, `generateFallbackResponse` executes a deterministic rule-based assessment with confidence 0.80.
 
 ---
 
@@ -347,7 +347,7 @@ Protected routes enforce authorization via `verifyToken` and `requireRole` middl
 - `GET /api/health`: Basic application uptime and version metadata.
 - `GET /api/health/live`: Process liveness probe for Cloud Run / Kubernetes container orchestration.
 - `GET /api/health/ready`: Database readiness probe (returns 503 if MongoDB disconnects).
-- `GET /api/health/providers`: External API provider health evaluator (Google Routes, Google Roads, Gemini).
+- `GET /api/health/providers`: External API provider health evaluator (Google Routes, Google Roads, AI Providers).
 
 ---
 
@@ -437,7 +437,7 @@ The codebase includes comprehensive automated test suites:
 | **Backend Core** | Express / Node.js | 4.19 / Node 22+ | REST API & routing server |
 | **Realtime** | Socket.IO | 4.8.3 | Bi-directional WebSocket transport |
 | **Database** | MongoDB / Mongoose | 7.0+ / 8.0+ | Document store with 2dsphere indexing |
-| **AI Engine** | Google Gemini | 2.5 Flash | Operational generative reasoning |
+| **AI Engine** | OpenRouter / OpenCode | Free Models | Operational generative reasoning with zero-price guards |
 | **E2E Testing** | Playwright | 1.63.0 | Automated browser testing |
 | **Type Safety** | TypeScript | 5.0 | Strict compile-time validation |
 
@@ -502,7 +502,7 @@ The codebase includes comprehensive automated test suites:
 ## 41. Limitations
 
 1. **In-Memory Socket.IO Adapter**: Current backend deployment must run as a single container instance (`--max-instances=1`) to avoid fragmented WebSocket rooms.
-2. **Provider Key Fallbacks**: When external Google Maps or Gemini API keys are omitted, the system falls back to canonical Bengaluru road corridors and deterministic heuristics.
+2. **Provider Key Fallbacks**: When external Google Maps or AI provider keys are omitted, the system falls back to canonical Bengaluru road corridors and deterministic heuristics.
 3. **Conversational Interface**: The system does not currently feature an open-ended conversational search bar.
 
 ---

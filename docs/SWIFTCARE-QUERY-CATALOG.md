@@ -8,7 +8,7 @@ This document provides a rigorous, truth-grounded analysis of operational query 
 
 ### Current Architectural Reality
 - **What Exists**: 
-  - A structured backend intelligence service ([`server/modules/geoagents/geoAgent.tools.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/geoagents/geoAgent.tools.js)) exposing **12 declarative tools** for Google Gemini function calling.
+  - A structured backend intelligence service ([`server/modules/geoagents/geoAgent.tools.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/geoagents/geoAgent.tools.js)) exposing **9 declarative tools** for GeoAgent LLM tool calling.
   - An epistemic situation synthesizer ([`server/modules/geoagents/geoAgent.service.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/geoagents/geoAgent.service.js)) that ingests vehicle state, cross-track deviation, nearby incidents, and ETA to generate natural-language briefings with **Observed**, **Inferred**, and **Unknown** classifications.
   - Deterministic REST endpoints that return counts, statuses, and locations of fleet units and emergencies.
 - **What Does NOT Exist**:
@@ -41,7 +41,7 @@ This document provides a rigorous, truth-grounded analysis of operational query 
 
 ## 3. Query Understanding & Tool Mapping Architecture
 
-To support end-to-end natural-language operator interaction, the system is designed around declarative function calling via Google Gemini:
+To support end-to-end natural-language operator interaction, the system is designed around declarative function calling via GeoAgent AI:
 
 ```
 [ Operator Natural Language Input ]
@@ -51,11 +51,11 @@ To support end-to-end natural-language operator interaction, the system is desig
                │
    ┌───────────┴───────────────────────────┐
    ▼                                       ▼
-[ Deterministic Fast-Path ]       [ LLM Tool Calling (Gemini) ]
+[ Deterministic Fast-Path ]       [ LLM Tool Calling (GeoAgent) ]
 (Regex / Exact Status Filters)     (Multi-step operational analysis)
    │                                       │
    │                                       ▼
-   │                           [ 12 Declarative Tools ]
+   │                           [ Declarative Intelligence Tools ]
    │                           ├── getEmergencyState
    │                           ├── getVehicleState
    │                           ├── getRecentTrajectory

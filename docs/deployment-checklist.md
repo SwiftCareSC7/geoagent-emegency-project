@@ -18,7 +18,7 @@ Use this checklist before and after deploying to production.
 ### Secrets
 - [ ] `MONGO_URI` stored in GCP Secret Manager
 - [ ] `JWT_SECRET` stored in GCP Secret Manager (minimum 64 chars, random)
-- [ ] `GEMINI_API_KEY` stored in GCP Secret Manager (if using Gemini)
+- [ ] `OPENROUTER_API_KEY` / `OPENCODE_API_KEY` stored in GCP Secret Manager (if using AI reasoning)
 - [ ] `GOOGLE_MAPS_API_KEY` stored in GCP Secret Manager (if using Google routing)
 - [ ] GitHub Secrets configured: `GCP_PROJECT_ID`, `GCP_REGION`, and either (`GCP_WORKLOAD_IDENTITY_PROVIDER` + `GCP_SERVICE_ACCOUNT`) or `GCP_SA_KEY`
 - [ ] No secrets in committed code (grep: `mongodb+srv://`, API keys)
