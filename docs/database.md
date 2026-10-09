@@ -44,6 +44,25 @@ Represents dispatchers, supervisors, and administrative personnel.
     enum: ['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'],
     default: 'CONTROL_ROOM'
   },
+  requestedRole: {
+    type: String,
+    enum: ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN'],
+    default: 'CONTROL_ROOM'
+  },
+  requestedWorkspaces: { type: [String], default: ['CONTROL_ROOM'] },
+  permittedWorkspaces: {
+    type: [String],
+    enum: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
+    default: ['CONTROL_ROOM']
+  },
+  status: {
+    type: String,
+    enum: ['PENDING', 'APPROVED', 'SUSPENDED'],
+    default: 'PENDING'
+  },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  approvedAt: { type: Date, default: null },
+  assignedVehicleId: { type: String, default: null, trim: true },
   createdAt: Date,
   updatedAt: Date
 }
@@ -51,6 +70,8 @@ Represents dispatchers, supervisors, and administrative personnel.
 - **Indexes**:
   - `{ email: 1 }` (unique)
   - `{ role: 1, createdAt: -1 }` (administrative listing & role filtering)
+  - `{ status: 1, role: 1 }` (admin quarantine queue & approval listing)
+  - `{ assignedVehicleId: 1 }` (vehicle ownership lookup)
 - **Security Rule**: The `password` hash is excluded by default via `.select('-password')` and stripped in `.toSafeObject()`.
 
 ---

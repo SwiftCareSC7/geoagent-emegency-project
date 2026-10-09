@@ -40,30 +40,37 @@ const ACCOUNTS_SPEC = [
     email: 'spec.priyanshu@gmail.com',
     name: 'Priyanshu (Admin)',
     role: 'ADMIN',
+    permittedWorkspaces: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
     pass: process.env.ADMIN_PASSWORD || 'FzhexDCVDMj7AFb'
   },
   {
     email: 'admin@swiftcare.local',
     name: 'Chief Systems Administrator',
     role: 'ADMIN',
+    permittedWorkspaces: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
     pass: process.env.ADMIN_PASSWORD || 'AdminPassword123!'
   },
   {
     email: 'operator@swiftcare.local',
     name: 'Central Control Operator',
     role: 'CONTROL_ROOM',
+    permittedWorkspaces: ['CONTROL_ROOM', 'DRIVER'],
     pass: process.env.OPERATOR_PASSWORD || 'Operator123!'
   },
   {
     email: 'driver@swiftcare.local',
     name: 'Ambulance Officer Ramesh',
     role: 'DRIVER',
+    permittedWorkspaces: ['DRIVER'],
+    assignedVehicleId: 'AMB-01',
     pass: process.env.DRIVER_PASSWORD || 'DriverPassword123!'
   },
   {
     email: 'paramedic@swiftcare.local',
     name: 'Field Paramedic Officer',
     role: 'PARAMEDIC',
+    permittedWorkspaces: ['PARAMEDIC'],
+    assignedVehicleId: 'AMB-01',
     pass: process.env.PARAMEDIC_PASSWORD || 'Paramedic123!'
   }
 ];
@@ -88,6 +95,11 @@ export async function provisionUsers() {
       primaryUser.name = acc.name;
       primaryUser.role = acc.role;
       primaryUser.password = hashedPassword;
+      primaryUser.status = 'APPROVED';
+      primaryUser.permittedWorkspaces = acc.permittedWorkspaces;
+      if (acc.assignedVehicleId) {
+        primaryUser.assignedVehicleId = acc.assignedVehicleId;
+      }
       await primaryUser.save();
 
       // Remove any lingering duplicates if any exist
@@ -105,6 +117,9 @@ export async function provisionUsers() {
         name: acc.name,
         email: normalizedEmail,
         role: acc.role,
+        status: 'APPROVED',
+        permittedWorkspaces: acc.permittedWorkspaces,
+        assignedVehicleId: acc.assignedVehicleId || null,
         password: hashedPassword
       });
 

@@ -54,3 +54,6 @@ playwright-report/
 
 # Impeccable engine binaries (re-downloaded by `npx impeccable update`)
 **/skills/impeccable/scripts/bin/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

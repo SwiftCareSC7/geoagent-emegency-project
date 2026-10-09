@@ -2,6 +2,42 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
+## [2.7.0] - Production RBAC, Registration Desk, Multi-Workspace Navigation & User Lifecycle Management
+
+### Added
+- **Full Role-Based Access Control (RBAC) & Four Authoritative Roles**:
+  - Enforced four distinct authoritative roles across backend, MongoDB models, JWT payloads, and frontend route guards:
+    - `ADMIN`: Complete system telemetry, fleet oversight, provider health, user approvals, and workspace configuration (`/admin`).
+    - `CONTROL_ROOM`: Emergency corridor surveillance, triage routing, AI decision evaluation, and live dispatch operations (`/control-room`).
+    - `DRIVER`: Emergency vehicle navigation HUD, real-time route guidance, and assigned vehicle operations (`/driver/dashboard`).
+    - `PARAMEDIC`: Pre-hospital patient vital signs, clinical trauma logging, and trauma bay handoff readiness (`/paramedic`).
+  - Implemented automatic post-login landing page redirection to the authoritative workspace for each role (`lib/auth/roles.ts`).
+- **Personnel Registration Desk (`/registration` & `/signup`)**:
+  - Redesigned 4-role responsive grid selector: Admin (`ADMIN`), Control Room (`CONTROL_ROOM`), Ambulance Driver (`DRIVER`), and Field Paramedic (`PARAMEDIC`).
+  - Added multi-workspace selection for requesting cross-departmental access.
+  - Added optional vehicle assignment identifier (`assignedVehicleId`) for emergency drivers.
+  - Clear policy notifications and registration success status screens.
+- **Strict Privilege Escalation Defense & Account Quarantining**:
+  - All public registrations (including administrative requests) default strictly to `status: 'PENDING'`.
+  - Unapproved accounts are blocked at login with `403 Forbidden: Account registration is pending administrator approval`.
+  - Token verification in `auth.middleware.js` and `ProtectedRoute.tsx` immediately rejects pending or suspended accounts.
+- **Admin User Management Console (`components/admin/admin-user-management.tsx`)**:
+  - Embedded real-time user management console inside `/admin`.
+  - Live filtering across `PENDING`, `APPROVED`, and `SUSPENDED` accounts.
+  - 1-click Approval (`PATCH /api/admin/users/:id/approve`), Account Suspension (`PATCH /api/admin/users/:id/suspend`), and Role & Permitted Workspace Reassignment (`PATCH /api/admin/users/:id/role`).
+  - Full audit logging capturing administrator ID (`approvedBy`) and approval timestamp (`approvedAt`).
+- **Resource Ownership Boundaries (`server/shared/middleware/ownershipMiddleware.js`)**:
+  - Ambulance drivers are strictly restricted to updating their own assigned vehicle (`req.user.assignedVehicleId`), preventing cross-vehicle interference.
+  - Dispatchers and Administrators maintain global fleet coordination authority.
+- **Dynamic Navigation Filtering (`components/dashboard/dashboard-topbar.tsx`)**:
+  - Topbar navigation links dynamically filtered via `getAuthorizedNavItems()` according to the active user's role and permitted workspaces.
+- **Comprehensive Test Suites**:
+  - `server/test-auth-rbac-complete.js`: 46/46 passed.
+  - `server/test-registration-workspaces-e2e.js`: 33/33 passed.
+  - `server/test-auth-fullstack.js`: 38/38 passed.
+  - `server/test-auth-e2e.js`: 31/31 passed.
+  - `server/test-admin-e2e.js`: 60/60 passed.
+
 ## [2.6.0] - GeoAgent Free-Model AI Provider Abstraction & OpenRouter Verification
 
 ### Added

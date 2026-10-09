@@ -102,34 +102,39 @@ SwiftCare GeoAgent is designed for four primary user groups:
 
 ---
 
-## 6. User Roles & Access Control
+## 6. User Roles, Access Control & Account Quarantine
 
-SwiftCare GeoAgent implements Role-Based Access Control (RBAC) enforced via JWT authentication and Next.js middleware:
+SwiftCare GeoAgent implements strict enterprise Role-Based Access Control (RBAC) enforced via JWT authentication, HTTP-only cookies, and Next.js middleware:
 
-| Role | Access URL | Permissions & Capabilities | Restrictions |
+| Role | Access URL | Permissions & Capabilities | Restrictions & Bound Scope |
 | :--- | :--- | :--- | :--- |
 | **`CONTROL_ROOM`** | `/control-room`, `/emergencies/*`, `/diff`, `/emergency-lab` | Create emergencies, assign vehicles, approve/reject reroutes, broadcast alerts. | Cannot manage user accounts or alter system-wide provider settings. |
-| **`DRIVER`** | `/driver/dashboard` | View turn-by-turn maneuvers, toggle mission legs (To Scene, To Hospital), view speed and V2X clearance. | Cannot reassign other vehicles or view citywide dispatch queues. |
-| **`PARAMEDIC`** | `/paramedic` | Enter patient vital signs (heart rate, BP, SpO2, trauma score), coordinate triage handoff. | Cannot alter vehicle routing or dispatch fleet assets. |
-| **`ADMIN`** | `/admin`, `/control-room`, `/driver/*`, `/paramedic` | Full administrative oversight: system health, provider diagnostics, fleet management, user RBAC. | Subject to audit logging on all administrative actions. |
+| **`DRIVER`** | `/driver/dashboard` | View turn-by-turn maneuvers, toggle mission legs, stream telemetry, view V2X clearance. | **Ownership Confined**: Restriced strictly to assigned vehicle (`assignedVehicleId`). Blocked from altering other units. |
+| **`PARAMEDIC`** | `/paramedic` | Enter patient vital signs (heart rate, BP, SpO2, GCS), coordinate triage handoff. | Cannot alter vehicle routing or dispatch fleet assets. |
+| **`ADMIN`** | `/admin`, `/control-room`, `/driver/*`, `/paramedic` | Full administrative oversight: system health, provider diagnostics, user quarantine approvals, account suspension. | Subject to audit logging on all administrative actions. |
+
+### Account Quarantine & Multi-Workspace Lifecycle
+- **Quarantine on Registration**: Newly registered accounts enter `status: 'PENDING'`. Quarantined users are blocked by `<ProtectedRoute>` until approved by an Administrator.
+- **Multi-Workspace Access**: Users have granular `permittedWorkspaces` allowing cross-role operators (e.g. Supervisor Dispatchers) to toggle seamlessly between dashboards.
+- **Resource Ownership Defense**: `ownershipMiddleware.js` strictly rejects unauthorized modifications to vehicle assets from drivers who are not bound to that specific unit.
 
 ---
 
 ## 7. Complete Feature Inventory
 
-An inventory of all 17 backend modules and 10 frontend route views:
+An inventory of all 17 backend modules and 11 frontend route views:
 - **Backend Modules**: `admin`, `analysis`, `auth`, `clearance`, `communication`, `decisions`, `deviation`, `emergencies`, `geoagents`, `health`, `incidents`, `orchestration`, `realtime`, `routes`, `traffic`, `trajectories`, `vehicles`.
 - **Frontend Views**:
   - `/`: Public landing page with feature cards, system guide, and role login cards.
-  - `/login`: Unified authentication portal with credentials form and instant demo role buttons.
-  - `/signup`: User registration with operational role assignment (`CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`, `ADMIN`).
-  - `/control-room`: Central metropolitan emergency operations dashboard with live map, queue, fleet panel, and decision HUD.
+  - `/login`: Unified authentication portal with credentials form, session recovery, and role redirection.
+  - `/registration` & `/signup`: User registration desk with 4-role interactive grid, multi-workspace requests, assigned vehicle binding, and quarantine notification.
+  - `/control-room`: Central metropolitan emergency operations dashboard with live map, queue, fleet panel, and 5-Question Mission HUD.
   - `/diff`: Map-first hypothetical emergency scenario simulator with deterministic 13-stage timeline and 5-color corridor hierarchy.
   - `/emergencies/[id]`: Mission detail page with patient telemetry, corridor route, and decision approval cards.
   - `/driver/dashboard`: In-cab navigation HUD with maneuver guidance, speedometer, and destination hospital selector.
   - `/paramedic`: Pre-hospital triage workflow for recording patient vitals and coordinating ER handoffs.
-  - `/emergency-lab`: Multi-scenario emergency simulation sandbox.
-  - `/admin`: Administrative system health monitor, AI agreement audit, and raw database explorer.
+  - `/emergency-lab`: Multi-scenario emergency simulation sandbox with real-time incident injection.
+  - `/admin`: Administrative system health monitor, user governance approvals console, and raw database explorer.
 
 ---
 

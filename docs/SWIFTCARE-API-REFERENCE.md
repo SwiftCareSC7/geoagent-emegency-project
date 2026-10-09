@@ -19,7 +19,7 @@ All authenticated endpoints require an active session via an **HTTP-only cookie 
 ## 2. Authentication Endpoints (`/api/auth`)
 
 ### POST `/api/auth/register`
-Creates a new user account with an operational role.
+Creates a new user account with an operational role. Accounts default to `PENDING` quarantine status for supervisory verification.
 - **Access**: Public
 - **Request Body**:
 ```json
@@ -27,7 +27,10 @@ Creates a new user account with an operational role.
   "name": "Jane Doe",
   "email": "jane@swiftcare.local",
   "password": "Password123!",
-  "role": "CONTROL_ROOM" // or "DRIVER", "PARAMEDIC", "ADMIN"
+  "role": "CONTROL_ROOM", // or "DRIVER", "PARAMEDIC", "ADMIN"
+  "requestedRole": "CONTROL_ROOM",
+  "requestedWorkspaces": ["CONTROL_ROOM"],
+  "assignedVehicleId": "AMB-01" // required for DRIVER
 }
 ```
 - **Response `201 Created`**:
@@ -39,7 +42,12 @@ Creates a new user account with an operational role.
     "id": "65f8a1b2c3d4e5f6a7b8c9d0",
     "name": "Jane Doe",
     "email": "jane@swiftcare.local",
-    "role": "CONTROL_ROOM"
+    "role": "CONTROL_ROOM",
+    "status": "PENDING",
+    "requestedRole": "CONTROL_ROOM",
+    "requestedWorkspaces": ["CONTROL_ROOM"],
+    "permittedWorkspaces": ["CONTROL_ROOM"],
+    "assignedVehicleId": null
   }
 }
 ```
@@ -63,7 +71,10 @@ Authenticates credentials and sets an HTTP-only JWT cookie.
     "id": "65f8a1b2c3d4e5f6a7b8c9d0",
     "name": "Head Dispatcher",
     "email": "dispatcher@swiftcare.local",
-    "role": "CONTROL_ROOM"
+    "role": "CONTROL_ROOM",
+    "status": "APPROVED",
+    "permittedWorkspaces": ["CONTROL_ROOM", "ADMIN"],
+    "assignedVehicleId": null
   }
 }
 ```
@@ -79,7 +90,10 @@ Retrieves the profile of the currently authenticated user.
     "id": "65f8a1b2c3d4e5f6a7b8c9d0",
     "name": "Head Dispatcher",
     "email": "dispatcher@swiftcare.local",
-    "role": "CONTROL_ROOM"
+    "role": "CONTROL_ROOM",
+    "status": "APPROVED",
+    "permittedWorkspaces": ["CONTROL_ROOM", "ADMIN"],
+    "assignedVehicleId": null
   }
 }
 ```
@@ -332,7 +346,89 @@ Calculates a simulation snapshot for any arbitrary simulation timestamp `T` (0 t
 
 ---
 
-## 10. Realtime Socket.IO Event Reference
+## 10. Admin Observability & User Governance Endpoints (`/api/admin`)
+
+Strictly gated behind both JWT authentication (`protect`) and `ADMIN` role (`requireRole('ADMIN')`).
+
+### GET `/api/admin/stats`
+Returns system counts, database connectivity metrics, and telemetry volumes across all collections.
+
+### GET `/api/admin/health`
+Evaluates database latency ping, server uptime, memory usage, and component health.
+
+### GET `/api/admin/providers`
+Evaluates upstream provider health status (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`) without exposing API keys.
+
+### GET `/api/admin/users`
+Lists registered users with optional role, status, and search filters.
+- **Access**: `ADMIN`
+- **Query Params**: `?role=DRIVER&status=PENDING&page=1&limit=20`
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "count": 1,
+  "users": [
+    {
+      "id": "65f8a1b2c3d4e5f6a7b8c9d0",
+      "name": "Arun Kumar",
+      "email": "driver@swiftcare.local",
+      "role": "DRIVER",
+      "status": "PENDING",
+      "requestedRole": "DRIVER",
+      "assignedVehicleId": "AMB-01",
+      "permittedWorkspaces": ["DRIVER"]
+    }
+  ]
+}
+```
+
+### PATCH `/api/admin/users/:id/approve`
+Approves a quarantined user account, activating full login access.
+- **Access**: `ADMIN`
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "message": "User approved successfully",
+  "user": {
+    "id": "65f8a1b2c3d4e5f6a7b8c9d0",
+    "status": "APPROVED",
+    "approvedBy": "65f8a1b2c3d4e5f6a7b8c999",
+    "approvedAt": "2026-09-28T10:00:00.000Z"
+  }
+}
+```
+
+### PATCH `/api/admin/users/:id/suspend`
+Suspends a user account immediately, blocking subsequent requests and revoking token validity.
+- **Access**: `ADMIN`
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "message": "User suspended successfully",
+  "user": {
+    "id": "65f8a1b2c3d4e5f6a7b8c9d0",
+    "status": "SUSPENDED"
+  }
+}
+```
+
+### PATCH `/api/admin/users/:id/role`
+Updates a user's assigned role and permitted workspace boundaries.
+- **Access**: `ADMIN`
+- **Request Body**:
+```json
+{
+  "role": "CONTROL_ROOM",
+  "permittedWorkspaces": ["CONTROL_ROOM", "ADMIN"]
+}
+```
+
+---
+
+## 11. Realtime Socket.IO Event Reference
 
 | Event Name | Direction | Payload | Description |
 | :--- | :--- | :--- | :--- |
@@ -343,3 +439,13 @@ Calculates a simulation snapshot for any arbitrary simulation timestamp `T` (0 t
 | `decision:pending` | Server -> Client | Pending decision object | Alerts operator that human action is required |
 | `decision:resolved` | Server -> Client | Resolved decision object | Broadcasts approved or rejected state |
 | `clearance:update` | Server -> Client | Corridor clearance state | V2X signal preemption status along route |
+
+---
+
+## 12. Resource Ownership Middleware (`requireVehicleOwnership`)
+
+Enforces strict resource-level security in `server/shared/middleware/ownershipMiddleware.js`:
+- **`ADMIN` & `CONTROL_ROOM`**: Granted organization-wide dispatch and fleet authority.
+- **`DRIVER`**: Restriced strictly to operations matching `req.user.assignedVehicleId`. Attempting to modify or report telemetry for other vehicles returns `403 Forbidden`.
+- **`PARAMEDIC`**: Restricted to assigned clinical emergency and vehicle operations.
+

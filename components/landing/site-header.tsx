@@ -67,6 +67,13 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
 
           <div className="h-4 w-px bg-border mx-1" />
 
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+          >
+            <span>Sign In</span>
+          </Link>
+
           <ThemeToggleCompact />
 
         </div>
@@ -88,6 +95,13 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="sm:hidden border-t border-border bg-background px-4 py-3 space-y-2">
+          <Link
+            href="/login"
+            onClick={() => setMobileMenuOpen(false)}
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary p-2.5 text-xs font-semibold text-primary-foreground text-center"
+          >
+            Sign In to Operational Portal
+          </Link>
           {onContact && (
             <button
               type="button"

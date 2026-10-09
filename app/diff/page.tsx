@@ -11,6 +11,7 @@ import { DiffHeader } from '@/components/diff/DiffHeader'
 import { DiffTimeline } from '@/components/diff/DiffTimeline'
 import { DiffTacticalHUD } from '@/components/diff/DiffTacticalHUD'
 import type { DiffMapHandle } from '@/components/diff/DiffMap'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
 // Dynamically import Leaflet map component with SSR disabled
 const DiffMap = dynamic(
@@ -133,9 +134,10 @@ export default function DiffScenarioPage() {
   }, [handleTogglePlay, handleReset, handleStepForward])
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground antialiased select-none">
-      {/* Top Header */}
-      <DiffHeader
+    <ProtectedRoute allowedRoles={['CONTROL_ROOM', 'ADMIN']}>
+      <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground antialiased select-none">
+        {/* Top Header */}
+        <DiffHeader
         timeLabel={snapshot.timeLabel}
         timestampSec={snapshot.timestampSec}
         simulationState={snapshot.simulationState}
@@ -168,13 +170,14 @@ export default function DiffScenarioPage() {
         )}
       </main>
 
-      {/* Synchronized Bottom Milestone Timeline */}
-      <DiffTimeline
-        currentTimestampSec={snapshot.timestampSec}
-        currentMilestoneIndex={snapshot.currentMilestoneIndex}
-        onSeek={handleSeek}
-        onFocusMilestone={handleFocusMilestone}
-      />
-    </div>
+        {/* Synchronized Bottom Milestone Timeline */}
+        <DiffTimeline
+          currentTimestampSec={snapshot.timestampSec}
+          currentMilestoneIndex={snapshot.currentMilestoneIndex}
+          onSeek={handleSeek}
+          onFocusMilestone={handleFocusMilestone}
+        />
+      </div>
+    </ProtectedRoute>
   )
 }

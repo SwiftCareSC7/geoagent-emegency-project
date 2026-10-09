@@ -123,8 +123,8 @@ async function runAuthSuite() {
       'Actionable error message returned for password requirements'
     );
 
-    // 4. Operational Role Registration: Admin Role
-    console.log('\n--- 4. Operational Role Registration: Admin Role ---');
+    // 4. Privilege Escalation Defense: Public registration with ADMIN role quarantined in PENDING status
+    console.log('\n--- 4. Privilege Escalation Defense: Admin Role Quarantine ---');
     const adminReg = await request('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -132,13 +132,25 @@ async function runAuthSuite() {
         name: 'Operations Admin User',
         email: `admin_${timestamp}@swiftcare.local`,
         password: 'SecurePassword123!',
-        role: 'ADMIN'
+        role: 'ADMIN',
+        status: 'APPROVED'
       }
     });
-    assert(adminReg.status === 201, 'Registration attempting role ADMIN returns 201 Created');
+    assert(adminReg.status === 201, 'Registration with role ADMIN succeeds as 201 Created');
+    assert(adminReg.data?.user?.status === 'PENDING', 'Self-assigning APPROVED ignored; user is PENDING');
+
+    const adminPendingLogin = await request('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        email: `admin_${timestamp}@swiftcare.local`,
+        password: 'SecurePassword123!'
+      }
+    });
+    assert(adminPendingLogin.status === 403, 'Unapproved ADMIN account login blocked with 403 Forbidden');
     assert(
-      adminReg.data?.user?.role === 'ADMIN',
-      'Operational admin user has role ADMIN'
+      adminPendingLogin.data?.message?.includes('pending administrator approval'),
+      'Actionable error message confirms pending administrator approval'
     );
 
     // 5. Successful registration: DRIVER role

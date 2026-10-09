@@ -205,16 +205,29 @@ class AdminService {
   /**
    * Users listing (Sanitized: strictly excludes password hash)
    */
-  async getUsers({ page, limit, skip, sortOptions, role, search }) {
+  async getUsers({ page, limit, skip, sortOptions, role, status, search }) {
     const filter = {};
-    if (role && ['CONTROL_ROOM', 'ADMIN'].includes(role)) {
+    if (role && ['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(role)) {
       filter.role = role;
     }
+    if (status) {
+      if (status === 'APPROVED') {
+        filter.$or = [{ status: 'APPROVED' }, { status: { $exists: false } }, { status: null }];
+      } else if (['PENDING', 'SUSPENDED'].includes(status)) {
+        filter.status = status;
+      }
+    }
     if (search) {
-      filter.$or = [
+      const searchCondition = [
         { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchCondition }];
+        delete filter.$or;
+      } else {
+        filter.$or = searchCondition;
+      }
     }
 
     const [total, users] = await Promise.all([
@@ -232,6 +245,13 @@ class AdminService {
       name: u.name,
       email: u.email,
       role: u.role,
+      status: u.status || 'APPROVED',
+      requestedRole: u.requestedRole || u.role,
+      requestedWorkspaces: u.requestedWorkspaces && u.requestedWorkspaces.length > 0 ? u.requestedWorkspaces : [u.role],
+      permittedWorkspaces: u.permittedWorkspaces && u.permittedWorkspaces.length > 0 ? u.permittedWorkspaces : (u.role === 'ADMIN' ? ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'] : u.role === 'CONTROL_ROOM' ? ['CONTROL_ROOM', 'DRIVER'] : [u.role]),
+      approvedBy: u.approvedBy ? u.approvedBy.toString() : null,
+      approvedAt: u.approvedAt || null,
+      assignedVehicleId: u.assignedVehicleId || null,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt
     }));
@@ -245,6 +265,84 @@ class AdminService {
         totalPages: Math.ceil(total / limit) || 1
       }
     };
+  }
+
+  /**
+   * Update user registration/account status (APPROVED, SUSPENDED, PENDING)
+   */
+  async updateUserStatus(userId, status, adminId) {
+    if (!['PENDING', 'APPROVED', 'SUSPENDED'].includes(status)) {
+      const error = new Error('Invalid status. Allowed: PENDING, APPROVED, SUSPENDED');
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    user.status = status;
+    if (status === 'APPROVED') {
+      user.approvedBy = adminId;
+      user.approvedAt = new Date();
+      if (!user.permittedWorkspaces || user.permittedWorkspaces.length === 0) {
+        if (user.role === 'ADMIN') user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        else if (user.role === 'CONTROL_ROOM') user.permittedWorkspaces = ['CONTROL_ROOM', 'DRIVER'];
+        else if (user.role === 'DRIVER') user.permittedWorkspaces = ['DRIVER'];
+        else if (user.role === 'PARAMEDIC') user.permittedWorkspaces = ['PARAMEDIC'];
+      }
+    }
+
+    await user.save();
+    return user.toSafeObject();
+  }
+
+  /**
+   * Update user role and permitted workspaces assignment
+   */
+  async updateUserRole(userId, { role, permittedWorkspaces, assignedVehicleId }) {
+    if (role && !['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(role)) {
+      const error = new Error('Invalid role. Allowed: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC');
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    if (role) {
+      user.role = role;
+    }
+    if (permittedWorkspaces && Array.isArray(permittedWorkspaces)) {
+      const valid = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+      user.permittedWorkspaces = permittedWorkspaces.filter(w => valid.includes(w));
+      if (role && !user.permittedWorkspaces.includes(role)) {
+        user.permittedWorkspaces.push(role);
+      }
+    } else if (role) {
+      if (role === 'ADMIN') user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+      else if (role === 'CONTROL_ROOM') user.permittedWorkspaces = ['CONTROL_ROOM', 'DRIVER'];
+      else if (role === 'DRIVER') user.permittedWorkspaces = ['DRIVER'];
+      else if (role === 'PARAMEDIC') user.permittedWorkspaces = ['PARAMEDIC'];
+    }
+
+    if (assignedVehicleId !== undefined) {
+      user.assignedVehicleId = assignedVehicleId ? assignedVehicleId.trim() : null;
+    }
+
+    await user.save();
+    return user.toSafeObject();
   }
 
   /**

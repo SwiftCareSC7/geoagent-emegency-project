@@ -14,7 +14,7 @@ export default async function EmergencyDetailPage({ params }: EmergencyDetailPag
   const decodedId = decodeURIComponent(id)
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={['CONTROL_ROOM', 'ADMIN']}>
       <div className="min-h-screen bg-background flex flex-col">
         <DashboardTopbar
           ambulanceId="CONTROL-CENTER"

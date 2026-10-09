@@ -22,8 +22,12 @@ router.get('/health', adminController.getHealth);
 router.get('/providers', adminController.getProviders);
 router.get('/prediction-analytics', adminController.getPredictionAnalytics);
 
-// Approved Operational Records (Paginated & Sanitized)
+// Approved Operational Records & User Administration
 router.get('/users', adminController.getUsers);
+router.patch('/users/:id/status', adminController.updateUserStatus);
+router.patch('/users/:id/role', adminController.updateUserRole);
+router.patch('/users/:id/approve', adminController.approveUser);
+router.patch('/users/:id/suspend', adminController.suspendUser);
 router.get('/vehicles', adminController.getVehicles);
 router.get('/emergencies', adminController.getEmergencies);
 router.get('/incidents', adminController.getIncidents);

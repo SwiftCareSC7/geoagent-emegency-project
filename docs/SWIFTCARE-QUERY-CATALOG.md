@@ -36,6 +36,9 @@ This document provides a rigorous, truth-grounded analysis of operational query 
 | **Historical Comparison** | *"Which route historically performed better for similar evening emergencies?"* | **NOT SUPPORTED** | None | No vector embedding or episodic similarity retrieval engine implemented. |
 | **Telemetry Health** | *"Which ambulances have lost telemetry?"* | **PARTIALLY SUPPORTED** | Heartbeat check on `Trajectory.timestamp` | Detected if `Date.now() - timestamp > 30s`, but not exposed as a single natural-language query endpoint. |
 | **Simulation Query** | *"What happened in the road accident what-if simulation?"* | **SUPPORTED** | `GET /api/diff/scenarios` (`/diff`) | Deterministic playback engine provides exact timeline and event breakdown. |
+| **Quarantine / Approvals** | *"Which users are currently awaiting approval?"* | **SUPPORTED** | `GET /api/admin/users?status=PENDING` | Queries quarantined accounts awaiting Administrator review. |
+| **Driver Assignment** | *"Which vehicle is assigned to Driver Arun?"* | **SUPPORTED** | `GET /api/admin/users?role=DRIVER` | Returns user record with `assignedVehicleId` binding. |
+| **System Latency** | *"What is the current database latency and health status?"* | **SUPPORTED** | `GET /api/admin/health` | Evaluates live MongoDB ping, uptime, and provider status. |
 
 ---
 

@@ -70,6 +70,18 @@ export const socketAuthMiddleware = async (socket, next) => {
       return next(error);
     }
 
+    // Status check: Block suspended or pending users
+    if (user.status === 'SUSPENDED') {
+      const error = new Error('Authentication error: Account has been suspended');
+      error.data = { code: 'ACCOUNT_SUSPENDED' };
+      return next(error);
+    }
+    if (user.status === 'PENDING') {
+      const error = new Error('Authentication error: Account registration pending administrator approval');
+      error.data = { code: 'ACCOUNT_PENDING' };
+      return next(error);
+    }
+
     // Role check: Allow all authorized operational roles
     if (!['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(user.role)) {
       const error = new Error('Authentication error: Insufficient permissions for real-time channel');
@@ -77,12 +89,14 @@ export const socketAuthMiddleware = async (socket, next) => {
       return next(error);
     }
 
-    // Attach safe user identity to socket
+    // Attach safe user identity to socket with workspaces and vehicle assignment
     socket.user = {
       id: user._id.toString(),
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      permittedWorkspaces: user.permittedWorkspaces || [user.role],
+      assignedVehicleId: user.assignedVehicleId || null
     };
 
     next();
@@ -98,8 +112,10 @@ export const socketAuthMiddleware = async (socket, next) => {
  * @param {Object} socket Connected Socket.IO socket instance
  */
 export const registerSocketHandlers = (socket) => {
-  // Automatically join control room if user is CONTROL_ROOM or ADMIN
-  if (['CONTROL_ROOM', 'ADMIN'].includes(socket.user?.role)) {
+  const permitted = socket.user?.permittedWorkspaces || [socket.user?.role];
+
+  // Automatically join control room if user has CONTROL_ROOM or ADMIN workspace
+  if (permitted.includes('CONTROL_ROOM') || permitted.includes('ADMIN')) {
     socket.join(REALTIME_ROOMS.CONTROL_ROOM);
   }
 
@@ -110,6 +126,10 @@ export const registerSocketHandlers = (socket) => {
       if (!room || typeof room !== 'string') return;
 
       if (room === REALTIME_ROOMS.CONTROL_ROOM) {
+        if (!permitted.includes('CONTROL_ROOM') && !permitted.includes('ADMIN')) {
+          if (callback) callback({ success: false, message: 'Forbidden: Insufficient privileges' });
+          return;
+        }
         socket.join(room);
         if (callback) callback({ success: true, room });
         socket.emit('joined', { room });
@@ -125,6 +145,11 @@ export const registerSocketHandlers = (socket) => {
         }
       } else if (room.startsWith('vehicle:')) {
         const vehicleId = room.replace('vehicle:', '');
+        // Resource ownership check: DRIVER can only subscribe to assigned vehicle
+        if (socket.user?.role === 'DRIVER' && socket.user?.assignedVehicleId && socket.user.assignedVehicleId !== vehicleId) {
+          if (callback) callback({ success: false, message: 'Forbidden: Drivers can only subscribe to assigned vehicle' });
+          return;
+        }
         const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
         if (vehicle) {
           socket.join(room);

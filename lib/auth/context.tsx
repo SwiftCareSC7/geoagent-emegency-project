@@ -122,6 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: data.email.trim().toLowerCase(),
           password: data.password,
           role: data.role,
+          assignedVehicleId: data.assignedVehicleId,
         })
         return res
       } catch (err: unknown) {

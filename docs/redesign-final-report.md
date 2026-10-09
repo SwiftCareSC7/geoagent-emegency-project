@@ -20,14 +20,15 @@ The redesigned product delivers a **calm, high-trust, operational, human-centere
 | Route | Type | Description | Key Capabilities |
 | :--- | :---: | :--- | :--- |
 | `/` | **Redesigned** | Public Landing Page & Operational Overview | Explains what SwiftCare is, who uses it, what problem it solves, the 8-step response loop (`MONITOR -> DETECT -> EXPLAIN -> PREDICT -> RECOMMEND -> DECIDE -> ACT -> VERIFY`), role-based workspace cards, and live 5-question preview. |
-| `/login` | **Redesigned** | Authentication & Persona Switcher | Tactical dark card with BrandLogo, actionable error messages (explaining WHAT happened and HOW to fix it), and 1-click verified demo roles (Dispatcher, Driver, Admin, Paramedic). |
-| `/signup` | **Redesigned** | Operator Profile Registration | Tactical registration interface with real-time password criteria verification, role assignment, and immediate authenticated session creation. |
+| `/login` | **Redesigned** | Authentication & Persona Switcher | Tactical dark card with BrandLogo, actionable error messages, inline validation, and automatic workspace redirection. |
+| `/registration` & `/signup` | **NEW & Redesigned** | Registration Desk & Quarantine Console | Production 4-role grid selector (Control, Driver, Paramedic, Admin), multi-workspace permissions, assigned vehicle binding, and automatic account quarantine in `PENDING` status. |
 | `/control-room` | **Redesigned** | Master Control Room & Dispatch Console | Live metrics summary, centerpiece **5-Question Mission Assessment HUD**, interactive Leaflet map, evidence inspection drawers, and human-in-the-loop action gate. |
-| `/driver/dashboard` | **Redesigned** | In-Vehicle Navigation HUD | High-contrast night navigation interface, turn-by-turn maneuver HUD with accurate metric distances (fixed `(NaNm)` bug), dynamic reroute advisory card, and live speed gauge. |
+| `/driver/dashboard` | **Redesigned** | In-Vehicle Navigation HUD | High-contrast night navigation interface, turn-by-turn maneuver HUD with accurate metric distances, vehicle ownership enforcement, dynamic reroute advisory card, and live speed gauge. |
 | `/emergencies/[id]` | **Redesigned** | Deep Mission Telemetry & Corridor Analysis | Embedded MissionAssessmentHUD, real-time Socket.IO telematics sync, prediction change tracker, deterministic what-if route comparison, and chronological event audit timeline. |
 | `/paramedic` | **NEW Route** | Pre-Hospital Clinical Triage Workspace | Dedicated clinical dashboard featuring continuous vitals telemetry (HR, BP, SpO2, GCS), pre-hospital intervention notes, and destination ER trauma bay readiness synchronization. |
+| `/diff` | **NEW Route** | What-If Scenario Simulator | Comparative scenario replay with 5-color visual hierarchy, 13 timeline milestones, live playback scrubbers, and delta metric cards. |
 | `/emergency-lab` | **NEW Route** | Simulation & Stress-Test Workbench | Interactive scenario workbench with 18 seeded test cases, simulation clock (`T+00:00`), speed multiplier controls (1x, 2x, 5x), real-time event injection toolbar, and end-to-end 12-stage response demonstration. |
-| `/admin` | **Preserved & Polished** | Administration & Observability Console | System health diagnostics, provider health status (OSRM, Google, OpenRouter / OpenCode), vehicle fleet management, database seeding/reset controllers, and audit logging. |
+| `/admin` | **Preserved & Polished** | Administration, Observability & User Governance | System health diagnostics, provider health status, user quarantine approvals console (`AdminUserManagement`), account suspension, database explorer, and audit logging. |
 
 ---
 

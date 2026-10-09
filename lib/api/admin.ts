@@ -15,7 +15,7 @@
  *   GET /api/admin/decisions      — Paginated decision lifecycle audit trail
  */
 
-import { get, post } from './client'
+import { get, post, patch } from './client'
 import type {
   AdminSystemStats,
   AdminDatabaseHealth,
@@ -23,6 +23,9 @@ import type {
   AdminPaginatedResponse,
   AdminQueryParams,
   User,
+  UserRole,
+  UserStatus,
+  Workspace,
   Vehicle,
   Emergency,
   Incident,
@@ -50,6 +53,26 @@ export const adminApi = {
   /** List users (sanitized, password hashes never returned) */
   getUsers(params?: AdminQueryParams): Promise<AdminPaginatedResponse<User>> {
     return get<AdminPaginatedResponse<User>>('/admin/users', params)
+  },
+
+  /** Update user status (APPROVED, SUSPENDED, PENDING) */
+  updateUserStatus(userId: string, status: UserStatus): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/status`, { status })
+  },
+
+  /** Update user role and optional vehicle assignment */
+  updateUserRole(userId: string, data: { role?: UserRole; permittedWorkspaces?: Workspace[]; assignedVehicleId?: string }): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/role`, data)
+  },
+
+  /** Approve pending user registration */
+  approveUser(userId: string): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/approve`)
+  },
+
+  /** Suspend user account */
+  suspendUser(userId: string): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/suspend`)
   },
 
   /** List vehicles with pagination & filtering */

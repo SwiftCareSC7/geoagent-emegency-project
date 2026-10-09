@@ -1,43 +1,65 @@
-# SwiftCare AI Toolkit — REAL STATUS
+# SwiftCare AI Coding Toolkit — System Manifest & Status
 
-Default methodology: **Ponytail FULL** (`UNDERSTAND → SMALLEST COMPLETE CHANGE → VERIFY → STOP`).
-Skill: `.agents/skills/ponytail/SKILL.md` (mirror `.claude/skills/ponytail/`).
-Every supported agent that loads `AGENTS.md` follows it. External models are not controlled.
+Default methodology: **Ponytail FULL** (`UNDERSTAND → SMALLEST COMPLETE CHANGE → VERIFY → STOP`).  
+Skills store: `.agents/skills/` (mirrored to `.claude/skills/`).  
+Shared Agent Protocol: [AGENTS.md](file:///Users/priyanshu/Documents/geoagent-emegency-project/AGENTS.md).
 
-## Verification table
+---
 
-| Tool | Expected | Actual | Verified |
-|---|---|---|---|
-| Ponytail | Installed + configured | `.agents/skills/ponytail/SKILL.md` + `.claude/skills/ponytail/SKILL.md`, `AGENTS.md` default-FULL | YES |
-| VibeSec | Installed + configured | `.agents/skills/vibesec/SKILL.md` + `.claude/skills/vibesec/SKILL.md` | YES |
-| i-have-adhd | Installed + configured | ALREADY PRESENT `.agents/skills/i-have-adhd`, mirrored to `.claude/skills/i-have-adhd` | YES |
-| Taste | Installed + configured | ALREADY PRESENT `taste-design` in both skill dirs (equivalent purpose) | YES |
-| Impeccable | Installed | `npx impeccable install --providers=claude,codex --scope=project` → `.agents/.claude/skills/impeccable/` + engine v0.1.11; bins gitignored | YES |
-| Spec Kit | Installed | `specify` 1.1.2 via `pipx install specify-cli` (`~/.local/bin/specify`) | YES |
-| Ruflo | Installed | `ruflo` v3.55.0 via `npm install -g ruflo@latest` (dev machine only) | YES |
-| is-website-vulnerable | Installed | `is-website-vulnerable` 1.14.17 via `npm install -g` (dev machine only) | YES |
-| Strix | Installed | BLOCKED — official installer hung 180s (interactive/setup requirements); `strix` binary absent | NO |
-| Google Stitch | Configured | ALREADY PRESENT — 8 `stitch-*` skills in both dirs; MCP runtime is per-developer external | YES (skills) |
-| Shadcn | Configured | `components.json` (new-york, Tailwind v4, `@/` aliases) + `components/ui/` (button, modal, disclosure pre-existing; badge, table, skeleton, dialog, sheet, tabs, alert added via CLI); `cn` package rejected in favor of existing `@/lib/utils`; only new prod dep is `radix-ui` (primitives) | YES |
-| awesome-shadcn-ui | Available as reference | REFERENCE ONLY — catalog (awesomeshadcn.dev) used for discovery; shortlist evaluated: `shadcn-map`, `approvals-ui`, `niko-table`/`adapttable`, `credenza` NOT vendored (map engine, decision flow, and tables stay on current Leaflet/custom implementation; revisit only with a concrete gap) | YES |
-| Penpot | Installed or external | EXTERNAL SERVICE — Docker exists but full-stack local install out of scope; see `tools/LOCAL_SERVICES.md` | EXTERNAL |
-| Plane | Installed or external | EXTERNAL SERVICE — same as Penpot; process-only, see `tools/LOCAL_SERVICES.md` | EXTERNAL |
+## 1. The Four Agents
 
-## How each is invoked
+| Agent | Config File | MCP Config | Instructions Entrypoint | Status |
+|-------|-------------|------------|-------------------------|--------|
+| **Claude Code** (`claude`) | `.claude/settings.json` | `.mcp.json` | `CLAUDE.md` (`@AGENTS.md`) | Verified & Active |
+| **Antigravity** (`AGY`) | `~/.gemini/config/` | `.gemini/config/mcp_config.json` | `AGENTS.md` | Verified & Active |
+| **OpenCode** (`opencode`) | `opencode.json` | `opencode.json` | `AGENTS.md`, `.opencode/instructions.md` | Verified & Active |
+| **Kilo Code** (`kilocode`) | `.kilo/` | IDE MCP runtime | `.kilorules`, `.kilo/rules.md` | Verified & Active |
 
-- `/ponytail [lite|full|ultra|off]`, `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt` (skill-capable hosts)
-- `vibesec` — load skill for auth/RBAC/API/secrets/input-validation work
-- `is-website-vulnerable http://localhost:3000` — manual pre-release check, not CI-gated
-- `specify init <dir>` — large features only; never for small changes
-- `ruflo --help` — external harness experiments only; never replaces app architecture
-- `npx impeccable detect <target>` / `/impeccable <command>` — UI quality when relevant
-- Stitch skills — design direction feeding `app/` + `components/` implementation
+---
 
-## Security boundary (never bypassed)
+## 2. Core Toolkit & Verification Table
 
-```text
-OBSERVED → INFERRED/DERIVED → AI ADVISORY → DETERMINISTIC DECISION ENGINE → HUMAN APPROVAL → EXECUTION
-```
+| Tool / Skill | Repository / Origin | Type | Local Path | Verified |
+|---|---|---|---|---|
+| **Ponytail** | `DietrichGebert/ponytail` | Methodology Skill | `.agents/skills/ponytail/SKILL.md` | **YES** |
+| **Caveman** | `JuliusBrussee/caveman` | Token Compression Skill | `.agents/skills/caveman/SKILL.md` | **YES** |
+| **Token-Saver** | Project Custom | Token Protocol | `.agents/skills/token-saver/SKILL.md` | **YES** |
+| **Skill-Scout** | Project Custom | Selective Discovery | `.agents/skills/skill-scout/SKILL.md` | **YES** |
+| **Graft** | `trailhq/Graft` | Repo Graph CLI / MCP | `graft/`, `@nanonets/graft@0.21.1` | **YES** |
+| **Context7** | `upstash/context7` | Doc Fetcher CLI | `npx ctx7@latest` | **YES** |
+| **Vercel Agent Skills** | `vercel-labs/agent-skills` | Performance & Best Practices | `.agents/skills/vercel-optimize`, `.agents/skills/react-best-practices` | **YES** |
+| **Superpowers** | `obra/superpowers` | 15 Workflow Skills | `.agents/skills/superpowers/`, `.agents/skills/using-superpowers/` | **YES** |
+| **Andrej Karpathy** | `multica-ai/andrej-karpathy-skills` | ML Engineering Skill | `.agents/skills/andrej-karpathy/SKILL.md` | **YES** |
+| **VibeSec** | `BehiSecc/VibeSec-Skill` | Security Audit Skill | `.agents/skills/vibesec/SKILL.md` | **YES** |
+| **Browser-Harness** | `browser-use/browser-harness` | Browser CDP Skill | `.agents/skills/browser-harness/SKILL.md` | **YES** |
+| **Impeccable** | `pbakaus/impeccable` | Design System CLI / Skill | `.agents/skills/impeccable/`, engine v0.1.11 | **YES** |
+| **Spec-Kit** | `github/spec-kit` | Specification CLI | `~/.local/bin/specify` (specify-cli) | **YES** |
+| **Ruflo** | `ruvnet/ruflo` | Multi-Agent Flow Runner | `~/.nvm/.../bin/ruflo` (v3.55.0) | **YES** |
+| **is-website-vulnerable** | `lirantal/is-website-vulnerable` | Web Security Scanner | `~/.nvm/.../bin/is-website-vulnerable` (1.14.17) | **YES** |
+| **Taste Design** | `Leonxlnx/taste-skill` | Design System Skill | `.agents/skills/taste-design/SKILL.md` (canonical deduplicated) | **YES** |
+| **i-have-adhd** | `ayghri/i-have-adhd` | Focused Output Skill | `.claude/skills/i-have-adhd/SKILL.md` | **YES** |
+| **BuildWithClaude** | `davepoon/buildwithclaude` | Prompt/Hook Reference | `docs/ai-toolkit/references/buildwithclaude.md` | **YES** |
+| **ECC** | `affaan-m/ECC` | Harness Optimization Reference | `docs/ai-toolkit/references/ecc.md` | **YES** |
+| **GSD Core** | `open-gsd/gsd-core` | Execution Workflow Reference | `docs/ai-toolkit/references/gsd-core.md` | **YES** |
+| **Archify** | `tt-a1i/archify` | Architecture Diagram Reference | `docs/ai-toolkit/references/archify.md` | **YES** |
+| **Browser-Use** | `browser-use/browser-use` | Browser Agent Core Reference | `docs/ai-toolkit/references/browser-use.md` | **YES** |
+| **Agent-Reach** | `Panniantong/Agent-Reach` | Multi-Platform Web Scraper | `docs/ai-toolkit/references/agent-reach.md` | **YES** |
+| **Strix** | `usestrix/strix` | AI Pentest Reference | `docs/ai-toolkit/references/strix.md` | **YES** |
+| **Dialogflow Handoff** | `dialogflow/agent-human-handoff-nodejs`| Human Handoff Reference | `docs/ai-toolkit/references/agent-human-handoff.md` | **YES** |
+| **Public APIs** | `public-apis/public-apis` | API Catalog Reference | `docs/ai-toolkit/references/public-apis.md` | **YES** |
+| **Public APIs (n0shake)**| `n0shake/Public-APIs` | Alternative API Catalog | `docs/ai-toolkit/references/n0shake-public-apis.md` | **YES** |
+| **AnythingMCP** | `HelpCode-ai/anythingmcp` | Universal API-to-MCP Gateway | `docs/ai-toolkit/references/anythingmcp.md` | **YES** |
+| **API Anything** | `goodnight000/api-anything` | Web-to-API Adapter Reference | `docs/ai-toolkit/references/api-anything.md` | **YES** |
+| **Appwrite** | `appwrite/appwrite` | Backend Architecture Reference | `docs/ai-toolkit/references/appwrite.md` | **YES** |
+| **Awesome Shadcn** | `birobirobiro/awesome-shadcn-ui` | UI Blocks Catalog Reference | `docs/ai-toolkit/references/awesome-shadcn-ui.md` | **YES** |
 
-No skill or tool is authoritative; none executes emergency actions.
-Never commit secrets; `NEXT_PUBLIC_*` stays browser-safe. No new production dependencies added.
+---
+
+## 3. Toolkit Documentation Artifacts
+
+- **Repository Manifest (30 Repos)**: [repository-manifest.json](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/ai-toolkit/repository-manifest.json)
+- **Fast Skill Index (72 Skills)**: [skill-index.json](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/ai-toolkit/skill-index.json)
+- **Setup & Usage Guide**: [SETUP_AND_USAGE.md](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/ai-toolkit/SETUP_AND_USAGE.md)
+- **Integration Report**: [INTEGRATION_REPORT.md](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/ai-toolkit/INTEGRATION_REPORT.md)
+- **Verification Report**: [VERIFICATION_REPORT.md](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/ai-toolkit/VERIFICATION_REPORT.md)
+- **External References Index**: [docs/ai-toolkit/references/](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/ai-toolkit/references/README.md)

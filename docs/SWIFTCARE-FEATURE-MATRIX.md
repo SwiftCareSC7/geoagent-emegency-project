@@ -16,10 +16,11 @@ This matrix provides the verified, strict status classification of every feature
 
 | Feature Domain | Specific Feature | Frontend Component | Backend Service / Route | Database Model | AI Involvement | Realtime / Socket | Map Visual | Test Coverage | Verified Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Authentication & RBAC** | User Login & Cookie Session | `LoginForm.tsx` (`/login`) | `POST /api/auth/login` | `User` | None | None | None | `test-auth-fullstack.js`, `e2e/auth.spec.ts` | **IMPLEMENTED** |
-| | User Signup with Role Assignment | `SignupForm.tsx` (`/signup`) | `POST /api/auth/register` | `User` | None | None | None | `e2e/auth.spec.ts` | **IMPLEMENTED** |
-| | Demo Role Fast Login | `RoleCards.tsx` | Next.js API `/api/auth/login` | `User` / Fixtures | None | None | None | `e2e/auth.spec.ts` | **IMPLEMENTED** |
-| | Role-Based Page Authorization | `lib/auth/context.tsx` | JWT middleware | None | None | None | None | `e2e/auth.spec.ts` | **IMPLEMENTED** |
+| **Authentication & RBAC** | User Login & Cookie Session | `LoginForm.tsx` (`/login`) | `POST /api/auth/login` | `User` | None | None | None | `test-auth-fullstack.js`, `test-auth-e2e.js` | **IMPLEMENTED** |
+| | User Signup & Quarantine Desk | `SignupForm.tsx` (`/registration`, `/signup`) | `POST /api/auth/register` | `User` | None | None | None | `test-registration-workspaces-e2e.js`, `test-auth-rbac-complete.js` | **IMPLEMENTED** |
+| | Admin User Governance & Approvals | `AdminUserManagement.tsx` (`/admin`) | `GET/PATCH /api/admin/users/*` | `User` | None | None | None | `test-admin-e2e.js`, `test-registration-workspaces-e2e.js` | **IMPLEMENTED** |
+| | Multi-Workspace Role Gating | `ProtectedRoute.tsx` | `lib/auth/roles.ts`, `auth.middleware.js` | `User` | None | None | None | `test-auth-rbac-complete.js` | **IMPLEMENTED** |
+| | Driver Vehicle Ownership Defense | Driver HUD / Map | `ownershipMiddleware.js` (`requireVehicleOwnership`) | `User`, `Vehicle` | None | None | None | `test-auth-rbac-complete.js` | **IMPLEMENTED** |
 | **Vehicle Fleet** | Fleet Listing & Filtering | `VehicleFleetPanel.tsx` | `GET /api/vehicles` | `Vehicle` | None | Polling / Demo | None | `test-dashboard-e2e.js` | **IMPLEMENTED** |
 | | Vehicle Registration | `AdminVehicles.tsx` | `POST /api/vehicles` | `Vehicle` | None | None | None | `test-admin-e2e.js` | **IMPLEMENTED** |
 | | Live Vehicle Status Updates | Status Pills | `PATCH /api/vehicles/:id` | `Vehicle` | None | `vehicle:status` | Marker Icon | `test-dashboard-e2e.js` | **IMPLEMENTED** |

@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react'
 import { BrandLogo } from '@/components/brand-logo'
 import { ThemeToggleCompact } from '@/components/theme-toggle'
 import { useAuth } from '@/lib/auth/context'
+import { getAuthorizedNavItems } from '@/lib/auth/roles'
 import { cn } from '@/lib/utils'
 
 interface DashboardTopbarProps {
@@ -50,6 +51,7 @@ export function DashboardTopbar({
 
   const displayName = mounted && user?.name ? user.name : driverName
   const userRole = mounted && user?.role ? user.role : 'DRIVER'
+  const navItems = mounted ? getAuthorizedNavItems(user) : []
 
   return (
     <header className="border-b border-border bg-card/95 text-foreground backdrop-blur-md transition-colors">
@@ -96,68 +98,50 @@ export function DashboardTopbar({
           {/* Right: Desktop nav + Theme Switcher + User */}
           <div className={cn('hidden lg:flex items-center gap-2', driverMode && 'lg:hidden')}>
             {/* Navigation Links */}
-            <nav className="flex items-center gap-1 rounded-lg bg-muted/60 border border-border p-0.5">
-              <Link
-                href="/control-room"
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
-                  pathname === '/control-room' || pathname.startsWith('/emergencies')
-                    ? 'bg-card text-foreground shadow-xs border border-border'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                )}
-              >
-                <Shield className="size-3 text-emerald-500 dark:text-emerald-400" />
-                <span>Control Room</span>
-              </Link>
-              <Link
-                href="/driver/dashboard"
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
-                  pathname.startsWith('/driver')
-                    ? 'bg-card text-foreground shadow-xs border border-border'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                )}
-              >
-                <Navigation className="size-3 text-cyan-500 dark:text-cyan-400" />
-                <span>Driver</span>
-              </Link>
-              <Link
-                href="/paramedic"
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
-                  pathname.startsWith('/paramedic')
-                    ? 'bg-card text-foreground shadow-xs border border-border'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                )}
-              >
-                <HeartPulse className="size-3 text-rose-500 dark:text-rose-400" />
-                <span>Paramedic</span>
-              </Link>
-              <Link
-                href="/diff"
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
-                  pathname === '/diff'
-                    ? 'bg-card text-foreground shadow-xs border border-border'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                )}
-              >
-                <GitCompare className="size-3 text-indigo-500 dark:text-indigo-400" />
-                <span>What-If Diff</span>
-              </Link>
-              <Link
-                href="/admin"
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
-                  pathname.startsWith('/admin')
-                    ? 'bg-card text-foreground shadow-xs border border-border'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                )}
-              >
-                <Shield className="size-3 text-amber-500 dark:text-amber-400" />
-                <span>Admin</span>
-              </Link>
-            </nav>
+            {navItems.length > 0 && (
+              <nav className="flex items-center gap-1 rounded-lg bg-muted/60 border border-border p-0.5">
+                {navItems.map((item) => {
+                  const Icon =
+                    item.iconType === 'control-room'
+                      ? Shield
+                      : item.iconType === 'driver'
+                      ? Navigation
+                      : item.iconType === 'paramedic'
+                      ? HeartPulse
+                      : item.iconType === 'diff'
+                      ? GitCompare
+                      : Shield
+                  const iconColor =
+                    item.iconType === 'control-room'
+                      ? 'text-emerald-500 dark:text-emerald-400'
+                      : item.iconType === 'driver'
+                      ? 'text-cyan-500 dark:text-cyan-400'
+                      : item.iconType === 'paramedic'
+                      ? 'text-rose-500 dark:text-rose-400'
+                      : item.iconType === 'diff'
+                      ? 'text-indigo-500 dark:text-indigo-400'
+                      : 'text-amber-500 dark:text-amber-400'
+                  const isActive =
+                    pathname === item.href ||
+                    (item.matchPrefix !== '/' && pathname.startsWith(item.matchPrefix))
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold transition-colors',
+                        isActive
+                          ? 'bg-card text-foreground shadow-xs border border-border'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      )}
+                    >
+                      <Icon className={cn('size-3', iconColor)} />
+                      <span>{item.label}</span>
+                    </Link>
+                  )
+                })}
+              </nav>
+            )}
 
             {/* Global Theme Toggle */}
             <div className="pl-1">
@@ -235,48 +219,43 @@ export function DashboardTopbar({
             </div>
 
             {/* Mobile Nav Links */}
-            <div className="grid grid-cols-2 gap-2">
-              <Link
-                href="/control-room"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border/50 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                <Shield className="size-4 text-emerald-500 dark:text-emerald-400" />
-                Control Room
-              </Link>
-              <Link
-                href="/driver/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border/50 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                <Navigation className="size-4 text-cyan-500 dark:text-cyan-400" />
-                Driver
-              </Link>
-              <Link
-                href="/paramedic"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border/50 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                <HeartPulse className="size-4 text-rose-500 dark:text-rose-400" />
-                Paramedic
-              </Link>
-              <Link
-                href="/diff"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border/50 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                <GitCompare className="size-4 text-indigo-500 dark:text-indigo-400" />
-                What-If Diff
-              </Link>
-              <Link
-                href="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border/50 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted"
-              >
-                <Shield className="size-4 text-amber-500 dark:text-amber-400" />
-                Admin Console
-              </Link>
-            </div>
+            {navItems.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {navItems.map((item) => {
+                  const Icon =
+                    item.iconType === 'control-room'
+                      ? Shield
+                      : item.iconType === 'driver'
+                      ? Navigation
+                      : item.iconType === 'paramedic'
+                      ? HeartPulse
+                      : item.iconType === 'diff'
+                      ? GitCompare
+                      : Shield
+                  const iconColor =
+                    item.iconType === 'control-room'
+                      ? 'text-emerald-500 dark:text-emerald-400'
+                      : item.iconType === 'driver'
+                      ? 'text-cyan-500 dark:text-cyan-400'
+                      : item.iconType === 'paramedic'
+                      ? 'text-rose-500 dark:text-rose-400'
+                      : item.iconType === 'diff'
+                      ? 'text-indigo-500 dark:text-indigo-400'
+                      : 'text-amber-500 dark:text-amber-400'
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 rounded-lg bg-muted/60 border border-border/50 px-3 py-2.5 text-xs font-medium text-foreground hover:bg-muted"
+                    >
+                      <Icon className={cn('size-4', iconColor)} />
+                      {item.mobileLabel}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
 
             {/* Mobile Logout */}
             <button

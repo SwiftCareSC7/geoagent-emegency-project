@@ -123,19 +123,25 @@ Trajectories          Routes                     │         │
 │   ├── page.tsx                              # Landing page
 │   ├── globals.css                           # Global styles & design tokens
 │   ├── login/page.tsx                        # Login interface
-│   ├── signup/page.tsx                       # Signup interface
+│   ├── signup/page.tsx                       # Signup alias to registration
+│   ├── registration/page.tsx                 # Full registration desk with quarantine
+│   ├── control-room/page.tsx                 # Dispatcher 5-Question Mission Assessment HUD
+│   ├── diff/page.tsx                         # What-If route scenario simulator
 │   ├── driver/dashboard/page.tsx             # Driver telemetry & operations dashboard
 │   ├── emergencies/[id]/page.tsx             # Emergency corridor analysis & intelligence
-│   └── admin/page.tsx                        # Secure Admin observability & database console
+│   ├── emergency-lab/page.tsx                # Scenario stress-test laboratory
+│   ├── paramedic/page.tsx                    # Pre-hospital clinical triage & vitals HUD
+│   └── admin/page.tsx                        # Secure Admin observability, user management & DB console
 ├── components/                               # React UI Components
 │   ├── brand-logo.tsx                        # SVG brand logo
 │   ├── admin/                                # Admin console components
 │   │   ├── admin-overview.tsx                # System metrics, DB health & latency ping
-│   │   └── admin-database-explorer.tsx       # Tabbed collection browser & sanitized inspector
+│   │   ├── admin-database-explorer.tsx       # Tabbed collection browser & sanitized inspector
+│   │   └── admin-user-management.tsx         # User quarantine approvals & RBAC management
 │   ├── auth/                                 # Authentication components
 │   │   ├── LoginForm.tsx                     # Production login form with validation
-│   │   ├── SignupForm.tsx                    # Production signup form with password checklist
-│   │   └── ProtectedRoute.tsx                # Role-gated route protection & loading boundary
+│   │   ├── SignupForm.tsx                    # Production signup form with role grid & vehicle binding
+│   │   └── ProtectedRoute.tsx                # Role & workspace-gated route protection with quarantine boundary
 │   ├── dashboard/                            # Mission dashboard widgets
 │   │   ├── dashboard-topbar.tsx              # Top bar with ambulance info & admin link
 │   │   ├── driver-dashboard.tsx              # Main dual-tab dashboard (operations / telemetry)
@@ -319,11 +325,13 @@ Trajectories          Routes                     │         │
 |---|---|---|
 | **Next.js 16 App Router Setup** | ✅ Done | Turbopack, React 19, TypeScript, Tailwind CSS v4, PostCSS |
 | **Authentication & Session** | ✅ Done | Real `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/me`, `POST /api/auth/logout`, HTTP-only cookie transport, session persistence |
-| **Protected Routes & RBAC** | ✅ Done | `<ProtectedRoute>` route guard, loading state to prevent flashing, role-aware access (`CONTROL_ROOM`, `ADMIN`) |
-| **Local Dev & Offline Resilience** | ✅ Done | Resilient local session fallback in `lib/auth/context.tsx` and graceful fallback data (`MOCK_VEHICLES`, `MOCK_EMERGENCIES`, `MOCK_INCIDENTS`) in `driver-dashboard.tsx` when backend is offline |
-| **Login Page** (`/login`) | ✅ Done | Production `LoginForm` with inline validation, backend error banners, auto-redirect |
-| **Signup Page** (`/signup`) | ✅ Done | Production `SignupForm` with password requirements checklist, auto-login upon creation |
-| **Landing Page** (`/`) | ✅ Done | Hero section, feature cards, contact section, help modal, site header |
+| **Role-Based Access Control (4 Roles)** | ✅ Done | Strict enforcement of `ADMIN`, `CONTROL_ROOM`, `DRIVER`, and `PARAMEDIC` across backend, JWT sessions, and frontend route protection |
+| **Protected Routes & Multi-Workspace** | ✅ Done | `<ProtectedRoute>` route guard with status check (`PENDING`, `SUSPENDED`) and workspace gating (`permittedWorkspaces`) |
+| **Registration Desk** (`/registration` & `/signup`) | ✅ Done | Production `SignupForm` with 4-role grid selector (Admin, Control, Ambulance, Field), multi-workspace access checkboxes, vehicle identifier, and automatic account quarantining in `PENDING` status |
+| **Admin User Management** (`/admin`) | ✅ Done | `AdminUserManagement` console with real-time pending approvals, account suspension, and role/workspace reassignment with immutable audit trail |
+| **Resource Ownership Defense** | ✅ Done | `ownershipMiddleware.js` restricting drivers strictly to their assigned vehicles while granting dispatchers and admins global fleet oversight |
+| **Login Page** (`/login`) | ✅ Done | Production `LoginForm` with inline validation, backend error banners, and automatic redirection to role-specific workspace |
+| **Landing Page** (`/`) | ✅ Done | Hero section, feature cards, contact section, help modal, site header, and dynamic role-aware navigation |
 | **Driver Dashboard** (`/driver/dashboard`) | ✅ Done | Protected by `<ProtectedRoute>`; connects to live Express REST endpoints (`/api/vehicles`, `/api/emergencies`, `/api/incidents`) with real MongoDB feeds, status/priority filtering, dynamic counter cards, and instant toggle to Corridor Telemetry view |
 | **Real Interactive Leaflet GIS Map** | ✅ Done | `components/dashboard/real-interactive-map.tsx` featuring live Bengaluru corridors (Planned Route A, Deviated Trajectory, Recommended Route B, Alternative Route C), multi-tile layers (Dark, Google Traffic overlay, Satellite), live GPS simulation controls (Play/Pause/Reset), and sound siren synthesis |
 | **Spatio-Temporal Traffic Forecast** | ✅ Done | Dynamic forecast horizons (+0m, +10m, +20m, +30m) evaluating future corridor friction and route re-evaluations |

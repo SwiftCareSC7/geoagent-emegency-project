@@ -29,6 +29,8 @@ export interface GeoJSONLineString {
 // ---------------------------------------------------------------------------
 
 export type UserRole = 'ADMIN' | 'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'
+export type UserStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED'
+export type Workspace = 'ADMIN' | 'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'
 
 /** Safe user object (password never returned by backend) */
 export interface User {
@@ -36,6 +38,13 @@ export interface User {
   name: string
   email: string
   role: UserRole
+  status?: UserStatus
+  approvedBy?: string | null
+  approvedAt?: string | null
+  assignedVehicleId?: string | null
+  requestedRole?: UserRole
+  requestedWorkspaces?: Workspace[]
+  permittedWorkspaces?: Workspace[]
   createdAt?: string
   updatedAt?: string
 }
@@ -45,6 +54,10 @@ export interface RegisterPayload {
   email: string
   password: string
   role?: UserRole
+  assignedVehicleId?: string
+  requestedRole?: UserRole
+  requestedWorkspaces?: Workspace[]
+  permittedWorkspaces?: Workspace[]
 }
 
 export interface LoginPayload {

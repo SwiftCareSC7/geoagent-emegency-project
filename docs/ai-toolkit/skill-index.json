@@ -1,0 +1,841 @@
+{
+  "totalSkills": 72,
+  "generatedAt": "2026-10-09T18:47:00Z",
+  "skills": [
+    {
+      "name": "amazon-location-service",
+      "folder": "amazon-location-service",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": "Integrates Amazon Location Service APIs for AWS applications. Use this skill when users want to add maps (interactive MapLibre or static images); geocode addresses to coordinates or reverse geocode coordinates to address...",
+      "path": ".agents/skills/amazon-location-service/SKILL.md"
+    },
+    {
+      "name": "andrej-karpathy",
+      "folder": "andrej-karpathy",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Behavioral guidelines to reduce common LLM coding mistakes. Use when writing, reviewing, or refactoring code to avoid overcomplication, make surgical changes, surface assumptions, and define verifiable success criteria.",
+      "path": ".agents/skills/andrej-karpathy/SKILL.md"
+    },
+    {
+      "name": "animate",
+      "folder": "animate",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Build an animation from scratch, making the decisions in the order that determines whether it feels right \u2014 should it animate at all, what purpose, which tool, which properties, which curve and duration, how it interrupt...",
+      "path": ".agents/skills/animate/SKILL.md"
+    },
+    {
+      "name": "animate-expo",
+      "folder": "animate-expo",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Build animations in React Native and Expo, making the decisions in the order that determines whether they feel right \u2014 should it animate, which thread it runs on, which properties, spring or timing, how the gesture hands...",
+      "path": ".agents/skills/animate-expo/SKILL.md"
+    },
+    {
+      "name": "animation-vocabulary",
+      "folder": "animation-vocabulary",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Reverse-lookup glossary that turns a vague description of a web animation or motion effect into its exact term (\"the bouncy thing when a popover opens\" \u2192 Pop in; \"the iOS rubber-band scroll\" \u2192 Rubber-banding). Use when t...",
+      "path": ".agents/skills/animation-vocabulary/SKILL.md"
+    },
+    {
+      "name": "apple-design",
+      "folder": "apple-design",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Apple's approach to interface design and fluid, physical motion, translated for the web. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible tran...",
+      "path": ".agents/skills/apple-design/SKILL.md"
+    },
+    {
+      "name": "ask-sonner",
+      "folder": "ask-sonner",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Guide to Sonner, the React toast library \u2014 install and wire up the Toaster, pick the right toast() call, promise and loading toasts, updating, dismissing and persisting toasts, styling, theming and icons, positioning and...",
+      "path": ".agents/skills/ask-sonner/SKILL.md"
+    },
+    {
+      "name": "browser-harness",
+      "folder": "browser-harness",
+      "category": "Browser Automation & Testing",
+      "tags": [
+        "testing",
+        "browser"
+      ],
+      "description": "\"Drive an existing browser through CDP for authenticated, visual, or interactive web automation.\"",
+      "path": ".agents/skills/browser-harness/SKILL.md"
+    },
+    {
+      "name": "cartography-geoviz",
+      "folder": "cartography-geoviz",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Always invoke before answering any request to create, compare, design, or review a user-facing map, even if the request is terse or underspecified. Covers publication maps, choropleths, map series and small multiples,...",
+      "path": ".agents/skills/cartography-geoviz/SKILL.md"
+    },
+    {
+      "name": "caveman",
+      "folder": "caveman",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": "Ultra-compressed communication mode. Cuts token usage ~75% by speaking like caveman while keeping full technical accuracy. Supports intensity levels: lite, full (default), ultra, wenyan-lite, wenyan-full, wenyan-ultra. U...",
+      "path": ".agents/skills/caveman/SKILL.md"
+    },
+    {
+      "name": "change-detection",
+      "folder": "change-detection",
+      "category": "Security & Audit",
+      "tags": [
+        "security",
+        "audit"
+      ],
+      "description": ">- Change analysis, once the observations are comparable. Not for cases whose blocker is comparability itself: mixed sensors, product levels or processing baselines to remote-sensing-analysis, undocumented vertical datum...",
+      "path": ".agents/skills/change-detection/SKILL.md"
+    },
+    {
+      "name": "composition-patterns",
+      "folder": "composition-patterns",
+      "category": "General",
+      "tags": [
+        "core"
+      ],
+      "description": "\"Use when working with composition-patterns tasks or workflows\"",
+      "path": ".agents/skills/composition-patterns/SKILL.md"
+    },
+    {
+      "name": "design-md",
+      "folder": "design-md",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Analyze Stitch projects and synthesize a semantic design system into DESIGN.md files",
+      "path": ".agents/skills/design-md/SKILL.md"
+    },
+    {
+      "name": "emergency-room-beds",
+      "folder": "emergency-room-beds",
+      "category": "General",
+      "tags": [
+        "core"
+      ],
+      "description": "Use when the user asks for nearby Korean emergency rooms, \uc751\uae09\uc2e4, ER, or emergency bed/\ubcd1\uc0c1 status near a location. Ask for the user's current location first unless a location was already provided.",
+      "path": ".agents/skills/emergency-room-beds/SKILL.md"
+    },
+    {
+      "name": "emil-design-eng",
+      "folder": "emil-design-eng",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "This skill encodes Emil Kowalski's philosophy on UI polish, component design, animation decisions, and the invisible details that make software feel great.",
+      "path": ".agents/skills/emil-design-eng/SKILL.md"
+    },
+    {
+      "name": "enhance-prompt",
+      "folder": "enhance-prompt",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Transforms vague UI ideas into polished, Stitch-optimized prompts. Enhances specificity, adds UI/UX keywords, injects design system context, and structures output for better generation results.",
+      "path": ".agents/skills/enhance-prompt/SKILL.md"
+    },
+    {
+      "name": "find-animation-opportunities",
+      "folder": "find-animation-opportunities",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Search a codebase or UI for places that don't animate but should, and reject everything that shouldn't. Read-only; it proposes motion with exact values, it does not implement it. Use when the user asks \"what could be ani...",
+      "path": ".agents/skills/find-animation-opportunities/SKILL.md"
+    },
+    {
+      "name": "geo-data-engineering",
+      "folder": "geo-data-engineering",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Always invoke when geospatial data must be acquired, prepared, repaired, scaled, or moved through a repeatable pipeline. Covers open-data/OSM/STAC acquisition, spatial formats, CRS transforms, quality checks, and batc...",
+      "path": ".agents/skills/geo-data-engineering/SKILL.md"
+    },
+    {
+      "name": "geoai-orchestrator",
+      "folder": "geoai-orchestrator",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Route genuinely ambiguous or multi-stage geospatial work across specialist skills while enforcing shared CRS, validity, leakage, units, verification, and reproducibility rules. Use for requests spanning multiple stage...",
+      "path": ".agents/skills/geoai-orchestrator/SKILL.md"
+    },
+    {
+      "name": "geostatistics-interpolation",
+      "folder": "geostatistics-interpolation",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": ">- Turn scattered point measurements into continuous surfaces with quantified uncertainty: variogram modeling, ordinary/universal/regression kriging, IDW, and spatially honest cross-validation. Use when unobserved values...",
+      "path": ".agents/skills/geostatistics-interpolation/SKILL.md"
+    },
+    {
+      "name": "highway-traffic-status",
+      "folder": "highway-traffic-status",
+      "category": "MCP & Tooling",
+      "tags": [
+        "mcp",
+        "tools"
+      ],
+      "description": "\ud55c\uad6d\ub3c4\ub85c\uacf5\uc0ac\u00b7\uad6d\uac00\uad50\ud1b5\uc815\ubcf4\uc13c\ud130 \uacf5\uac1c API\ub85c \uace0\uc18d\ub3c4\ub85c \uc2e4\uc2dc\uac04 \uc18c\ud1b5(\uad6c\uac04\ubcc4 \uc18d\ub3c4/\uad50\ud1b5\ub7c9/\uc815\uccb4 \ub4f1\uae09)\uacfc CCTV \uc2a4\ud2b8\ub9bc \uba54\ud0c0\ub370\uc774\ud130\ub97c \uc870\ud68c\ud55c\ub2e4. Use when the user asks \uace0\uc18d\ub3c4\ub85c \uc815\uccb4, \uad50\ud1b5 \uc0c1\ud669, \ub178\uc120/\uad6c\uac04 \uc18c\ud1b5, \uace0\uc18d\ub3c4\ub85c CCTV. Not for \ub300\uc911\uad50\ud1b5 \uae38\ucc3e\uae30 or \uc790\ub3d9\ucc28 \uacbd\ub85c \uc548\ub0b4.",
+      "path": ".agents/skills/highway-traffic-status/SKILL.md"
+    },
+    {
+      "name": "i-have-adhd",
+      "folder": "i-have-adhd",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "'Shape output for a reader with ADHD: lead with the next action, number multi-step work, restate state across turns, suppress tangents, give specific time estimates, make wins visible. Invoke with /i-have-adhd; stays on ...",
+      "path": ".agents/skills/i-have-adhd/SKILL.md"
+    },
+    {
+      "name": "impeccable",
+      "folder": "impeccable",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": "Use when the user wants to design, redesign, shape, critique, audit, polish, clarify, distill, harden, optimize, adapt, animate, colorize, extract, or otherwise improve a frontend interface. Covers websites, landing page...",
+      "path": ".agents/skills/impeccable/SKILL.md"
+    },
+    {
+      "name": "improve-animations",
+      "folder": "improve-animations",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Survey a codebase's animation and motion code as a senior motion advisor, then produce a prioritized audit and self-contained implementation plans for other agents (or cheaper models) to execute. Read-only on source code...",
+      "path": ".agents/skills/improve-animations/SKILL.md"
+    },
+    {
+      "name": "kakao-map",
+      "folder": "kakao-map",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": "Kakao Local (\uc7a5\uc18c \uac80\uc0c9\u00b7\uc8fc\uc18c-\uc88c\ud45c \ubcc0\ud658) + Kakao Mobility (\uc790\ub3d9\ucc28 \uae38\ucc3e\uae30) \ub97c k-skill-proxy \uacbd\uc720\ub85c \uc870\ud68c\ud55c\ub2e4. \uc0ac\uc6a9\uc790 \ud0a4 \ubd88\ud544\uc694. \ub3cc\uc1e0\uc5d0\uc11c\ub294 \uacf5\uc2dd \ud45c\uba74\uc744 \ud1b5\ud55c \ud6c4\uc18d \uc561\uc158\uae4c\uc9c0 \uc9c4\ud589\ud55c\ub2e4.",
+      "path": ".agents/skills/kakao-map/SKILL.md"
+    },
+    {
+      "name": "korean-transit-route",
+      "folder": "korean-transit-route",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": "Korean door-to-door public transit routing (subway + bus + walking) via ODsay LIVE API with Kakao geocoding for address-to-address queries. Use when the user asks for \uc9c0\ud558\ucca0/\ubc84\uc2a4/\ub300\uc911\uad50\ud1b5 \uae38\ucc3e\uae30, \ud658\uc2b9 \uacbd\ub85c, \uc18c\uc694\uc2dc\uac04, or transit directions b...",
+      "path": ".agents/skills/korean-transit-route/SKILL.md"
+    },
+    {
+      "name": "mapbox-data-visualization-patterns",
+      "folder": "mapbox-data-visualization-patterns",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": "Patterns for visualizing data on maps including choropleth maps, heat maps, 3D visualizations, data-driven styling, and animated data. Covers layer types, color scales, and performance optimization.",
+      "path": ".agents/skills/mapbox-data-visualization-patterns/SKILL.md"
+    },
+    {
+      "name": "mapbox-geospatial-operations",
+      "folder": "mapbox-geospatial-operations",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Expert guidance on choosing the right geospatial tool based on problem type, accuracy requirements, and performance needs",
+      "path": ".agents/skills/mapbox-geospatial-operations/SKILL.md"
+    },
+    {
+      "name": "mapbox-mcp-devkit-patterns",
+      "folder": "mapbox-mcp-devkit-patterns",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": "Integration patterns for Mapbox MCP DevKit Server in AI coding assistants. Covers setup, style management, token management, validation workflows, and documentation access through MCP. Use when building Mapbox applicatio...",
+      "path": ".agents/skills/mapbox-mcp-devkit-patterns/SKILL.md"
+    },
+    {
+      "name": "mapbox-mcp-runtime-patterns",
+      "folder": "mapbox-mcp-runtime-patterns",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Integration patterns for Mapbox MCP Server in AI applications and agent frameworks. Covers runtime integration with pydantic-ai, mastra, LangChain, and custom agents. Use when building AI-powered applications that need g...",
+      "path": ".agents/skills/mapbox-mcp-runtime-patterns/SKILL.md"
+    },
+    {
+      "name": "mapbox-navigation-patterns",
+      "folder": "mapbox-navigation-patterns",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Navigation implementation patterns for turn-by-turn directions, route optimization, real-time traffic, multi-stop routing, and voice guidance across web, iOS, and Android platforms",
+      "path": ".agents/skills/mapbox-navigation-patterns/SKILL.md"
+    },
+    {
+      "name": "mapbox-search-patterns",
+      "folder": "mapbox-search-patterns",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Expert guidance on choosing the right Mapbox search tool and parameters for geocoding, POI search, and location discovery",
+      "path": ".agents/skills/mapbox-search-patterns/SKILL.md"
+    },
+    {
+      "name": "mapbox-style-patterns",
+      "folder": "mapbox-style-patterns",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": "Common style patterns, layer configurations, and recipes for typical mapping scenarios including restaurant finders, real estate, data visualization, navigation, delivery/logistics, and more. Use when implementing specif...",
+      "path": ".agents/skills/mapbox-style-patterns/SKILL.md"
+    },
+    {
+      "name": "mcp-builder",
+      "folder": "mcp-builder",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, ...",
+      "path": ".agents/skills/mcp-builder/SKILL.md"
+    },
+    {
+      "name": "ml-experiment-standards",
+      "folder": "ml-experiment-standards",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Always invoke for training, validating, tuning, benchmarking, or claiming readiness of a predictive model. Covers leakage audits, spatial and grouped splits, metrics, reproducibility, and honest reporting. Invoke espe...",
+      "path": ".agents/skills/ml-experiment-standards/SKILL.md"
+    },
+    {
+      "name": "movement-trajectory",
+      "folder": "movement-trajectory",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": ">- Movement and trajectory analytics from GPS/GNSS tracks: cleaning, stop/trip detection, road-network map matching, speed/direction, flow aggregation, and origin-destination construction. Use for fleets, human mobility,...",
+      "path": ".agents/skills/movement-trajectory/SKILL.md"
+    },
+    {
+      "name": "network-accessibility-analysis",
+      "folder": "network-accessibility-analysis",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Always invoke for access to facilities or opportunities by walking, driving, cycling, or public transport, even for a conceptual question with no routing terms or data yet. Covers hospital and service access, transit/...",
+      "path": ".agents/skills/network-accessibility-analysis/SKILL.md"
+    },
+    {
+      "name": "pick-ui-library",
+      "folder": "pick-ui-library",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Pick the right library for a given frontend task from a curated, opinionated list \u2014 numbers, OTP inputs, charts, command menus, virtualization, drag and drop, toasts, state, styling, and more. Only runs when explicitly i...",
+      "path": ".agents/skills/pick-ui-library/SKILL.md"
+    },
+    {
+      "name": "ponytail",
+      "folder": "ponytail",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": "Lazy senior dev mode: the smallest change that fully solves the task, and a reply a busy human understands in one read. Use on any coding task (writing, fixing, refactoring, reviewing, choosing dependencies) and when the...",
+      "path": ".agents/skills/ponytail/SKILL.md"
+    },
+    {
+      "name": "postgis-spatial-sql",
+      "folder": "postgis-spatial-sql",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Invoke whenever spatial SQL or its execution backend is the decision: PostGIS, DuckDB Spatial, SpatiaLite, ST_* functions, recurring spatial joins, concurrent/growing workloads, or large GeoParquet queries. Covers bac...",
+      "path": ".agents/skills/postgis-spatial-sql/SKILL.md"
+    },
+    {
+      "name": "prototype",
+      "folder": "prototype",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Build multiple genuinely different versions of a UI piece you describe, rendered behind a visual picker so you can flip through them live and promote the one that feels right. Only runs when explicitly invoked; it does n...",
+      "path": ".agents/skills/prototype/SKILL.md"
+    },
+    {
+      "name": "react-best-practices",
+      "folder": "react-best-practices",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "\"Comprehensive performance optimization guide for React and Next.js applications, maintained by Vercel. Use when writing new React components or Next.js pages, implementing data fetching (client or server-side), or revie...",
+      "path": ".agents/skills/react-best-practices/SKILL.md"
+    },
+    {
+      "name": "react-vite-dashboard",
+      "folder": "react-vite-dashboard",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": "Convert Stitch designs into production React + Vite dashboards with TanStack Query, accessible tokens from DESIGN.md, and Web3-ready patterns (ethers/viem).",
+      "path": ".agents/skills/react-vite-dashboard/SKILL.md"
+    },
+    {
+      "name": "remote-sensing-analysis",
+      "folder": "remote-sensing-analysis",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": ">- Always invoke for classical analysis, classification, validation, or comparability of satellite, aerial, or drone imagery. This skill owns sensor, product, processing-level and processing-baseline harmonization, inclu...",
+      "path": ".agents/skills/remote-sensing-analysis/SKILL.md"
+    },
+    {
+      "name": "remotion",
+      "folder": "remotion",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": "Generate walkthrough videos from Stitch projects using Remotion with smooth transitions, zooming, and text overlays",
+      "path": ".agents/skills/remotion/SKILL.md"
+    },
+    {
+      "name": "review-animations",
+      "folder": "review-animations",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Reviews animation and motion code against a high craft bar derived from Emil Kowalski's design engineering philosophy. Default to flagging; approval is earned.",
+      "path": ".agents/skills/review-animations/SKILL.md"
+    },
+    {
+      "name": "routing-traffic-with-route53-and-cloudfront",
+      "folder": "routing-traffic-with-route53-and-cloudfront",
+      "category": "Geospatial & Mapping",
+      "tags": [
+        "geospatial",
+        "maps"
+      ],
+      "description": "Configures Amazon Route 53 to route traffic to a CloudFront distribution using a custom domain. Use when setting up DNS alias records, alternate domain names (CNAMEs), ACM certificates for HTTPS, and IPv6 support for Clo...",
+      "path": ".agents/skills/routing-traffic-with-route53-and-cloudfront/SKILL.md"
+    },
+    {
+      "name": "shadcn-ui",
+      "folder": "shadcn-ui",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Expert guidance for integrating and building applications with shadcn/ui components, including component discovery, installation, customization, and best practices.",
+      "path": ".agents/skills/shadcn-ui/SKILL.md"
+    },
+    {
+      "name": "site-md",
+      "folder": "site-md",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Analyze a project description or site requirements and synthesize a project constitution into SITE.md for the Stitch Build Loop",
+      "path": ".agents/skills/site-md/SKILL.md"
+    },
+    {
+      "name": "skill-creator",
+      "folder": "skill-creator",
+      "category": "Browser Automation & Testing",
+      "tags": [
+        "testing",
+        "browser"
+      ],
+      "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill pe...",
+      "path": ".agents/skills/skill-creator/SKILL.md"
+    },
+    {
+      "name": "skill-scout",
+      "folder": "skill-scout",
+      "category": "General",
+      "tags": [
+        "core"
+      ],
+      "description": "On-demand skill discovery and selective loading protocol. Indexes project and agent skills, matches task context against skill metadata, and selectively loads only the minimal relevant 1 to 3 skills without blowing up th...",
+      "path": ".agents/skills/skill-scout/SKILL.md"
+    },
+    {
+      "name": "spatial-statistics",
+      "folder": "spatial-statistics",
+      "category": "Browser Automation & Testing",
+      "tags": [
+        "testing",
+        "browser"
+      ],
+      "description": ">- Always invoke before testing a geographic pattern for clustering, hotspots, dependence, or explanatory regression, even when aggregation or ordinary OLS is proposed as routine. Covers Moran's I, LISA, Getis-Ord Gi*, w...",
+      "path": ".agents/skills/spatial-statistics/SKILL.md"
+    },
+    {
+      "name": "stitch::code-to-design",
+      "folder": "stitch-code-to-design",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Convert frontend code (Vite, React, Angular, Vue, etc.) to a Stitch Design by chaining static HTML extraction, design system extraction, and file upload. **ALWAYS** use this skill when the user's intent is to move exi...",
+      "path": ".agents/skills/stitch-code-to-design/SKILL.md"
+    },
+    {
+      "name": "stitch::extract-design-md",
+      "folder": "stitch-extract-design-md",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": ">- Extract a comprehensive design system (DESIGN.md) directly from frontend source code \u2014 React, Vue, Svelte, Angular, plain HTML/CSS, or any web framework. Analyzes component files, stylesheets, Tailwind configs, theme ...",
+      "path": ".agents/skills/stitch-extract-design-md/SKILL.md"
+    },
+    {
+      "name": "stitch::extract-static-html",
+      "folder": "stitch-extract-static-html",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Extract self-contained static HTML from a built web application or React components by inlining CSS and images. Use this skill whenever you need to capture a specific UI state, share a static version of a page, or pre...",
+      "path": ".agents/skills/stitch-extract-static-html/SKILL.md"
+    },
+    {
+      "name": "stitch::generate-design",
+      "folder": "stitch-generate-design",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": ">- Generate new screens from text prompts or images, edit existing screens with prompts and design system tokens, and generate design variants using Stitch MCP. Includes prompt enhancement pipeline, design mappings, prof...",
+      "path": ".agents/skills/stitch-generate-design/SKILL.md"
+    },
+    {
+      "name": "stitch-loop",
+      "folder": "stitch-loop",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Teaches agents to iteratively build websites using Stitch with an autonomous baton-passing loop pattern",
+      "path": ".agents/skills/stitch-loop/SKILL.md"
+    },
+    {
+      "name": "stitch::manage-design-system",
+      "folder": "stitch-manage-design-system",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Manage design systems in Stitch using MCP tools. Includes retrieval of assets, creating/updating design systems in Stitch, and applying them to screens.",
+      "path": ".agents/skills/stitch-manage-design-system/SKILL.md"
+    },
+    {
+      "name": "stitch::react-components",
+      "folder": "stitch-react-components",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Converts Stitch designs into modular Vite and React components, or syncs/updates existing React components to align with the latest Stitch designs, using system-level networking and AST-based validation.",
+      "path": ".agents/skills/stitch-react-components/SKILL.md"
+    },
+    {
+      "name": "stitch::react-native",
+      "folder": "stitch-react-native",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": ">- Convert Stitch HTML designs to React Native components, or syncs/updates existing native components to align with the latest Stitch designs, using StyleSheet.",
+      "path": ".agents/skills/stitch-react-native/SKILL.md"
+    },
+    {
+      "name": "stitch::upload-to-stitch",
+      "folder": "stitch-upload-to-stitch",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": ">- Upload local assets (images, mockups, extracted HTML, design markdown) to a Stitch project. ALWAYS use this skill when you need to upload visual assets, HTML pages, or design docs to Stitch, particularly when direct M...",
+      "path": ".agents/skills/stitch-upload-to-stitch/SKILL.md"
+    },
+    {
+      "name": "superpowers",
+      "folder": "superpowers",
+      "category": "General",
+      "tags": [
+        "core"
+      ],
+      "description": "superpowers workflow skill.",
+      "path": ".agents/skills/superpowers/SKILL.md"
+    },
+    {
+      "name": "swiftcare-fullstack-design-loop",
+      "folder": "swiftcare-fullstack-design-loop",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Master UI/UX Redesign and Frontend Rebuild with Full-Stack Functionality Preservation, Stitch, Figma, MCP, Browser QA, and Autonomous Loop",
+      "path": ".agents/skills/swiftcare-fullstack-design-loop/SKILL.md"
+    },
+    {
+      "name": "taste-design",
+      "folder": "taste-design",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Semantic Design System Skill for Google Stitch. Generates agent-friendly DESIGN.md files that enforce premium, anti-generic UI standards \u2014 strict typography, calibrated color, asymmetric layouts, perpetual micro-motion, ...",
+      "path": ".agents/skills/taste-design/SKILL.md"
+    },
+    {
+      "name": "template-skill",
+      "folder": "template-skill",
+      "category": "General",
+      "tags": [
+        "core"
+      ],
+      "description": "Replace with description of the skill and when Claude should use it.",
+      "path": ".agents/skills/template-skill/SKILL.md"
+    },
+    {
+      "name": "terrain-hydrology",
+      "folder": "terrain-hydrology",
+      "category": "General",
+      "tags": [
+        "core"
+      ],
+      "description": ">- Always invoke for terrain, drainage, viewshed, or visibility analysis from elevation, even before the DEM or correct surface is chosen. Covers DTM-versus-DSM selection, slope, aspect, curvature, hillshade, conditionin...",
+      "path": ".agents/skills/terrain-hydrology/SKILL.md"
+    },
+    {
+      "name": "token-saver",
+      "folder": "token-saver",
+      "category": "Token Efficiency & Methodology",
+      "tags": [
+        "token-saving",
+        "compression",
+        "ponytail"
+      ],
+      "description": "Enforces maximum token efficiency across agent workflows without sacrificing engineering quality, correctness, or security. Combines Ponytail code minimalism, Caveman communication conciseness, Graft structural navigatio...",
+      "path": ".agents/skills/token-saver/SKILL.md"
+    },
+    {
+      "name": "using-superpowers",
+      "folder": "using-superpowers",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "Use when starting any conversation - establishes how to find and use skills, requiring skill invocation before ANY response including clarifying questions",
+      "path": ".agents/skills/using-superpowers/SKILL.md"
+    },
+    {
+      "name": "vercel-optimize",
+      "folder": "vercel-optimize",
+      "category": "Security & Audit",
+      "tags": [
+        "security",
+        "audit"
+      ],
+      "description": "\"Audit deployed Vercel apps for cost and performance issues using metrics, project config, code scans, and version-aware recommendations.\"",
+      "path": ".agents/skills/vercel-optimize/SKILL.md"
+    },
+    {
+      "name": "vibesec",
+      "folder": "vibesec",
+      "category": "Security & Audit",
+      "tags": [
+        "security",
+        "audit"
+      ],
+      "description": "Security-first coding skill for SwiftCare auth, RBAC, API, secrets, and input validation. Use when touching authentication, authorization, API security, secrets, or security-sensitive code. Bug-hunter perspective, defens...",
+      "path": ".agents/skills/vibesec/SKILL.md"
+    },
+    {
+      "name": "web-design-guidelines",
+      "folder": "web-design-guidelines",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "\"Review files for compliance with Web Interface Guidelines.\"",
+      "path": ".agents/skills/web-design-guidelines/SKILL.md"
+    },
+    {
+      "name": "write-swift",
+      "folder": "write-swift",
+      "category": "Frontend, Design & Animation",
+      "tags": [
+        "frontend",
+        "design",
+        "react"
+      ],
+      "description": "How to write modern Swift well \u2014 modeling with value types, Swift 6 data-race safety and approachable concurrency (@concurrent, main-actor-by-default, actors, task groups), protocols and generics (some vs any), API desig...",
+      "path": ".agents/skills/write-swift/SKILL.md"
+    }
+  ]
+}

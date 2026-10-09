@@ -565,15 +565,53 @@ MongoDB operates with Mongoose ODM across 9 collections:
 
 ## 17. Authentication and Authorization (RBAC)
 
-### Authentication Flow
+### 17.1 Authoritative Roles & Responsibilities
+SwiftCare enforces strict Role-Based Access Control (RBAC) across both backend REST APIs and Next.js frontend route boundaries. Four primary roles govern access:
+
+| Role | Authoritative Scope | Default Landing Page | Key Permissions |
+|---|---|---|---|
+| **`ADMIN`** | Complete System Administration | `/admin` | Telemetry inspection, collection exploration, pending user registration approvals, role elevation, workspace assignments, account suspension, audit logging |
+| **`CONTROL_ROOM`** | Central Emergency Dispatch | `/control-room` | Mission Assessment HUD, live corridor surveillance, incident queue triage, V2X green-wave clearance, AI decision approval & re-route execution |
+| **`DRIVER`** | Field Vehicle Navigation | `/driver/dashboard` | Real-time vehicle navigation HUD, turn-by-turn guidance, GPS breadcrumb ingestion, vehicle telemetry updates strictly confined to assigned unit (`assignedVehicleId`) |
+| **`PARAMEDIC`** | Pre-Hospital Clinical Care | `/paramedic` | Patient vital signs telemetry (HR, BP, SpO2, GCS), pre-hospital intervention logging, trauma severity scoring, receiving hospital trauma bay handoff |
+
+### 17.2 Personnel Registration Desk (`/registration` & `/signup`)
+1. Prospective personnel register via the public Registration Desk, providing full name, work email, password, requested primary role, requested workspaces, and an optional vehicle identifier (`assignedVehicleId`).
+2. **Privilege Escalation Defense**:
+   - All newly registered accounts (including administrative requests) are assigned `status: 'PENDING'`.
+   - Public registrations can never self-assign active administrative or operational status.
+   - Login attempts on pending accounts return `403 Forbidden: Account registration is pending administrator approval`.
+3. **Multi-Workspace Request Model**:
+   - Users may request cross-functional workspaces (e.g. `DRIVER` + `CONTROL_ROOM`).
+   - The backend records `requestedWorkspaces` separately from authoritative `permittedWorkspaces`, preventing unauthorized privilege acquisition before admin verification.
+
+### 17.3 Admin User Lifecycle Management (`/admin`)
+- Embedded directly in the `/admin` console via `components/admin/admin-user-management.tsx`.
+- **Live Account Statuses**:
+  - `PENDING`: Awaiting administrator verification. Blocked from login and API access.
+  - `APPROVED`: Active verified personnel. Issued HTTP-only JWT upon valid login.
+  - `SUSPENDED`: Temporarily deactivated. All active sessions and future logins rejected with 403.
+- **Admin Control Actions**:
+  - `PATCH /api/admin/users/:id/approve`: Activates account, sets `status: 'APPROVED'`, records `approvedBy` admin ID and `approvedAt` timestamp.
+  - `PATCH /api/admin/users/:id/suspend`: Immediately revokes access.
+  - `PATCH /api/admin/users/:id/role`: Reassigns operational role, updates permitted workspaces, or links an emergency vehicle.
+
+### 17.4 Resource Ownership Boundary Protection (`ownershipMiddleware.js`)
+- Enforces data isolation between individual emergency responders:
+  - An ambulance driver assigned to vehicle `AMB-01` is strictly authorized to update `AMB-01` telemetry, status, and location (`200 OK`).
+  - Attempting to update another vehicle (`AMB-02`) returns `403 Forbidden: Drivers can only update their assigned vehicle (AMB-01)`.
+  - Dispatchers (`CONTROL_ROOM`) and Administrators (`ADMIN`) retain global fleet coordination authority.
+
+### 17.5 Authentication Flow
 1. User enters email and password into `LoginForm.tsx`.
 2. Form submits `POST /api/auth/login`.
 3. Backend looks up email in `users` collection.
 4. `bcrypt.compare` verifies the entered password against the 12-round bcrypt hash.
-5. On match, a JWT signed with `JWT_SECRET` is generated containing `{ id, email, role }`.
-6. The token is stored in an `httpOnly`, `sameSite: 'lax'` cookie named `auth_token`.
-7. Client stores non-sensitive user metadata in `AuthContext` state.
-8. When navigating, Next.js middleware checks the cookie and verifies role permissions.
+5. Account status is verified: `PENDING` and `SUSPENDED` accounts are rejected with `403 Forbidden`.
+6. On success, a JWT signed with `JWT_SECRET` is generated containing `{ userId, role }`.
+7. The token is stored in an `httpOnly`, `sameSite: 'lax'` cookie named `token`.
+8. User is automatically redirected to their role's authoritative landing page (`lib/auth/roles.ts`).
+9. When navigating, `<ProtectedRoute>` and Next.js middleware verify the active session, account status, and workspace permissions.
 
 ---
 
@@ -762,10 +800,15 @@ This produces an operations-room aesthetic with visible street names and zero co
 
 All automated test suites execute with 100% pass rates:
 1. **Static Typecheck:** `npx tsc --noEmit` (**0 errors**).
-2. **Scenario Engine Unit Tests:** `npx tsx tests/diff-scenario-engine.test.mjs` (**10/10 passed**).
-3. **Playwright Scenario E2E Suite:** `npx playwright test e2e/diff-scenario.spec.ts` (**8/8 passed** in 29.0s).
-4. **Authentication & RBAC E2E Suite:** `npx playwright test e2e/auth.spec.ts` (**14/14 passed** in 27.7s).
-5. **Control Room Integration Tests:** `node server/test-control-room-e2e.js` (**12/12 passed**).
+2. **Complete Auth, RBAC & Ownership Suite:** `node server/test-auth-rbac-complete.js` (**46/46 passed**).
+3. **Registration & Multi-Workspace Suite:** `node server/test-registration-workspaces-e2e.js` (**33/33 passed**).
+4. **Full-Stack Authentication Contract:** `node server/test-auth-fullstack.js` (**38/38 passed**).
+5. **Session & Security E2E Contract:** `node server/test-auth-e2e.js` (**31/31 passed**).
+6. **Admin Observability & User Governance:** `node server/test-admin-e2e.js` (**60/60 passed**).
+7. **Control Room Integration Tests:** `node server/test-control-room-e2e.js` (**12/12 passed**).
+8. **Scenario Engine Unit Tests:** `npx tsx tests/diff-scenario-engine.test.mjs` (**10/10 passed**).
+9. **Playwright Scenario E2E Suite:** `npx playwright test e2e/diff-scenario.spec.ts` (**8/8 passed** in 29.0s).
+10. **Playwright Auth & RBAC E2E Suite:** `npx playwright test e2e/auth.spec.ts` (**14/14 passed** in 27.7s).
 
 ---
 

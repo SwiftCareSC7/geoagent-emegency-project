@@ -35,6 +35,7 @@ import { DEMO_EMERGENCIES, DEMO_VEHICLES } from '@/lib/demo-fixtures'
 import { getSocket, REALTIME_EVENTS } from '@/lib/socket/client'
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { useAuth } from '@/lib/auth/context'
 import { Button } from '@/components/ui/button'
 import { Disclosure } from '@/components/ui/disclosure'
 import { cn } from '@/lib/utils'
@@ -59,6 +60,8 @@ export default function ParamedicPage() {
   )
   const [transmittingNotification, setTransmittingNotification] = useState(false)
   const [notificationSent, setNotificationSent] = useState(false)
+
+  const { user, authenticated } = useAuth()
 
   const fetchParamedicData = useCallback(async () => {
     setLoading(true)
@@ -86,11 +89,15 @@ export default function ParamedicPage() {
   }, [selectedEmergencyId])
 
   useEffect(() => {
+    if (!authenticated || !user) return
+    if (user.role !== 'PARAMEDIC' && user.role !== 'ADMIN' && !user.permittedWorkspaces?.includes('PARAMEDIC')) return
     fetchParamedicData()
-  }, [fetchParamedicData])
+  }, [authenticated, user, fetchParamedicData])
 
   // Real-time socket subscription
   useEffect(() => {
+    if (!authenticated || !user) return
+    if (user.role !== 'PARAMEDIC' && user.role !== 'ADMIN' && !user.permittedWorkspaces?.includes('PARAMEDIC')) return
     const socket = getSocket()
     if (!socket) return
 
@@ -156,7 +163,7 @@ export default function ParamedicPage() {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['PARAMEDIC', 'ADMIN', 'CONTROL_ROOM']}>
+    <ProtectedRoute allowedRoles={['PARAMEDIC', 'ADMIN']}>
       <div className="min-h-svh bg-background text-foreground">
         <DashboardTopbar
           ambulanceId={currentVehicle?.vehicleId || 'AMB-01'}

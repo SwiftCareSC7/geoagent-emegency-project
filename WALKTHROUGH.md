@@ -9,15 +9,19 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 ```text
 ┌─────────────────────────────────────────────────────────┐
 │  Frontend (Next.js 16 App Router, React 19, TypeScript) │
-│  ├── Landing (/), Login (/login), Signup (/signup)      │
+│  ├── Landing (/), Login (/login), Register (/registration)│
+│  ├── Control Room 5-Question Mission HUD (/control-room)│
+│  ├── What-If Route Scenario Simulator (/diff)           │
 │  ├── Driver Dashboard (/driver/dashboard)               │
 │  │   (Operations Feed, Real Interactive Leaflet GIS Map,│
 │  │    Spatio-Temporal Forecast, V2X Signals, Fallback)  │
 │  ├── Emergency Detail Intelligence (/emergencies/[id])  │
 │  │   (Corridor Analysis, Trajectories, What-If Matrix,  │
 │  │    Confidence Meters, Decision Approval Controls)    │
-│  ├── Admin Database Console (/admin)                    │
-│  │   (Real Stats, Latency Ping, 8-Collection Explorer)  │
+│  ├── Paramedic Clinical Triage & Vitals (/paramedic)    │
+│  ├── Emergency Stress-Test Lab (/emergency-lab)         │
+│  ├── Admin Console & User Governance (/admin)           │
+│  │   (Real Stats, Latency Ping, User Quarantine Queue)  │
 │  └── Centralized Typed API Client + Socket.IO Hooks     │
 ├─────────────────────────────────────────────────────────┤
 │  Python Spatial Routing & V2X Engine (Member 2)         │
@@ -608,6 +612,86 @@ node server/test-final-integration-audit.js
 # Result: 37 PASSED, 0 FAILED (100% Passing)
 ```
 
+---
 
+## 6. Part 19: Full-Stack RBAC, Registration Desk, Multi-Workspace Navigation & User Lifecycle Management
 
+### 1. The Four Authoritative System Roles
+SwiftCare defines four authoritative roles across backend JWT sessions, MongoDB models, API authorization middleware, and frontend views:
+1. **`ADMIN` (Systems Administrator)**:
+   - **Default Landing Page**: `/admin`
+   - **Capabilities**: Complete system observability, provider health monitoring, database record exploration, pending user registration approvals, role elevation, workspace assignments, and account suspensions.
+2. **`CONTROL_ROOM` (Control Room Dispatcher)**:
+   - **Default Landing Page**: `/control-room`
+   - **Capabilities**: Real-time corridor surveillance, 5-question mission assessment HUD, live incident triage, V2X green-wave preemption clearance, decision engine evaluations, and fleet dispatch coordination.
+3. **`DRIVER` (Ambulance Driver)**:
+   - **Default Landing Page**: `/driver/dashboard`
+   - **Capabilities**: Real-time turn-by-turn navigation HUD, active corridor route guidance, traffic delay alerts, speed/trajectory reporting, and vehicle status updates confined to their assigned unit (`assignedVehicleId`).
+4. **`PARAMEDIC` (Field Paramedic Officer)**:
+   - **Default Landing Page**: `/paramedic`
+   - **Capabilities**: Pre-hospital patient vital signs telemetry (HR, BP, SpO2, GCS), intervention and medication logging, trauma severity scoring, and receiving hospital trauma bay handoff coordination.
 
+### 2. Personnel Registration Desk (`/registration` & `/signup`)
+- **Responsive 4-Role Grid Selector**:
+  - `Admin` (`ADMIN`): Shield icon, system administration & telemetry.
+  - `Control` (`CONTROL_ROOM`): Radio icon, corridor surveillance & dispatch.
+  - `Ambulance` (`DRIVER`): Ambulance icon, emergency vehicle navigation HUD.
+  - `Field` (`PARAMEDIC`): Stethoscope icon, patient vitals & trauma triage.
+- **Multi-Workspace Access Support**:
+  - Checkboxes enable prospective personnel to request cross-departmental access (e.g., a Driver who also assists in Control Room operations).
+- **Assigned Vehicle Identifier**:
+  - Dynamic input field (`assignedVehicleId`) displayed when Driver role or Driver workspace is selected.
+- **Account Quarantining & Status Flow**:
+  ```text
+  Public Registration Desk (/registration or /signup)
+      ↓
+  User submits credentials, role, requested workspaces, vehicle ID
+      ↓
+  Backend creates account in PENDING status (status: 'PENDING')
+      ↓
+  Login is strictly blocked (403: "Account registration is pending administrator approval")
+      ↓
+  Administrator reviews registration in Admin User Management Console (/admin)
+      ↓
+  Admin clicks "Approve Registration" or assigns custom workspaces
+      ↓
+  Account updated to APPROVED status with audit record (approvedBy, approvedAt)
+      ↓
+  User logs in via /login → JWT session issued → auto-redirected to authoritative workspace
+  ```
+
+### 3. Resource Ownership Boundary Protection
+- **`ownershipMiddleware.js`**: Enforces zero lateral movement across vehicle assets.
+- A Driver assigned to `AMB-01` can update `AMB-01` telemetry, status, and location (`200 OK`).
+- If that same Driver attempts to update unassigned vehicle `AMB-02`, the request is denied immediately (`403 Forbidden: Drivers can only update their assigned vehicle (AMB-01)`).
+- Control Room dispatchers and Admins retain global fleet management authority.
+
+### 4. Admin User Management Console (`/admin`)
+- Embedded in the `/admin` console via `components/admin/admin-user-management.tsx`.
+- Real-time tabular review of pending, approved, and suspended accounts.
+- 1-click Approval (`PATCH /api/admin/users/:id/approve`).
+- 1-click Suspension (`PATCH /api/admin/users/:id/suspend`).
+- Modal role and workspace reassignment (`PATCH /api/admin/users/:id/role`).
+
+### 5. Verification Suites
+```bash
+# Complete Auth, RBAC & Ownership Test Suite (46 checks)
+node server/test-auth-rbac-complete.js
+# Output: 46 PASSED, 0 FAILED
+
+# Registration & Multi-Workspace Access E2E Test Suite (33 checks)
+node server/test-registration-workspaces-e2e.js
+# Output: 33 PASSED, 0 FAILED
+
+# Full-Stack Auth & RBAC Suite (38 checks)
+node server/test-auth-fullstack.js
+# Output: 38 PASSED, 0 FAILED
+
+# Contract & Session Verification Suite (31 checks)
+node server/test-auth-e2e.js
+# Output: 31 PASSED, 0 FAILED
+
+# Admin Observability & User Management E2E Suite (60 checks)
+node server/test-admin-e2e.js
+# Output: 60 PASSED, 0 FAILED
+```

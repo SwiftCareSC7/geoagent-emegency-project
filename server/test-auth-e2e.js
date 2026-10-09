@@ -20,6 +20,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import authRoutes from './modules/auth/auth.routes.js';
+import User from './modules/auth/user.model.js';
 import { errorHandler, notFoundHandler } from './shared/middleware/errorHandler.js';
 
 import path from 'path';
@@ -148,6 +149,9 @@ async function runAuthVerification() {
     const badLoginErr = badLoginData.message || badLoginData.error;
     assert(badLoginRes.status === 401, 'Invalid credentials return 401 Unauthorized');
     assert(badLoginErr === 'Invalid email or password', 'Generic error prevents enumeration');
+
+    // Administrator approves registered user account
+    await User.updateOne({ email: 'operator@swiftcare.local' }, { status: 'APPROVED' });
 
     // Scenario 6: Successful Login & HTTP-Only Cookie Setting
     console.log('\n--- 6. Successful Login ---');

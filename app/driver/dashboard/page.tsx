@@ -10,7 +10,7 @@ export default async function DriverDashboardPage() {
   // live backend endpoints in subsequent integration phase).
   const data = await getDashboard('AMB-01')
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedRoles={['DRIVER', 'CONTROL_ROOM', 'ADMIN']}>
       <DriverDashboard data={data} />
     </ProtectedRoute>
   )

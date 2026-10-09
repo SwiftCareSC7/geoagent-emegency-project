@@ -102,17 +102,23 @@ Trajectories          Routes                     │         │
 │   ├── page.tsx                              # Landing page
 │   ├── login/page.tsx                        # Real authenticated login interface
 │   ├── signup/page.tsx                       # Real authenticated registration interface
+│   ├── registration/page.tsx                 # Official Personnel Registration Desk
+│   ├── control-room/page.tsx                 # Dispatcher console & Mission Assessment HUD
 │   ├── driver/dashboard/page.tsx             # Protected driver telemetry & operations dashboard
+│   ├── paramedic/page.tsx                    # Pre-hospital paramedic clinical triage workspace
 │   ├── emergencies/[id]/page.tsx             # Emergency corridor analysis & intelligence view
+│   ├── diff/page.tsx                         # What-If scenario diff simulator
+│   ├── emergency-lab/page.tsx                # Interactive scenario stress-testing workbench
 │   └── admin/page.tsx                        # Admin system observability & database explorer
 ├── components/                               # React UI Components
 │   ├── admin/                                # Admin console components
 │   │   ├── admin-overview.tsx                # System metrics, DB health & latency ping
-│   │   └── admin-database-explorer.tsx       # Tabbed collection browser & sanitized inspector
+│   │   ├── admin-database-explorer.tsx       # Tabbed collection browser & sanitized inspector
+│   │   └── admin-user-management.tsx         # Live user approval, suspension & role console
 │   ├── auth/                                 # Authentication UI Components
 │   │   ├── LoginForm.tsx                     # Production login form with validation & errors
-│   │   ├── SignupForm.tsx                    # Production registration with password rules
-│   │   └── ProtectedRoute.tsx                # Client route guard & role access control
+│   │   ├── SignupForm.tsx                    # Production registration with 4 roles & multi-workspace
+│   │   └── ProtectedRoute.tsx                # Client route guard, status check & workspace gating
 │   ├── dashboard/                            # Mission dashboard widgets
 │   │   ├── dashboard-topbar.tsx              # Top bar with authenticated user, role badge & admin link
 │   │   ├── driver-dashboard.tsx              # Dual-tab dashboard (operations / telemetry) with offline fallback
@@ -790,6 +796,35 @@ Trajectories          Routes                     │         │
   - `tests/geoagent-provider.test.mjs`: 12/12 passing (catalog filtering, price guards, fallback order, cooldowns).
   - `tests/geoagent-agent.test.mjs`: 11/11 passing (epistemic reasoning loop, tool invocation, fallback safety).
   - `npm run lint` (`tsc --noEmit`): 0 errors.
+
+---
+
+## 21. Production RBAC, Registration Desk, Multi-Workspace Access & User Lifecycle
+
+- **Four Authoritative Roles & Dynamic Redirection**:
+  - `ADMIN` $\to$ `/admin`: System telemetry, provider health, user review, role elevation, and workspace management.
+  - `CONTROL_ROOM` $\to$ `/control-room`: Corridor surveillance, 5-question mission assessment HUD, and live dispatch.
+  - `DRIVER` $\to$ `/driver/dashboard`: Turn-by-turn navigation HUD, active corridor guidance, and vehicle telemetry.
+  - `PARAMEDIC` $\to$ `/paramedic`: Pre-hospital patient vital signs, trauma logging, and hospital handoff readiness.
+- **Personnel Registration Desk (`/registration` & `/signup`)**:
+  - 4-role responsive grid selector (Admin, Control, Ambulance, Field Paramedic).
+  - Multi-workspace selection checkboxes allowing personnel to request cross-departmental access.
+  - Optional vehicle identifier (`assignedVehicleId`) displayed when Driver role or Driver workspace is selected.
+  - Unconditional quarantining: New public signups always default to `status: 'PENDING'`.
+  - Unapproved accounts are blocked at login with `403 Forbidden: Account registration is pending administrator approval`.
+- **Admin User Management Console (`components/admin/admin-user-management.tsx`)**:
+  - Live table embedded inside `/admin` with status filtering (`PENDING`, `APPROVED`, `SUSPENDED`).
+  - 1-click Approval (`PATCH /api/admin/users/:id/approve`), Account Suspension (`PATCH /api/admin/users/:id/suspend`), and Role & Workspace Reassignment (`PATCH /api/admin/users/:id/role`).
+  - Immutable audit logging recording `approvedBy` and `approvedAt`.
+- **Resource Ownership Boundaries (`server/shared/middleware/ownershipMiddleware.js`)**:
+  - Enforces zero lateral movement: Ambulance drivers can only update their assigned vehicle (`assignedVehicleId`).
+  - Control room dispatchers and admins retain global fleet management authority.
+- **Automated Verification Suites**:
+  - `server/test-auth-rbac-complete.js`: 46/46 passed.
+  - `server/test-registration-workspaces-e2e.js`: 33/33 passed.
+  - `server/test-auth-fullstack.js`: 38/38 passed.
+  - `server/test-auth-e2e.js`: 31/31 passed.
+  - `server/test-admin-e2e.js`: 60/60 passed.
 
 - **Future Roadmap**:
   1. Field-driver mobile app (React Native / Android).

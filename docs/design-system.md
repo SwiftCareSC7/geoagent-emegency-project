@@ -76,12 +76,52 @@ Every operational metric must display its epistemic classification:
 
 ## 5. Component Standards
 1. **AppHeader / DashboardTopbar:**
-   - Unified persistent header with brand logo, active role badge, socket connectivity indicator, quick role switchers, and logout.
+   - Unified persistent header with brand logo, active role badge, socket connectivity indicator, multi-workspace switcher links, and authenticated user logout.
 2. **MissionAssessmentHUD:**
-   - Direct prominent grid answering the 5 Problem-Statement questions with epistemic tags.
+   - Direct prominent grid answering the 5 Problem-Statement questions with epistemic tags (`OBSERVED`, `INFERRED`, `UNKNOWN`).
 3. **MapContainer & Controls:**
    - Full-bleed tactical map with layer toggles (Planned, Alternative, Trajectory, Incidents), legend, and camera controls.
 4. **ActionPanel & DecisionApprovalCard:**
    - Clear progressive states: Recommendation -> Pending Operator Action -> Approve/Reject -> Executed.
 5. **DriverManeuverHUD:**
    - Glanceable turn icons, distance-to-turn countdown, speed indicator, destination ETA, and emergency SMS trigger.
+6. **Authentication & Onboarding (`LoginForm`, `SignupForm`):**
+   - Clean slate-surface card with strict inline validation, real-time password strength checklist, 4-role interactive grid selector, multi-workspace access checkboxes, assigned vehicle identifier input, and dedicated quarantine status notifications (`PENDING` review).
+7. **Route Protection Boundary (`ProtectedRoute`):**
+   - High-fidelity gatekeeper enforcing role authorization, account approval status checks (`PENDING` quarantine screen, `SUSPENDED` banner), and workspace permission gating (`permittedWorkspaces`).
+8. **Admin User Governance (`AdminUserManagement`):**
+   - Interactive console with pending approval queues, one-click authorization (`Approve`), security quarantine (`Suspend`), role elevation, and workspace permission modification.
+9. **Paramedic Clinical Vitals HUD:**
+   - Real-time telemetry tiles for Heart Rate (BPM), Blood Pressure (systolic/diastolic), Oxygen Saturation (SpO2 %), and Glasgow Coma Scale (GCS 3-15) with dynamic clinical triage severity categorization.
+10. **What-If Scenario Simulator (`/diff`):**
+    - Comparative map interface with 5-color visual hierarchy, interactive metric delta cards (travel time, corridor delay, incident risk), and scenario playback scrubbers.
+
+---
+
+## 6. Role & Account State Design Tokens
+
+### 6.1 Role Badges
+| Role | Badge Color | Border & Glow | Context / Workspace |
+|---|---|---|---|
+| `ADMIN` | Purple `#A855F7` | `rgba(168, 85, 247, 0.2)` | `/admin` — System Observability & User Governance |
+| `CONTROL_ROOM` | Sky Blue `#0284C7` | `rgba(2, 132, 199, 0.2)` | `/control-room`, `/emergencies/[id]` — Dispatch HUD |
+| `DRIVER` | Emerald `#10B981` | `rgba(16, 185, 129, 0.2)` | `/driver/dashboard` — Turn-by-Turn Navigation & Telemetry |
+| `PARAMEDIC` | Amber `#F59E0B` | `rgba(245, 158, 11, 0.2)` | `/paramedic` — Pre-Hospital Clinical Vitals & Trauma Bay |
+
+### 6.2 Account Status Tokens
+| State | Badge Styling | Meaning & Action |
+|---|---|---|
+| `APPROVED` | Emerald `#10B981` badge | Active account; unrestricted access to permitted workspaces |
+| `PENDING` | Amber `#F59E0B` pulse badge | Quarantined on signup; awaits Administrator verification |
+| `SUSPENDED` | Red `#EF4444` solid badge | Revoked access; immediately redirects to suspended boundary |
+
+---
+
+## 7. Interactive What-If & Telemetry Map Palette
+- **Planned Corridor A (Default):** `#2563EB` (Cobalt Blue, 5px, opacity 0.9)
+- **Deviated Trajectory (Observed):** `#F97316` (Vivid Orange, 4px dashed)
+- **Recommended Alternative B:** `#8B5CF6` (Purple, 5px, opacity 0.95, pulse indicator)
+- **Contingency Alternative C:** `#64748B` (Slate Gray, 4px, opacity 0.6)
+- **Road Hazard / Incident Perimeter:** `#EF4444` (Hazard Red with 15% opacity radial buffer)
+- **V2X Signal Preemption Node:** `#10B981` (Emerald Green halo when preemption active)
+

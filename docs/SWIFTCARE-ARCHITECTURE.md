@@ -12,13 +12,13 @@ SwiftCare GeoAgent is built as a hybrid edge-and-cloud emergency operations plat
 graph TB
     subgraph ClientLayer["Frontend Presentation Layer (Next.js 16 / React 19)"]
         Landing["Landing Page (/)"]
-        AuthUI["Auth & RBAC (/login, /signup)"]
+        AuthUI["Auth & RBAC (/login, /signup, /registration)"]
         ControlRoom["Control Room Dashboard (/control-room)"]
         DiffSim["What-If Scenario Simulator (/diff)"]
         EmergencyLab["Emergency Lab (/emergency-lab)"]
         DriverHUD["Driver Navigation HUD (/driver/dashboard)"]
         ParamedicUI["Paramedic Triage (/paramedic)"]
-        AdminConsole["System Admin (/admin)"]
+        AdminConsole["System Admin & User Governance (/admin)"]
     end
 
     subgraph TransportLayer["Realtime & Ingestion Layer"]
@@ -244,3 +244,31 @@ graph TD
     Emit -->|decision:pending| CRRoom
     Emit -->|clearance:update| ClrRoom
 ```
+
+---
+
+## 7. Authentication, RBAC & Resource Ownership Architecture
+
+```mermaid
+flowchart TD
+    UserReg["User Registration (/registration)"] --> AutoQuarantine["Quarantine State: status='PENDING'"]
+    AutoQuarantine --> AdminReview{"Administrator Verification (/admin)"}
+    
+    AdminReview -->|Approve| StatusApproved["status='APPROVED' + permittedWorkspaces Configured"]
+    AdminReview -->|Suspend| StatusSuspended["status='SUSPENDED' (Token Revoked)"]
+
+    StatusApproved --> LoginAuth["JWT Token Issuance (Cookie + Bearer)"]
+    LoginAuth --> ProtectedRoute{"ProtectedRoute Gatekeeper"}
+
+    ProtectedRoute -->|Role & Workspace Match| WorkspaceAccess["Render Authorized Workspace"]
+    ProtectedRoute -->|Quarantined / Pending| PendingScreen["Quarantine Boundary: 'Awaiting Admin Approval'"]
+    ProtectedRoute -->|Unauthorized Role| RoleRedirect["Redirect to Authorized Workspace"]
+
+    WorkspaceAccess --> ApiCall["Operational API Request (/api/vehicles/*)"]
+    ApiCall --> Ownership{"ownershipMiddleware.js (requireVehicleOwnership)"}
+    Ownership -->|ADMIN / CONTROL_ROOM| AllowAll["Global Fleet Clearance"]
+    Ownership -->|DRIVER| MatchVehicle{"req.user.assignedVehicleId === targetVehicleId"}
+    MatchVehicle -->|Yes| AllowDriver["Allow Operation"]
+    MatchVehicle -->|No| RejectDriver["403 Forbidden: Bound to Assigned Vehicle"]
+```
+

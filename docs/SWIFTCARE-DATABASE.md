@@ -26,6 +26,13 @@ erDiagram
         string email UK
         string password
         string role "CONTROL_ROOM | ADMIN | DRIVER | PARAMEDIC"
+        string requestedRole
+        array requestedWorkspaces
+        array permittedWorkspaces
+        string status "PENDING | APPROVED | SUSPENDED"
+        ObjectId approvedBy FK
+        date approvedAt
+        string assignedVehicleId FK
         date createdAt
     }
 
@@ -131,9 +138,18 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `email`: String (Required, unique, lowercase, trimmed)
   - `password`: String (Required, bcrypt hash with 12 salt rounds)
   - `role`: Enum `['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC']` (Default: `CONTROL_ROOM`)
+  - `requestedRole`: Enum `['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN']` (Default: `CONTROL_ROOM`)
+  - `requestedWorkspaces`: Array of Strings (Default: `['CONTROL_ROOM']`)
+  - `permittedWorkspaces`: Array of Enums `['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC']` (Default: `['CONTROL_ROOM']`)
+  - `status`: Enum `['PENDING', 'APPROVED', 'SUSPENDED']` (Default: `PENDING`)
+  - `approvedBy`: ObjectId (References `users._id`, default `null`)
+  - `approvedAt`: Date (Default `null`)
+  - `assignedVehicleId`: String (Trimmed, nullable, binds DRIVER to a specific vehicle like `AMB-01`)
 - **Indexes**:
   - `{ email: 1 }` (Unique)
   - `{ role: 1, createdAt: -1 }` (Role filtering)
+  - `{ status: 1, role: 1 }` (Admin quarantine and approval queries)
+  - `{ assignedVehicleId: 1 }` (Vehicle ownership resolution)
 
 ### 2.2 `vehicles` Collection
 - **Source**: `server/modules/vehicles/vehicle.model.js`
