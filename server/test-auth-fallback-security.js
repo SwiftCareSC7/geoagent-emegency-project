@@ -46,6 +46,8 @@ async function run() {
   console.log('   SWIFTCARE AUTHENTICATION FALLBACK & SECURITY TEST SUITE      ');
   console.log('================================================================\n');
 
+  assert(fs.readFileSync(path.join(rootDir, 'lib', 'auth', 'server.ts'), 'utf8').includes('status: 503'), 'lib/auth/server.ts unavailable() fails closed with 503')
+
   // ── 1. Static Security Inspection of lib/auth/server-store.ts ──
   console.log('--- 1. server-store.ts Static Credential & Secret Audit ---');
   const serverStorePath = path.join(rootDir, 'lib', 'auth', 'server-store.ts');
@@ -88,8 +90,8 @@ async function run() {
   );
 
   assert(
-    loginRouteContent.includes('status: 503'),
-    'app/api/auth/login/route.ts returns 503 when authoritative backend is unreachable'
+    loginRouteContent.includes('unavailable('),
+    'app/api/auth/login/route.ts returns 503 (via unavailable()) when auth storage fails'
   );
 
   const regRoutePath = path.join(rootDir, 'app', 'api', 'auth', 'register', 'route.ts');
@@ -97,7 +99,7 @@ async function run() {
 
   assert(
     !regRouteContent.includes('usersStore.set') &&
-    regRouteContent.includes('status: 503'),
+    regRouteContent.includes('unavailable('),
     'app/api/auth/register/route.ts fails closed with 503 without creating local store accounts'
   );
 
@@ -106,7 +108,7 @@ async function run() {
 
   assert(
     !meRouteContent.includes('findUserById') &&
-    meRouteContent.includes('status: 503'),
+    meRouteContent.includes('unavailable('),
     'app/api/auth/me/route.ts proxies to authoritative backend with 503 fail-closed'
   );
 

@@ -120,6 +120,14 @@ const routeSchema = new mongoose.Schema(
       enum: ['PLANNED', 'ALTERNATIVE', 'CURRENT', 'RECOMMENDED', 'HISTORICAL'],
       default: 'PLANNED'
     },
+    rerouteDecisionId: {
+      type: String,
+      default: null
+    },
+    rerouteCandidateId: {
+      type: String,
+      default: null
+    },
     status: {
       type: String,
       enum: ['ACTIVE', 'COMPLETED', 'CANCELLED'],

@@ -39,13 +39,19 @@ export function DecisionApprovalCard({
   const action = liveDecision?.primaryAction || decision?.primaryAction || 'REROUTE';
   const severity = liveDecision?.severity || decision?.severity || 'WARNING';
   const reasonCodes = liveDecision?.reasonCodes || decision?.reasonCodes || ['CORRIDOR_CONGESTION_PENALTY', 'TRAFFIC_DELAY_EXCEEDS_THRESHOLD'];
+  const rerouteCandidate = decision?.rerouteCandidate;
+  const requiresRerouteCandidate = decision?.actions?.includes('REROUTE') || action === 'REROUTE';
 
   const handleApprove = async () => {
     if (!decisionId || decisionId === 'DEC-PENDING') return;
     setIsActing(true);
     setFeedback(null);
     try {
-      const res = await decisionApi.approve(decisionId, 'Operator approved corridor reroute via dispatch console');
+      const res = await decisionApi.approve(
+        decisionId,
+        'Operator approved corridor reroute via dispatch console',
+        rerouteCandidate?.candidateId
+      );
       setFeedback({ type: 'success', message: 'Decision approved! State transitioned to APPROVED in database.' });
       if (onDecisionUpdated && res.data) {
         onDecisionUpdated(res.data);
@@ -93,9 +99,14 @@ export function DecisionApprovalCard({
     setFeedback(null);
     try {
       const res = await decisionApi.execute(decisionId);
+      if (!res.success || !res.data) {
+        throw new Error('Decision execution did not complete successfully');
+      }
       setFeedback({
         type: 'success',
-        message: 'Decision executed! Internal route suggestion recorded and real-time event broadcasted.'
+        message: res.data.executionSummary?.includes('REROUTE:activated')
+          ? 'Approved reroute candidate activated.'
+          : 'Decision executed successfully.'
       });
       if (onDecisionUpdated && res.data) {
         onDecisionUpdated(res.data);
@@ -190,6 +201,36 @@ export function DecisionApprovalCard({
         </div>
       )}
 
+      {rerouteCandidate && (
+        <details open className="mt-4 rounded-xl border border-blue-500/30 bg-blue-500/5 p-3.5">
+          <summary className="cursor-pointer text-xs font-bold text-foreground">
+            Reviewed reroute candidate · {rerouteCandidate.provider || 'Routing provider'}
+          </summary>
+          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+            <p>{rerouteCandidate.description || 'Alternative route'} · {Math.round(rerouteCandidate.distanceMeters)} m · {Math.ceil(rerouteCandidate.durationSeconds / 60)} min</p>
+            <p className="font-mono text-[10px] break-all">Candidate {rerouteCandidate.candidateId}</p>
+            <p>{rerouteCandidate.geometry.coordinates.length} geometry points · {rerouteCandidate.steps?.length || 0} navigation steps</p>
+            {rerouteCandidate.steps && rerouteCandidate.steps.length > 0 && (
+              <ol className="list-decimal space-y-1 pl-5 pt-1">
+                {rerouteCandidate.steps.map((step, index) => (
+                  <li key={`${index}-${step.instruction}`}>{step.instruction}</li>
+                ))}
+              </ol>
+            )}
+            <details className="pt-1">
+              <summary className="cursor-pointer">Inspect route coordinates</summary>
+              <ol className="mt-1 max-h-36 overflow-auto list-decimal pl-5 font-mono text-[10px]">
+                {rerouteCandidate.geometry.coordinates.map(([longitude, latitude], index) => (
+                  <li key={`${index}-${longitude}-${latitude}`}>
+                    {longitude.toFixed(6)}, {latitude.toFixed(6)}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          </div>
+        </details>
+      )}
+
       {/* Feedback Alert */}
       {feedback && (
         <div
@@ -257,7 +298,7 @@ export function DecisionApprovalCard({
             </button>
             <button
               onClick={handleApprove}
-              disabled={isActing}
+              disabled={isActing || (requiresRerouteCandidate && !rerouteCandidate?.candidateId)}
               className="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-all disabled:opacity-50"
             >
               <CheckCircle className="h-4 w-4" />

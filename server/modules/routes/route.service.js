@@ -8,6 +8,16 @@ import Emergency from '../emergencies/emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Trajectory from '../trajectories/trajectory.model.js';
 import realtimeService from '../realtime/realtime.service.js';
+import Decision from '../decisions/decision.model.js';
+import { isRerouteCandidateUnchanged } from '../decisions/rerouteCandidate.js';
+import { validateRouteGeometry } from './routeValidator.js';
+
+const routeError = (message, status = 400) => {
+  const error = new Error(message);
+  error.status = status;
+  error.isOperational = true;
+  return error;
+};
 
 
 class RouteService {
@@ -318,68 +328,222 @@ class RouteService {
   /**
    * Accepts and activates a recommended reroute
    * @param {String} routeId
-   * @param {Object} rerouteData { geometry, distanceMeters, durationSeconds, preference, steps, reason }
    * @param {String} userId
+   * @param {String} decisionId
    * @returns {Promise<Object>} Updated route
    */
-  async acceptReroute(routeId, rerouteData = {}, userId = null) {
+  async acceptReroute(routeId, userId = null, decisionId) {
     const route = await Route.findOne({ routeId });
     if (!route) {
-      const error = new Error('Route not found');
-      error.status = 404;
-      error.isOperational = true;
-      throw error;
+      throw routeError('Route not found', 404);
     }
 
-    if (rerouteData.geometry) {
-      route.geometry = rerouteData.geometry;
-    }
-    if (rerouteData.distanceMeters) {
-      route.distance = rerouteData.distanceMeters;
-    }
-    if (rerouteData.durationSeconds) {
-      route.duration = rerouteData.durationSeconds;
-    }
-    if (rerouteData.preference) {
-      route.preference = rerouteData.preference;
-    }
-    if (Array.isArray(rerouteData.steps) && rerouteData.steps.length > 0) {
-      route.steps = rerouteData.steps;
+    if (!decisionId) {
+      throw routeError('An approved REROUTE decision is required', 400);
     }
 
-    route.routeType = 'RECOMMENDED';
-    route.status = 'ACTIVE';
-    route.updatedBy = userId;
-    await route.save();
+    const decision = await Decision.findOne({ decisionId });
+    if (!decision) {
+      throw routeError('Decision not found', 404);
+    }
+    if (
+      decision.status !== 'APPROVED' ||
+      decision.primaryAction !== 'REROUTE' ||
+      !Array.isArray(decision.actions) ||
+      !decision.actions.includes('REROUTE')
+    ) {
+      throw routeError('Decision is not an approved REROUTE', 409);
+    }
+    if (
+      !decision.approvedCandidateId ||
+      decision.approvedCandidateId !== decision.rerouteCandidate?.candidateId ||
+      !isRerouteCandidateUnchanged(decision.rerouteCandidate)
+    ) {
+      throw routeError('The approved reroute candidate is missing or changed', 409);
+    }
+
+    const sameId = (left, right) => left && right && left.toString() === right.toString();
+    if (
+      !sameId(decision.route, route._id) ||
+      !sameId(decision.emergency, route.emergency) ||
+      !sameId(decision.vehicle, route.vehicle)
+    ) {
+      throw routeError('Route does not belong to the approved decision', 409);
+    }
+
+    const [emergency, vehicle] = await Promise.all([
+      Emergency.findById(route.emergency),
+      Vehicle.findById(route.vehicle)
+    ]);
+    if (!emergency || !vehicle) {
+      throw routeError('Route emergency or vehicle not found', 404);
+    }
+    if (!sameId(emergency.assignedVehicle, route.vehicle)) {
+      throw routeError('Route vehicle is not assigned to its emergency', 409);
+    }
+
+    const {
+      geometry,
+      distanceMeters,
+      durationSeconds,
+      preference,
+      steps,
+      provider,
+      description,
+      candidateId
+    } = decision.rerouteCandidate;
+    if (
+      !geometry ||
+      geometry.type !== 'LineString' ||
+      !Array.isArray(geometry.coordinates) ||
+      geometry.coordinates.length < 2 ||
+      geometry.coordinates.some(
+        coordinate => !Array.isArray(coordinate) || coordinate.length < 2
+      ) ||
+      !Number.isFinite(distanceMeters) ||
+      distanceMeters <= 0 ||
+      !Number.isFinite(durationSeconds) ||
+      durationSeconds <= 0
+    ) {
+      throw routeError('A valid reroute geometry, distance, and duration are required', 400);
+    }
+    if (preference !== undefined && !['FASTEST', 'SHORTEST'].includes(preference)) {
+      throw routeError('Invalid reroute preference', 400);
+    }
+    if (
+      steps !== undefined &&
+      (!Array.isArray(steps) ||
+        steps.some(step =>
+          !step ||
+          typeof step.instruction !== 'string' ||
+          !Number.isFinite(step.distance) ||
+          step.distance < 0 ||
+          !Number.isFinite(step.duration) ||
+          step.duration < 0
+        ))
+    ) {
+      throw routeError('Invalid reroute steps', 400);
+    }
+
+    const validation = validateRouteGeometry(
+      { geometry, distanceMeters, durationSeconds },
+      route.origin?.coordinates,
+      route.destination?.coordinates
+    );
+    if (!validation.isValid || !validation.isRoadConstrained) {
+      const reasons = validation.reasons.join('; ') || 'Geometry is not road-constrained';
+      throw routeError(`Invalid reroute geometry: ${reasons}`, 400);
+    }
+
+    const candidateSteps = Array.isArray(steps) && steps.length > 0
+      ? steps.map(step => ({
+          maneuver: step.maneuver || 'CONTINUE',
+          instruction: step.instruction,
+          distance: step.distance ?? 0,
+          duration: step.duration ?? 0,
+          startLocation: step.startLocation || [],
+          endLocation: step.endLocation || [],
+          stepPolyline: step.stepPolyline || []
+        }))
+      : null;
+    const candidateAlreadyActivated =
+      route.status === 'ACTIVE' &&
+      route.routeType === 'RECOMMENDED' &&
+      route.rerouteDecisionId === decision.decisionId &&
+      route.rerouteCandidateId === candidateId &&
+      JSON.stringify(route.geometry?.coordinates) === JSON.stringify(geometry.coordinates) &&
+      route.distance === distanceMeters &&
+      route.duration === durationSeconds &&
+      route.preference === (preference || route.preference) &&
+      (!['MOCK', 'GOOGLE', 'MAPBOX', 'OSRM'].includes(provider) || route.provider === provider) &&
+      (!candidateSteps || JSON.stringify((route.steps || []).map(step => ({
+        maneuver: step.maneuver || 'CONTINUE',
+        instruction: step.instruction,
+        distance: step.distance ?? 0,
+        duration: step.duration ?? 0,
+        startLocation: step.startLocation || [],
+        endLocation: step.endLocation || [],
+        stepPolyline: step.stepPolyline || []
+      }))) === JSON.stringify(candidateSteps));
+    if (candidateAlreadyActivated) {
+      return route;
+    }
+
+    const routeVersion = decision.inputSnapshot?.routeVersion;
+    const routeUpdatedAt = decision.inputSnapshot?.routeUpdatedAt;
+    if (
+      route.status !== 'ACTIVE' ||
+      decision.inputSnapshot?.routeStatus !== 'ACTIVE' ||
+      !Number.isInteger(routeVersion) ||
+      routeVersion !== route.__v ||
+      !routeUpdatedAt ||
+      new Date(routeUpdatedAt).getTime() !== new Date(route.updatedAt).getTime()
+    ) {
+      throw routeError('Approved route state is stale or no longer active', 409);
+    }
+
+    const update = {
+      $set: {
+        geometry,
+        distance: distanceMeters,
+        duration: durationSeconds,
+        preference: preference || route.preference,
+        routeType: 'RECOMMENDED',
+        status: 'ACTIVE',
+        rerouteDecisionId: decision.decisionId,
+        rerouteCandidateId: candidateId
+      },
+      $inc: { __v: 1 }
+    };
+    if (Array.isArray(steps) && steps.length > 0) {
+      update.$set.steps = steps;
+    }
+    if (['MOCK', 'GOOGLE', 'MAPBOX', 'OSRM'].includes(provider)) {
+      update.$set.provider = provider;
+    }
+
+    const updatedRoute = await Route.findOneAndUpdate(
+      {
+        _id: route._id,
+        emergency: route.emergency,
+        vehicle: route.vehicle,
+        status: 'ACTIVE',
+        __v: routeVersion,
+        updatedAt: route.updatedAt
+      },
+      update,
+      { new: true, runValidators: true }
+    );
+    if (!updatedRoute) {
+      throw routeError('Route changed before reroute activation', 409);
+    }
 
     // Broadcast over Socket.IO
     try {
-      const emergency = await Emergency.findById(route.emergency);
-      const vehicle = await Vehicle.findById(route.vehicle);
       const payload = {
-        routeId: route.routeId,
-        emergencyId: emergency?.emergencyId || null,
-        vehicleId: vehicle?.vehicleId || null,
-        routeType: route.routeType,
+        routeId: updatedRoute.routeId,
+        emergencyId: emergency.emergencyId,
+        vehicleId: vehicle.vehicleId,
+        routeType: updatedRoute.routeType,
         status: 'REROUTE_ACCEPTED',
-        distanceMeters: route.distance,
-        durationSeconds: route.duration,
-        preference: route.preference,
-        stepsCount: (route.steps || []).length,
-        reason: rerouteData.reason || 'GeoAgent recommended faster bypass accepted by driver',
+        distanceMeters: updatedRoute.distance,
+        durationSeconds: updatedRoute.duration,
+        preference: updatedRoute.preference,
+        stepsCount: (updatedRoute.steps || []).length,
+        reason: description || `Approved route candidate ${candidateId} activated`,
         timestamp: new Date().toISOString()
       };
 
       realtimeService.emitRouteUpdated(
-        emergency?.emergencyId || 'ALL',
-        vehicle?.vehicleId || 'ALL',
+        emergency.emergencyId,
+        vehicle.vehicleId,
         payload
       );
     } catch (err) {
       console.error(`[RouteService] Reroute socket broadcast error: ${err.message}`);
     }
 
-    return route;
+    return updatedRoute;
   }
 
   /**

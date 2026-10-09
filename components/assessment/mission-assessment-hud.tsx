@@ -60,7 +60,7 @@ export interface MissionAssessmentHUDProps {
   decision?: Decision | null
   orchestrationResult?: OrchestrationWorkflowResult | null
   comparisonData?: any
-  onApproveDecision?: (decisionId: string, comment?: string) => Promise<void>
+  onApproveDecision?: (decisionId: string, comment?: string, candidateId?: string) => Promise<void>
   onRejectDecision?: (decisionId: string, reason?: string) => Promise<void>
   onExecuteDecision?: (decisionId: string) => Promise<void>
   className?: string
@@ -217,8 +217,8 @@ export function MissionAssessmentHUD({
 
   // 5. Q5: Should another ambulance be dispatched instead?
   const backupNeeded =
-    decision?.primaryAction === 'DISPATCH_BACKUP' ||
-    (decision?.action === 'DISPATCH_BACKUP') ||
+    decision?.primaryAction === 'CONSIDER_BACKUP' ||
+    (decision?.action === 'CONSIDER_BACKUP') ||
     (delayMinutes > 15 && emergency?.priority === 'CRITICAL')
 
   let q5Answer = 'NOT REQUIRED — Assigned unit ETA remains clinically acceptable'
@@ -247,13 +247,19 @@ export function MissionAssessmentHUD({
   const isApproved = decisionStatus === 'APPROVED'
   const isExecuted = decisionStatus === 'EXECUTED'
   const isRejected = decisionStatus === 'REJECTED'
+  const requiresRerouteCandidate = decision?.actions?.includes('REROUTE') ||
+    (decision?.primaryAction || decision?.action) === 'REROUTE'
 
   const handleApprove = async () => {
     if (!onApproveDecision || !activeDecisionId) return
     setActionLoading(true)
     setActionMessage(null)
     try {
-      await onApproveDecision(activeDecisionId, 'Operator approved recommended corridor action via Mission Assessment HUD')
+      await onApproveDecision(
+        activeDecisionId,
+        'Operator approved recommended corridor action via Mission Assessment HUD',
+        decision?.rerouteCandidate?.candidateId
+      )
       setActionMessage({ type: 'success', text: 'Decision Approved — Reroute authorized' })
     } catch (err: any) {
       setActionMessage({ type: 'error', text: err?.message || 'Failed to approve decision' })
@@ -590,6 +596,36 @@ export function MissionAssessmentHUD({
             </div>
           </div>
 
+          {decision?.rerouteCandidate && (
+            <details open className="w-full rounded-lg border border-blue-500/30 bg-blue-500/5 p-3">
+              <summary className="cursor-pointer text-xs font-bold text-foreground">
+                Reviewed route candidate · {decision.rerouteCandidate.provider || 'Routing provider'}
+              </summary>
+              <div className="mt-1 space-y-1 text-[11px] text-muted-foreground">
+                <p>{decision.rerouteCandidate.description || 'Alternative route'} · {Math.round(decision.rerouteCandidate.distanceMeters)} m · {Math.ceil(decision.rerouteCandidate.durationSeconds / 60)} min</p>
+                <p className="break-all font-mono">Candidate {decision.rerouteCandidate.candidateId}</p>
+                <p>{decision.rerouteCandidate.geometry.coordinates.length} geometry points · {decision.rerouteCandidate.steps?.length || 0} navigation steps</p>
+                {decision.rerouteCandidate.steps && decision.rerouteCandidate.steps.length > 0 && (
+                  <ol className="list-decimal space-y-1 pl-5 pt-1">
+                    {decision.rerouteCandidate.steps.map((step, index) => (
+                      <li key={`${index}-${step.instruction}`}>{step.instruction}</li>
+                    ))}
+                  </ol>
+                )}
+                <details className="pt-1">
+                  <summary className="cursor-pointer">Inspect route coordinates</summary>
+                  <ol className="mt-1 max-h-36 overflow-auto list-decimal pl-5 font-mono text-[10px]">
+                    {decision.rerouteCandidate.geometry.coordinates.map(([longitude, latitude], index) => (
+                      <li key={`${index}-${longitude}-${latitude}`}>
+                        {longitude.toFixed(6)}, {latitude.toFixed(6)}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              </div>
+            </details>
+          )}
+
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
             {isPending && (
@@ -607,7 +643,10 @@ export function MissionAssessmentHUD({
                 <Button
                   size="sm"
                   onClick={handleApprove}
-                  disabled={actionLoading}
+                  disabled={actionLoading || (
+                    requiresRerouteCandidate &&
+                    !decision?.rerouteCandidate?.candidateId
+                  )}
                   className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md shadow-emerald-950/20 cursor-pointer"
                 >
                   <CheckCircle2 className="size-3.5" />

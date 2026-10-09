@@ -23,6 +23,13 @@ const trajectorySchema = new mongoose.Schema(
       type: pointSchema,
       required: true
     },
+    mapMatchedLocation: {
+      type: pointSchema
+    },
+    mapMatchDistanceMeters: {
+      type: Number,
+      min: 0
+    },
     speed: {
       type: Number,
       required: true,

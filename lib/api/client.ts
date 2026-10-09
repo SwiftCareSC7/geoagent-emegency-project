@@ -27,7 +27,7 @@ function getBaseUrl(): string {
     return envUrl.replace(/\/+$/, '')
   }
   // Server-side (Node.js runtime or Next SSR)
-  const serverUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
+  const serverUrl = process.env.BACKEND_SERVICE_URL || process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
   if (serverUrl && !serverUrl.includes('localhost') && !serverUrl.includes('127.0.0.1')) {
     return serverUrl.replace(/\/+$/, '')
   }
@@ -59,6 +59,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return body as T
 }
 
+const LOCAL_AUTH_PATH = /^\/(auth|admin\/users)(\/|$)/
+
 /**
  * Build a full URL with optional query parameters.
  */
@@ -66,8 +68,13 @@ function buildUrl(
   path: string,
   params?: Record<string, string | number | undefined>,
 ): string {
-  const base = getBaseUrl()
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  // Auth + user management are Next route handlers (local SQLite). In the browser they must stay same-origin even when
+  // NEXT_PUBLIC_API_URL points at the Express origin, or login/register would bypass them.
+  const base =
+    typeof window !== 'undefined' && LOCAL_AUTH_PATH.test(normalizedPath)
+      ? `${window.location.origin}/api`
+      : getBaseUrl()
   const fullBase =
     base.endsWith('/api') && normalizedPath.startsWith('/api/')
       ? base.slice(0, -4)

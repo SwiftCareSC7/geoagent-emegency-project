@@ -39,6 +39,37 @@ const decisionSchema = new mongoose.Schema(
       default: null
     },
 
+    rerouteCandidate: {
+      _id: false,
+      candidateId: { type: String, default: null },
+      geometry: {
+        type: {
+          type: String,
+          enum: ['LineString']
+        },
+        coordinates: { type: [[Number]] }
+      },
+      distanceMeters: { type: Number, default: null },
+      durationSeconds: { type: Number, default: null },
+      preference: { type: String, enum: ['FASTEST', 'SHORTEST'], default: 'FASTEST' },
+      provider: { type: String, default: 'UNKNOWN' },
+      description: { type: String, default: '' },
+      steps: [{
+        maneuver: { type: String, default: 'CONTINUE' },
+        instruction: { type: String, required: true },
+        distance: { type: Number, default: 0 },
+        duration: { type: Number, default: 0 },
+        startLocation: { type: [Number] },
+        endLocation: { type: [Number] },
+        stepPolyline: { type: [[Number]] }
+      }]
+    },
+
+    approvedCandidateId: {
+      type: String,
+      default: null
+    },
+
     severity: {
       type: String,
       enum: ['NORMAL', 'WARNING', 'CRITICAL'],
@@ -84,6 +115,8 @@ const decisionSchema = new mongoose.Schema(
       emergencyStatus: { type: String, default: null },
       vehicleStatus: { type: String, default: null },
       routeStatus: { type: String, default: null },
+      routeVersion: { type: Number, default: null },
+      routeUpdatedAt: { type: Date, default: null },
       deviationStatus: { type: String, default: null },
       deviationDistanceMeters: { type: Number, default: null },
       trafficLevel: { type: String, default: null },

@@ -185,7 +185,7 @@ export const geoAgentToolDeclarations = [
   },
   {
     name: 'getCorridorGreenWaveStatus',
-    description: 'Retrieve V2X corridor green-wave status for the scoped emergency vehicle.',
+    description: 'Retrieve V2X traffic signal preemption and corridor green-wave status for the scoped emergency vehicle.',
     parameters: {
       type: 'object',
       properties: {
@@ -200,13 +200,15 @@ export const geoAgentToolDeclarations = [
 ];
 
 /** Normalize and freeze analysis scope established by the application (never by the model). */
-export function normalizeAnalysisScope(scope) {
+export function normalizeAnalysisScope(scope, { optional = false } = {}) {
   if (!scope || typeof scope !== 'object') {
+    if (optional) return null;
     throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
   }
   const emergencyId = typeof scope.emergencyId === 'string' ? scope.emergencyId.trim() : '';
   const vehicleId = typeof scope.vehicleId === 'string' ? scope.vehicleId.trim() : '';
   if (!emergencyId || !vehicleId) {
+    if (optional) return null;
     throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
   }
   return Object.freeze({ emergencyId, vehicleId });
@@ -250,6 +252,9 @@ function pointFromGeoJson(point) {
 }
 
 async function loadScopedEmergency(scope) {
+  if (!scope || !scope.emergencyId) {
+    throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+  }
   const emergency = await Emergency.findOne({
     emergencyId: scope.emergencyId,
     isDeleted: false
@@ -262,6 +267,9 @@ async function loadScopedEmergency(scope) {
 }
 
 async function loadScopedVehicle(scope) {
+  if (!scope || !scope.vehicleId) {
+    throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+  }
   const vehicle = await Vehicle.findOne({
     vehicleId: scope.vehicleId,
     isDeleted: false
@@ -277,6 +285,9 @@ async function loadScopedVehicle(scope) {
  * Fail closed without revealing whether other emergencies exist.
  */
 async function assertEmergencyInScope(requestedId, scope) {
+  if (!scope || !scope.emergencyId) {
+    throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+  }
   const id = assertSafeId(requestedId || scope.emergencyId);
   if (id === scope.emergencyId) {
     return loadScopedEmergency(scope);
@@ -296,6 +307,14 @@ async function assertEmergencyInScope(requestedId, scope) {
  * Related vehicles are not inventable — only the mission vehicleId is allowed for vehicle tools.
  */
 async function assertVehicleInScope(requestedId, scope) {
+  if (!scope || !scope.vehicleId) {
+    if (!scope && requestedId) {
+      const id = assertSafeId(requestedId);
+      const vehicle = await Vehicle.findOne(isObjectIdString(id) ? { _id: id, isDeleted: false } : { vehicleId: id, isDeleted: false });
+      if (vehicle) return vehicle;
+    }
+    throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+  }
   const id = assertSafeId(requestedId || scope.vehicleId);
   if (id === scope.vehicleId) {
     return loadScopedVehicle(scope);
@@ -371,11 +390,19 @@ async function resolveScopedRouteEndpoints(scope) {
  * @param {object} analysisScope — TRUSTED, application-established { emergencyId, vehicleId }
  */
 export const executeGeoAgentTool = async (name, args = {}, analysisScope) => {
-  const scope = normalizeAnalysisScope(analysisScope);
+  const scope = normalizeAnalysisScope(analysisScope, { optional: true });
   const safeArgs = args && typeof args === 'object' && !Array.isArray(args) ? args : {};
+
+  const requireScope = () => {
+    if (!scope) {
+      throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+    }
+    return scope;
+  };
 
   switch (name) {
     case 'getEmergencyState': {
+      requireScope();
       const emergency = await assertEmergencyInScope(safeArgs.emergencyId, scope);
       const untrustedDescription = emergency.description
         ? sanitizeText(String(emergency.description)).slice(0, 300)
@@ -493,11 +520,23 @@ export const executeGeoAgentTool = async (name, args = {}, analysisScope) => {
     }
 
     case 'getTrafficAnalysis': {
-      const point = await resolveMissionGeoPoint(safeArgs, scope);
+      let point;
+      if (scope) {
+        point = await resolveMissionGeoPoint(safeArgs, scope);
+      } else {
+        const lng = parseFiniteNumber(safeArgs.longitude ?? safeArgs.originLng);
+        const lat = parseFiniteNumber(safeArgs.latitude ?? safeArgs.originLat);
+        if (lng !== null && lat !== null && validateCoordinates([lng, lat])) {
+          point = createPoint(lng, lat);
+        } else {
+          throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+        }
+      }
       return await trafficService.getTrafficForLocation(point);
     }
 
     case 'getDecisionHistory': {
+      requireScope();
       if (safeArgs.emergencyId) {
         await assertEmergencyInScope(safeArgs.emergencyId, scope);
       }
@@ -540,18 +579,42 @@ export const executeGeoAgentTool = async (name, args = {}, analysisScope) => {
     }
 
     case 'getVehicleSituation': {
+      requireScope();
       const vehicle = await assertVehicleInScope(safeArgs.vehicleId, scope);
       return await analysisService.getVehicleSituation(vehicle.vehicleId);
     }
 
     case 'getPrediction': {
+      requireScope();
       const vehicle = await assertVehicleInScope(safeArgs.vehicleId, scope);
       return await predictionService.predictForVehicle(vehicle.vehicleId, { triggerDecision: false });
     }
 
     case 'getAlternativeRoutes':
     case 'getRouteAlternatives': {
-      const { origin, destination } = await resolveScopedRouteEndpoints(scope);
+      let origin;
+      let destination;
+      let originSource = 'SCOPED_MISSION';
+      let destSource = 'SCOPED_MISSION';
+      if (scope) {
+        const endpoints = await resolveScopedRouteEndpoints(scope);
+        origin = endpoints.origin;
+        destination = endpoints.destination;
+      } else {
+        const oLng = parseFiniteNumber(safeArgs.originLng);
+        const oLat = parseFiniteNumber(safeArgs.originLat);
+        const dLng = parseFiniteNumber(safeArgs.destLng);
+        const dLat = parseFiniteNumber(safeArgs.destLat);
+        if (oLng !== null && oLat !== null && dLng !== null && dLat !== null &&
+            validateCoordinates([oLng, oLat]) && validateCoordinates([dLng, dLat])) {
+          origin = createPoint(oLng, oLat);
+          destination = createPoint(dLng, dLat);
+          originSource = 'EXPLICIT_COORDINATES';
+          destSource = 'EXPLICIT_COORDINATES';
+        } else {
+          throw new GeoAgentToolError('OUT_OF_SCOPE_RESOURCE', SAFE_SCOPE_MESSAGE);
+        }
+      }
       const routeResult = await routingService.getRouteWithAlternatives(origin, destination);
       const primary = routeResult.primary;
       const alternatives = routeResult.alternatives || [];
@@ -592,6 +655,7 @@ export const executeGeoAgentTool = async (name, args = {}, analysisScope) => {
     }
 
     case 'getNearbyAvailableVehicles': {
+      requireScope();
       const emergency = await loadScopedEmergency(scope);
       const targetPoint = pointFromGeoJson(emergency.location);
       if (!targetPoint) {
@@ -681,7 +745,18 @@ export const executeGeoAgentTool = async (name, args = {}, analysisScope) => {
     }
 
     case 'getNearbyIncidents': {
-      const targetPoint = await resolveMissionGeoPoint(safeArgs, scope);
+      let targetPoint;
+      if (scope) {
+        targetPoint = await resolveMissionGeoPoint(safeArgs, scope);
+      } else {
+        const lng = parseFiniteNumber(safeArgs.longitude ?? safeArgs.originLng);
+        const lat = parseFiniteNumber(safeArgs.latitude ?? safeArgs.originLat);
+        if (lng !== null && lat !== null && validateCoordinates([lng, lat])) {
+          targetPoint = createPoint(lng, lat);
+        } else {
+          throw new GeoAgentToolError('INVALID_TOOL_ARGUMENT', SAFE_ARG_MESSAGE);
+        }
+      }
       const requestedRadius = parseFiniteNumber(safeArgs.radiusMeters);
       const radiusMeters = Math.min(
         geoAgentConstants.maxIncidentRadiusMeters,

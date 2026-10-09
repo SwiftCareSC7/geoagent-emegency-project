@@ -1,13 +1,14 @@
 import routeService from './route.service.js';
+import decisionService from '../decisions/decision.service.js';
 import analysisService from '../analysis/analysis.service.js';
 import corridorGreenWaveService from './corridorGreenWave.service.js';
 import Route from './route.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 
 /**
- * @desc    Calculate route plan with turn-by-turn maneuvers (Fastest vs Shortest)
- * @route   POST /api/routes/calculate
- * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ * @desc Calculate route plan with turn-by-turn maneuvers (Fastest vs Shortest)
+ * @route POST /api/routes/calculate
+ * @access Public
  */
 export const calculateRoute = async (req, res, next) => {
   try {
@@ -40,15 +41,14 @@ export const calculateRoute = async (req, res, next) => {
 };
 
 /**
- * @desc    Generate and create a new route
- * @route   POST /api/routes
- * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ * @desc Generate and create a new route
+ * @route POST /api/routes
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const createRoute = async (req, res, next) => {
   try {
     const routeData = req.body;
     const userId = req.user._id;
-
     const route = await routeService.createRoute(routeData, userId);
 
     res.status(201).json({
@@ -59,7 +59,7 @@ export const createRoute = async (req, res, next) => {
     if (error.message === 'Emergency not found' || error.message === 'Vehicle not found') {
       res.status(404);
     } else if (error.message.includes('Unable to calculate route')) {
-      res.status(502); // Bad Gateway (External provider failed)
+      res.status(502);
     } else {
       res.status(400);
     }
@@ -68,14 +68,13 @@ export const createRoute = async (req, res, next) => {
 };
 
 /**
- * @desc    Get all routes with pagination and filters
- * @route   GET /api/routes
- * @access  Private (CONTROL_ROOM, ADMIN)
+ * @desc Get all routes with pagination and filters
+ * @route GET /api/routes
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const getRoutes = async (req, res, next) => {
   try {
     const { page, limit, emergencyId, vehicleId, routeType, status } = req.query;
-    
     const filters = { emergencyId, vehicleId, routeType, status };
     const result = await routeService.getRoutes(filters, page, limit);
 
@@ -90,14 +89,13 @@ export const getRoutes = async (req, res, next) => {
 };
 
 /**
- * @desc    Get a specific route
- * @route   GET /api/routes/:routeId
- * @access  Private (CONTROL_ROOM, ADMIN)
+ * @desc Get a specific route
+ * @route GET /api/routes/:routeId
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const getRoute = async (req, res, next) => {
   try {
     const route = await routeService.getRouteById(req.params.routeId);
-    
     res.status(200).json({
       success: true,
       data: route.toSafeObject()
@@ -111,20 +109,18 @@ export const getRoute = async (req, res, next) => {
 };
 
 /**
- * @desc    Get routes for a specific emergency
- * @route   GET /api/emergencies/:emergencyId/routes
- * @access  Private (CONTROL_ROOM, ADMIN)
+ * @desc Get routes for a specific emergency
+ * @route GET /api/emergencies/:emergencyId/routes
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const getEmergencyRoutes = async (req, res, next) => {
   try {
     const { page, limit, routeType, status } = req.query;
-    
-    const filters = { 
+    const filters = {
       emergencyId: req.params.emergencyId,
-      routeType, 
-      status 
+      routeType,
+      status
     };
-    
     const result = await routeService.getRoutes(filters, page, limit);
 
     res.status(200).json({
@@ -138,15 +134,14 @@ export const getEmergencyRoutes = async (req, res, next) => {
 };
 
 /**
- * @desc    Get complete situation analysis for a specific route
- * @route   GET /api/routes/:routeId/analysis
- * @access  Private (CONTROL_ROOM, ADMIN)
+ * @desc Get complete situation analysis for a specific route
+ * @route GET /api/routes/:routeId/analysis
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const getRouteAnalysis = async (req, res, next) => {
   try {
     const { routeId } = req.params;
     const analysis = await analysisService.getRouteSituation(routeId);
-
     res.status(200).json({
       success: true,
       message: 'Route situation analysis generated',
@@ -158,15 +153,14 @@ export const getRouteAnalysis = async (req, res, next) => {
 };
 
 /**
- * @desc    Get deterministic route comparison and what-if analysis
- * @route   GET /api/routes/:routeId/compare
- * @access  Private (CONTROL_ROOM, ADMIN)
+ * @desc Get deterministic route comparison and what-if analysis
+ * @route GET /api/routes/:routeId/compare
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const compareRoute = async (req, res, next) => {
   try {
     const { routeId } = req.params;
     const comparison = await routeService.compareRoute(routeId);
-
     res.status(200).json({
       success: true,
       message: 'Route candidate comparison generated',
@@ -181,9 +175,9 @@ export const compareRoute = async (req, res, next) => {
 };
 
 /**
- * @desc    Get real-time V2X corridor and green-wave analysis for a route
- * @route   GET /api/routes/:routeId/corridor-v2x
- * @access  Private (CONTROL_ROOM, ADMIN)
+ * @desc Get real-time V2X corridor and green-wave analysis for a route
+ * @route GET /api/routes/:routeId/corridor-v2x
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const getCorridorV2X = async (req, res, next) => {
   try {
@@ -194,12 +188,14 @@ export const getCorridorV2X = async (req, res, next) => {
       err.status = 404;
       throw err;
     }
+
     const vehicle = await Vehicle.findById(route.vehicle);
     if (!vehicle) {
       const err = new Error('Vehicle for route not found');
       err.status = 404;
       throw err;
     }
+
     const result = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicle.vehicleId);
     res.status(200).json({
       success: true,
@@ -212,18 +208,17 @@ export const getCorridorV2X = async (req, res, next) => {
 };
 
 /**
- * @desc    Accept and activate a recommended reroute
- * @route   POST /api/routes/:routeId/accept-reroute
- * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ * @desc Accept and activate a recommended reroute
+ * @route POST /api/routes/:routeId/accept-reroute
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const acceptReroute = async (req, res, next) => {
   try {
     const { routeId } = req.params;
-    const rerouteData = req.body;
+    const { decisionId } = req.body || {};
     const userId = req.user._id;
 
-    const route = await routeService.acceptReroute(routeId, rerouteData, userId);
-
+    const route = await decisionService.executeRerouteForRoute(routeId, userId, decisionId);
     res.status(200).json({
       success: true,
       message: 'Reroute accepted and activated successfully',
@@ -235,9 +230,9 @@ export const acceptReroute = async (req, res, next) => {
 };
 
 /**
- * @desc    Recalculate route from vehicle's current position
- * @route   POST /api/routes/:routeId/reroute
- * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ * @desc Recalculate route from vehicle's current position
+ * @route POST /api/routes/:routeId/reroute
+ * @access Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
  */
 export const rerouteFromCurrentPosition = async (req, res, next) => {
   try {
@@ -257,7 +252,11 @@ export const rerouteFromCurrentPosition = async (req, res, next) => {
       data: route.toSafeObject()
     });
   } catch (error) {
-    if (error.message === 'Vehicle not found' || error.message === 'No active route found for this vehicle' || error.message === 'No trajectory data available for this vehicle') {
+    if (
+      error.message === 'Vehicle not found' ||
+      error.message === 'No active route found for this vehicle' ||
+      error.message === 'No trajectory data available for this vehicle'
+    ) {
       res.status(404);
     } else {
       res.status(400);
@@ -267,9 +266,9 @@ export const rerouteFromCurrentPosition = async (req, res, next) => {
 };
 
 /**
- * @desc    Manually override a route with specified geometry
- * @route   POST /api/routes/:routeId/override
- * @access  Private (CONTROL_ROOM, ADMIN)
+ * @desc Manually override a route with specified geometry
+ * @route POST /api/routes/:routeId/override
+ * @access Private (CONTROL_ROOM, ADMIN)
  */
 export const overrideRoute = async (req, res, next) => {
   try {
@@ -291,12 +290,9 @@ export const overrideRoute = async (req, res, next) => {
   } catch (error) {
     if (error.message === 'Route not found') {
       res.status(404);
-    } else if (error.message.includes('Invalid geometry')) {
-      res.status(400);
     } else {
       res.status(400);
     }
     next(error);
   }
 };
-

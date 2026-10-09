@@ -91,6 +91,7 @@ class GoogleTrafficProvider {
         trafficDelaySeconds,
         observedGoogleDurationSeconds: durationSeconds,
         observedGoogleStaticDurationSeconds: staticDurationSeconds,
+        retrievedAt: routeData.retrievedAt || new Date().toISOString(),
         source: 'GOOGLE_ROUTES_TRAFFIC_DERIVED',
         epistemicType: 'DERIVED',
         disclaimer: 'Derived from Google Routes API duration vs staticDuration'
@@ -167,6 +168,7 @@ class GoogleTrafficProvider {
         freeFlowSpeedKmh,
         congestionRatio,
         trafficDelaySeconds,
+        retrievedAt: routeData.retrievedAt || new Date().toISOString(),
         source: 'GOOGLE_ROUTES_TRAFFIC_DERIVED',
         epistemicType: 'DERIVED',
         disclaimer: 'Derived from Google Routes API localized segment query'

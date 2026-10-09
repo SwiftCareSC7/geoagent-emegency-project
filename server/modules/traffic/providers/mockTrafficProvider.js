@@ -48,7 +48,8 @@ class MockTrafficProvider {
       speedKmh,
       freeFlowSpeedKmh,
       congestionRatio,
-      source: 'MOCK'
+      source: 'MOCK',
+      retrievedAt: new Date().toISOString()
     };
   }
 
@@ -94,7 +95,8 @@ class MockTrafficProvider {
       speedKmh: avgSpeedKmh,
       freeFlowSpeedKmh,
       congestionRatio,
-      source: 'MOCK'
+      source: 'MOCK',
+      retrievedAt: new Date().toISOString()
     };
   }
 }

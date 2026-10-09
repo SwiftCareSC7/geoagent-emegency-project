@@ -68,28 +68,35 @@ class AnalysisService {
    * @param {Number} originalDurationSeconds
    * @returns {Object} { currentMinutes, originalMinutes, remainingDistanceMeters, estimatedSpeedKmh, status, delayMinutes, timeSavedMinutes }
    */
-  calculateETAAndDelay(remainingDistanceMeters, currentSpeedKmh, trafficData, originalDurationSeconds) {
+  calculateETAAndDelay(remainingDistanceMeters, currentSpeedKmh, trafficData, originalDurationSeconds, incidents = []) {
+    const incidentList = Array.isArray(incidents) ? incidents : [];
+    const trafficStatus = trafficService.assessTrafficFreshness(trafficData);
+    const trafficFreshness = trafficStatus.status;
     if (typeof remainingDistanceMeters !== 'number' || isNaN(remainingDistanceMeters)) {
       return {
         currentMinutes: null,
         originalMinutes: Math.round((originalDurationSeconds || 0) / 60),
         delayMinutes: 0,
         timeSavedMinutes: 0,
-        status: 'ETA_UNAVAILABLE'
+        status: 'ETA_UNAVAILABLE',
+        trafficFreshness,
+        incidentImpactStatus: incidentList.length > 0 ? 'QUALITATIVE_ONLY' : 'NONE'
       };
     }
 
     // Original ETA in whole minutes
     const originalMinutes = Math.max(1, Math.round((originalDurationSeconds || 600) / 60));
 
-    // Determine realistic speed for the remaining trip:
-    // If vehicle is moving at a reasonable speed (>10 km/h), blend 40% current + 60% traffic
-    // Otherwise rely on traffic speed.
-    const trafficSpeed = (trafficData && trafficData.speedKmh) ? trafficData.speedKmh : 30;
-    let effectiveSpeedKmh = trafficSpeed;
+    // Blend only fresh traffic speed; otherwise estimate from vehicle speed and mark traffic status.
+    const usableTrafficSpeed = trafficStatus.status === 'FRESH' &&
+      typeof trafficData?.speedKmh === 'number' && Number.isFinite(trafficData.speedKmh) && trafficData.speedKmh > 0;
+    const hasCurrentSpeed = typeof currentSpeedKmh === 'number' && Number.isFinite(currentSpeedKmh) && currentSpeedKmh > 5;
+    let effectiveSpeedKmh = hasCurrentSpeed ? currentSpeedKmh : 30;
 
-    if (typeof currentSpeedKmh === 'number' && currentSpeedKmh > 10) {
-      effectiveSpeedKmh = 0.4 * currentSpeedKmh + 0.6 * trafficSpeed;
+    if (usableTrafficSpeed) {
+      effectiveSpeedKmh = hasCurrentSpeed && currentSpeedKmh > 10
+        ? 0.4 * currentSpeedKmh + 0.6 * trafficData.speedKmh
+        : trafficData.speedKmh;
     }
 
     // Guard against zero / negative speeds to prevent division by zero or Infinity
@@ -110,7 +117,9 @@ class AnalysisService {
       estimatedSpeedKmh: Number(effectiveSpeedKmh.toFixed(1)),
       status: 'AVAILABLE',
       delayMinutes,
-      timeSavedMinutes
+      timeSavedMinutes,
+      trafficFreshness: trafficStatus.status,
+      incidentImpactStatus: incidentList.length > 0 ? 'QUALITATIVE_ONLY' : 'NONE'
     };
   }
 
@@ -122,15 +131,20 @@ class AnalysisService {
    * @param {Number} vehicleSpeed
    * @returns {Array<String>} Evidence tags
    */
-  buildEvidenceList(deviation, traffic, incidents, vehicleSpeed) {
+  buildEvidenceList(deviation, traffic, incidents, vehicleSpeed, trafficFreshness = null) {
     const evidence = [];
+    const freshness = trafficFreshness || trafficService.assessTrafficFreshness(traffic).status;
 
     if (deviation && (deviation.status === 'DEVIATED' || deviation.status === 'CRITICAL_DEVIATION')) {
       evidence.push('ROUTE_DEVIATION');
     }
 
-    if (traffic && (traffic.level === 'HEAVY' || traffic.level === 'SEVERE')) {
+    if (freshness === 'FRESH' && traffic && (traffic.level === 'HEAVY' || traffic.level === 'SEVERE')) {
       evidence.push('HEAVY_TRAFFIC');
+    } else if (freshness === 'STALE') {
+      evidence.push('TRAFFIC_DATA_STALE');
+    } else if (freshness !== 'FRESH') {
+      evidence.push('TRAFFIC_DATA_UNAVAILABLE');
     }
 
     if (Array.isArray(incidents)) {
@@ -224,7 +238,8 @@ class AnalysisService {
       progress.remainingDistanceMeters,
       latestTrajectory.speed,
       traffic,
-      route.duration
+      route.duration,
+      incidents
     );
 
     // 9. Build Evidence List
@@ -232,7 +247,8 @@ class AnalysisService {
       deviation,
       traffic,
       incidents,
-      latestTrajectory.speed
+      latestTrajectory.speed,
+      etaAnalysis.trafficFreshness
     );
 
     return {
@@ -252,7 +268,9 @@ class AnalysisService {
         originalMinutes: etaAnalysis.originalMinutes,
         remainingDistanceMeters: etaAnalysis.remainingDistanceMeters,
         estimatedSpeedKmh: etaAnalysis.estimatedSpeedKmh,
-        status: etaAnalysis.status
+        status: etaAnalysis.status,
+        trafficFreshness: etaAnalysis.trafficFreshness,
+        incidentImpactStatus: etaAnalysis.incidentImpactStatus
       },
       delay: {
         delayMinutes: etaAnalysis.delayMinutes,

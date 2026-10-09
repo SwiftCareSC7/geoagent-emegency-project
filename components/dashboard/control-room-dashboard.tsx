@@ -277,8 +277,8 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
   }, [selectedEmergencyId, assignedVehicleId, selectedEmergency])
 
   // Decision Handlers
-  const handleApproveDecision = async (decisionId: string, comment?: string) => {
-    const res = await decisionApi.approve(decisionId, comment)
+  const handleApproveDecision = async (decisionId: string, comment?: string, candidateId?: string) => {
+    const res = await decisionApi.approve(decisionId, comment, candidateId)
     if (res.data) setDecision(res.data)
     fetchLiveData()
   }
