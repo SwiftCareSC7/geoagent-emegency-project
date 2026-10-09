@@ -9,6 +9,7 @@
 
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import assert from 'node:assert/strict';
 dotenv.config();
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geoagent-emergency-test';
@@ -71,25 +72,11 @@ async function runClearanceTest() {
     }
 
     if (testRoute) {
-      const updatedRoute = await routeService.acceptReroute(testRoute.routeId, {
-        durationSeconds: 600,
-        distanceMeters: 4100,
-        preference: 'FASTEST',
-        reason: 'Test reroute acceptance'
-      });
-
-      console.log('Updated Route on Accept:', {
-        routeId: updatedRoute.routeId,
-        routeType: updatedRoute.routeType,
-        status: updatedRoute.status,
-        duration: updatedRoute.duration,
-        distance: updatedRoute.distance
-      });
-
-      if (updatedRoute.duration !== 600 || updatedRoute.routeType !== 'RECOMMENDED') {
-        throw new Error('Route acceptReroute update failed');
-      }
-      console.log('✅ Route reroute accepted and persisted successfully');
+      await assert.rejects(
+        routeService.acceptReroute(testRoute.routeId),
+        error => error.status === 400
+      );
+      console.log('✅ Route activation requires an operator-approved candidate');
     }
 
     console.log('\n====================================================');
