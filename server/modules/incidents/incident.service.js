@@ -1,5 +1,9 @@
 import Incident from './incident.model.js';
+import Route from '../routes/route.model.js';
+import Vehicle from '../vehicles/vehicle.model.js';
+import routeService from '../routes/route.service.js';
 import realtimeService from '../realtime/realtime.service.js';
+import { distanceToRoute } from '../../shared/services/geospatial.service.js';
 
 /**
  * Generate a unique incident ID (e.g., INC-0001)
@@ -36,6 +40,11 @@ export const createIncident = async (incidentData, userId) => {
   });
 
   await newIncident.save();
+
+  // Trigger re-routes for affected vehicles if incident is ACTIVE
+  if (newIncident.status === 'ACTIVE') {
+    await this.triggerReroutesForIncident(newIncident);
+  }
 
   // Emit Real-Time Event
   try {
@@ -161,5 +170,53 @@ export const deleteIncident = async (incidentId) => {
   }
 
   return incident;
+};
+
+/**
+ * Find routes affected by an incident and trigger re-routes
+ * @param {Object} incident Incident object with location
+ * @returns {Promise<Array>} List of vehicles that were re-routed
+ */
+export const triggerReroutesForIncident = async (incident) => {
+  const proximityRadiusMeters = parseFloat(process.env.INCIDENT_PROXIMITY_RADIUS_METERS) || 500;
+  
+  // Find all active routes
+  const activeRoutes = await Route.find({ status: 'ACTIVE' }).populate('vehicle');
+  
+  const affectedVehicles = [];
+  
+  for (const route of activeRoutes) {
+    if (!route.vehicle) continue;
+    
+    // Calculate distance from incident to route
+    const distanceFromRoute = distanceToRoute(incident.location, route.geometry);
+    
+    if (distanceFromRoute <= proximityRadiusMeters) {
+      try {
+        console.log(`[IncidentService] Triggering re-route for vehicle ${route.vehicle.vehicleId} due to incident ${incident.incidentId} within ${distanceFromRoute.toFixed(0)}m of route`);
+        
+        const updatedRoute = await routeService.recalculateRouteFromCurrentPosition(
+          route.vehicle.vehicleId,
+          route.routeId,
+          {
+            reason: `Automatic re-route due to nearby incident (${incident.incidentId}, ${incident.type}, ${distanceFromRoute.toFixed(0)}m from route)`,
+            preference: 'FASTEST'
+          }
+        );
+        
+        affectedVehicles.push({
+          vehicleId: route.vehicle.vehicleId,
+          routeId: route.routeId,
+          distanceFromRouteMeters: distanceFromRoute,
+          newDistanceMeters: updatedRoute.distance,
+          newDurationSeconds: updatedRoute.duration
+        });
+      } catch (rerouteErr) {
+        console.error(`[IncidentService] Failed to re-route vehicle ${route.vehicle.vehicleId}: ${rerouteErr.message}`);
+      }
+    }
+  }
+  
+  return affectedVehicles;
 };
 

@@ -283,7 +283,7 @@ Trajectories          Routes                     │         │
 | 3 | **Vehicle Management** | ✅ Done | Fleet registry, CRUD, unique `vehicleId`, compound status index, lifecycle states (`AVAILABLE` → `DISPATCHED` → `EN_ROUTE` → `AT_SCENE` → `TRANSPORTING` → `MAINTENANCE`) |
 | 4 | **Emergency & Incidents** | ✅ Done | Emergency intake, triage priority (`LOW`/`MEDIUM`/`HIGH`/`CRITICAL`), vehicle dispatch assignment, `2dsphere` spatial indexing, road incident reporting, soft deletion |
 | 5 | **GPS Trajectories** | ✅ Done | GPS ingestion, compound index `{ vehicle: 1, timestamp: -1 }`, bounded pagination, sanitized query guards |
-| 6 | **Geospatial & Routing** | ✅ Done | Turf.js calculations, GeoJSON LineStrings, provider abstraction (Mock / Google / Mapbox / OSRM) |
+| 6 | **Geospatial & Routing** | ✅ Done | Turf.js calculations, GeoJSON LineStrings, provider abstraction (OSRM default / Google / Mapbox / Mock). OSRM provides real road routing globally using OpenStreetMap data. |
 | 7 | **Deviation Detection** | ✅ Done | Cross-track distance, bearing divergence, GPS jitter filtering, rolling stability window, threshold classification |
 | 7 | **Traffic & ETA** | ✅ Done | Speed blending, zero-speed guards, congestion ratios, arithmetic delay calculations |
 | 8 | **GeoAgent AI** | ✅ Done | Provider-agnostic free-model tool calling (OpenRouter / OpenCode), 9+ operational tools, strict JSON schema, prompt injection defense, deterministic fallback |
@@ -444,8 +444,24 @@ OPENROUTER_API_KEY=         # backend-only, never NEXT_PUBLIC_
 OPENROUTER_MODEL=           # optional; must be a free model
 OPENCODE_API_KEY=
 OPENCODE_MODEL=
-ROUTING_PROVIDER=mock
+ROUTING_PROVIDER=osrm       # osrm (default, free) | google (traffic-aware) | mock (Bengaluru corridors)
+OSRM_API_URL=https://router.project-osrm.org/route/v1/driving
+GOOGLE_MAPS_API_KEY=        # optional, for traffic-aware routing
 TRAFFIC_PROVIDER=mock
+```
+
+**Routing Provider Options:**
+- **osrm** (default): Open Source Routing Machine using OpenStreetMap road network. Free, no API key required, works globally.
+- **google**: Google Routes API with traffic-aware routing. Requires `GOOGLE_MAPS_API_KEY`.
+- **mock**: Pre-defined Bengaluru corridors for development/testing.
+
+**Quick Setup Script:**
+```bash
+cd server
+# On Linux/Mac:
+bash scripts/setup-osrm-routing.sh
+# On Windows:
+scripts\setup-osrm-routing.bat
 ```
 
 *(For complete environment reference, see [`docs/environment.md`](docs/environment.md)).*

@@ -7,8 +7,36 @@ import { deviationConfig } from './deviation.config.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Route from '../routes/route.model.js';
 import Trajectory from '../trajectories/trajectory.model.js';
+import routeService from '../routes/route.service.js';
+import realtimeService from '../realtime/realtime.service.js';
 
 class DeviationService {
+  constructor() {
+    // Cooldown tracking to prevent frequent re-routes: { routeId: lastRerouteTimestamp }
+    this.rerouteCooldowns = new Map();
+    const cooldownSeconds = parseInt(process.env.REROUTE_COOLDOWN_SECONDS || '30', 10);
+    this.cooldownMs = cooldownSeconds * 1000;
+  }
+
+  /**
+   * Check if route is in cooldown period
+   * @param {String} routeId
+   * @returns {Boolean}
+   */
+  isRouteInCooldown(routeId) {
+    const lastReroute = this.rerouteCooldowns.get(routeId);
+    if (!lastReroute) return false;
+    return (Date.now() - lastReroute) < this.cooldownMs;
+  }
+
+  /**
+   * Mark route as recently rerouted
+   * @param {String} routeId
+   */
+  markRouteRerouted(routeId) {
+    this.rerouteCooldowns.set(routeId, Date.now());
+  }
+
   /**
    * Calculates the smallest angular difference between two bearings (0 to 180 degrees)
    * @param {Number} bearing1 Degrees (0-360)
@@ -192,6 +220,77 @@ class DeviationService {
       vehicleId: vehicle.vehicleId,
       routeId: route.routeId,
       deviation
+    };
+  }
+
+  /**
+   * Check deviation and trigger automatic re-route if threshold exceeded
+   * @param {String} vehicleId
+   * @returns {Promise<Object>} Deviation analysis and re-route status
+   */
+  async checkAndTriggerReroute(vehicleId) {
+    const deviationResult = await this.getDeviationForVehicle(vehicleId);
+    const { deviation } = deviationResult;
+
+    // Check if re-route should be triggered
+    const shouldReroute = 
+      (deviation.status === 'DEVIATED' || deviation.status === 'CRITICAL_DEVIATION') &&
+      deviation.sustainedDeviation &&
+      deviation.confidence === 'HIGH' &&
+      !this.isRouteInCooldown(deviationResult.routeId);
+
+    let rerouteResult = null;
+    if (shouldReroute) {
+      try {
+        console.log(`[DeviationService] Triggering automatic re-route for vehicle ${vehicleId}, route ${deviationResult.routeId}, deviation: ${deviation.distanceFromRouteMeters}m`);
+        
+        const updatedRoute = await routeService.recalculateRouteFromCurrentPosition(
+          vehicleId,
+          deviationResult.routeId,
+          {
+            reason: `Automatic re-route due to sustained deviation (${deviation.status}, ${deviation.distanceFromRouteMeters}m from route)`,
+            preference: 'FASTEST'
+          }
+        );
+
+        this.markRouteRerouted(deviationResult.routeId);
+
+        rerouteResult = {
+          triggered: true,
+          routeId: updatedRoute.routeId,
+          newDistanceMeters: updatedRoute.distance,
+          newDurationSeconds: updatedRoute.duration,
+          timestamp: new Date().toISOString()
+        };
+
+        // Emit deviation detected event with re-route info
+        try {
+          realtimeService.emitRouteDeviation(
+            vehicleId,
+            null, // emergencyId not needed for deviation event
+            {
+              vehicleId,
+              routeId: deviationResult.routeId,
+              deviation,
+              rerouteTriggered: true,
+              rerouteResult
+            }
+          );
+        } catch (err) {
+          console.error(`[DeviationService] Socket.IO emission error: ${err.message}`);
+        }
+      } catch (rerouteErr) {
+        console.error(`[DeviationService] Automatic re-route failed: ${rerouteErr.message}`);
+        rerouteResult = {
+          triggered: false,
+          error: rerouteErr.message
+        };
+      }
+    }
+
+    return {
+      ...deviationResult,
+      reroute: rerouteResult
     };
   }
 }

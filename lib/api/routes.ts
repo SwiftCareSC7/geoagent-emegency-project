@@ -121,4 +121,33 @@ export const routeApi = {
       payload,
     )
   },
+
+  /** Recalculate route from vehicle's current position */
+  rerouteFromCurrentPosition(
+    routeId: string,
+    payload: {
+      vehicleId: string
+      reason?: string
+      preference?: 'FASTEST' | 'SHORTEST'
+    },
+  ): Promise<{ success: true; message: string; data: Route }> {
+    return post<{ success: true; message: string; data: Route }>(
+      `/routes/${encodeURIComponent(routeId)}/reroute`,
+      payload,
+    )
+  },
+
+  /** Manually override a route with specified geometry */
+  override(
+    routeId: string,
+    payload: {
+      newGeometry?: { type: 'LineString'; coordinates: [number, number][] }
+      overrideReason?: string
+    },
+  ): Promise<{ success: true; message: string; data: Route }> {
+    return post<{ success: true; message: string; data: Route }>(
+      `/routes/${encodeURIComponent(routeId)}/override`,
+      payload,
+    )
+  },
 }

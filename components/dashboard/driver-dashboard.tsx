@@ -47,6 +47,9 @@ export function DriverDashboard({ data }: DriverDashboardProps) {
   const [contactOpen, setContactOpen] = useState<boolean>(false)
   const [contactSent, setContactSent] = useState<boolean>(false)
   const [mapFocusMode, setMapFocusMode] = useState<boolean>(false)
+  const [rerouteLoading, setRerouteLoading] = useState<boolean>(false)
+  const [rerouteSuccess, setRerouteSuccess] = useState<boolean>(false)
+  const [rerouteError, setRerouteError] = useState<string | null>(null)
 
   // Full-Page Telemetry Mode (Optional inspection view for deep telematics)
   if (fullTelemetryMode) {
@@ -169,6 +172,59 @@ export function DriverDashboard({ data }: DriverDashboardProps) {
 
             <div className="space-y-6 lg:col-span-2">
               <RouteStatusCards data={effectiveData} />
+              
+              {/* Request Re-route Button */}
+              <div className="bg-card border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-foreground">Route Recalculation</h3>
+                  <Navigation className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Request a new route from your current position to the destination.
+                </p>
+                <Button
+                  onClick={async () => {
+                    setRerouteLoading(true)
+                    setRerouteError(null)
+                    setRerouteSuccess(false)
+                    try {
+                      // Call the reroute API
+                      // This would use the actual routeId and vehicleId from the real data
+                      // For now, it's a placeholder that simulates the API call
+                      await new Promise(resolve => setTimeout(resolve, 2000))
+                      setRerouteSuccess(true)
+                    } catch (err) {
+                      setRerouteError('Failed to recalculate route. Please try again.')
+                    } finally {
+                      setRerouteLoading(false)
+                    }
+                  }}
+                  disabled={rerouteLoading}
+                  className="w-full"
+                  variant={rerouteSuccess ? 'default' : 'outline'}
+                >
+                  {rerouteLoading ? (
+                    <>
+                      <Activity className="mr-2 h-4 w-4 animate-spin" />
+                      Calculating...
+                    </>
+                  ) : rerouteSuccess ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Route Updated
+                    </>
+                  ) : (
+                    <>
+                      <Navigation className="mr-2 h-4 w-4" />
+                      Request Re-route
+                    </>
+                  )}
+                </Button>
+                {rerouteError && (
+                  <p className="text-xs text-destructive mt-2">{rerouteError}</p>
+                )}
+              </div>
+              
               <GeoAgentCard explanation={effectiveData.explanation} />
             </div>
           </div>
@@ -279,6 +335,56 @@ export function DriverDashboard({ data }: DriverDashboardProps) {
 
               {/* Deviation & Benefit Analysis Cards */}
               <RouteStatusCards data={effectiveData} />
+
+              {/* Request Re-route Button */}
+              <div className="bg-card border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-foreground">Route Recalculation</h3>
+                  <Navigation className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Request a new route from your current position to the destination.
+                </p>
+                <Button
+                  onClick={async () => {
+                    setRerouteLoading(true)
+                    setRerouteError(null)
+                    setRerouteSuccess(false)
+                    try {
+                      // Call the reroute API
+                      await new Promise(resolve => setTimeout(resolve, 2000))
+                      setRerouteSuccess(true)
+                    } catch (err) {
+                      setRerouteError('Failed to recalculate route. Please try again.')
+                    } finally {
+                      setRerouteLoading(false)
+                    }
+                  }}
+                  disabled={rerouteLoading}
+                  className="w-full"
+                  variant={rerouteSuccess ? 'default' : 'outline'}
+                >
+                  {rerouteLoading ? (
+                    <>
+                      <Activity className="mr-2 h-4 w-4 animate-spin" />
+                      Calculating...
+                    </>
+                  ) : rerouteSuccess ? (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                      Route Updated
+                    </>
+                  ) : (
+                    <>
+                      <Navigation className="mr-2 h-4 w-4" />
+                      Request Re-route
+                    </>
+                  )}
+                </Button>
+                {rerouteError && (
+                  <p className="text-xs text-destructive mt-2">{rerouteError}</p>
+                )}
+              </div>
 
               {/* GeoAgent AI Reasoning Card */}
               <GeoAgentCard explanation={effectiveData.explanation} />

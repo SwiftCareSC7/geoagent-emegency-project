@@ -234,3 +234,69 @@ export const acceptReroute = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Recalculate route from vehicle's current position
+ * @route   POST /api/routes/:routeId/reroute
+ * @access  Private (CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC)
+ */
+export const rerouteFromCurrentPosition = async (req, res, next) => {
+  try {
+    const { routeId } = req.params;
+    const { vehicleId, reason, preference } = req.body;
+    const userId = req.user._id;
+
+    const route = await routeService.recalculateRouteFromCurrentPosition(
+      vehicleId,
+      routeId,
+      { reason, userId, preference }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Route recalculated from current position successfully',
+      data: route.toSafeObject()
+    });
+  } catch (error) {
+    if (error.message === 'Vehicle not found' || error.message === 'No active route found for this vehicle' || error.message === 'No trajectory data available for this vehicle') {
+      res.status(404);
+    } else {
+      res.status(400);
+    }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Manually override a route with specified geometry
+ * @route   POST /api/routes/:routeId/override
+ * @access  Private (CONTROL_ROOM, ADMIN)
+ */
+export const overrideRoute = async (req, res, next) => {
+  try {
+    const { routeId } = req.params;
+    const { newGeometry, overrideReason } = req.body;
+    const userId = req.user._id;
+
+    const route = await routeService.overrideRoute(routeId, {
+      newGeometry,
+      overrideReason,
+      userId
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Route overridden successfully',
+      data: route.toSafeObject()
+    });
+  } catch (error) {
+    if (error.message === 'Route not found') {
+      res.status(404);
+    } else if (error.message.includes('Invalid geometry')) {
+      res.status(400);
+    } else {
+      res.status(400);
+    }
+    next(error);
+  }
+};
+

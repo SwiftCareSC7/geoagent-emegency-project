@@ -8,7 +8,8 @@ export const deviationConfig = {
   criticalDistanceMeters: parseFloat(process.env.ROUTE_CRITICAL_DISTANCE_METERS) || 250,
   bearingWarningDegrees: parseFloat(process.env.BEARING_WARNING_DEGREES) || 30,
   bearingDeviationDegrees: parseFloat(process.env.BEARING_DEVIATION_DEGREES) || 60,
-  gpsStabilityWindow: parseInt(process.env.GPS_STABILITY_WINDOW, 10) || 3
+  gpsStabilityWindow: parseInt(process.env.GPS_STABILITY_WINDOW, 10) || 3,
+  rerouteCooldownSeconds: parseInt(process.env.REROUTE_COOLDOWN_SECONDS, 10) || 30
 };
 
 export default deviationConfig;

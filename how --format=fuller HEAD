@@ -1,0 +1,36 @@
+[33mcommit 5fc67bd4344d1f4978366af9882c3d21e66f5331[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mreview/phase-1-2[m[33m, [m[1;31morigin/review/phase-1-2[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mdevin-review[m[33m, [m[1;32mbackup/phases-1-2[m[33m)[m
+Author: Priyanshu Yadav <spec.priyanshu@gmail.com>
+Date:   Fri Oct 9 22:46:17 2026 +0530
+
+    fix(ci,tests): seed AMB-01..03 fixtures, drop committed fixture passwords, baseline-based gitleaks
+    
+    - provision-users seeds minimal AMB-01..03 vehicles so RBAC ownership tests work on a fresh DB
+    - test/seed fixture passwords now come from env (CI generates per-run values)
+    - gitleaks: scan current checkout strictly + history against a redacted baseline of 7 reviewed legacy findings
+    
+    Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+
+ .github/workflows/ci.yml                   |  11 [32m++[m[31m-[m
+ .gitleaks-baseline.json                    | 149 [32m+++++++++++++++++++++++++++++[m
+ AI_MEMORY.md                               |   2 [32m+[m[31m-[m
+ WALKTHROUGH.md                             |   2 [32m+[m[31m-[m
+ docs/SWIFTCARE-API-REFERENCE.md            |   2 [32m+[m[31m-[m
+ docs/socket-events.md                      |   2 [32m+[m[31m-[m
+ server/modules/admin/demo.service.js       |   4 [32m+[m[31m-[m
+ server/scripts/provision-users.js          |  18 [32m+++[m[31m-[m
+ server/seed-dashboard-data.js              |   2 [32m+[m[31m-[m
+ server/seed-demo-scenario.js               |   8 [32m+[m[31m-[m
+ server/test-auth-e2e.js                    |   3 [32m+[m[31m-[m
+ server/test-auth-fallback-security.js      |  10 [32m+[m[31m-[m
+ server/test-auth-fullstack.js              |  10 [32m+[m[31m-[m
+ server/test-auth-rbac-complete.js          |   8 [32m+[m[31m-[m
+ server/test-dashboard-e2e.js               |   3 [32m+[m[31m-[m
+ server/test-emergency-detail-e2e.js        |   2 [32m+[m[31m-[m
+ server/test-master-integration.js          |   2 [32m+[m[31m-[m
+ server/test-part11-security-hardening.js   |   6 [32m+[m[31m-[m
+ server/test-part11-system-hardening.js     |   2 [32m+[m[31m-[m
+ server/test-part12.js                      |   2 [32m+[m[31m-[m
+ server/test-registration-workspaces-e2e.js |   2 [32m+[m[31m-[m
+ server/test-security.js                    |   2 [32m+[m[31m-[m
+ server/test-targeted-rbac-socket.js        |   6 [32m+[m[31m-[m
+ 23 files changed, 213 insertions(+), 45 deletions(-)
