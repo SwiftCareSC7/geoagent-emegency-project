@@ -14,6 +14,7 @@ graph TB
         Landing["Landing Page (/)"]
         AuthUI["Auth & RBAC (/login, /signup, /registration)"]
         ControlRoom["Control Room Dashboard (/control-room)"]
+        ControlRoomOverview["Multi-Mission Overview (/control-room/overview)"]
         DiffSim["What-If Scenario Simulator (/diff)"]
         EmergencyLab["Emergency Lab (/emergency-lab)"]
         DriverHUD["Driver Navigation HUD (/driver/dashboard)"]
@@ -270,5 +271,128 @@ flowchart TD
     Ownership -->|DRIVER| MatchVehicle{"req.user.assignedVehicleId === targetVehicleId"}
     MatchVehicle -->|Yes| AllowDriver["Allow Operation"]
     MatchVehicle -->|No| RejectDriver["403 Forbidden: Bound to Assigned Vehicle"]
+```
+
+---
+
+## 8. GeoAgent Tool-Calling & Deterministic Fallback Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Control Room / Trigger
+    participant GeoService as GeoAgent Service (geoAgent.service.js)
+    participant Provider as LLM Provider Client (geoagent.provider.js)
+    participant Tools as Declarative Tools (geoAgent.tools.js)
+    participant DB as MongoDB Data Layer
+    participant Fallback as Deterministic Fallback Engine
+
+    Client->>GeoService: POST /api/geoagent/analyze (vehicleId, emergencyId)
+    GeoService->>DB: Fetch Telemetry, Active Corridor, Deviation Status
+    GeoService->>Provider: Initial Chat Completion Prompt + 9 Tool Signatures
+
+    alt Provider Available & Responding
+        Provider-->>GeoService: Model Request: Tool Call (e.g. getNearbyIncidents, getAlternativeRoutes)
+        loop Tool Execution Loop (Max Iterations)
+            GeoService->>Tools: Execute Named Tool with Arguments
+            Tools->>DB: Query Incidents / Routes / Telemetry
+            DB-->>Tools: Structured Spatial Data
+            Tools-->>GeoService: JSON Tool Execution Result
+            GeoService->>Provider: Send Tool Output
+            Provider-->>GeoService: Next Tool Call or Final Epistemic Synthesis
+        end
+        GeoService->>GeoService: Parse & Validate 3-Tier Output (Observed, Inferred, Unknown)
+        GeoService-->>Client: 200 OK (Epistemic Situation Assessment)
+    else Provider Timeout, Error, Quota Exhausted, or Missing Keys
+        Provider-->>GeoService: Network Error / 429 Quota Exceeded / Fallback Trigger
+        GeoService->>Fallback: Invoke generateFallbackResponse(context)
+        Fallback->>Fallback: Run Deterministic Deviation & Heuristic Detour Scoring
+        Fallback-->>GeoService: Synthesized Rule-Based Epistemic Analysis
+        GeoService-->>Client: 200 OK (Fallback Epistemic Situation Assessment)
+    end
+```
+
+---
+
+## 9. Deployment Architecture & CI/CD Pipeline
+
+```mermaid
+graph TB
+    subgraph DeveloperSource["Source Control & CI (GitHub Actions)"]
+        GitPush["git push origin main"]
+        CIWorkflow[".github/workflows/ci.yml"]
+        GitleaksScan["Gitleaks Secret Audit"]
+        Typecheck["TypeScript Static Typecheck (tsc --noEmit)"]
+        NextBuild["Next.js Turbopack Production Build"]
+        TestMongo["MongoDB Test Container (mongodb:7.0)"]
+        BackendTests["Backend Auth, RBAC, DB Safety & TTL Test Suites"]
+    end
+
+    subgraph HostingInfrastructure["Cloud Production Deployment Targets"]
+        subgraph VercelEdge["Frontend Hosting (Vercel)"]
+            NextEdgeApp["Next.js 16 Web Application"]
+            AppRouterRoutes["App Router API Handlers"]
+        end
+
+        subgraph GoogleCloud["Backend Hosting (Google Cloud Run / Render)"]
+            CloudRunService["Express 4 + Socket.IO Container (server/Dockerfile)"]
+            Port5001["Listening on Port 5001"]
+        end
+
+        subgraph ManagedData["Database & External APIs"]
+            AtlasCluster[("MongoDB Atlas v7.0+ Replica Set")]
+            SecretStore["Secret Storage (Environment Variables / GSM)"]
+            GoogleMapsAPI["Google Routes & Roads APIs (Optional)"]
+            OpenRouterAI["OpenRouter / OpenCode Free Tier (Optional)"]
+        end
+    end
+
+    GitPush --> CIWorkflow
+    CIWorkflow --> GitleaksScan
+    GitleaksScan --> Typecheck
+    Typecheck --> NextBuild
+    Typecheck --> TestMongo
+    TestMongo --> BackendTests
+
+    NextEdgeApp -->|REST API Calls & Proxy| CloudRunService
+    NextEdgeApp <-->|Real-Time WebSocket Transport| CloudRunService
+    CloudRunService <--> AtlasCluster
+    CloudRunService -.-> GoogleMapsAPI
+    CloudRunService -.-> OpenRouterAI
+    SecretStore -.-> CloudRunService
+    SecretStore -.-> NextEdgeApp
+```
+
+---
+
+## 10. Finite State Machines (Emergency & Decision Lifecycles)
+
+### Emergency Incident State Transitions
+
+```mermaid
+stateDiagram-v2
+    [*] --> REPORTED: Call Intake (POST /api/emergencies)
+    REPORTED --> DISPATCHED: Ambulance Assigned (PATCH /api/emergencies/:id/assign)
+    DISPATCHED --> EN_ROUTE_TO_SCENE: Unit Departs Station
+    EN_ROUTE_TO_SCENE --> ON_SCENE: Ambulance Arrives at Patient Location
+    ON_SCENE --> TRANSPORTING: Patient Loaded (Leg 2 En Route to Hospital)
+    TRANSPORTING --> ARRIVED_HOSPITAL: Reached Receiving Emergency Room
+    ARRIVED_HOSPITAL --> RESOLVED: Clinical Handoff Complete
+    RESOLVED --> [*]
+```
+
+### Deterministic Decision Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: Disruption Detected & Detour Scored
+    PENDING --> APPROVED: Operator Action: Approve Reroute
+    PENDING --> REJECTED: Operator Action: Reject / Override
+    PENDING --> TIMED_OUT: Incident Cleared Before Action
+    APPROVED --> EXECUTED: New Corridor Broadcasted & Active in DB
+    REJECTED --> DISMISSED: Audit Log Saved with Justification
+    EXECUTED --> [*]
+    DISMISSED --> [*]
+    TIMED_OUT --> [*]
 ```
 

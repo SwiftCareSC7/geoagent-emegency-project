@@ -140,7 +140,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `role`: Enum `['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC']` (Default: `CONTROL_ROOM`)
   - `requestedRole`: Enum `['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN']` (Default: `CONTROL_ROOM`)
   - `requestedWorkspaces`: Array of Strings (Default: `['CONTROL_ROOM']`)
-  - `permittedWorkspaces`: Array of Enums `['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC']` (Default: `['CONTROL_ROOM']`)
+  - `permittedWorkspaces`: Array of Enums `['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC']` (Default: `[]` — empty array until administrator explicitly approves designated workspaces)
   - `status`: Enum `['PENDING', 'APPROVED', 'SUSPENDED']` (Default: `PENDING`)
   - `approvedBy`: ObjectId (References `users._id`, default `null`)
   - `approvedAt`: Date (Default `null`)
@@ -210,11 +210,13 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `heading`: Number (0-360 degrees)
   - `distanceFromRouteMeters`: Number (Cross-track offset)
   - `status`: Enum `['ON_ROUTE', 'WARNING', 'DEVIATED', 'CRITICAL_DEVIATION']`
+  - `source`: Enum `['DEVICE', 'SIMULATOR', 'API', 'AUDIT']` (Default: `'SIMULATOR'`)
   - `timestamp`: Date (Default: `Date.now`)
 - **Indexes**:
   - `{ vehicleId: 1, timestamp: -1 }` (Latest vehicle telemetry fix)
   - `{ emergencyId: 1, timestamp: -1 }` (Mission breadcrumb trail)
   - `{ location: '2dsphere' }`
+  - `{ timestamp: 1 }` (Configurable TTL retention index with partialFilterExpression `{ source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }` to protect clinical audit records)
 
 ### 2.6 `incidents` Collection
 - **Source**: `server/modules/incidents/incident.model.js`
@@ -272,3 +274,18 @@ All schemas below are verified against active code in `server/modules/*/*.model.
 - **Indexes**:
   - `{ corridorId: 1 }` (Unique)
   - `{ vehicleId: 1, status: 1 }`
+
+---
+
+## 3. Database Safety Guard & Retention Architecture
+
+### 3.1 Destructive Operation Protection (`server/shared/utils/dbSafety.js`)
+To safeguard production emergency data from inadvertent wiping during development or testing, all seeding scripts (`seed-demo-scenario.js`, `seed-demo-scenarios.js`) and administrative reset services (`demo.service.js`) invoke `assertSafeDatabaseTarget(uri)` prior to running `deleteMany()`, `dropDatabase()`, or schema teardowns:
+- **Atlas Protection**: Any URI starting with `mongodb+srv://` or pointing to a remote non-local host is blocked immediately.
+- **Environment Exemption**: If execution on a remote database is deliberately intended, it requires explicit provision of `ALLOW_PRODUCTION_RESET=true`.
+- **Naming Rule**: Allowed local databases must include `test` or `dev` in their connection URI when resetting.
+
+### 3.2 Automated Telemetry Retention TTL
+High-frequency vehicle breadcrumbs are pruned automatically via MongoDB's native TTL engine:
+- Trajectory documents are indexed on `{ timestamp: 1 }` with `expireAfterSeconds: TELEMETRY_RETENTION_DAYS * 86400` (default 30 days).
+- A MongoDB `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }` ensures that clinical triage records and permanent legal audit trails (`source: 'AUDIT'`) are never pruned.

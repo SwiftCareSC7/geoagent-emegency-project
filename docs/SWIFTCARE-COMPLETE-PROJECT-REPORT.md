@@ -129,6 +129,7 @@ An inventory of all 17 backend modules and 11 frontend route views:
   - `/login`: Unified authentication portal with credentials form, session recovery, and role redirection.
   - `/registration` & `/signup`: User registration desk with 4-role interactive grid, multi-workspace requests, assigned vehicle binding, and quarantine notification.
   - `/control-room`: Central metropolitan emergency operations dashboard with live map, queue, fleet panel, and 5-Question Mission HUD.
+  - `/control-room/overview`: Multi-Mission Operations Overview with status cards, queue filters, and Quick-Dispatch Emergency Intake modal.
   - `/diff`: Map-first hypothetical emergency scenario simulator with deterministic 13-stage timeline and 5-color corridor hierarchy.
   - `/emergencies/[id]`: Mission detail page with patient telemetry, corridor route, and decision approval cards.
   - `/driver/dashboard`: In-cab navigation HUD with maneuver guidance, speedometer, and destination hospital selector.
@@ -359,11 +360,15 @@ Protected routes enforce authorization via `verifyToken` and `requireRole` middl
 ## 30. Testing Architecture
 
 The codebase includes comprehensive automated test suites:
-- **Unit Tests**: `test-navigation-engine.js`, `test-coordinate-conversions.js`, `test-polyline-decoding.mjs`.
+- **Unit & Algorithmic Tests**: `test-navigation-engine.js`, `test-coordinate-conversions.js`, `test-polyline-decoding.mjs`, `tests/diff-scenario-engine.test.mjs` (10/10 passed).
+- **Security & RBAC Suites**: `test-auth-rbac-complete.js` (46/46 passed), `test-registration-workspaces-e2e.js` (33/33 passed), `test-targeted-rbac-socket.js` (23/23 passed), `test-admin-e2e.js` (60/60 passed).
+- **Database Safety & Lifecycle**: `test-db-safety.js` (4/4 passed), `test-telemetry-retention.js` (3/3 passed).
+- **Integration & Mission Tests**: `test-control-room-e2e.js` (12/12 passed), `test-google-osrm-routing.js`, `test-clearance-v2x.js`.
+- **Python Routing & V2X Bridge**: `routing-engine/demo_member2.py` and `routing-engine/v2x_corridor_bridge.py` (0 exit code).
 - **E2E Scenario Tests**: `e2e/diff-scenario.spec.ts` (8/8 passed).
 - **Authentication & RBAC E2E**: `e2e/auth.spec.ts` (14/14 passed).
-- **Integration Tests**: `test-control-room-e2e.js` (12/12 passed), `test-intelligence-pipeline.js`, `test-clearance-v2x.js`.
 - **TypeScript Static Verification**: `npx tsc --noEmit` (**0 errors**).
+- **Next.js Production Build**: `npm run build` (**Turbopack compiled successfully**, 30 optimized route handlers).
 
 ---
 

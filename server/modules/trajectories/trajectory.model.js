@@ -57,6 +57,19 @@ trajectorySchema.index({ vehicle: 1, timestamp: -1 });
 // 2. Geospatial index for future proximity/deviation queries
 trajectorySchema.index({ location: '2dsphere' });
 
+// 3. Configurable retention TTL index for routine telemetry breadcrumbs (default 90 days)
+// Operational audit records and critical mission states are protected
+const retentionDays = parseInt(process.env.TELEMETRY_RETENTION_DAYS || '90', 10);
+if (retentionDays > 0) {
+  trajectorySchema.index(
+    { timestamp: 1 },
+    {
+      expireAfterSeconds: retentionDays * 24 * 60 * 60,
+      partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }
+    }
+  );
+}
+
 // Method to return a safe version of the trajectory object
 trajectorySchema.methods.toSafeObject = function() {
   const obj = this.toObject();

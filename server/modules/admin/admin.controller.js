@@ -130,7 +130,7 @@ class AdminController {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      const updatedUser = await adminService.updateUserStatus(id, status, req.user._id);
+      const updatedUser = await adminService.updateUserStatus(id, status, req.user._id, req.body);
       auditLog(req, 'update-user-status', Date.now() - start, 200);
       return res.status(200).json({
         success: true,
@@ -148,7 +148,7 @@ class AdminController {
     try {
       const { id } = req.params;
       const { role, permittedWorkspaces, assignedVehicleId } = req.body;
-      const updatedUser = await adminService.updateUserRole(id, { role, permittedWorkspaces, assignedVehicleId });
+      const updatedUser = await adminService.updateUserRole(id, { role, permittedWorkspaces, assignedVehicleId }, req.user._id);
       auditLog(req, 'update-user-role', Date.now() - start, 200);
       return res.status(200).json({
         success: true,
@@ -165,7 +165,7 @@ class AdminController {
     const start = Date.now();
     try {
       const { id } = req.params;
-      const updatedUser = await adminService.updateUserStatus(id, 'APPROVED', req.user._id);
+      const updatedUser = await adminService.updateUserStatus(id, 'APPROVED', req.user._id, req.body);
       auditLog(req, 'approve-user', Date.now() - start, 200);
       return res.status(200).json({
         success: true,
@@ -174,6 +174,23 @@ class AdminController {
       });
     } catch (error) {
       auditLog(req, 'approve-user', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async rejectUser(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const updatedUser = await adminService.updateUserStatus(id, 'REJECTED', req.user._id);
+      auditLog(req, 'reject-user', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User registration rejected',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'reject-user', Date.now() - start, error.status || 500);
       next(error);
     }
   }

@@ -6,6 +6,7 @@
 >   - `/` — Landing page & operational core loop
 >   - `/login`, `/signup` — Authentication & role-based access control (RBAC)
 >   - `/control-room` — Master dispatcher console with 5-Question Mission Assessment HUD
+>   - `/control-room/overview` — Multi-Mission Operations Overview & Quick-Dispatch Intake
 >   - `/driver/dashboard` — In-vehicle tactical navigation HUD & maneuver vectors
 >   - `/emergencies/[id]` — Deep corridor intelligence & epistemic reasoning
 >   - `/paramedic` — Pre-hospital clinical triage & trauma bay synchronization
@@ -24,9 +25,9 @@
 > npm install
 > npm run dev
 >
-> # Terminal 2 - Backend (port 5000):
+> # Terminal 2 - Backend (port 5001):
 > cd server && npm install && npm run dev
 > ```
 >
-> Visit [http://localhost:3000](http://localhost:3000) for the Next.js frontend and [http://localhost:5000/api/health](http://localhost:5000/api/health) for backend status.
+> Visit [http://localhost:3000](http://localhost:3000) for the Next.js frontend and [http://localhost:5001/api/health](http://localhost:5001/api/health) for backend status.
 

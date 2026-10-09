@@ -8,6 +8,7 @@ import {
   ServerUser,
 } from '@/lib/auth/server-store'
 import type { UserRole } from '@/lib/api/types'
+import type { Workspace } from '@/lib/auth/roles'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,19 +52,21 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const ALLOWED_ROLES: UserRole[] = ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN']
+  const ALLOWED_ROLES: UserRole[] = ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC']
   let assignedRole: UserRole = 'CONTROL_ROOM'
   if (role) {
-    if (!ALLOWED_ROLES.includes(role as UserRole)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Please select a valid role (CONTROL_ROOM, DRIVER, PARAMEDIC, ADMIN)',
-        },
-        { status: 400 }
-      )
+    if (role === 'ADMIN' || !ALLOWED_ROLES.includes(role as UserRole)) {
+      assignedRole = 'CONTROL_ROOM'
+    } else {
+      assignedRole = role as UserRole
     }
-    assignedRole = role as UserRole
+  }
+
+  const requestedWorkspaces: Workspace[] = Array.isArray(body.requestedWorkspaces)
+    ? body.requestedWorkspaces.filter((w: any) => ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'].includes(w))
+    : [assignedRole]
+  if (!requestedWorkspaces.includes(assignedRole)) {
+    requestedWorkspaces.unshift(assignedRole)
   }
 
   // 2. If external backend is reachable, try forwarding first
@@ -77,6 +80,9 @@ export async function POST(request: NextRequest) {
           email: email.trim().toLowerCase(),
           password,
           role: assignedRole,
+          requestedRole: assignedRole,
+          requestedWorkspaces,
+          assignedVehicleId: body.assignedVehicleId || null,
         }),
       })
       const data = await backendRes.json()
@@ -94,44 +100,23 @@ export async function POST(request: NextRequest) {
   // 3. Check duplicate email in serverless store
   const existingUser = findUserByEmail(email)
   if (existingUser) {
-    // If it's the requested admin email, update credentials and re-issue token
-    if (email.trim().toLowerCase() === 'spec.priyanshu@gmail.com') {
-      existingUser.name = name.trim() || existingUser.name
-      existingUser.role = 'ADMIN'
-      existingUser.passwords = [password, ...(existingUser.passwords || [])]
-      existingUser.passwordHash = hashPassword(password)
-      existingUser.updatedAt = new Date().toISOString()
-
-      const token = createToken(existingUser.id, existingUser.role)
-      const safeUser = toSafeUser(existingUser)
-      const response = NextResponse.json(
-        { success: true, message: 'Account updated successfully', user: safeUser },
-        { status: 201 }
-      )
-      response.cookies.set({
-        name: 'token',
-        value: token,
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60,
-        path: '/',
-      })
-      return response
-    }
-
     return NextResponse.json(
       { success: false, error: 'Email is already registered. Please sign in or use another email.' },
       { status: 409 }
     )
   }
 
-  // 4. Create new user
+  // 4. Create new user in PENDING status (quarantined until admin approval)
   const newUser: ServerUser = {
     id: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     name: name.trim(),
     email: email.trim().toLowerCase(),
     role: assignedRole,
+    status: 'PENDING',
+    requestedRole: assignedRole,
+    requestedWorkspaces,
+    permittedWorkspaces: [],
+    assignedVehicleId: body.assignedVehicleId || null,
     passwordHash: hashPassword(password),
     passwords: [password],
     createdAt: new Date().toISOString(),
@@ -140,27 +125,14 @@ export async function POST(request: NextRequest) {
 
   usersStore.set(newUser.email, newUser)
 
-  const token = createToken(newUser.id, newUser.role)
   const safeUser = toSafeUser(newUser)
 
-  const response = NextResponse.json(
+  return NextResponse.json(
     {
       success: true,
-      message: 'Account created successfully',
+      message: 'Registration submitted successfully. Account is pending administrator review.',
       user: safeUser,
     },
     { status: 201 }
   )
-
-  response.cookies.set({
-    name: 'token',
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60,
-    path: '/',
-  })
-
-  return response
 }

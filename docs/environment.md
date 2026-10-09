@@ -8,10 +8,13 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 
 | Variable | Required? | Default | Purpose | Production Behavior |
 |---|---|---|---|---|
-| `PORT` | Optional | `5000` | Port on which the Express & Socket.IO server listens | Set by cloud provider (e.g. `8080`, `5000`) |
+| `PORT` | Optional | `5001` | Port on which the Express & Socket.IO server listens | Set by cloud provider (e.g. `8080`, `5001`) |
 | `NODE_ENV` | Optional | `development` | Environment mode (`development`, `test`, `production`) | Enables strict security headers & cookie flags |
-| `MONGO_URI` | **Required** | `mongodb://127.0.0.1:27017/geoagent-emergency` | MongoDB connection string | Managed MongoDB Atlas / replica set connection |
-| `CLIENT_URL` | Optional | `http://localhost:3000` | Allowed CORS origin & Socket.IO allowed origin | Set to production frontend domain (e.g. `https://geoagent-emegency-project.vercel.app`) |
+| `MONGO_URI` | **Required** | `mongodb://127.0.0.1:27017/geoagent-emergency-test` | MongoDB connection string | Managed MongoDB Atlas / replica set connection |
+| `CLIENT_URL` | Optional | `http://localhost:3000` | Allowed CORS origin & Socket.IO allowed origin | Set to production frontend domain |
+| `ALLOW_PRODUCTION_RESET` | Optional | `false` | Safeguard for seed/reset scripts (`seed-demo-scenario.js`) | Refuses destructive operations unless explicitly `true` |
+| `DISABLE_RATE_LIMITS` | Optional | `false` | Bypass sliding-window rate limiters during automated tests | Keep `false` in production |
+| `TELEMETRY_RETENTION_DAYS` | Optional | `90` | Automatic TTL expiration days for routine GPS breadcrumbs | Applied via partial filter expression; audit records protected |
 
 > **Security Rule**: `MONGO_URI` must **never** be exposed in client bundles or public endpoints. The Admin Console at `/admin` communicates strictly via Express APIs and never exposes database connection strings, credentials, or raw query capabilities.
 
@@ -75,8 +78,8 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 
 | Variable | Required? | Default | Purpose |
 |---|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Optional | `http://localhost:5001/api` | Backend base REST API URL (supports port 5000 or 5001) |
-| `NEXT_PUBLIC_SOCKET_URL` | Optional | `http://localhost:5001` | Backend Socket.IO server URL (supports port 5000 or 5001) |
+| `NEXT_PUBLIC_API_URL` | Optional | `http://localhost:5001/api` | Backend base REST API URL (port 5001) |
+| `NEXT_PUBLIC_SOCKET_URL` | Optional | `http://localhost:5001` | Backend Socket.IO server URL (port 5001) |
 | `NEXT_PUBLIC_CARTO_API_KEY` | Optional | None | CARTO basemap API key for browser raster tile loading without watermark |
 
 > **Map Basemap Key Note**:
@@ -86,7 +89,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 > **Security Rule**: `NEXT_PUBLIC_CARTO_API_KEY` is strictly a public browser client credential for rendering raster map tiles. **Never** prefix backend secrets (`OPENROUTER_API_KEY`, `OPENCODE_API_KEY`, `GOOGLE_MAPS_API_KEY`, `MONGO_URI`, `JWT_SECRET`) with `NEXT_PUBLIC_`.
 
 > **Local Development Note**:
-> If the backend is running on port `5000` (the default in `server/server.js`), configure `NEXT_PUBLIC_API_URL=http://localhost:5000/api` and `NEXT_PUBLIC_SOCKET_URL=http://localhost:5000` in `.env.local` to match. If unconfigured or backend is offline, the frontend gracefully falls back to demonstration data fixtures.
+> The Express and Socket.IO backend defaults to port `5001` (configured in `server/.env`). Configure `NEXT_PUBLIC_API_URL=http://localhost:5001/api` and `NEXT_PUBLIC_SOCKET_URL=http://localhost:5001` in `.env.local` to match. If unconfigured or backend is offline, the frontend gracefully falls back to demonstration data fixtures.
 
 ---
 

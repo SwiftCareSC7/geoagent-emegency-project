@@ -312,9 +312,10 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 | Route URL | Page Component | Allowed Roles | Auth Required | Key APIs Called | Purpose & UI Elements |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **`/`** | `app/page.tsx` | All / Public | No | None | Landing page, animated hero banner, corridor status, registration CTA, operational guide modal. |
-| **`/login`** | `app/login/page.tsx` | All / Public | No | `POST /api/auth/login` | Credentials login form, role demo quick-login buttons (`Dispatcher`, `Driver`, `Paramedic`, `Admin`). |
-| **`/signup`** | `app/signup/page.tsx` | All / Public | No | `POST /api/auth/register` | User registration form with operational role selection. |
+| **`/login`** | `app/login/page.tsx` | All / Public | No | `POST /api/auth/login` | Secure credentials login form with rate limiting; directs approved users to role-assigned landing pages. |
+| **`/signup`** | `app/signup/page.tsx` | All / Public | No | `POST /api/auth/register` | User registration form with operational role and multi-workspace requests; sets status to PENDING. |
 | **`/control-room`**| `app/control-room/page.tsx`| `CONTROL_ROOM`, `ADMIN` | Yes | `GET /api/vehicles`, `GET /api/emergencies`, `GET /api/incidents` | Central operations center: live map, queue, fleet panel, decision approval card, broadcast alert modal. |
+| **`/control-room/overview`**| `app/control-room/overview/page.tsx`| `CONTROL_ROOM`, `ADMIN` | Yes | `GET /api/emergencies`, `POST /api/emergencies`, `GET /api/vehicles` | Multi-Mission Operations Overview: global emergency status cards, queue filters, and Quick-Dispatch Intake modal. |
 | **`/diff`** | `app/diff/page.tsx` | All | No (Demo) | `GET/POST /api/diff/scenarios` | Map-first what-if rerouting simulator: Leaflet map, digital clock, milestone timeline scrubber, tactical HUD. |
 | **`/driver/dashboard`** | `app/driver/dashboard/page.tsx` | `DRIVER`, `ADMIN` | Yes | `GET /api/vehicles/:id`, `POST /api/trajectories` | In-cab turn-by-turn navigation HUD: maneuver cards, speedometer, hospital selector, leg switcher. |
 | **`/emergencies/[id]`** | `app/emergencies/[id]/page.tsx` | `CONTROL_ROOM`, `ADMIN` | Yes | `GET /api/emergencies/:id`, `GET /api/routes` | Mission-specific detail: patient condition, active route, alternative detour options, operator action prompt. |
@@ -329,35 +330,45 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.1 Authentication Endpoints (`/api/auth`)
 
 #### 1. POST `/api/auth/register`
-- **Purpose:** Registers a new user account with an operational role.
-- **Auth:** Public
+- **Purpose:** Registers a new user account with requested operational role and workspaces.
+- **Auth:** Public (Rate-limited: 30 requests / 15 minutes per IP)
 - **Request Body:**
 ```json
 {
   "name": "Arjun Rao",
   "email": "arjun@swiftcare.local",
   "password": "Password123!",
-  "role": "CONTROL_ROOM"
+  "role": "CONTROL_ROOM",
+  "requestedWorkspaces": ["CONTROL_ROOM"],
+  "assignedVehicleId": ""
 }
 ```
 - **Response `201 Created`:**
 ```json
 {
   "success": true,
-  "message": "User registered successfully",
-  "user": { "id": "65f8a1...", "name": "Arjun Rao", "email": "arjun@swiftcare.local", "role": "CONTROL_ROOM" }
+  "message": "Registration submitted successfully. Your account is pending administrator approval before login is permitted.",
+  "user": {
+    "id": "65f8a1...",
+    "name": "Arjun Rao",
+    "email": "arjun@swiftcare.local",
+    "role": "CONTROL_ROOM",
+    "status": "PENDING",
+    "permittedWorkspaces": [],
+    "requestedWorkspaces": ["CONTROL_ROOM"]
+  }
 }
 ```
-- **Validation:** Email must be valid format and not already registered; password must be at least 8 characters with at least one number and special character; role must be one of `['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC']`.
+- **Validation & Security:** Email must be valid format and unique; password must meet complexity rules; public signups cannot self-assign active `ADMIN` status (assigned `status: 'PENDING'` and `permittedWorkspaces: []` until approved by an administrator via `/admin`).
 - **Database:** Creates document in `users` collection.
 - **Frontend Usage:** `SignupForm.tsx` (`/signup`).
 
 #### 2. POST `/api/auth/login`
-- **Purpose:** Authenticates credentials and sets an HTTP-only JWT session cookie.
-- **Auth:** Public
+- **Purpose:** Authenticates credentials and sets an HTTP-only JWT session cookie for approved accounts.
+- **Auth:** Public (Rate-limited: 30 requests / 15 minutes per IP)
 - **Request Body:** `{ "email": "dispatcher@swiftcare.local", "password": "Password123!" }`
 - **Response `200 OK`:** Sets cookie `auth_token`; returns `{ success: true, token: "...", user: { ... } }`.
-- **Validation:** Rejects invalid credentials with generic `401 Unauthorized` to prevent email enumeration.
+- **Validation & Status Check:** Rejects invalid credentials with generic `401 Unauthorized`; rejects `PENDING` or `SUSPENDED` accounts with `403 Forbidden` (`Account registration is pending administrator approval`).
 - **Frontend Usage:** `LoginForm.tsx` (`/login`).
 
 #### 3. GET `/api/auth/me`
@@ -476,7 +487,8 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 
 #### 16. POST `/api/geoagent/analyze`
 - **Purpose:** Invokes GeoAgent free LLM loop with declarative tools to analyze vehicle situation.
-- **Request Body:** `{ vehicleId: "AMB-01", emergencyId: "EMG-0001" }`.
+- **Auth:** Authenticated (Rate-limited: 30 requests / 1 minute per IP)
+- **Request Body:** `{ vehicleId: "AMB-01", emergencyId: "EMG-0001" }`
 - **Response `200 OK`:**
 ```json
 {
@@ -551,15 +563,19 @@ MongoDB operates with Mongoose ODM across 9 collections:
 ```
 
 ### Complete Schema Definitions
-- **`users`**: Fields: `name`, `email` (unique), `password` (bcrypt), `role` (Enum: `CONTROL_ROOM`, `ADMIN`, `DRIVER`, `PARAMEDIC`). Indexes: `{ email: 1 }`.
+- **`users`**: Fields: `name`, `email` (unique), `password` (bcrypt), `role` (Enum: `CONTROL_ROOM`, `ADMIN`, `DRIVER`, `PARAMEDIC`), `status` (Enum: `PENDING`, `APPROVED`, `SUSPENDED`), `permittedWorkspaces` (Array of workspace Enums), `requestedWorkspaces` (Array), `assignedVehicleId`, `approvedBy`, `approvedAt`. Indexes: `{ email: 1 }`.
 - **`vehicles`**: Fields: `vehicleId` (unique), `registrationNumber` (unique), `type`, `status` (Enum: `AVAILABLE`, `DISPATCHED`, `EN_ROUTE`, `AT_SCENE`, `RETURNING`), `driverName`, `hospitalName`, `capacity`. Indexes: `{ vehicleId: 1 }`, `{ status: 1, isDeleted: 1 }`.
-- **`emergencies`**: Fields: `emergencyId` (unique), `callerName`, `location` (GeoJSON Point), `priority`, `type`, `status`, `assignedVehicleId`. Indexes: `{ location: '2dsphere' }`, `{ status: 1, priority: 1 }`.
+- **`emergencies`**: Fields: `emergencyId` (unique), `callerName`, `callerContact`, `location` (GeoJSON Point), `priority`, `type`, `status`, `assignedVehicleId`. Indexes: `{ location: '2dsphere' }`, `{ status: 1, priority: 1 }`.
 - **`routes`**: Fields: `routeId` (unique), `emergencyId`, `vehicleId`, `provider`, `status`, `distanceMeters`, `durationSeconds`, `geometry` (GeoJSON LineString). Indexes: `{ geometry: '2dsphere' }`.
-- **`trajectories`**: Fields: `vehicleId`, `emergencyId`, `location` (GeoJSON Point), `speed`, `heading`, `distanceFromRouteMeters`, `status`, `timestamp`. Indexes: `{ vehicleId: 1, timestamp: -1 }`, `{ location: '2dsphere' }`.
+- **`trajectories`**: Fields: `vehicleId`, `emergencyId`, `location` (GeoJSON Point), `speed`, `heading`, `distanceFromRouteMeters`, `status`, `source`, `timestamp`. Indexes: `{ vehicleId: 1, timestamp: -1 }`, `{ location: '2dsphere' }`, `{ timestamp: 1 }` (Configurable TTL retention with partial filter expression `{ source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }` to protect clinical audit records).
 - **`incidents`**: Fields: `incidentId` (unique), `type`, `severity`, `location` (GeoJSON Point), `impactRadiusMeters`, `isActive`. Indexes: `{ location: '2dsphere' }`.
 - **`decisions`**: Fields: `decisionId` (unique), `emergencyId`, `vehicleId`, `recommendedRouteId`, `primaryAction`, `status`, `operatorAction`, `reasoning`, `observations`. Indexes: `{ status: 1, createdAt: -1 }`.
 - **`predictions`**: Fields: `vehicleId`, `routeId`, `currentMinutes`, `originalMinutes`, `delayMinutes`, `delayRisk`, `confidence`. Indexes: `{ vehicleId: 1, createdAt: -1 }`.
 - **`clearancecorridors`**: Fields: `corridorId` (unique), `vehicleId`, `routeId`, `status`, `signals` (Array of traffic signal states). Indexes: `{ corridorId: 1 }`.
+
+### Database Safety Guard & Retention Policies
+1. **Destructive Reset Guard (`server/shared/utils/dbSafety.js`)**: All database seeding and reset utilities (`seed-demo-scenario.js`, `seed-demo-scenarios.js`, `demo.service.js`) validate the database connection URI via `assertSafeDatabaseTarget()`. Any wipe/reset on a production target (MongoDB Atlas `mongodb+srv://`, non-local hostname, or database names not containing `test` or `dev`) is immediately aborted with a fatal error unless `ALLOW_PRODUCTION_RESET=true` is explicitly set.
+2. **Telemetry Retention TTL**: High-frequency GPS trajectory breadcrumbs expire after `TELEMETRY_RETENTION_DAYS` (default 30 days) via a background MongoDB TTL index, preventing unbounded storage growth while clinical emergency and decision records remain permanently archived.
 
 ---
 
@@ -591,10 +607,14 @@ SwiftCare enforces strict Role-Based Access Control (RBAC) across both backend R
   - `PENDING`: Awaiting administrator verification. Blocked from login and API access.
   - `APPROVED`: Active verified personnel. Issued HTTP-only JWT upon valid login.
   - `SUSPENDED`: Temporarily deactivated. All active sessions and future logins rejected with 403.
+  - `REJECTED`: Application denied by administrator.
 - **Admin Control Actions**:
-  - `PATCH /api/admin/users/:id/approve`: Activates account, sets `status: 'APPROVED'`, records `approvedBy` admin ID and `approvedAt` timestamp.
-  - `PATCH /api/admin/users/:id/suspend`: Immediately revokes access.
+  - `PATCH /api/admin/users/:id/approve`: Activates account, sets `status: 'APPROVED'`, assigns explicit permitted workspaces (preventing automatic escalation to unapproved workspaces), records `approvedBy` admin ID and `approvedAt` timestamp. Prevents self-approval (403 Forbidden).
+  - `PATCH /api/admin/users/:id/reject`: Rejects account with optional reason.
+  - `PATCH /api/admin/users/:id/suspend`: Immediately revokes access and marks account as suspended.
   - `PATCH /api/admin/users/:id/role`: Reassigns operational role, updates permitted workspaces, or links an emergency vehicle.
+- **Real-Time Revocation on Suspension**:
+  - Socket.IO connection handlers enforce per-packet MongoDB revalidation (`socket.use(...)`). If an authenticated user's account transitions to `SUSPENDED`, their active WebSocket connection is forcibly terminated (`socket.disconnect(true)`) on their next packet.
 
 ### 17.4 Resource Ownership Boundary Protection (`ownershipMiddleware.js`)
 - Enforces data isolation between individual emergency responders:
@@ -782,9 +802,15 @@ This produces an operations-room aesthetic with visible street names and zero co
   - Strict CORS origin whitelisting supporting localhost and authorized Vercel subdomains.
   - Password hashes excluded by default in Mongoose schemas (`select: false`).
   - Inputs validated against bounding boxes to prevent coordinate injection.
-- **Weaknesses & Improvements:**
-  - Socket.IO currently uses an in-memory adapter; running multiple backend instances requires introducing `@socket.io/redis-adapter`.
-  - Rate limiting on API routes is currently basic; production requires Redis-backed token bucket rate limiting.
+  - Public registration privilege escalation defense: new signups strictly default to `status: 'PENDING'` with empty `permittedWorkspaces: []`; direct administrative registration is rejected.
+  - Resource ownership boundaries enforced on driver vehicle updates via `ownershipMiddleware.js`.
+  - Sliding-window rate limiting on authentication routes (30 requests / 15 minutes) and AI analysis routes (30 requests / 1 minute) via `server/shared/middleware/rateLimiter.js`.
+  - Destructive database operation safety guard (`server/shared/utils/dbSafety.js`) aborting non-test resets on MongoDB Atlas or production URIs unless explicitly permitted.
+  - Real-time socket revalidation: suspended users are forcibly disconnected (`socket.disconnect(true)`) upon their next emitted packet.
+  - Gitleaks automated secret scanning integrated into continuous integration (`.github/workflows/ci.yml`).
+- **Operational Boundaries:**
+  - Socket.IO currently uses an in-memory adapter; horizontal scaling across multiple container instances requires configuring `@socket.io/redis-adapter`.
+  - Cloud provider credentials (Google Maps, OpenRouter) remain optional; deterministic algorithmic fallbacks ensure unbroken local and offline operations.
 
 ---
 
@@ -793,22 +819,29 @@ This produces an operations-room aesthetic with visible street names and zero co
 - **Route Caching**: 60-second in-memory TTL caching by coordinate hash prevents duplicate Google Routes billing when multiple vehicles request identical paths.
 - **Dynamic Leaflet Loading**: Leaflet components are code-split and loaded via `next/dynamic` with `ssr: false`, reducing initial JavaScript bundle size by 140 KB.
 - **Geospatial Indexes**: Spatial queries utilize MongoDB `2dsphere` indexes, completing proximity searches in $< 5\text{ ms}$.
+- **Trajectory TTL Pruning**: Automated MongoDB TTL index cleanses simulated and device breadcrumbs beyond `TELEMETRY_RETENTION_DAYS` (30 days) while preserving clinical incident archives.
 
 ---
 
 ## 30. Testing Infrastructure & Results
 
-All automated test suites execute with 100% pass rates:
+All automated test suites execute with verified passing results:
 1. **Static Typecheck:** `npx tsc --noEmit` (**0 errors**).
-2. **Complete Auth, RBAC & Ownership Suite:** `node server/test-auth-rbac-complete.js` (**46/46 passed**).
-3. **Registration & Multi-Workspace Suite:** `node server/test-registration-workspaces-e2e.js` (**33/33 passed**).
-4. **Full-Stack Authentication Contract:** `node server/test-auth-fullstack.js` (**38/38 passed**).
-5. **Session & Security E2E Contract:** `node server/test-auth-e2e.js` (**31/31 passed**).
-6. **Admin Observability & User Governance:** `node server/test-admin-e2e.js` (**60/60 passed**).
-7. **Control Room Integration Tests:** `node server/test-control-room-e2e.js` (**12/12 passed**).
-8. **Scenario Engine Unit Tests:** `npx tsx tests/diff-scenario-engine.test.mjs` (**10/10 passed**).
-9. **Playwright Scenario E2E Suite:** `npx playwright test e2e/diff-scenario.spec.ts` (**8/8 passed** in 29.0s).
-10. **Playwright Auth & RBAC E2E Suite:** `npx playwright test e2e/auth.spec.ts` (**14/14 passed** in 27.7s).
+2. **Next.js Production Build:** `npm run build` (**Turbopack compiled successfully**, 30 optimized route handlers).
+3. **Complete Auth, RBAC & Ownership Suite:** `node server/test-auth-rbac-complete.js` (**46/46 passed**).
+4. **Registration & Multi-Workspace Suite:** `node server/test-registration-workspaces-e2e.js` (**33/33 passed**).
+5. **Full-Stack Authentication Contract:** `node server/test-auth-fullstack.js` (**38/38 passed**).
+6. **Session & Security E2E Contract:** `node server/test-auth-e2e.js` (**31/31 passed**).
+7. **Admin Observability & User Governance:** `node server/test-admin-e2e.js` (**60/60 passed**).
+8. **Targeted RBAC & Socket Disconnection Suite:** `node server/test-targeted-rbac-socket.js` (**23/23 passed**).
+9. **Database Safety Guard Suite:** `node server/test-db-safety.js` (**4/4 passed**).
+10. **Telemetry TTL Retention Suite:** `node server/test-telemetry-retention.js` (**3/3 passed**).
+11. **Control Room Integration Tests:** `node server/test-control-room-e2e.js` (**12/12 passed**).
+12. **Navigation Engine Math Suite:** `npx tsx lib/navigation/__tests__/navigation-engine.test.ts` (**Passed**).
+13. **Scenario Engine Unit Tests:** `npx tsx tests/diff-scenario-engine.test.mjs` (**10/10 passed**).
+14. **Python Routing & V2X Verification:** `python3 routing-engine/demo_member2.py` and `python3 routing-engine/v2x_corridor_bridge.py` (**Verified syntax and output**).
+15. **Playwright Scenario E2E Suite:** `npx playwright test e2e/diff-scenario.spec.ts` (**8/8 passed** in 29.0s).
+16. **Playwright Auth & RBAC E2E Suite:** `npx playwright test e2e/auth.spec.ts` (**14/14 passed** in 27.7s).
 
 ---
 
@@ -917,7 +950,7 @@ Here is how it works step-by-step:
 ## 37. Final Project Summary
 
 - **Project Purpose:** Real-time metropolitan emergency vehicle fleet surveillance, route disruption detection, quantitative delay prediction, and road-constrained detour optimization.
-- **Technology Stack:** Next.js 16, React 19, Tailwind CSS v4, Leaflet 1.9.4, Express 4, Node.js 24, Socket.IO 4.8, MongoDB 7.0+, Mongoose 8, OpenRouter / OpenCode Free LLMs, Playwright 1.63, TypeScript 5.
-- **Main Features:** Central Control Room operations dashboard, `/diff` map-first what-if scenario simulator, in-cab Driver Navigation HUD, Paramedic clinical triage, V2X green-wave corridor clearance, and administrative system health diagnostics.
+- **Technology Stack:** Next.js 16, React 19, Tailwind CSS v4, Leaflet 1.9.4, Express 4, Node.js 22/24, Socket.IO 4.8, MongoDB 7.0+, Mongoose 8, OpenRouter / OpenCode Free LLMs, Playwright 1.63, TypeScript 5.
+- **Main Features:** Central Control Room operations dashboard (`/control-room`), Multi-Mission Operations Overview (`/control-room/overview`) with Emergency Intake modal, `/diff` map-first what-if scenario simulator, in-cab Driver Navigation HUD, Paramedic clinical triage, V2X green-wave corridor clearance, and administrative system health diagnostics.
 - **Architecture:** Dual-Engine Decision Architecture separating authoritative deterministic safety rules from advisory generative AI briefings.
-- **Current State:** 100% operational, fully hardened, statically typechecked (0 errors), covered by automated Playwright and unit test suites, and deployed to production.
+- **Current State:** Statically verified (`npx tsc --noEmit` 0 errors), Next.js production build passing via Turbopack, comprehensive backend and algorithmic suites passing (including DB safety guard, telemetry retention TTL, and RBAC socket disconnection), dual-engine decision authority strictly enforced, and Gitleaks scanning configured in CI. Optional cloud services (Google Routes, OpenRouter/OpenCode) operate with verified deterministic fallbacks when credentials are unconfigured.

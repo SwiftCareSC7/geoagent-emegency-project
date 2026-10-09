@@ -29,7 +29,7 @@ export interface GeoJSONLineString {
 // ---------------------------------------------------------------------------
 
 export type UserRole = 'ADMIN' | 'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'
-export type UserStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED'
+export type UserStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'REJECTED'
 export type Workspace = 'ADMIN' | 'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'
 
 /** Safe user object (password never returned by backend) */

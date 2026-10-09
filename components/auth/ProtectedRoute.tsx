@@ -144,17 +144,73 @@ export function ProtectedRoute({
     )
   }
 
-  // 5. Role and Workspace Permission Check
+  // 5. Status Check: REJECTED Account
+  if (user.status === 'REJECTED') {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-background p-6">
+        <div className="w-full max-w-md rounded-2xl border border-destructive/30 bg-card p-6 text-center shadow-lg sm:p-8 space-y-4">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive ring-1 ring-destructive/20">
+            <ShieldAlert className="size-7" />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="font-display text-xl font-bold text-card-foreground">
+              Registration Rejected
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Your registration application was reviewed and rejected by an administrator. Operational access is not permitted.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button variant="outline" onClick={() => logout()} className="w-full gap-2 text-xs">
+              <LogOut className="size-3.5" />
+              <span>Sign Out</span>
+            </Button>
+            <Link href="/" className="w-full sm:w-auto">
+              <Button variant="ghost" className="w-full text-xs">
+                Home
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // 6. Role and Workspace Permission Check
   // ADMIN has full access everywhere
   if (user.role !== 'ADMIN') {
     const userWorkspaces = getEffectiveWorkspaces(user)
 
-    const matchesRole = !allowedRoles || allowedRoles.length === 0 || allowedRoles.includes(user.role)
-    const matchesWorkspace = !allowedWorkspaces || allowedWorkspaces.length === 0 || allowedWorkspaces.some(ws => userWorkspaces.includes(ws))
-    // If allowedRoles is defined, having a permitted workspace matching that role name grants access
-    const matchesWorkspaceRole = allowedRoles ? allowedRoles.some(r => userWorkspaces.includes(r as Workspace)) : false
+    // Non-admin can NEVER access routes that are exclusively for ADMIN
+    const isAdminOnly = allowedRoles && allowedRoles.length > 0 && allowedRoles.includes('ADMIN') && !allowedRoles.some(r => r !== 'ADMIN')
 
-    const isAuthorized = matchesRole || matchesWorkspace || matchesWorkspaceRole
+    let isAuthorized = true
+
+    if (isAdminOnly) {
+      isAuthorized = false
+    } else {
+      // Role requirement check
+      let roleSatisfied = true
+      if (allowedRoles && allowedRoles.length > 0) {
+        const nonAdminRoles = allowedRoles.filter(r => r !== 'ADMIN')
+        roleSatisfied = nonAdminRoles.includes(user.role) || nonAdminRoles.some(r => userWorkspaces.includes(r as Workspace))
+      }
+
+      // Workspace requirement check
+      let workspaceSatisfied = true
+      if (allowedWorkspaces && allowedWorkspaces.length > 0) {
+        workspaceSatisfied = allowedWorkspaces.some(ws => ws !== 'ADMIN' && userWorkspaces.includes(ws))
+      }
+
+      // Both must be satisfied if specified
+      if (allowedRoles && allowedRoles.length > 0 && allowedWorkspaces && allowedWorkspaces.length > 0) {
+        isAuthorized = roleSatisfied && workspaceSatisfied
+      } else if (allowedRoles && allowedRoles.length > 0) {
+        isAuthorized = roleSatisfied
+      } else if (allowedWorkspaces && allowedWorkspaces.length > 0) {
+        isAuthorized = workspaceSatisfied
+      }
+    }
 
     if (!isAuthorized) {
       const defaultDashboard = getRoleDashboard(user.role)

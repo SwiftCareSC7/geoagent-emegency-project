@@ -40,6 +40,8 @@ export interface ScenarioDefinition {
   hasBackupAmbulance?: boolean
   requiresReroute?: boolean
   hasClearance?: boolean
+  hasReroute?: boolean
+  hasAlternative?: boolean
 }
 
 export const CANONICAL_DEMO_SCENARIOS: ScenarioDefinition[] = [

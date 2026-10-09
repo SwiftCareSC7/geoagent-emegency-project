@@ -21,38 +21,38 @@ export const registerUser = async (userData) => {
   const hashedPassword = await bcrypt.hash(password, salt);
 
   // Privilege escalation protection: All public registrations are quarantined with PENDING status.
-  // No user can self-activate, obtain tokens, or access systems without administrator approval.
-  const requestedRole = userData.role || userData.requestedRole || 'CONTROL_ROOM';
+  // Public accounts can NEVER receive ADMIN role or ADMIN workspaces.
+  const rawRole = userData.role || userData.requestedRole || 'CONTROL_ROOM';
   const rawWorkspaces = Array.isArray(userData.requestedWorkspaces)
     ? userData.requestedWorkspaces
-    : (Array.isArray(userData.permittedWorkspaces) ? userData.permittedWorkspaces : []);
+    : [];
 
-  // Determine requested operational or administrative role (default CONTROL_ROOM)
-  let assignedRole = 'CONTROL_ROOM';
-  if (['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN'].includes(requestedRole)) {
-    assignedRole = requestedRole;
+  // Determine requested operational role (public can only be CONTROL_ROOM, DRIVER, PARAMEDIC; ADMIN is never granted)
+  let requestedRole = 'CONTROL_ROOM';
+  if (['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'].includes(rawRole)) {
+    requestedRole = rawRole;
   }
 
-  // Sanitize requested workspaces
-  const validWorkspaces = ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN'];
-  const sanitizedWorkspaces = rawWorkspaces.filter(w => validWorkspaces.includes(w));
-  if (!sanitizedWorkspaces.includes(assignedRole)) {
-    sanitizedWorkspaces.unshift(assignedRole);
+  // Sanitize requested workspaces (operational only)
+  const validOperationalWorkspaces = ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+  const sanitizedWorkspaces = Array.from(new Set(rawWorkspaces.filter(w => validOperationalWorkspaces.includes(w))));
+  if (!sanitizedWorkspaces.includes(requestedRole)) {
+    sanitizedWorkspaces.unshift(requestedRole);
   }
 
   // Create user with PENDING approval status
   // Authoritative permissions are distinct from requested permissions.
   // CRITICAL SECURITY ENFORCEMENT:
-  // All newly registered accounts (including ADMIN requests) are created in PENDING status.
+  // All newly registered accounts are created in PENDING status with permittedWorkspaces: []
   // A PENDING account cannot log in, cannot receive JWT tokens, and cannot access any protected endpoints.
   const newUser = new User({
     name: name.trim(),
     email: email.trim().toLowerCase(),
     password: hashedPassword,
-    role: assignedRole,
-    requestedRole: assignedRole,
+    role: requestedRole,
+    requestedRole: requestedRole,
     requestedWorkspaces: sanitizedWorkspaces,
-    permittedWorkspaces: [assignedRole],
+    permittedWorkspaces: [], // Zero permitted workspaces until approved!
     status: 'PENDING',
     assignedVehicleId: userData.assignedVehicleId ? userData.assignedVehicleId.trim() : null
   });
@@ -87,7 +87,7 @@ export const loginUser = async (email, password) => {
     throw error;
   }
 
-  // Check account approval and suspension status
+  // Check account approval, suspension, and rejection status
   const currentStatus = user.status || 'APPROVED';
   if (currentStatus === 'PENDING') {
     const error = new Error('Account registration is pending administrator approval');
@@ -97,6 +97,12 @@ export const loginUser = async (email, password) => {
   }
   if (currentStatus === 'SUSPENDED') {
     const error = new Error('Account has been suspended. Please contact an administrator');
+    error.status = 403;
+    error.isOperational = true;
+    throw error;
+  }
+  if (currentStatus === 'REJECTED') {
+    const error = new Error('Account registration was rejected. Please contact an administrator');
     error.status = 403;
     error.isOperational = true;
     throw error;

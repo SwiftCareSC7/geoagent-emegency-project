@@ -9,7 +9,7 @@ Shared Agent Protocol: [AGENTS.md](file:///Users/priyanshu/Documents/geoagent-em
 ## 1. The Four Agents
 
 | Agent | Config File | MCP Config | Instructions Entrypoint | Status |
-|-------|-------------|------------|-------------------------|--------|
+| --- | --- | --- | --- | --- |
 | **Claude Code** (`claude`) | `.claude/settings.json` | `.mcp.json` | `CLAUDE.md` (`@AGENTS.md`) | Verified & Active |
 | **Antigravity** (`AGY`) | `~/.gemini/config/` | `.gemini/config/mcp_config.json` | `AGENTS.md` | Verified & Active |
 | **OpenCode** (`opencode`) | `opencode.json` | `opencode.json` | `AGENTS.md`, `.opencode/instructions.md` | Verified & Active |
@@ -20,7 +20,7 @@ Shared Agent Protocol: [AGENTS.md](file:///Users/priyanshu/Documents/geoagent-em
 ## 2. Core Toolkit & Verification Table
 
 | Tool / Skill | Repository / Origin | Type | Local Path | Verified |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Ponytail** | `DietrichGebert/ponytail` | Methodology Skill | `.agents/skills/ponytail/SKILL.md` | **YES** |
 | **Caveman** | `JuliusBrussee/caveman` | Token Compression Skill | `.agents/skills/caveman/SKILL.md` | **YES** |
 | **Token-Saver** | Project Custom | Token Protocol | `.agents/skills/token-saver/SKILL.md` | **YES** |
@@ -45,9 +45,9 @@ Shared Agent Protocol: [AGENTS.md](file:///Users/priyanshu/Documents/geoagent-em
 | **Browser-Use** | `browser-use/browser-use` | Browser Agent Core Reference | `docs/ai-toolkit/references/browser-use.md` | **YES** |
 | **Agent-Reach** | `Panniantong/Agent-Reach` | Multi-Platform Web Scraper | `docs/ai-toolkit/references/agent-reach.md` | **YES** |
 | **Strix** | `usestrix/strix` | AI Pentest Reference | `docs/ai-toolkit/references/strix.md` | **YES** |
-| **Dialogflow Handoff** | `dialogflow/agent-human-handoff-nodejs`| Human Handoff Reference | `docs/ai-toolkit/references/agent-human-handoff.md` | **YES** |
+| **Dialogflow Handoff** | `dialogflow/agent-human-handoff-nodejs` | Human Handoff Reference | `docs/ai-toolkit/references/agent-human-handoff.md` | **YES** |
 | **Public APIs** | `public-apis/public-apis` | API Catalog Reference | `docs/ai-toolkit/references/public-apis.md` | **YES** |
-| **Public APIs (n0shake)**| `n0shake/Public-APIs` | Alternative API Catalog | `docs/ai-toolkit/references/n0shake-public-apis.md` | **YES** |
+| **Public APIs (n0shake)** | `n0shake/Public-APIs` | Alternative API Catalog | `docs/ai-toolkit/references/n0shake-public-apis.md` | **YES** |
 | **AnythingMCP** | `HelpCode-ai/anythingmcp` | Universal API-to-MCP Gateway | `docs/ai-toolkit/references/anythingmcp.md` | **YES** |
 | **API Anything** | `goodnight000/api-anything` | Web-to-API Adapter Reference | `docs/ai-toolkit/references/api-anything.md` | **YES** |
 | **Appwrite** | `appwrite/appwrite` | Backend Architecture Reference | `docs/ai-toolkit/references/appwrite.md` | **YES** |

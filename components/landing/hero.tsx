@@ -16,15 +16,15 @@ export function Hero() {
       {/* Directional overlay: dark on left for text legibility, much lighter on right to make the photo bright and visible */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-gradient-to-r from-[#060a13]/90 via-[#060a13]/60 to-[#060a13]/20"
+        className="absolute inset-0 -z-10 bg-linear-to-r from-[#060a13]/90 via-[#060a13]/60 to-[#060a13]/20"
       />
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-gradient-to-t from-[#060a13] via-transparent to-[#060a13]/40"
+        className="absolute inset-0 -z-10 bg-linear-to-t from-[#060a13] via-transparent to-[#060a13]/40"
       />
       <div
         aria-hidden="true"
-        className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-20 pointer-events-none"
+        className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-150 h-150 rounded-full opacity-20 pointer-events-none"
         style={{
           background: 'radial-gradient(circle, rgba(16,185,129,0.3) 0%, rgba(2,132,199,0.15) 50%, transparent 70%)',
         }}
@@ -43,7 +43,7 @@ export function Hero() {
           <h1 className="mt-6 font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl">
             EVERY SECOND MATTERS.
             <br />
-            <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
               WE GET YOU THERE FASTER.
             </span>
           </h1>

@@ -122,6 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: data.email.trim().toLowerCase(),
           password: data.password,
           role: data.role,
+          requestedRole: data.requestedRole || data.role,
+          requestedWorkspaces: data.requestedWorkspaces,
           assignedVehicleId: data.assignedVehicleId,
         })
         return res

@@ -20,14 +20,14 @@ All authenticated endpoints require an active session via an **HTTP-only cookie 
 
 ### POST `/api/auth/register`
 Creates a new user account with an operational role. Accounts default to `PENDING` quarantine status for supervisory verification.
-- **Access**: Public
+- **Access**: Public (Rate limited: max 30 requests per 15 min)
 - **Request Body**:
 ```json
 {
   "name": "Jane Doe",
   "email": "jane@swiftcare.local",
   "password": "Password123!",
-  "role": "CONTROL_ROOM", // or "DRIVER", "PARAMEDIC", "ADMIN"
+  "role": "CONTROL_ROOM", // "CONTROL_ROOM", "DRIVER", "PARAMEDIC" (ADMIN cannot be self-registered)
   "requestedRole": "CONTROL_ROOM",
   "requestedWorkspaces": ["CONTROL_ROOM"],
   "assignedVehicleId": "AMB-01" // required for DRIVER
@@ -46,7 +46,7 @@ Creates a new user account with an operational role. Accounts default to `PENDIN
     "status": "PENDING",
     "requestedRole": "CONTROL_ROOM",
     "requestedWorkspaces": ["CONTROL_ROOM"],
-    "permittedWorkspaces": ["CONTROL_ROOM"],
+    "permittedWorkspaces": [],
     "assignedVehicleId": null
   }
 }

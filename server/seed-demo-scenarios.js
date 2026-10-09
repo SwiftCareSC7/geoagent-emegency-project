@@ -16,6 +16,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import demoService, { DEMO_SCENARIO_CONFIGS } from './modules/admin/demo.service.js';
+import { assertSafeDatabaseTarget } from './shared/utils/dbSafety.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,13 +31,17 @@ async function run() {
   console.log('SWIFTCARE GEOAGENT: 5 PRIMARY DEMO SCENARIOS SEEDER');
   console.log('================================================================');
 
+  const isReset = process.argv.includes('--reset');
+  if (isReset) {
+    assertSafeDatabaseTarget('seed-demo-scenarios --reset', MONGO_URI);
+  }
+
   if (mongoose.connection.readyState === 0) {
     console.log(`[DB] Connecting to: ${MONGO_URI}...`);
     await mongoose.connect(MONGO_URI);
     console.log('[DB] Connected successfully.\n');
   }
 
-  const isReset = process.argv.includes('--reset');
   if (isReset) {
     console.log('[Reset] Performing complete reset of demo data...');
     const result = await demoService.resetDemoData();

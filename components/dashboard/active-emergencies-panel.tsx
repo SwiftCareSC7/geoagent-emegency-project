@@ -277,6 +277,11 @@ export function ActiveEmergenciesPanel({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                      {((e as any).isSimulated || e.emergencyId.startsWith('E-DEMO-')) && (
+                        <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          SIMULATED
+                        </span>
+                      )}
                       <span
                         className={cn(
                           'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-semibold',

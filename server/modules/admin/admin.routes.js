@@ -27,6 +27,7 @@ router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', adminController.updateUserStatus);
 router.patch('/users/:id/role', adminController.updateUserRole);
 router.patch('/users/:id/approve', adminController.approveUser);
+router.patch('/users/:id/reject', adminController.rejectUser);
 router.patch('/users/:id/suspend', adminController.suspendUser);
 router.get('/vehicles', adminController.getVehicles);
 router.get('/emergencies', adminController.getEmergencies);

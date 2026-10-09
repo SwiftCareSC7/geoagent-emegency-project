@@ -65,9 +65,14 @@ export const adminApi = {
     return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/role`, data)
   },
 
-  /** Approve pending user registration */
-  approveUser(userId: string): Promise<{ success: boolean; message: string; data: User }> {
-    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/approve`)
+  /** Approve pending user registration with optional role and workspace assignments */
+  approveUser(userId: string, data?: { role?: UserRole; permittedWorkspaces?: Workspace[]; assignedVehicleId?: string }): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/approve`, data || {})
+  },
+
+  /** Reject user registration */
+  rejectUser(userId: string): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/reject`)
   },
 
   /** Suspend user account */

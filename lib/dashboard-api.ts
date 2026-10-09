@@ -12,28 +12,41 @@
 
 import { AMB_01_DASHBOARD, type DashboardData } from './mock-data'
 
-const USE_MOCK = true
-
 /**
  * Fetch dashboard data for a given ambulance.
+ * Attempts real analysis endpoint if available, and transparently tags simulated fallback.
  * @param ambulanceId e.g. "AMB-01"
  */
 export async function getDashboard(
   ambulanceId: string,
 ): Promise<DashboardData> {
-  if (USE_MOCK) {
-    return { ...AMB_01_DASHBOARD, ambulanceId }
+  // If in production mode, avoid unflagged mock data substitution
+  try {
+    const res = await fetch(`/api/analysis/vehicle/${encodeURIComponent(ambulanceId)}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    })
+    if (res.ok) {
+      const json = await res.json()
+      if (json && json.success && json.data) {
+        return {
+          ...AMB_01_DASHBOARD,
+          ...json.data,
+          ambulanceId,
+          isSimulated: false,
+          dataSource: 'OBSERVED',
+        }
+      }
+    }
+  } catch {
+    // Backend API unreachable or not running
   }
 
-  // --- Real implementation (enable when the backend is ready) -------------
-  // const res = await fetch(`/api/dashboard/${ambulanceId}`, {
-  //   headers: { Accept: 'application/json' },
-  //   cache: 'no-store',
-  // })
-  // if (!res.ok) {
-  //   throw new Error(`Failed to load dashboard for ${ambulanceId}`)
-  // }
-  // return (await res.json()) as DashboardData
-
-  return AMB_01_DASHBOARD
+  // Explicitly marked fallback simulation data (never masquerades as real GPS/telemetry)
+  return {
+    ...AMB_01_DASHBOARD,
+    ambulanceId,
+    isSimulated: true,
+    dataSource: 'SIMULATED',
+  }
 }

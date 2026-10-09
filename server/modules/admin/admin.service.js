@@ -213,7 +213,7 @@ class AdminService {
     if (status) {
       if (status === 'APPROVED') {
         filter.$or = [{ status: 'APPROVED' }, { status: { $exists: false } }, { status: null }];
-      } else if (['PENDING', 'SUSPENDED'].includes(status)) {
+      } else if (['PENDING', 'SUSPENDED', 'REJECTED'].includes(status)) {
         filter.status = status;
       }
     }
@@ -240,21 +240,41 @@ class AdminService {
         .lean()
     ]);
 
-    const formatted = users.map(u => ({
-      id: u._id.toString(),
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      status: u.status || 'APPROVED',
-      requestedRole: u.requestedRole || u.role,
-      requestedWorkspaces: u.requestedWorkspaces && u.requestedWorkspaces.length > 0 ? u.requestedWorkspaces : [u.role],
-      permittedWorkspaces: u.permittedWorkspaces && u.permittedWorkspaces.length > 0 ? u.permittedWorkspaces : (u.role === 'ADMIN' ? ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'] : u.role === 'CONTROL_ROOM' ? ['CONTROL_ROOM', 'DRIVER'] : [u.role]),
-      approvedBy: u.approvedBy ? u.approvedBy.toString() : null,
-      approvedAt: u.approvedAt || null,
-      assignedVehicleId: u.assignedVehicleId || null,
-      createdAt: u.createdAt,
-      updatedAt: u.updatedAt
-    }));
+    const formatted = users.map(u => {
+      const uStatus = u.status || 'APPROVED';
+      let permitted = [];
+      if (uStatus === 'APPROVED') {
+        if (u.permittedWorkspaces && u.permittedWorkspaces.length > 0) {
+          permitted = u.permittedWorkspaces;
+        } else if (u.role === 'ADMIN') {
+          permitted = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        } else if (u.role === 'CONTROL_ROOM') {
+          permitted = ['CONTROL_ROOM'];
+        } else if (u.role === 'DRIVER') {
+          permitted = ['DRIVER'];
+        } else if (u.role === 'PARAMEDIC') {
+          permitted = ['PARAMEDIC'];
+        } else {
+          permitted = ['CONTROL_ROOM'];
+        }
+      }
+
+      return {
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: uStatus,
+        requestedRole: u.requestedRole || u.role,
+        requestedWorkspaces: u.requestedWorkspaces && u.requestedWorkspaces.length > 0 ? u.requestedWorkspaces : [u.role],
+        permittedWorkspaces: permitted,
+        approvedBy: u.approvedBy ? u.approvedBy.toString() : null,
+        approvedAt: u.approvedAt || null,
+        assignedVehicleId: u.assignedVehicleId || null,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt
+      };
+    });
 
     return {
       items: formatted,
@@ -268,12 +288,20 @@ class AdminService {
   }
 
   /**
-   * Update user registration/account status (APPROVED, SUSPENDED, PENDING)
+   * Update user registration/account status (APPROVED, SUSPENDED, PENDING, REJECTED)
    */
-  async updateUserStatus(userId, status, adminId) {
-    if (!['PENDING', 'APPROVED', 'SUSPENDED'].includes(status)) {
-      const error = new Error('Invalid status. Allowed: PENDING, APPROVED, SUSPENDED');
+  async updateUserStatus(userId, status, adminId, approvalData = {}) {
+    if (!['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED'].includes(status)) {
+      const error = new Error('Invalid status. Allowed: PENDING, APPROVED, SUSPENDED, REJECTED');
       error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // A user cannot approve, reject, or suspend their own registration
+    if (adminId && userId && String(userId) === String(adminId)) {
+      const error = new Error('Forbidden: Administrators cannot approve, reject, or modify their own registration status');
+      error.status = 403;
       error.isOperational = true;
       throw error;
     }
@@ -287,15 +315,68 @@ class AdminService {
     }
 
     user.status = status;
+
     if (status === 'APPROVED') {
       user.approvedBy = adminId;
       user.approvedAt = new Date();
-      if (!user.permittedWorkspaces || user.permittedWorkspaces.length === 0) {
-        if (user.role === 'ADMIN') user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
-        else if (user.role === 'CONTROL_ROOM') user.permittedWorkspaces = ['CONTROL_ROOM', 'DRIVER'];
-        else if (user.role === 'DRIVER') user.permittedWorkspaces = ['DRIVER'];
-        else if (user.role === 'PARAMEDIC') user.permittedWorkspaces = ['PARAMEDIC'];
+
+      // Role determination upon approval:
+      // If admin explicitly specified an approved role in approvalData, use it.
+      // Otherwise, keep user's existing role, ensuring that a previous unverified ADMIN request is NEVER activated!
+      if (approvalData.role) {
+        if (!['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(approvalData.role)) {
+          const error = new Error('Invalid approved role. Allowed: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC');
+          error.status = 400;
+          error.isOperational = true;
+          throw error;
+        }
+        user.role = approvalData.role;
+      } else {
+        if (user.role === 'ADMIN') {
+          // Defense-in-depth: If an ordinary approval is invoked on an account that had an unverified ADMIN request,
+          // it must never activate as ADMIN unless explicitly granted by admin above.
+          user.role = 'CONTROL_ROOM';
+        }
       }
+
+      // Permitted workspaces determination upon approval:
+      // Approval must save only the workspaces that the administrator actually approved.
+      // It must not blindly copy every requested permission into granted permissions.
+      if (approvalData.permittedWorkspaces && Array.isArray(approvalData.permittedWorkspaces)) {
+        const valid = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        const explicitlyApproved = approvalData.permittedWorkspaces.filter(w => valid.includes(w));
+        // Non-admin cannot receive ADMIN workspace
+        const filtered = user.role === 'ADMIN' ? explicitlyApproved : explicitlyApproved.filter(w => w !== 'ADMIN');
+        if (user.role !== 'ADMIN' && !filtered.includes(user.role)) {
+          filtered.push(user.role);
+        }
+        user.permittedWorkspaces = Array.from(new Set(filtered));
+      } else {
+        // Default to granting ONLY the approved role's workspace
+        if (user.role === 'ADMIN') {
+          user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        } else if (user.role === 'CONTROL_ROOM') {
+          user.permittedWorkspaces = ['CONTROL_ROOM'];
+        } else if (user.role === 'DRIVER') {
+          user.permittedWorkspaces = ['DRIVER'];
+        } else if (user.role === 'PARAMEDIC') {
+          user.permittedWorkspaces = ['PARAMEDIC'];
+        } else {
+          user.permittedWorkspaces = ['CONTROL_ROOM'];
+        }
+      }
+
+      if (approvalData.assignedVehicleId !== undefined) {
+        user.assignedVehicleId = approvalData.assignedVehicleId ? approvalData.assignedVehicleId.trim() : null;
+      }
+    } else if (status === 'REJECTED') {
+      user.permittedWorkspaces = [];
+      user.approvedBy = adminId;
+      user.approvedAt = new Date();
+    } else if (status === 'SUSPENDED') {
+      user.permittedWorkspaces = [];
+    } else if (status === 'PENDING') {
+      user.permittedWorkspaces = [];
     }
 
     await user.save();
@@ -305,7 +386,7 @@ class AdminService {
   /**
    * Update user role and permitted workspaces assignment
    */
-  async updateUserRole(userId, { role, permittedWorkspaces, assignedVehicleId }) {
+  async updateUserRole(userId, { role, permittedWorkspaces, assignedVehicleId }, adminId) {
     if (role && !['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(role)) {
       const error = new Error('Invalid role. Allowed: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC');
       error.status = 400;
@@ -326,13 +407,15 @@ class AdminService {
     }
     if (permittedWorkspaces && Array.isArray(permittedWorkspaces)) {
       const valid = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
-      user.permittedWorkspaces = permittedWorkspaces.filter(w => valid.includes(w));
-      if (role && !user.permittedWorkspaces.includes(role)) {
-        user.permittedWorkspaces.push(role);
+      const sanitized = permittedWorkspaces.filter(w => valid.includes(w));
+      const filtered = user.role === 'ADMIN' ? sanitized : sanitized.filter(w => w !== 'ADMIN');
+      if (user.role !== 'ADMIN' && !filtered.includes(user.role)) {
+        filtered.push(user.role);
       }
+      user.permittedWorkspaces = Array.from(new Set(filtered));
     } else if (role) {
       if (role === 'ADMIN') user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
-      else if (role === 'CONTROL_ROOM') user.permittedWorkspaces = ['CONTROL_ROOM', 'DRIVER'];
+      else if (role === 'CONTROL_ROOM') user.permittedWorkspaces = ['CONTROL_ROOM'];
       else if (role === 'DRIVER') user.permittedWorkspaces = ['DRIVER'];
       else if (role === 'PARAMEDIC') user.permittedWorkspaces = ['PARAMEDIC'];
     }

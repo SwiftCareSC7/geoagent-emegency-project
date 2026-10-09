@@ -21,6 +21,7 @@ import Prediction from '../analysis/prediction.model.js';
 import ClearanceSession from '../clearance/clearance.model.js';
 import realtimeService from '../realtime/realtime.service.js';
 import { CANONICAL_ROAD_CORRIDORS } from '../routes/canonicalRoadCorridors.js';
+import { assertSafeDatabaseTarget } from '../../shared/utils/dbSafety.js';
 
 export const DEMO_SCENARIO_CONFIGS = [
   {
@@ -441,6 +442,7 @@ class DemoService {
    * Complete reset of demo records
    */
   async resetDemoData() {
+    assertSafeDatabaseTarget('resetDemoData');
     await Vehicle.deleteMany({ vehicleId: /^AMB-/ });
     await Emergency.deleteMany({ emergencyId: /^E-DEMO-/ });
     await Incident.deleteMany({ incidentId: /^INC-DEMO-/ });

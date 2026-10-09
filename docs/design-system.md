@@ -1,6 +1,7 @@
 # SwiftCare Tactical Command Design System
 
 ## 1. Design Direction & Ethos
+
 - **Atmosphere:** Calm, precise, trustworthy, operational, rapid to scan, human-centered, and modern.
 - **Philosophy:** Clarity over decoration. Information hierarchy over card count. Recognition over recall.
 - **Anti-patterns Banned:**
@@ -15,6 +16,7 @@
 ## 2. Color Palette & Semantic Roles
 
 ### 2.1 Dark Command Canvas (Primary Operational Mode)
+
 - **Base Canvas:** `#090D16` (Deep Navy-Slate)
 - **Surface Level 1 (Panels & Shell):** `#0F1626`
 - **Surface Level 2 (Cards & Modules):** `#162035`
@@ -26,6 +28,7 @@
 - **Foreground Muted / Telemetry:** `#64748B` (Slate-500)
 
 ### 2.2 Light Operational Canvas (Field Tablet & High-Glare Mode)
+
 - **Base Canvas:** `#F8FAFC` (Slate-50)
 - **Surface Level 1:** `#FFFFFF`
 - **Surface Level 2:** `#F1F5F9` (Slate-100)
@@ -35,6 +38,7 @@
 - **Foreground Secondary:** `#475569` (Slate-600)
 
 ### 2.3 Semantic Operational Accents
+
 - **Command Brand / Accent:** `#0284C7` (Sky-600) / Focus Ring `#38BDF8`
 - **Critical / Emergency Alert:** `#EF4444` (Red-500) | Background `rgba(239, 68, 68, 0.12)`
 - **Warning / Advisory:** `#F59E0B` (Amber-500) | Background `rgba(245, 158, 11, 0.12)`
@@ -42,6 +46,7 @@
 - **Information / Notice:** `#3B82F6` (Blue-500) | Background `rgba(59, 130, 246, 0.12)`
 
 ### 2.4 Canonical Route & Cartographic Palette (Phase 21 Standard)
+
 - **Planned / Active Route:** `#2563EB` (Cobalt Blue, weight 5, opacity 0.9)
 - **Recommended Alternative Route:** `#8B5CF6` (Vibrant Purple, weight 5, opacity 0.85, dashed)
 - **Other Alternative Routes:** `#64748B` (Neutral Slate Gray, weight 4, opacity 0.6)
@@ -51,10 +56,11 @@
 ---
 
 ## 3. Epistemic Status Design System
+
 Every operational metric must display its epistemic classification:
 
 | Status | Visual Styling | Meaning | Examples |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `OBSERVED` | Emerald badge `#10B981`, solid border | Direct hardware/sensor measurement | GPS coordinates, speed, vehicle ping, road incident report |
 | `INFERRED` | Amber badge `#F59E0B`, dashed border | Algorithmically estimated or modeled | Predicted delay, bottleneck cause, ETA, recommended route |
 | `UNKNOWN` | Slate badge `#64748B`, dotted border | Insufficient telemetry to determine | Cause of unmonitored deviation, telemetry lost |
@@ -62,6 +68,7 @@ Every operational metric must display its epistemic classification:
 ---
 
 ## 4. Typography Hierarchy
+
 - **Font Stack Primary:** Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif.
 - **Font Stack Telemetry / Numerics:** "JetBrains Mono", Menlo, Monaco, Consolas, monospace.
 - **Scale:**
@@ -75,6 +82,7 @@ Every operational metric must display its epistemic classification:
 ---
 
 ## 5. Component Standards
+
 1. **AppHeader / DashboardTopbar:**
    - Unified persistent header with brand logo, active role badge, socket connectivity indicator, multi-workspace switcher links, and authenticated user logout.
 2. **MissionAssessmentHUD:**
@@ -101,16 +109,18 @@ Every operational metric must display its epistemic classification:
 ## 6. Role & Account State Design Tokens
 
 ### 6.1 Role Badges
+
 | Role | Badge Color | Border & Glow | Context / Workspace |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `ADMIN` | Purple `#A855F7` | `rgba(168, 85, 247, 0.2)` | `/admin` — System Observability & User Governance |
 | `CONTROL_ROOM` | Sky Blue `#0284C7` | `rgba(2, 132, 199, 0.2)` | `/control-room`, `/emergencies/[id]` — Dispatch HUD |
 | `DRIVER` | Emerald `#10B981` | `rgba(16, 185, 129, 0.2)` | `/driver/dashboard` — Turn-by-Turn Navigation & Telemetry |
 | `PARAMEDIC` | Amber `#F59E0B` | `rgba(245, 158, 11, 0.2)` | `/paramedic` — Pre-Hospital Clinical Vitals & Trauma Bay |
 
 ### 6.2 Account Status Tokens
+
 | State | Badge Styling | Meaning & Action |
-|---|---|---|
+| --- | --- | --- |
 | `APPROVED` | Emerald `#10B981` badge | Active account; unrestricted access to permitted workspaces |
 | `PENDING` | Amber `#F59E0B` pulse badge | Quarantined on signup; awaits Administrator verification |
 | `SUSPENDED` | Red `#EF4444` solid badge | Revoked access; immediately redirects to suspended boundary |
@@ -118,10 +128,10 @@ Every operational metric must display its epistemic classification:
 ---
 
 ## 7. Interactive What-If & Telemetry Map Palette
+
 - **Planned Corridor A (Default):** `#2563EB` (Cobalt Blue, 5px, opacity 0.9)
 - **Deviated Trajectory (Observed):** `#F97316` (Vivid Orange, 4px dashed)
 - **Recommended Alternative B:** `#8B5CF6` (Purple, 5px, opacity 0.95, pulse indicator)
 - **Contingency Alternative C:** `#64748B` (Slate Gray, 4px, opacity 0.6)
 - **Road Hazard / Incident Perimeter:** `#EF4444` (Hazard Red with 15% opacity radial buffer)
 - **V2X Signal Preemption Node:** `#10B981` (Emerald Green halo when preemption active)
-

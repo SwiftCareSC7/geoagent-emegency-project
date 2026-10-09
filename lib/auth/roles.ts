@@ -8,6 +8,7 @@
  * - PARAMEDIC: Confined strictly to clinical vitals and pre-hospital triage
  */
 
+export type { UserRole, Workspace, User } from '@/lib/api/types'
 import type { UserRole, Workspace, User } from '@/lib/api/types'
 
 export const ROLE_CONFIG: Record<
@@ -29,7 +30,7 @@ export const ROLE_CONFIG: Record<
     label: 'Control Room Dispatcher',
     description: 'Central corridor dispatch, incident management, and vehicle monitoring',
     defaultDashboard: '/control-room',
-    allowedPages: ['/control-room', '/driver/dashboard', '/emergencies', '/emergency-lab', '/diff']
+    allowedPages: ['/control-room', '/emergencies', '/emergency-lab', '/diff']
   },
   DRIVER: {
     label: 'Ambulance Driver',
@@ -58,18 +59,19 @@ export function getRoleDashboard(role?: UserRole | null): string {
  * Honors explicit backend permittedWorkspaces, falling back to authoritative role defaults.
  */
 export function getEffectiveWorkspaces(user: User | null): Workspace[] {
-  if (!user) return []
+  if (!user || (user.status && user.status !== 'APPROVED')) return []
   if (user.role === 'ADMIN') return ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC']
   if (user.permittedWorkspaces && Array.isArray(user.permittedWorkspaces) && user.permittedWorkspaces.length > 0) {
-    // Ensure the primary role's core workspace is always included
     const set = new Set<Workspace>(user.permittedWorkspaces)
     if (user.role === 'CONTROL_ROOM') set.add('CONTROL_ROOM')
     if (user.role === 'DRIVER') set.add('DRIVER')
     if (user.role === 'PARAMEDIC') set.add('PARAMEDIC')
+    // Non-admin can never have ADMIN workspace
+    set.delete('ADMIN')
     return Array.from(set)
   }
-  // Role defaults
-  if (user.role === 'CONTROL_ROOM') return ['CONTROL_ROOM', 'DRIVER']
+  // Role defaults (strict isolation per approved policy)
+  if (user.role === 'CONTROL_ROOM') return ['CONTROL_ROOM']
   if (user.role === 'DRIVER') return ['DRIVER']
   if (user.role === 'PARAMEDIC') return ['PARAMEDIC']
   return []
@@ -79,8 +81,9 @@ export function getEffectiveWorkspaces(user: User | null): Workspace[] {
  * Check if a specific workspace is permitted for a user
  */
 export function isWorkspacePermitted(user: User | null, workspace: Workspace): boolean {
-  if (!user) return false
+  if (!user || (user.status && user.status !== 'APPROVED')) return false
   if (user.role === 'ADMIN') return true
+  if (workspace === 'ADMIN') return false
   const workspaces = getEffectiveWorkspaces(user)
   return workspaces.includes(workspace)
 }
@@ -89,22 +92,24 @@ export function isWorkspacePermitted(user: User | null, workspace: Workspace): b
  * Check if a route is allowed for a user considering both role and permitted workspaces
  */
 export function isRouteAllowedForUser(user: User | null, pathname: string): boolean {
-  if (!user) return false
+  if (!user || (user.status && user.status !== 'APPROVED')) return false
   if (user.role === 'ADMIN') return true
 
-  // Check role-based allowed pages first
-  const config = ROLE_CONFIG[user.role]
-  if (config && config.allowedPages.some(allowed => pathname.startsWith(allowed))) {
-    return true
+  // Admin pages require ADMIN role; workspaces alone NEVER grant admin console access
+  if (pathname.startsWith('/admin')) {
+    return false
   }
 
-  // Check permitted workspaces
   const workspaces = getEffectiveWorkspaces(user)
-  for (const ws of workspaces) {
-    if (ws === 'ADMIN' && pathname.startsWith('/admin')) return true
-    if (ws === 'CONTROL_ROOM' && (pathname.startsWith('/control-room') || pathname.startsWith('/diff') || pathname.startsWith('/emergency-lab') || pathname.startsWith('/emergencies'))) return true
-    if (ws === 'DRIVER' && pathname.startsWith('/driver')) return true
-    if (ws === 'PARAMEDIC' && pathname.startsWith('/paramedic')) return true
+
+  if (pathname.startsWith('/control-room') || pathname.startsWith('/diff') || pathname.startsWith('/emergency-lab') || pathname.startsWith('/emergencies')) {
+    return workspaces.includes('CONTROL_ROOM')
+  }
+  if (pathname.startsWith('/driver')) {
+    return workspaces.includes('DRIVER')
+  }
+  if (pathname.startsWith('/paramedic')) {
+    return workspaces.includes('PARAMEDIC')
   }
 
   return false

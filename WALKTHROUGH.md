@@ -11,6 +11,7 @@ This document provides a comprehensive technical walkthrough of the **SwiftCare 
 │  Frontend (Next.js 16 App Router, React 19, TypeScript) │
 │  ├── Landing (/), Login (/login), Register (/registration)│
 │  ├── Control Room 5-Question Mission HUD (/control-room)│
+│  ├── Control Room Multi-Mission Overview (/control-room/overview)│
 │  ├── What-If Route Scenario Simulator (/diff)           │
 │  ├── Driver Dashboard (/driver/dashboard)               │
 │  │   (Operations Feed, Real Interactive Leaflet GIS Map,│
@@ -682,6 +683,18 @@ node server/test-auth-rbac-complete.js
 # Registration & Multi-Workspace Access E2E Test Suite (33 checks)
 node server/test-registration-workspaces-e2e.js
 # Output: 33 PASSED, 0 FAILED
+
+# Targeted RBAC & Realtime Socket Disconnection Suite (23 checks)
+node server/test-targeted-rbac-socket.js
+# Output: 23 PASSED, 0 FAILED
+
+# Database Safety Guard Suite (4 checks)
+node server/test-db-safety.js
+# Output: 4 PASSED, 0 FAILED
+
+# Telemetry TTL Retention Index Suite (3 checks)
+node server/test-telemetry-retention.js
+# Output: 3 PASSED, 0 FAILED
 
 # Full-Stack Auth & RBAC Suite (38 checks)
 node server/test-auth-fullstack.js

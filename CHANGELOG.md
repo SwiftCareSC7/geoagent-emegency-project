@@ -2,6 +2,30 @@
 
 All notable changes to the GeoAgentic Emergency Response System will be documented in this file.
 
+## [2.8.0] - Security Hardening, Database Safety, Telemetry Retention & Multi-Mission Operations
+
+### Added
+- **Sliding-Window Rate Limiting (`server/shared/middleware/rateLimiter.js`)**:
+  - Implemented in-memory sliding-window rate limiters protecting authentication routes (`/api/auth/login`, `/api/auth/register`: 30 requests / 15 minutes) and AI analysis (`/api/geoagent/analyze`: 30 requests / 1 minute).
+  - High-frequency vehicle GPS telemetry endpoints remain unthrottled to avoid operational disruption.
+- **Database Safety Guard (`server/shared/utils/dbSafety.js`)**:
+  - Created `assertSafeDatabaseTarget()` guard preventing destructive database operations (`deleteMany()`, `dropDatabase()`) against MongoDB Atlas (`mongodb+srv://`) or non-test databases unless `ALLOW_PRODUCTION_RESET=true` is explicitly provided.
+  - Integrated into `seed-demo-scenario.js`, `seed-demo-scenarios.js`, and `demo.service.js`.
+- **Automated Telemetry Retention TTL (`server/modules/trajectories/trajectory.model.js`)**:
+  - Added configurable background TTL index on `{ timestamp: 1 }` (`TELEMETRY_RETENTION_DAYS`, default 30 days) with `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }`, ensuring clinical incident records and legal audit trails are permanently preserved.
+- **Real-Time Revocation on Suspension & Ownership Validation**:
+  - Added per-packet Socket.IO middleware (`socket.use(...)`) revalidating user account status in MongoDB; forcibly disconnects (`socket.disconnect(true)`) suspended accounts upon packet receipt.
+  - Added driver vehicle ownership validation to telemetry ingestion (`POST /api/trajectories`) and vehicle routes.
+- **Multi-Emergency Control Room Overview (`/control-room/overview`)**:
+  - Created dedicated multi-emergency operations overview page with real-time status badges, filter chips, and interactive mission queue.
+  - Added Quick-Dispatch Emergency Intake Modal (`CreateEmergencyModal`) integrated with `emergencyApi.create()` and Bengaluru coordinate presets.
+- **Automated Secret Scanning in CI (`.github/workflows/ci.yml`)**:
+  - Integrated Gitleaks GitHub Action to audit commits and pull requests for exposed credentials.
+- **Comprehensive Automated Verification Suites**:
+  - `server/test-db-safety.js`: 4/4 passed.
+  - `server/test-telemetry-retention.js`: 3/3 passed.
+  - `server/test-targeted-rbac-socket.js`: 23/23 passed.
+
 ## [2.7.0] - Production RBAC, Registration Desk, Multi-Workspace Navigation & User Lifecycle Management
 
 ### Added

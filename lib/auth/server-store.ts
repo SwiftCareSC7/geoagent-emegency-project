@@ -7,13 +7,18 @@
  */
 
 import crypto from 'crypto'
-import type { User, UserRole } from '@/lib/api/types'
+import type { User, UserRole, Workspace, UserStatus } from '@/lib/api/types'
 
 export interface ServerUser {
   id: string
   name: string
   email: string
   role: UserRole
+  status?: UserStatus
+  requestedRole?: UserRole
+  requestedWorkspaces?: Workspace[]
+  permittedWorkspaces?: Workspace[]
+  assignedVehicleId?: string | null
   passwordHash: string
   passwords?: string[]
   createdAt: string
@@ -61,14 +66,16 @@ declare global {
 function getInitialUsers(): Map<string, ServerUser> {
   const map = new Map<string, ServerUser>()
 
-  const adminPass = process.env.ADMIN_PASSWORD || 'FzhexDCVDMj7AFb'
-  const adminFallbacks = ['FzhexDCVDMj7AFb', 'AdminPassword123!', adminPass].filter(Boolean)
+  const adminPass = process.env.ADMIN_PASSWORD || 'AdminPassword123!'
+  const adminFallbacks = ['AdminPassword123!', adminPass].filter(Boolean)
 
   const defaultAccounts: Array<{
     id: string
     name: string
     email: string
     role: UserRole
+    status: UserStatus
+    permittedWorkspaces: Workspace[]
     passwords: string[]
   }> = [
     {
@@ -76,6 +83,8 @@ function getInitialUsers(): Map<string, ServerUser> {
       name: 'Priyanshu (Admin)',
       email: 'spec.priyanshu@gmail.com',
       role: 'ADMIN',
+      status: 'APPROVED',
+      permittedWorkspaces: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
       passwords: adminFallbacks,
     },
     {
@@ -83,13 +92,17 @@ function getInitialUsers(): Map<string, ServerUser> {
       name: 'Chief Systems Administrator',
       email: 'admin@swiftcare.local',
       role: 'ADMIN',
-      passwords: ['AdminPassword123!', adminPass],
+      status: 'APPROVED',
+      permittedWorkspaces: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
+      passwords: adminFallbacks,
     },
     {
       id: 'usr_operator_01',
       name: 'Central Control Operator',
       email: 'operator@swiftcare.local',
       role: 'CONTROL_ROOM',
+      status: 'APPROVED',
+      permittedWorkspaces: ['CONTROL_ROOM'],
       passwords: ['Operator123!', process.env.OPERATOR_PASSWORD || 'Operator123!'],
     },
     {
@@ -97,6 +110,8 @@ function getInitialUsers(): Map<string, ServerUser> {
       name: 'Ambulance Officer Ramesh',
       email: 'driver@swiftcare.local',
       role: 'DRIVER',
+      status: 'APPROVED',
+      permittedWorkspaces: ['DRIVER'],
       passwords: ['DriverPassword123!', process.env.DRIVER_PASSWORD || 'DriverPassword123!'],
     },
     {
@@ -104,6 +119,8 @@ function getInitialUsers(): Map<string, ServerUser> {
       name: 'Field Paramedic Officer',
       email: 'paramedic@swiftcare.local',
       role: 'PARAMEDIC',
+      status: 'APPROVED',
+      permittedWorkspaces: ['PARAMEDIC'],
       passwords: ['Paramedic123!', process.env.PARAMEDIC_PASSWORD || 'Paramedic123!'],
     },
   ]
@@ -115,6 +132,8 @@ function getInitialUsers(): Map<string, ServerUser> {
       name: acc.name,
       email: acc.email,
       role: acc.role,
+      status: acc.status,
+      permittedWorkspaces: acc.permittedWorkspaces,
       passwordHash: hashPassword(acc.passwords[0]),
       passwords: acc.passwords,
       createdAt: new Date().toISOString(),
@@ -156,6 +175,11 @@ export function toSafeUser(user: ServerUser): User {
     name: user.name,
     email: user.email,
     role: user.role,
+    status: user.status || 'APPROVED',
+    requestedRole: user.requestedRole,
+    requestedWorkspaces: user.requestedWorkspaces,
+    permittedWorkspaces: user.status !== 'APPROVED' ? [] : (user.permittedWorkspaces || [user.role]),
+    assignedVehicleId: user.assignedVehicleId || null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   }

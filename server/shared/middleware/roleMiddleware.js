@@ -16,3 +16,34 @@ export const requireRole = (...roles) => {
     next();
   };
 };
+
+/**
+ * Workspace-based authorization middleware
+ * Ensures the authenticated user possesses access to at least one of the required workspaces.
+ * ADMIN possesses all workspaces.
+ * Non-admin must have the workspace explicitly in user.permittedWorkspaces.
+ *
+ * @param {...String} workspaces - Allowed workspaces (e.g., 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC')
+ */
+export const requireWorkspace = (...workspaces) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      const error = new Error('Authentication required');
+      error.status = 401;
+      error.isOperational = true;
+      return next(error);
+    }
+    if (req.user.role === 'ADMIN') {
+      return next();
+    }
+    const userWorkspaces = Array.isArray(req.user.permittedWorkspaces) ? req.user.permittedWorkspaces : [];
+    const hasWorkspace = workspaces.some(w => userWorkspaces.includes(w));
+    if (!hasWorkspace) {
+      const error = new Error('Forbidden: Insufficient workspace permissions');
+      error.status = 403;
+      error.isOperational = true;
+      return next(error);
+    }
+    next();
+  };
+};

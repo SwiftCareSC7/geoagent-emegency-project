@@ -14,7 +14,7 @@ All Socket.IO client connections must pass a valid JWT token during the initial 
 import { io } from 'socket.io-client';
 
 // Option A: Passing Bearer Token in Auth Object
-const socket = io('http://localhost:5000', {
+const socket = io('http://localhost:5001', {
   auth: {
     token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
   },
@@ -22,16 +22,16 @@ const socket = io('http://localhost:5000', {
 });
 
 // Option B: Browser Cookie Session (withCredentials)
-const socket = io('http://localhost:5000', {
+const socket = io('http://localhost:5001', {
   withCredentials: true,
   transports: ['websocket', 'polling']
 });
 ```
 
-### Authorization Rules
-- Handshake verifies the user's role.
-- Sockets without a valid JWT or belonging to unrecognized roles (outside `ADMIN`, `CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`) are rejected with `Authentication error`.
-- Sockets with `ADMIN` or `CONTROL_ROOM` automatically join the `control-room` channel upon connect; `DRIVER` and `PARAMEDIC` join designated `vehicle:${vehicleId}` and `emergency:${emergencyId}` channels via `room:join`.
+### Authorization & Revocation Rules
+- **Handshake Validation**: Handshake verifies user identity, role, and approval status (`status === 'APPROVED'`). Sockets without valid JWTs or for pending/suspended accounts are rejected immediately.
+- **Per-Packet Revalidation**: Sockets are protected with middleware (`socket.use(...)`) re-verifying user account status in MongoDB. If an administrator suspends or revokes access while a socket is connected, the connection is forcibly terminated (`disconnect(true)`) on its next event.
+- **Room Join Authorization**: Sockets with `ADMIN` or `CONTROL_ROOM` may join global `control-room` fleet feeds. `DRIVER` accounts are restricted to their assigned vehicle room (`vehicle:${assignedVehicleId}`); unauthorized room join requests are rejected.
 
 ---
 

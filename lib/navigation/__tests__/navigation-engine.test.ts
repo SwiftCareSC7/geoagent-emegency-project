@@ -20,6 +20,9 @@ import {
   extractStreetName,
   normalizeRouteResponse
 } from '../adapter'
+import { test, expect } from '@playwright/test'
+
+const describe = test.describe
 
 describe('Geospatial Geometry & Coordinate Safety', () => {
   test('Coordinate inversion safety: toLatLng and toLngLat', () => {

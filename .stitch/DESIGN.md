@@ -278,7 +278,7 @@ The brand personality is **dependable, precise, and high-stakes**. Surfaces are 
 ### Primary Foundation
 
 | Token | Light | Dark | Role |
-|:---|:---|:---|:---|
+| :--- | :--- | :--- | :--- |
 | **Ice Command Canvas** (`background`) | `#f5f8fc` | `#090d16` | App/page background |
 | **Command Navy** (`navy` / tertiary) | `#15243a` | `#090d16` | Brand depth, hero overlays, modal scrims |
 | **Surface White / Panel** (`surface` / `card`) | `#ffffff` | `#0f1626` | Cards, panels, popovers |
@@ -288,7 +288,7 @@ The brand personality is **dependable, precise, and high-stakes**. Surfaces are 
 ### Accent & Interactive
 
 | Token | Light | Dark | Role |
-|:---|:---|:---|:---|
+| :--- | :--- | :--- | :--- |
 | **Operational Blue** (`primary`) | `#1769aa` | `#0ea5e9` | Primary buttons, links, selected tabs, focus companion |
 | **Signal Ring** (`ring`) | `#3184c2` | `#38bdf8` | Focus rings |
 | **Secondary Mist** (`secondary`) | `#eaf1f8` | `#162035` | Secondary buttons, soft fills |
@@ -296,7 +296,7 @@ The brand personality is **dependable, precise, and high-stakes**. Surfaces are 
 ### Typography & Text Hierarchy
 
 | Token | Light | Dark | Role |
-|:---|:---|:---|:---|
+| :--- | :--- | :--- | :--- |
 | **Ink** (`on-background` / `foreground`) | `#15243a` | `#f8fafc` | Primary text |
 | **Card Ink** (`on-card`) | `#0f172a` | `#f8fafc` | Text on cards |
 | **Slate Caption** (`muted-foreground`) | `#60738a` | `#94a3b8` | Secondary/meta text |
@@ -306,7 +306,7 @@ The brand personality is **dependable, precise, and high-stakes**. Surfaces are 
 ### Functional States (severity)
 
 | Token | Light | Dark | Role |
-|:---|:---|:---|:---|
+| :--- | :--- | :--- | :--- |
 | **Critical Red** (`critical` / `destructive` / `error`) | `#dc2626` | `#ef4444` | Emergency active, incidents, destructive actions |
 | **Caution Amber** (`warning`) | `#d97706` | `#f59e0b` | Delay risk, degraded conditions |
 | **Clear Emerald** (`success`) | `#059669` | `#10b981` | Standby, accept-reroute, live/online, clearance complete |
@@ -318,7 +318,7 @@ Status UI **must** pair color with text/icon labels (never color alone).
 These colors are shared across map polylines, legends, badges, and comparison panels. They are the only intentional “extra” palette beyond UI chrome:
 
 | Meaning | Hex | Style |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | **Planned / Active Corridor** (`route-planned`) | `#2563eb` | Solid, heavier stroke |
 | **Recommended Alternative** (`route-recommended`) | `#8b5cf6` | Dashed |
 | **Other Alternatives** (`route-alternative`) | `#64748b` | Lighter / secondary |
@@ -338,7 +338,7 @@ Do not introduce page-local cyan, indigo, rose, teal, or zinc scales for product
 ### Families
 
 | Role | Family | Character |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | **Display / headlines** | **Plus Jakarta Sans** (`font-display`) | Confident, rounded geometric; used for page titles, stats, hero |
 | **UI / body** | **Inter** (`font-sans`) | High x-height operational reading |
 | **Data / caps labels** | **JetBrains Mono** (`font-mono`) | IDs, ETA, timestamps, corridor badges, uppercase status |
@@ -374,7 +374,7 @@ Card padding default **16px**; larger operational panels **20–24px**. Page gut
 Base `--radius: 0.75rem` (12px). Derived:
 
 | Use | Radius |
-|:---|:---|
+| :--- | :--- |
 | Buttons (default) | `rounded-lg` (~12px) |
 | Inputs | `rounded-xl` (~16px) |
 | Cards / panels | `rounded-xl` to `rounded-2xl` |
@@ -398,7 +398,7 @@ Prefer border + surface shift over heavy drop shadows. No neon glow as decoratio
 ## 5. Surfaces
 
 | Layer | Treatment |
-|:---|:---|
+| :--- | :--- |
 | **Page** | `bg-background text-foreground` |
 | **Card / panel** | `bg-card border border-border rounded-2xl` + quiet shadow |
 | **Nested item** | `bg-background/50` or `surface-raised` inside card |
@@ -415,7 +415,7 @@ Dark mode Leaflet tiles use inverted tactical basemap styling; keep overlay chro
 ### Buttons (shadcn)
 
 | Variant | Look | Use |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | **default** | Solid Operational Blue, white label | Primary actions |
 | **secondary** | Soft mist fill | Supporting actions |
 | **outline** | Border + transparent/background | Cancel, secondary |
@@ -496,7 +496,7 @@ Affirmative life-saving accepts (e.g. “Follow New Route”) may use **success*
 ## 8. Emergency UI Patterns
 
 | Pattern | Treatment |
-|:---|:---|
+| :--- | :--- |
 | **Emergency Active** | Critical pill + icon; never silent color-only |
 | **Standby / Clear** | Success pill + dot |
 | **Reroute recommendation** | High-emphasis alert; success CTA to accept; outline to dismiss |
@@ -512,7 +512,7 @@ Keep urgency in **status components**, not in vibrating backgrounds or continuou
 ## 9. Light Theme & Dark Theme
 
 | Concern | Light | Dark |
-|:---|:---|:---|
+| :--- | :--- | :--- |
 | Mood | Professional clinical white-blue | Tactical navy command center |
 | Primary interactivity | Deeper blue `#1769aa` | Brighter sky `#0ea5e9` |
 | Borders | Cool gray-blue solid | Low-opacity white |
@@ -592,7 +592,7 @@ When evolving the UI: **update this file first**, then regenerate Stitch screens
 ### Implementation binding
 
 | Concern | Bind to |
-|:---|:---|
+| :--- | :--- |
 | CSS variables | `app/globals.css` |
 | Components | `components/ui/*` (shadcn New York) |
 | Route colors | `lib/routing-constants.ts` |

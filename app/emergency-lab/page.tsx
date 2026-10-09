@@ -680,7 +680,7 @@ export default function EmergencyLabPage() {
               </div>
 
               {/* Scenario Scrollable List */}
-              <div className="space-y-2 max-h-[440px] overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-110 overflow-y-auto pr-1">
                 {filteredScenarios.map((sc) => {
                   const isSelected = selectedScenario.id === sc.id
                   return (

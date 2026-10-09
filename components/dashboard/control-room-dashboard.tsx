@@ -68,13 +68,26 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
   const [activeTab, setActiveTab] = useState<'operations' | 'telemetry'>('operations')
 
   // Live Backend State (Resilient with Canonical Demo Fallbacks)
-  const [vehicles, setVehicles] = useState<Vehicle[]>(DEMO_VEHICLES)
-  const [emergencies, setEmergencies] = useState<Emergency[]>(DEMO_EMERGENCIES)
-  const [incidents, setIncidents] = useState<Incident[]>(DEMO_INCIDENTS)
-  const [selectedEmergencyId, setSelectedEmergencyId] = useState<string | null>('E-DEMO-001')
-  const [loadingLive, setLoadingLive] = useState<boolean>(false)
+  const [vehicles, setVehicles] = useState<Vehicle[]>(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') return []
+    return DEMO_VEHICLES
+  })
+  const [emergencies, setEmergencies] = useState<Emergency[]>(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') return []
+    return DEMO_EMERGENCIES
+  })
+  const [incidents, setIncidents] = useState<Incident[]>(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') return []
+    return DEMO_INCIDENTS
+  })
+  const [selectedEmergencyId, setSelectedEmergencyId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') return null
+    return 'E-DEMO-001'
+  })
+  const [loadingLive, setLoadingLive] = useState<boolean>(true)
   const [liveError, setLiveError] = useState<string | null>(null)
   const [isLiveStream, setIsLiveStream] = useState<boolean>(false)
+  const [isSimulated, setIsSimulated] = useState<boolean>(() => process.env.NODE_ENV !== 'production')
 
   // Route & UI State
   const [lastRefreshed, setLastRefreshed] = useState(() => formatTime(new Date()))
@@ -112,7 +125,7 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
     if (eRes.status === 'fulfilled' && eRes.value.data && eRes.value.data.length > 0) {
       const emgList = eRes.value.data
       setEmergencies(emgList)
-      setSelectedEmergencyId((prev) => prev || (emgList.length > 0 ? emgList[0].emergencyId : 'E-DEMO-001'))
+      setSelectedEmergencyId((prev) => prev || (emgList.length > 0 ? emgList[0].emergencyId : null))
       backendLive = true
     }
 
@@ -123,14 +136,28 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
 
     if (backendLive) {
       setIsLiveStream(true)
+      setIsSimulated(false)
       setLiveError(null)
     } else {
       setIsLiveStream(false)
-      setLiveError(null)
-      setVehicles((prev) => (prev.length > 0 ? prev : DEMO_VEHICLES))
-      setEmergencies((prev) => (prev.length > 0 ? prev : DEMO_EMERGENCIES))
-      setIncidents((prev) => (prev.length > 0 ? prev : DEMO_INCIDENTS))
-      setSelectedEmergencyId((prev) => prev || 'E-DEMO-001')
+      const isProd = process.env.NODE_ENV === 'production'
+      if (isProd) {
+        // In production: NEVER silently substitute missing operational data with mock records
+        setIsSimulated(false)
+        setVehicles([])
+        setEmergencies([])
+        setIncidents([])
+        setSelectedEmergencyId(null)
+        setLiveError('No active operational emergencies in production database. Stream is idle.')
+      } else {
+        // In development/demo: use canonical demo fixtures, but mark explicitly as simulated
+        setIsSimulated(true)
+        setLiveError(null)
+        setVehicles((prev) => (prev.length > 0 && !prev.every(v => v.vehicleId.startsWith('DEMO-') || v.vehicleId === 'AMB-01') ? prev : DEMO_VEHICLES))
+        setEmergencies((prev) => (prev.length > 0 && !prev.every(e => e.emergencyId.startsWith('E-DEMO-')) ? prev : DEMO_EMERGENCIES))
+        setIncidents((prev) => (prev.length > 0 ? prev : DEMO_INCIDENTS))
+        setSelectedEmergencyId((prev) => prev || 'E-DEMO-001')
+      }
     }
 
     setLoadingLive(false)
@@ -392,12 +419,24 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
               <span>Corridor Telemetry & Mock Data</span>
               <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.2 text-[10px] font-mono text-emerald-400">AMB-01</span>
             </button>
+            <Link
+              href="/control-room/overview"
+              className="inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground transition-all"
+            >
+              <Layers className="size-3.5 text-rose-500" />
+              <span>Multi-Mission Overview</span>
+            </Link>
           </div>
 
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono border border-border bg-card shadow-xs">
-              {socketConnected ? (
+              {isSimulated ? (
+                <span className="flex items-center gap-1.5 text-amber-500 font-bold">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span>SIMULATED {socketConnected ? '(STREAM READY)' : '(OFFLINE)'}</span>
+                </span>
+              ) : socketConnected ? (
                 <span className="flex items-center gap-1.5 text-emerald-500 font-bold">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
                   <span>CONTROL STREAM LIVE</span>
@@ -408,9 +447,9 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
                   <span>POLLING LIVE API</span>
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 text-sky-400 font-semibold">
-                  <span className="h-2 w-2 rounded-full bg-sky-400" />
-                  <span>DEMO SIMULATION CORRIDOR</span>
+                <span className="flex items-center gap-1.5 text-muted-foreground font-semibold">
+                  <span className="h-2 w-2 rounded-full bg-muted-foreground" />
+                  <span>STANDBY (NO DISPATCHES)</span>
                 </span>
               )}
             </div>
@@ -463,6 +502,28 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
             </span>
           </div>
         </div>
+
+        {/* Simulation Environment Notice Banner */}
+        {isSimulated && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-800 dark:text-amber-200">
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                <AlertCircle className="size-4" />
+              </span>
+              <div>
+                <p className="font-bold">
+                  SIMULATED / OFFLINE DEMO CORRIDOR ACTIVE
+                </p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                  Data shown ({selectedEmergencyId || 'E-DEMO-001'}) is generated simulation telemetry. Real-world emergency actuator dispatches are disabled in demo mode.
+                </p>
+              </div>
+            </div>
+            <span className="rounded-md border border-amber-500/30 bg-amber-500/20 px-2.5 py-1 font-mono text-[11px] font-bold tracking-wide text-amber-700 dark:text-amber-300">
+              SIMULATED TELEMETRY
+            </span>
+          </div>
+        )}
 
         {/* Global Live Error Banner */}
         {liveError ? (

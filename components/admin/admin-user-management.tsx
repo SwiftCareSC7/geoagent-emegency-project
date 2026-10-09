@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 
 import { adminApi } from '@/lib/api/admin'
+import { useAuth } from '@/lib/auth/context'
 import type { User, UserRole, UserStatus, Workspace } from '@/lib/api/types'
 import { getEffectiveWorkspaces } from '@/lib/auth/roles'
 import { Button } from '@/components/ui/button'
@@ -30,6 +31,7 @@ const ROLES: UserRole[] = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC']
 const WORKSPACE_OPTIONS: Workspace[] = ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN']
 
 export function AdminUserManagement() {
+  const { user: currentUser } = useAuth()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -62,15 +64,29 @@ export function AdminUserManagement() {
     loadUsers()
   }, [loadUsers])
 
-  const handleApprove = async (userId: string) => {
+  const handleApprove = async (userId: string, options?: { role?: UserRole; permittedWorkspaces?: Workspace[]; assignedVehicleId?: string }) => {
     setActionLoadingId(userId)
     setFeedback(null)
     try {
-      await adminApi.approveUser(userId)
+      await adminApi.approveUser(userId, options)
       setFeedback({ message: 'User registration approved successfully.', type: 'success' })
       await loadUsers()
     } catch (err: any) {
       setFeedback({ message: err?.message || 'Approval failed.', type: 'error' })
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleReject = async (userId: string) => {
+    setActionLoadingId(userId)
+    setFeedback(null)
+    try {
+      await adminApi.rejectUser(userId)
+      setFeedback({ message: 'User registration rejected.', type: 'success' })
+      await loadUsers()
+    } catch (err: any) {
+      setFeedback({ message: err?.message || 'Rejection failed.', type: 'error' })
     } finally {
       setActionLoadingId(null)
     }
@@ -144,7 +160,8 @@ export function AdminUserManagement() {
     total: users.length,
     pending: users.filter(u => u.status === 'PENDING').length,
     approved: users.filter(u => !u.status || u.status === 'APPROVED').length,
-    suspended: users.filter(u => u.status === 'SUSPENDED').length
+    suspended: users.filter(u => u.status === 'SUSPENDED').length,
+    rejected: users.filter(u => u.status === 'REJECTED').length
   }
 
   return (
@@ -181,11 +198,11 @@ export function AdminUserManagement() {
 
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
           <div className="flex items-center justify-between text-rose-600 dark:text-rose-400">
-            <span className="text-xs font-semibold">Suspended</span>
+            <span className="text-xs font-semibold">Suspended / Rejected</span>
             <UserX className="size-4" />
           </div>
           <p className="mt-2 text-2xl font-bold tracking-tight text-rose-600 dark:text-rose-400">
-            {counts.suspended}
+            {counts.suspended + counts.rejected}
           </p>
         </div>
       </div>
@@ -240,6 +257,7 @@ export function AdminUserManagement() {
             <option value="PENDING">Pending Only</option>
             <option value="APPROVED">Approved Only</option>
             <option value="SUSPENDED">Suspended Only</option>
+            <option value="REJECTED">Rejected Only</option>
           </select>
 
           {/* Role Filter */}
@@ -300,19 +318,28 @@ export function AdminUserManagement() {
                   const status = u.status || 'APPROVED'
                   const isPending = status === 'PENDING'
                   const isSuspended = status === 'SUSPENDED'
+                  const isRejected = status === 'REJECTED'
                   const isActing = actionLoadingId === u.id
+                  const isSelf = !!(currentUser && (currentUser.id === u.id || (currentUser as any)._id === u.id))
                   const effectiveWorkspaces = getEffectiveWorkspaces(u)
 
                   return (
                     <tr
                       key={u.id}
                       className={`transition-colors hover:bg-muted/30 ${
-                        isPending ? 'bg-amber-500/[0.03]' : ''
+                        isPending ? 'bg-amber-500/3' : isRejected ? 'bg-destructive/5' : ''
                       }`}
                     >
                       {/* Name / Email */}
                       <td className="px-4 py-3">
-                        <div className="font-semibold text-foreground text-sm">{u.name}</div>
+                        <div className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                          <span>{u.name}</span>
+                          {isSelf && (
+                            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded font-mono font-normal">
+                              You
+                            </span>
+                          )}
+                        </div>
                         <div className="font-mono text-[11px] text-muted-foreground">{u.email}</div>
                         {u.requestedRole && u.requestedRole !== u.role && (
                           <div className="text-[10px] text-amber-500 font-mono mt-0.5">
@@ -336,7 +363,7 @@ export function AdminUserManagement() {
                         <div className="space-y-1.5">
                           <select
                             value={u.role}
-                            disabled={isActing}
+                            disabled={isActing || isSelf}
                             onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
                             className="rounded-lg border border-input bg-background/90 px-2 py-1 text-xs font-semibold text-foreground focus:border-primary focus:outline-none"
                           >
@@ -353,7 +380,7 @@ export function AdminUserManagement() {
                                 <button
                                   key={ws}
                                   type="button"
-                                  disabled={isActing}
+                                  disabled={isActing || isSelf}
                                   onClick={() => handleWorkspaceToggle(u.id, u.role, effectiveWorkspaces, ws)}
                                   className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-all ${
                                     isGranted
@@ -377,7 +404,7 @@ export function AdminUserManagement() {
                             type="text"
                             defaultValue={u.assignedVehicleId || ''}
                             placeholder="AMB-01"
-                            disabled={isActing}
+                            disabled={isActing || isSelf}
                             onBlur={(e) => {
                               if (e.target.value !== (u.assignedVehicleId || '')) {
                                 handleVehicleChange(u.id, e.target.value)
@@ -398,7 +425,7 @@ export function AdminUserManagement() {
                             PENDING
                           </span>
                         )}
-                        {!isPending && !isSuspended && (
+                        {!isPending && !isSuspended && !isRejected && (
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-500">
                             <CheckCircle2 className="size-3" />
                             APPROVED
@@ -410,38 +437,58 @@ export function AdminUserManagement() {
                             SUSPENDED
                           </span>
                         )}
+                        {isRejected && (
+                          <span className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/10 px-2.5 py-0.5 text-[10px] font-bold text-destructive">
+                            <UserX className="size-3" />
+                            REJECTED
+                          </span>
+                        )}
                       </td>
 
                       {/* Actions */}
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {isPending && (
-                            <Button
-                              size="sm"
-                              disabled={isActing}
-                              onClick={() => handleApprove(u.id)}
-                              className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-7 px-2.5"
-                            >
-                              <Check className="size-3" />
-                              Approve
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                disabled={isActing || isSelf}
+                                onClick={() => handleApprove(u.id)}
+                                className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-7 px-2.5"
+                              >
+                                <Check className="size-3" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isActing || isSelf}
+                                onClick={() => handleReject(u.id)}
+                                className="gap-1 border-destructive/40 text-destructive hover:bg-destructive/10 font-semibold text-xs h-7 px-2"
+                              >
+                                <X className="size-3" />
+                                Reject
+                              </Button>
+                            </>
                           )}
 
-                          {!isSuspended ? (
+                          {!isPending && !isSuspended && !isRejected && (
                             <Button
                               variant="outline"
                               size="sm"
-                              disabled={isActing}
+                              disabled={isActing || isSelf}
                               onClick={() => handleSuspend(u.id)}
                               className="border-destructive/30 text-destructive hover:bg-destructive/10 text-xs h-7 px-2.5"
                             >
                               Suspend
                             </Button>
-                          ) : (
+                          )}
+
+                          {(isSuspended || isRejected) && (
                             <Button
                               variant="outline"
                               size="sm"
-                              disabled={isActing}
+                              disabled={isActing || isSelf}
                               onClick={() => handleApprove(u.id)}
                               className="border-emerald-500/30 text-emerald-500 hover:bg-emerald-500/10 text-xs h-7 px-2.5"
                             >

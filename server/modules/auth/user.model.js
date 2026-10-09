@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema(
     },
     requestedRole: {
       type: String,
-      enum: ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN'],
+      enum: ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
       default: 'CONTROL_ROOM'
     },
     requestedWorkspaces: {
@@ -35,11 +35,11 @@ const userSchema = new mongoose.Schema(
     permittedWorkspaces: {
       type: [String],
       enum: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
-      default: ['CONTROL_ROOM']
+      default: []
     },
     status: {
       type: String,
-      enum: ['PENDING', 'APPROVED', 'SUSPENDED'],
+      enum: ['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED'],
       default: 'PENDING'
     },
     approvedBy: {
@@ -80,11 +80,13 @@ userSchema.methods.toSafeObject = function() {
     obj.status = 'APPROVED';
   }
   // Authoritative fallback for permitted workspaces
-  if (!obj.permittedWorkspaces || obj.permittedWorkspaces.length === 0) {
+  if (obj.status !== 'APPROVED') {
+    obj.permittedWorkspaces = [];
+  } else if (!obj.permittedWorkspaces || obj.permittedWorkspaces.length === 0) {
     if (obj.role === 'ADMIN') {
       obj.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
     } else if (obj.role === 'CONTROL_ROOM') {
-      obj.permittedWorkspaces = ['CONTROL_ROOM', 'DRIVER'];
+      obj.permittedWorkspaces = ['CONTROL_ROOM'];
     } else if (obj.role === 'DRIVER') {
       obj.permittedWorkspaces = ['DRIVER'];
     } else if (obj.role === 'PARAMEDIC') {

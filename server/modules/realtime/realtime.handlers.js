@@ -70,15 +70,11 @@ export const socketAuthMiddleware = async (socket, next) => {
       return next(error);
     }
 
-    // Status check: Block suspended or pending users
-    if (user.status === 'SUSPENDED') {
-      const error = new Error('Authentication error: Account has been suspended');
-      error.data = { code: 'ACCOUNT_SUSPENDED' };
-      return next(error);
-    }
-    if (user.status === 'PENDING') {
-      const error = new Error('Authentication error: Account registration pending administrator approval');
-      error.data = { code: 'ACCOUNT_PENDING' };
+    // Status check: Only allow APPROVED accounts (backward compatible default for legacy/mock accounts)
+    const effectiveStatus = user.status || 'APPROVED';
+    if (effectiveStatus !== 'APPROVED') {
+      const error = new Error(`Authentication error: Account status is ${effectiveStatus}`);
+      error.data = { code: effectiveStatus === 'SUSPENDED' ? 'ACCOUNT_SUSPENDED' : effectiveStatus === 'REJECTED' ? 'ACCOUNT_REJECTED' : 'ACCOUNT_PENDING' };
       return next(error);
     }
 
@@ -112,6 +108,27 @@ export const socketAuthMiddleware = async (socket, next) => {
  * @param {Object} socket Connected Socket.IO socket instance
  */
 export const registerSocketHandlers = (socket) => {
+  // Per-packet authorization middleware: revalidate live account status and permissions on each event
+  socket.use(async (packet, next) => {
+    try {
+      if (!socket.user?.id) return next(new Error('Unauthenticated socket'));
+      const freshUser = await User.findById(socket.user.id).select('status permittedWorkspaces assignedVehicleId role');
+      const freshStatus = freshUser?.status || 'APPROVED';
+      if (!freshUser || freshStatus !== 'APPROVED') {
+        socket.emit('error', { message: 'Session revoked or account suspended' });
+        socket.disconnect(true);
+        return next(new Error('Account not approved or suspended'));
+      }
+      // Re-sync socket permissions with live database state
+      socket.user.permittedWorkspaces = freshUser.permittedWorkspaces || [];
+      socket.user.role = freshUser.role;
+      socket.user.assignedVehicleId = freshUser.assignedVehicleId || null;
+      next();
+    } catch (err) {
+      next(err);
+    }
+  });
+
   const permitted = socket.user?.permittedWorkspaces || [socket.user?.role];
 
   // Automatically join control room if user has CONTROL_ROOM or ADMIN workspace
@@ -125,42 +142,44 @@ export const registerSocketHandlers = (socket) => {
       const room = typeof data === 'string' ? data : data?.room;
       if (!room || typeof room !== 'string') return;
 
+      const currentPermitted = socket.user?.permittedWorkspaces || [];
+
       if (room === REALTIME_ROOMS.CONTROL_ROOM) {
-        if (!permitted.includes('CONTROL_ROOM') && !permitted.includes('ADMIN')) {
-          if (callback) callback({ success: false, message: 'Forbidden: Insufficient privileges' });
+        if (!currentPermitted.includes('CONTROL_ROOM') && !currentPermitted.includes('ADMIN')) {
+          if (typeof callback === 'function') callback({ success: false, message: 'Forbidden: Insufficient privileges' });
           return;
         }
         socket.join(room);
-        if (callback) callback({ success: true, room });
+        if (typeof callback === 'function') callback({ success: true, room });
         socket.emit('joined', { room });
       } else if (room.startsWith('emergency:')) {
         const emergencyId = room.replace('emergency:', '');
         const emergency = await Emergency.findOne({ emergencyId, isDeleted: false });
         if (emergency) {
           socket.join(room);
-          if (callback) callback({ success: true, room });
+          if (typeof callback === 'function') callback({ success: true, room });
           socket.emit('joined', { room });
         } else {
-          if (callback) callback({ success: false, message: 'Emergency not found' });
+          if (typeof callback === 'function') callback({ success: false, message: 'Emergency not found' });
         }
       } else if (room.startsWith('vehicle:')) {
         const vehicleId = room.replace('vehicle:', '');
         // Resource ownership check: DRIVER can only subscribe to assigned vehicle
         if (socket.user?.role === 'DRIVER' && socket.user?.assignedVehicleId && socket.user.assignedVehicleId !== vehicleId) {
-          if (callback) callback({ success: false, message: 'Forbidden: Drivers can only subscribe to assigned vehicle' });
+          if (typeof callback === 'function') callback({ success: false, message: 'Forbidden: Drivers can only subscribe to assigned vehicle' });
           return;
         }
         const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
         if (vehicle) {
           socket.join(room);
-          if (callback) callback({ success: true, room });
+          if (typeof callback === 'function') callback({ success: true, room });
           socket.emit('joined', { room });
         } else {
-          if (callback) callback({ success: false, message: 'Vehicle not found' });
+          if (typeof callback === 'function') callback({ success: false, message: 'Vehicle not found' });
         }
       }
     } catch (err) {
-      if (callback) callback({ success: false, message: err.message });
+      if (typeof callback === 'function') callback({ success: false, message: err.message });
     }
   });
 
@@ -169,14 +188,21 @@ export const registerSocketHandlers = (socket) => {
     const room = typeof data === 'string' ? data : data?.room;
     if (room && typeof room === 'string') {
       socket.leave(room);
-      if (callback) callback({ success: true, room });
+      if (typeof callback === 'function') callback({ success: true, room });
       socket.emit('left', { room });
     }
   });
 
-  // Client command: Join control room
-  socket.on(CLIENT_COMMANDS.JOIN_CONTROL_ROOM, () => {
+  // Client command: Join control room (strictly enforce workspace authorization)
+  socket.on(CLIENT_COMMANDS.JOIN_CONTROL_ROOM, (data, callback) => {
+    const cb = typeof data === 'function' ? data : (typeof callback === 'function' ? callback : null);
+    const currentPermitted = socket.user?.permittedWorkspaces || [];
+    if (!currentPermitted.includes('CONTROL_ROOM') && !currentPermitted.includes('ADMIN')) {
+      if (cb) cb({ success: false, message: 'Forbidden: Insufficient privileges' });
+      return socket.emit('error', { message: 'Forbidden: Insufficient privileges for control room' });
+    }
     socket.join(REALTIME_ROOMS.CONTROL_ROOM);
+    if (cb) cb({ success: true, room: REALTIME_ROOMS.CONTROL_ROOM });
     socket.emit('joined', { room: REALTIME_ROOMS.CONTROL_ROOM });
   });
 
@@ -188,65 +214,75 @@ export const registerSocketHandlers = (socket) => {
 
   // Client command: Join emergency room
   socket.on(CLIENT_COMMANDS.JOIN_EMERGENCY, async (data, callback) => {
+    const cb = typeof data === 'function' ? data : (typeof callback === 'function' ? callback : null);
     try {
-      const emergencyId = typeof data === 'string' ? data : (data && data.emergencyId);
+      const emergencyId = typeof data === 'string' ? data : (data && typeof data === 'object' && data.emergencyId);
       if (!emergencyId) {
         const errorMsg = 'Invalid emergencyId provided';
-        if (callback) callback({ success: false, message: errorMsg });
+        if (cb) cb({ success: false, message: errorMsg });
         return socket.emit('error', { message: errorMsg });
       }
 
       const emergency = await Emergency.findOne({ emergencyId, isDeleted: false });
       if (!emergency) {
         const errorMsg = 'Emergency not found';
-        if (callback) callback({ success: false, message: errorMsg });
+        if (cb) cb({ success: false, message: errorMsg });
         return socket.emit('error', { message: errorMsg });
       }
 
       const roomName = REALTIME_ROOMS.emergency(emergencyId);
       socket.join(roomName);
-      if (callback) callback({ success: true, room: roomName });
+      if (cb) cb({ success: true, room: roomName });
       socket.emit('joined', { room: roomName });
     } catch (err) {
-      if (callback) callback({ success: false, message: err.message });
+      if (cb) cb({ success: false, message: err.message });
       socket.emit('error', { message: 'Failed to join emergency room' });
     }
   });
 
   // Client command: Leave emergency room
   socket.on(CLIENT_COMMANDS.LEAVE_EMERGENCY, (data, callback) => {
-    const emergencyId = typeof data === 'string' ? data : (data && data.emergencyId);
+    const cb = typeof data === 'function' ? data : (typeof callback === 'function' ? callback : null);
+    const emergencyId = typeof data === 'string' ? data : (data && typeof data === 'object' && data.emergencyId);
     if (emergencyId) {
       const roomName = REALTIME_ROOMS.emergency(emergencyId);
       socket.leave(roomName);
-      if (callback) callback({ success: true, room: roomName });
+      if (cb) cb({ success: true, room: roomName });
       socket.emit('left', { room: roomName });
     }
   });
 
-  // Client command: Join vehicle room
+  // Client command: Join vehicle room (enforces driver vehicle ownership)
   socket.on(CLIENT_COMMANDS.JOIN_VEHICLE, async (data, callback) => {
+    const cb = typeof data === 'function' ? data : (typeof callback === 'function' ? callback : null);
     try {
-      const vehicleId = typeof data === 'string' ? data : (data && data.vehicleId);
+      const vehicleId = typeof data === 'string' ? data : (data && typeof data === 'object' && data.vehicleId);
       if (!vehicleId) {
         const errorMsg = 'Invalid vehicleId provided';
-        if (callback) callback({ success: false, message: errorMsg });
+        if (cb) cb({ success: false, message: errorMsg });
+        return socket.emit('error', { message: errorMsg });
+      }
+
+      // Resource ownership check: DRIVER can only subscribe to assigned vehicle
+      if (socket.user?.role === 'DRIVER' && socket.user?.assignedVehicleId && socket.user.assignedVehicleId !== vehicleId) {
+        const errorMsg = 'Forbidden: Drivers can only subscribe to assigned vehicle';
+        if (cb) cb({ success: false, message: errorMsg });
         return socket.emit('error', { message: errorMsg });
       }
 
       const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
       if (!vehicle) {
         const errorMsg = 'Vehicle not found';
-        if (callback) callback({ success: false, message: errorMsg });
+        if (cb) cb({ success: false, message: errorMsg });
         return socket.emit('error', { message: errorMsg });
       }
 
       const roomName = REALTIME_ROOMS.vehicle(vehicleId);
       socket.join(roomName);
-      if (callback) callback({ success: true, room: roomName });
+      if (cb) cb({ success: true, room: roomName });
       socket.emit('joined', { room: roomName });
     } catch (err) {
-      if (callback) callback({ success: false, message: err.message });
+      if (cb) cb({ success: false, message: err.message });
       socket.emit('error', { message: 'Failed to join vehicle room' });
     }
   });

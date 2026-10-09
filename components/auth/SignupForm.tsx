@@ -34,13 +34,6 @@ const AVAILABLE_ROLES: {
   icon: React.ComponentType<{ className?: string }>
 }[] = [
   {
-    role: 'ADMIN',
-    name: 'Admin',
-    label: 'Systems Administrator',
-    description: 'System administration, telemetry, user approvals and full system oversight',
-    icon: Shield
-  },
-  {
     role: 'CONTROL_ROOM',
     name: 'Control',
     label: 'Control Room Dispatcher',
@@ -68,11 +61,6 @@ const AVAILABLE_WORKSPACES: {
   label: string
   description: string
 }[] = [
-  {
-    workspace: 'ADMIN',
-    label: 'Admin Console & Observability',
-    description: 'System telemetry, fleet health & user management'
-  },
   {
     workspace: 'CONTROL_ROOM',
     label: 'Control Room Dispatch',
@@ -326,7 +314,7 @@ export function SignupForm() {
                   <label className="text-xs font-semibold text-foreground">
                     Primary Operational Role Requested
                   </label>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {AVAILABLE_ROLES.map((r) => {
                       const Icon = r.icon
                       const isSelected = selectedRole === r.role

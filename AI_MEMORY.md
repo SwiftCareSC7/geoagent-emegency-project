@@ -28,7 +28,7 @@ The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intellig
 - **Security**: `bcryptjs` (salt rounds: 12), `jsonwebtoken`, `helmet`, `cors`, `cookie-parser`
 - **Geospatial Processing**: `@turf/turf` (v7.4+, WGS84, GeoJSON Point & LineString)
 - **AI Decision Support**: OpenAI-compatible HTTP fetch over catalog-verified free models (OpenRouter / OpenCode Zen) with zero-cost price guards (`max_price: 0`)
-- **Target Port**: `http://localhost:5000`
+- **Target Port**: `http://localhost:5001`
 
 ### Python Spatial Routing Engine (Member 2)
 - **Runtime**: Python 3.11+
@@ -104,6 +104,7 @@ Trajectories          Routes                     │         │
 │   ├── signup/page.tsx                       # Real authenticated registration interface
 │   ├── registration/page.tsx                 # Official Personnel Registration Desk
 │   ├── control-room/page.tsx                 # Dispatcher console & Mission Assessment HUD
+│   ├── control-room/overview/page.tsx        # Multi-Emergency Overview & Emergency Intake Modal
 │   ├── driver/dashboard/page.tsx             # Protected driver telemetry & operations dashboard
 │   ├── paramedic/page.tsx                    # Pre-hospital paramedic clinical triage workspace
 │   ├── emergencies/[id]/page.tsx             # Emergency corridor analysis & intelligence view
@@ -825,6 +826,41 @@ Trajectories          Routes                     │         │
   - `server/test-auth-fullstack.js`: 38/38 passed.
   - `server/test-auth-e2e.js`: 31/31 passed.
   - `server/test-admin-e2e.js`: 60/60 passed.
+
+---
+
+## 22. Security Hardening, Database Safety & Multi-Mission Operations
+
+- **Destructive Database Operation Safety Guard (`server/shared/utils/dbSafety.js`)**:
+  - Prevents catastrophic accidental drops/resets against production MongoDB instances.
+  - Validates connection URI with `assertSafeDatabaseTarget()` in `seed-demo-scenario.js`, `seed-demo-scenarios.js`, and `demo.service.js`.
+  - Aborts immediately on `mongodb+srv://`, non-localhost addresses, or databases not including `test` or `dev` unless overridden by `ALLOW_PRODUCTION_RESET=true`.
+  - Verified: `server/test-db-safety.js` (4/4 passed).
+
+- **Automated Telemetry Retention TTL (`server/modules/trajectories/trajectory.model.js`)**:
+  - Configurable TTL index on `{ timestamp: 1 }` (`TELEMETRY_RETENTION_DAYS`, default 30 days).
+  - Uses MongoDB `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }` ensuring that clinical emergency records and permanent legal audit trails (`source: 'AUDIT'`) are never pruned.
+  - Verified: `server/test-telemetry-retention.js` (3/3 passed).
+
+- **Real-Time Revocation on Suspension & Ownership Validation**:
+  - Socket.IO connection handlers enforce per-packet MongoDB revalidation (`socket.use(...)`). If an authenticated user's account transitions to `SUSPENDED`, their active WebSocket connection is forcibly terminated (`socket.disconnect(true)`) on their next packet.
+  - Telemetry ingestion routes (`POST /api/trajectories`) enforce driver vehicle ownership check.
+  - Verified: `server/test-targeted-rbac-socket.js` (23/23 passed).
+
+- **Sliding-Window Rate Limiting (`server/shared/middleware/rateLimiter.js`)**:
+  - Authentication routes: 30 requests / 15 minutes per IP (`/api/auth/login`, `/api/auth/register`).
+  - AI analysis routes: 30 requests / 1 minute per IP (`/api/geoagent/analyze`).
+  - High-frequency vehicle GPS telemetry endpoints remain exempt from rate limits to avoid operational disruption.
+
+- **Multi-Emergency Control Room Overview (`/control-room/overview`)**:
+  - Global mission cards, filter chips (`ALL`, `CRITICAL`, `EN_ROUTE`, `PENDING`), emergency queue count badges.
+  - Emergency Intake Modal (`CreateEmergencyModal`) integrated with `emergencyApi.create()` and Bengaluru coordinate presets (MG Road, Domlur, Indiranagar, Manipal Hospital HAL).
+
+- **Continuous Integration Pipeline Hardening (`.github/workflows/ci.yml`)**:
+  - Automated secret audit via `gitleaks-action`.
+  - Static typecheck (`npx tsc --noEmit`).
+  - Next.js Turbopack production build (`npm run build`).
+  - MongoDB 7.0 container running full security, DB safety, telemetry retention, and RBAC test suites.
 
 - **Future Roadmap**:
   1. Field-driver mobile app (React Native / Android).

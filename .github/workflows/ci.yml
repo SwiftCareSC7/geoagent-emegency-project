@@ -11,10 +11,24 @@ on:
     branches: [main]
 
 jobs:
-  lint-and-build:
-    name: Lint, Typecheck & Build
+  security-scan:
+    name: Secret & Credential Scanning
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  lint-and-build:
+    name: Lint, Typecheck & Frontend Build
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,12 +52,54 @@ jobs:
           NEXT_PUBLIC_API_URL: https://placeholder.run.app/api
           NEXT_PUBLIC_SOCKET_URL: https://placeholder.run.app
 
-      # ── Backend ──
+  backend-tests:
+    name: Backend Test Suites & Security Verifications
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
       - name: Install backend dependencies
         working-directory: server
         run: npm ci
 
-      # ── Docker ──
-      - name: Verify Docker build
+      - name: Run Database Safety & Retention Tests
+        run: |
+          node server/test-db-safety.js
+          node server/test-telemetry-retention.js
+
+      - name: Run Backend Auth & RBAC Security Tests
+        env:
+          MONGO_URI: mongodb://127.0.0.1:27017/geoagent-emergency-test
+          JWT_SECRET: test-jwt-secret-for-ci-security-testing-only-12345
+          DISABLE_RATE_LIMITS: "true"
+        run: |
+          node server/test-auth-rbac-complete.js
+          node server/test-targeted-rbac-socket.js
+
+      - name: Run Navigation Engine & Emergency Lifecycle Tests
+        env:
+          MONGO_URI: mongodb://127.0.0.1:27017/geoagent-emergency-test
+          JWT_SECRET: test-jwt-secret-for-ci-security-testing-only-12345
+        run: |
+          node server/test-google-osrm-routing.js
+          node server/test-navigation-engine.js
+          node server/test-part9.js
+
+      - name: Verify Backend Docker Build
         working-directory: server
         run: docker build -t geoagent-backend-ci-test .

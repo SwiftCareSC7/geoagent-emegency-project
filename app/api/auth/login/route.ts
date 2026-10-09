@@ -51,6 +51,27 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if (user.status === 'PENDING') {
+    return NextResponse.json(
+      { success: false, error: 'Account registration is pending administrator approval' },
+      { status: 403 }
+    )
+  }
+
+  if (user.status === 'SUSPENDED') {
+    return NextResponse.json(
+      { success: false, error: 'Account has been suspended. Please contact an administrator.' },
+      { status: 403 }
+    )
+  }
+
+  if (user.status === 'REJECTED') {
+    return NextResponse.json(
+      { success: false, error: 'Account registration was rejected by administrator' },
+      { status: 403 }
+    )
+  }
+
   const token = createToken(user.id, user.role)
   const safeUser = toSafeUser(user)
 

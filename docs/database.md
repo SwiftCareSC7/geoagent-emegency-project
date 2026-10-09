@@ -53,7 +53,7 @@ Represents dispatchers, supervisors, and administrative personnel.
   permittedWorkspaces: {
     type: [String],
     enum: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
-    default: ['CONTROL_ROOM']
+    default: []
   },
   status: {
     type: String,
@@ -227,7 +227,7 @@ High-frequency GPS tracking points logged per vehicle.
   timestamp: { type: Date, required: true },
   source: {
     type: String,
-    enum: ['SIMULATOR', 'DEVICE', 'API'],
+    enum: ['SIMULATOR', 'DEVICE', 'API', 'AUDIT'],
     default: 'SIMULATOR'
   },
   createdAt: Date,
@@ -237,7 +237,8 @@ High-frequency GPS tracking points logged per vehicle.
 - **Indexes**:
   - `{ vehicle: 1, timestamp: -1 }` (compound index for fast retrieval of latest fixes and windowed slices)
   - `{ location: '2dsphere' }`
-- **Performance Note**: Trajectories represent high-frequency time-series data. The Admin API uses `estimatedDocumentCount()` for $O(1)$ fast volume estimation to prevent full collection table scans.
+  - `{ timestamp: 1 }` (TTL retention index expiring breadcrumbs older than `TELEMETRY_RETENTION_DAYS` with `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }`)
+- **Performance Note**: Trajectories represent high-frequency time-series data. The Admin API uses `estimatedDocumentCount()` for $O(1)$ fast volume estimation to prevent full collection table scans. Automated TTL pruning prevents database volume bloat while preserving clinical emergency records.
 
 ---
 
@@ -443,8 +444,16 @@ During local development, developers who need direct database access can use **M
 
 ---
 
-## 5. Data Retention & Scaling Considerations
+## 5. Data Retention & Scaling Policies
 
-- **Trajectories Growth**: High-frequency vehicle GPS fixes generate high volume over time. In production, consider a rolling TTL index on `trajectories.timestamp` (e.g., 30–90 days retention) or moving expired trajectories to a cold archive.
+- **Trajectories Growth**: High-frequency vehicle GPS fixes generate high volume over time. The system enforces an active MongoDB TTL index on `trajectories.timestamp` (configurable via `TELEMETRY_RETENTION_DAYS`, default 30 days) with `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }`, automatically pruning simulated and device telemetry while permanently retaining clinical audit trails.
 - **Predictions**: Prediction snapshots are captured for explainability and should be pruned after emergency resolution or retained for 30 days.
 - **Operational Records**: Emergencies, Vehicles, Incidents, and Decisions are mission-critical audit trails and must never be deleted automatically by TTL. Soft-deletion (`isDeleted: true`) is enforced.
+
+---
+
+## 6. Database Safety Guard (`server/shared/utils/dbSafety.js`)
+
+To prevent accidental data loss in shared development, staging, or production environments:
+- All destructive seed and reset scripts (`seed-demo-scenario.js`, `seed-demo-scenarios.js`, `demo.service.js`) validate the database connection URI using `assertSafeDatabaseTarget()`.
+- Resets are immediately aborted on any production-like target (MongoDB Atlas `mongodb+srv://`, non-local hostnames, or databases whose names do not contain `test` or `dev`) unless `ALLOW_PRODUCTION_RESET=true` is explicitly set in the execution environment.

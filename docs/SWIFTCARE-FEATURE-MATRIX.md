@@ -53,3 +53,9 @@ This matrix provides the verified, strict status classification of every feature
 | **Paramedic Triage** | Clinical Handoff & Vitals | `app/paramedic` | Next.js API / Local | Local / API | None | None | Facility Status | Manual / Visual QA | **IMPLEMENTED** |
 | **Driver Navigation** | Turn-by-Turn Maneuver HUD | `app/driver/dashboard` | `driver-navigation-map.tsx` | `Route`, `Vehicle` | None | Polling / Demo | Rotating Arrow | `test-navigation-engine.js`| **IMPLEMENTED** |
 | **Admin Console** | System Health & Fleet Audit | `app/admin` | `GET /api/admin/system-health` | All | None | None | None | `test-admin-e2e.js` | **IMPLEMENTED** |
+| **Control Room Overview** | Multi-Emergency Fleet Overview | `multi-emergency-overview.tsx` (`/control-room/overview`) | `GET /api/emergencies`, `GET /api/vehicles` | `Emergency`, `Vehicle` | None | `emergency:created`, `emergency:updated` | Card Grid / Status Badges | `tsc --noEmit`, `npm run build` | **IMPLEMENTED** |
+| | Emergency Call Intake Modal | Intake Dialog in Overview | `POST /api/emergencies` | `Emergency` | None | `emergency:created` broadcast | Presets / Custom Coords | `test-control-room-e2e.js` | **IMPLEMENTED** |
+| **Data Safety & Security** | Database Safety Guard | Seed CLI / Admin Services | `server/shared/utils/dbSafety.js` | MongoDB URI | None | None | None | `test-db-safety.js` | **IMPLEMENTED** |
+| | Telemetry Retention TTL | Database Schema | `trajectory.model.js` TTL Index | `Trajectory` | None | None | None | `test-telemetry-retention.js` | **IMPLEMENTED** |
+| | Rate Limiting Throttling | Sliding-Window Middleware | `server/shared/middleware/rateLimiter.js` | In-memory hits Map | None | None | None | `test-auth-rbac-complete.js` | **IMPLEMENTED** |
+| | Socket Disconnect on Suspension | Per-packet Handlers | `realtime.handlers.js` | `User` | None | `socket.disconnect(true)` | None | `test-targeted-rbac-socket.js` | **IMPLEMENTED** |

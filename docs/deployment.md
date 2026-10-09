@@ -62,7 +62,7 @@ cd server && npm install && cd ..
 
 # Start both (separate terminals)
 npm run dev          # Frontend on :3000
-cd server && npm run dev  # Backend on :5000
+cd server && npm run dev  # Backend on :5001
 ```
 
 ---

@@ -23,6 +23,7 @@ import Trajectory from './modules/trajectories/trajectory.model.js';
 import Decision from './modules/decisions/decision.model.js';
 import Prediction from './modules/analysis/prediction.model.js';
 import { CANONICAL_ROAD_CORRIDORS } from './modules/routes/canonicalRoadCorridors.js';
+import { assertSafeDatabaseTarget } from './shared/utils/dbSafety.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +40,10 @@ export async function seedDemoScenario(options = {}) {
   console.log('SWIFTCARE GEOAGENT: CANONICAL DEMO SCENARIO SEEDER');
   console.log('Scenario: Emergency E-DEMO-001 | Vehicle AMB-DEMO-01');
   console.log('================================================================');
+
+  if (isClean) {
+    assertSafeDatabaseTarget('seedDemoScenario --clean', MONGO_URI);
+  }
 
   if (mongoose.connection.readyState === 0) {
     console.log(`Connecting to MongoDB: ${MONGO_URI}...`);

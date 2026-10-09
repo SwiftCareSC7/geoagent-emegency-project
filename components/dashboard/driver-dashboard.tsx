@@ -105,10 +105,17 @@ export function DriverDashboard({ data }: DriverDashboardProps) {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                    <span className="size-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-                    LIVE EMERGENCY TRANSIT
-                  </span>
+                  {effectiveData.isSimulated || effectiveData.dataSource === 'SIMULATED' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                      <span className="size-2 rounded-full bg-amber-500 dark:bg-amber-400" />
+                      SIMULATED TRANSIT (OFFLINE DEMO)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      <span className="size-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+                      LIVE EMERGENCY TRANSIT
+                    </span>
+                  )}
                   <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-mono font-medium text-foreground">
                     Unit: {effectiveData.ambulanceId}
                   </span>

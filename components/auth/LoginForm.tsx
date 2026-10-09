@@ -12,10 +12,6 @@ import {
   EyeOff,
   AlertCircle,
   Clock,
-  CheckCircle2,
-  Ambulance,
-  Radio,
-  Stethoscope,
   Lock
 } from 'lucide-react'
 
@@ -24,41 +20,6 @@ import { getRoleDashboard, isRouteAllowedForUser } from '@/lib/auth/roles'
 import { Button } from '@/components/ui/button'
 import { BrandLogo } from '@/components/brand-logo'
 import { ThemeToggleCompact } from '@/components/theme-toggle'
-
-const DEMO_PRESETS = [
-  {
-    role: 'CONTROL_ROOM',
-    label: 'Control Room Dispatcher',
-    email: 'operator@swiftcare.local',
-    pass: 'Operator123!',
-    icon: Radio,
-    color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
-  },
-  {
-    role: 'DRIVER',
-    label: 'Ambulance Driver (AMB-01)',
-    email: 'driver@swiftcare.local',
-    pass: 'DriverPassword123!',
-    icon: Ambulance,
-    color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20'
-  },
-  {
-    role: 'PARAMEDIC',
-    label: 'Field Paramedic Officer',
-    email: 'paramedic@swiftcare.local',
-    pass: 'Paramedic123!',
-    icon: Stethoscope,
-    color: 'text-rose-500 bg-rose-500/10 border-rose-500/20'
-  },
-  {
-    role: 'ADMIN',
-    label: 'Systems Administrator',
-    email: 'admin@swiftcare.local',
-    pass: 'AdminPassword123!',
-    icon: Shield,
-    color: 'text-amber-500 bg-amber-500/10 border-amber-500/20'
-  }
-]
 
 export function LoginForm() {
   const router = useRouter()
@@ -101,13 +62,6 @@ export function LoginForm() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  const applyPreset = (presetEmail: string, presetPass: string) => {
-    setEmail(presetEmail)
-    setPassword(presetPass)
-    setErrorMessage(null)
-    setIsPendingNotice(false)
   }
 
   return (
@@ -231,48 +185,8 @@ export function LoginForm() {
               </Button>
             </form>
 
-            {/* Quick-Fill Presets for Evaluation */}
-            <div className="mt-8 border-t border-border/60 pt-5">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  One-Click Operational Roles
-                </span>
-                <span className="text-[10px] text-muted-foreground font-mono">Demo Accounts</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {DEMO_PRESETS.map((preset) => {
-                  const Icon = preset.icon
-                  const isSelected = email === preset.email
-                  return (
-                    <button
-                      key={preset.role}
-                      type="button"
-                      onClick={() => applyPreset(preset.email, preset.pass)}
-                      className={`flex flex-col text-left p-2.5 rounded-xl border text-xs transition-all ${
-                        isSelected
-                          ? 'border-primary bg-primary/10 shadow-xs'
-                          : 'border-border/60 bg-muted/40 hover:bg-muted hover:border-border'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <div className={`p-1 rounded-md border ${preset.color}`}>
-                          <Icon className="size-3" />
-                        </div>
-                        <span className="font-semibold text-foreground truncate text-[11px]">
-                          {preset.label.split(' ')[0]}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground font-mono truncate">
-                        {preset.role}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
             {/* Link to Registration */}
-            <div className="mt-6 text-center text-xs text-muted-foreground">
+            <div className="mt-8 border-t border-border/60 pt-5 text-center text-xs text-muted-foreground">
               Don&apos;t have an operational account?{' '}
               <Link href="/signup" className="font-semibold text-primary hover:underline">
                 Register New Personnel

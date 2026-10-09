@@ -25,8 +25,8 @@ router
 
 router
   .route('/:vehicleId')
-  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
-  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getVehicle)
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC (with ownership check)
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), requireVehicleOwnership, getVehicle)
   // PATCH: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC with resource ownership check
   .patch(
     requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'),

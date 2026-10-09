@@ -102,7 +102,7 @@ Trajectories          Routes                     │         │
 | Auth | bcryptjs + jsonwebtoken | 12 salt rounds, HTTP-only cookies + Bearer |
 | Geospatial | @turf/turf (v7.4+) | WGS84, GeoJSON Point & LineString |
 | AI | OpenAI-compatible HTTP (no SDK) | Provider abstraction over **free** OpenRouter / OpenCode models, tool calling, deterministic fallback |
-| Dev Port | `http://localhost:5000` | — |
+| Dev Port | `http://localhost:5001` | — |
 
 ### Python Spatial Routing Engine (Member 2)
 | Layer | Technology | Details |
@@ -426,7 +426,7 @@ cd ..
 
 ### 2. Configure Backend Environment (`server/.env`)
 ```env
-PORT=5000
+PORT=5001
 NODE_ENV=development
 MONGO_URI=mongodb://127.0.0.1:27017/geoagent-emergency
 CLIENT_URL=http://localhost:3000
@@ -472,7 +472,7 @@ NEXT_PUBLIC_CARTO_API_KEY=your_carto_basemap_key
 # Terminal 1: Run Frontend (Port 3000)
 npm run dev
 
-# Terminal 2: Run Backend Server (Port 5000)
+# Terminal 2: Run Backend Server (Port 5001)
 cd server
 npm run dev
 
@@ -492,19 +492,19 @@ node server/demo-telemetry-player.js --all
 # Or run with timed delay between stages for live presentation:
 node server/demo-telemetry-player.js --all --interval 3000
 
-# Demo Credentials:
-# Operator: operator@swiftcare.local / Operator123!
-# Admin:    admin@swiftcare.local    / AdminPassword123!
+# Demo Accounts (provisioned securely via server/scripts/provision-users.js or environment variables):
+# Operator: operator@swiftcare.local (configured via OPERATOR_PASSWORD)
+# Admin:    admin@swiftcare.local    (configured via ADMIN_PASSWORD)
 ```
 
 ### Health & Provider Check
 ```bash
 # General health check
-curl http://localhost:5000/api/health
+curl http://localhost:5001/api/health
 # Response: {"success":true,"message":"GeoAgentic backend is running"}
 
 # 6-Provider status evaluation (MongoDB, Google Routes, Google Roads, Python/V2X, Socket.IO, GeoAgent AI providers)
-curl http://localhost:5000/api/health/providers
+curl http://localhost:5001/api/health/providers
 ```
 
 ---
@@ -531,6 +531,10 @@ node test-intelligence-pipeline.js    # Real-time intelligence pipeline, What-If
 node test-control-room-e2e.js         # Control room workflow, concurrency safety, double-action prevention
 node test-admin-e2e.js                # Admin RBAC, real system statistics, database ping latency, explorer
 node test-auth-e2e.js                 # Authentication contract, registration, login, cookies, persistence
+node test-auth-rbac-complete.js       # Complete Multi-Workspace registration, Admin approval, and RBAC matrix (46/46 passed)
+node test-targeted-rbac-socket.js     # Vehicle ownership validation, Socket.IO authorization & suspension disconnection (23/23 passed)
+node test-db-safety.js                # Database safety guard preventing accidental resets of remote/production DBs
+node test-telemetry-retention.js      # Trajectory TTL retention index verification
 ```
 **Audit Result**: **100% passing across all test suites with zero failures (37/37 final audit passed)**.
 **TypeScript Verification**: `npm run lint` (`tsc --noEmit`) — 0 errors.
@@ -559,11 +563,11 @@ For developers connecting the frontend dashboard to the backend:
 ### 1. Authentication
 Send credentials to `POST /api/auth/login`. The server returns an HTTP-only `token` cookie (`SameSite=Strict`, 7 days) and user profile:
 ```javascript
-const res = await fetch('http://localhost:5000/api/auth/login', {
+const res = await fetch('http://localhost:5001/api/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include',
-  body: JSON.stringify({ email: 'operator@geoagent.local', password: 'SecurePassword123!' })
+  body: JSON.stringify({ email: 'operator@swiftcare.local', password: 'SecurePassword123!' })
 });
 const { user } = await res.json();
 // Subsequent requests automatically include the HTTP-only cookie via credentials: 'include'
@@ -573,7 +577,7 @@ const { user } = await res.json();
 Pass `credentials: 'include'` for cookie auth or `Authorization: Bearer <token>`:
 ```javascript
 // Trigger full end-to-end situation analysis for an emergency
-const analysisRes = await fetch('http://localhost:5000/api/orchestration/emergencies/EMG-0001/analyze', {
+const analysisRes = await fetch('http://localhost:5001/api/orchestration/emergencies/EMG-0001/analyze', {
   method: 'POST',
   headers: { 'Authorization': `Bearer ${token}` }
 });
@@ -585,7 +589,7 @@ Connect to Socket.IO and join the control room:
 ```javascript
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:5000', {
+const socket = io('http://localhost:5001', {
   auth: { token },
   transports: ['websocket']
 });
