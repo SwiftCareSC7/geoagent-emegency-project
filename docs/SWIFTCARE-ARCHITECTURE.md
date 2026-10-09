@@ -395,4 +395,3 @@ stateDiagram-v2
     DISMISSED --> [*]
     TIMED_OUT --> [*]
 ```
-

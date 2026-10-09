@@ -1,5 +1,7 @@
 # SWIFTCARE GEOAGENT
+
 ## The Definitive, Comprehensive System Architecture & Technical Master Report
+
 **Role Perspective:** Senior Software Architect, Lead Full-Stack Engineer, API Specialist & Technical Writer  
 **Repository:** `SwiftCareSC7/geoagent-emegency-project`  
 **Classification:** Authoritative Technical Specification & Beginner Handbook  
@@ -7,7 +9,8 @@
 
 ---
 
-# Table of Contents
+## Table of Contents
+
 1. [Cover Page & Document Metadata](#1-cover-page--document-metadata)
 2. [Executive Summary](#2-executive-summary)
 3. [Project Introduction](#3-project-introduction)
@@ -63,6 +66,7 @@
 **SwiftCare GeoAgent** is a full-stack, map-first emergency response operations platform designed to solve one of the most critical challenges in metropolitan emergency logistics: **detecting corridor disruptions, route deviations, and unexpected traffic accidents in real time, determining their root causes, and providing road-constrained, AI-assisted rerouting recommendations to human dispatchers before patient lives are lost.**
 
 The software bridges the gap between raw vehicle GPS coordinates and life-or-death dispatch decisions through a **Dual-Engine Decision Architecture**:
+
 1. **The Deterministic Safety Rules Engine** (`decision.rules.js`): Pure algorithmic logic that calculates cross-track distances, verifies thresholds, computes candidate alternative route scores, evaluates backup ambulance travel time advantages, and ensures no database changes ever take place without human verification.
 2. **The Advisory Epistemic GeoAgent** (`geoAgent.service.js` / `geoagent.provider.js`): Powered by catalog-confirmed free models (OpenRouter / OpenCode), this layer acts as an expert intelligence analyst. Rather than outputting chatty or hallucinated text, it takes structured data (speeds, incidents, cross-track offsets) and structures its operational briefing into **Observed** (raw factual data), **Inferred** (logical operational deduction), and **Unknown** (missing or uncertain parameters).
 
@@ -73,11 +77,13 @@ The application features a modern **Next.js 16 / React 19** frontend, an **Expre
 ## 3. Project Introduction
 
 ### 3.1 What is SwiftCare GeoAgent?
-In simple terms: Imagine an ambulance is racing toward a patient who is having a heart attack. Suddenly, an unexpected 3-car pileup occurs 1.5 km ahead on the main road, bringing traffic to a complete standstill. 
+
+In simple terms: Imagine an ambulance is racing toward a patient who is having a heart attack. Suddenly, an unexpected 3-car pileup occurs 1.5 km ahead on the main road, bringing traffic to a complete standstill.
 
 In a traditional setup, the dispatcher does not know about the blockage until the ambulance driver gets stuck and radios in. By that time, valuable minutes have slipped away.
 
 **SwiftCare GeoAgent changes this:**
+
 - The ambulance's GPS position is tracked continuously on an interactive map.
 - The computer monitors whether the ambulance is staying on its assigned road corridor.
 - If the vehicle slows down, stops, or turns onto a side street to avoid a hazard, the system detects this deviation within seconds.
@@ -91,6 +97,7 @@ In a traditional setup, the dispatcher does not know about the blockage until th
 ## 4. Problem Statement
 
 Urban emergency response systems face five critical operational dilemmas:
+
 1. **The Route Deviation Dilemma:** Dispatchers cannot tell if an ambulance is merely changing lanes or abandoning its planned corridor due to an unannounced road closure.
 2. **The Root Cause Dilemma:** When an ambulance slows to 0 km/h, dispatchers cannot instantly distinguish between severe gridlock, a vehicle breakdown, driver confusion, or a fatal crash ahead.
 3. **The Delay Forecasting Dilemma:** Baseline ETAs provided by standard GPS navigators are static and fail to account for escalating congestion shockwaves.
@@ -102,6 +109,7 @@ Urban emergency response systems face five critical operational dilemmas:
 ## 5. Objectives
 
 SwiftCare GeoAgent fulfills seven core technical objectives (A through G):
+
 - **Objective A (Real-Time Telemetry):** Ingest and display sub-second GPS trajectories on interactive maps.
 - **Objective B (Deviation Detection):** Compute perpendicular distance from planned polylines and flag divergences.
 - **Objective C (Causal Identification):** Spatially intersect active hazards and traffic congestion ratios with the vehicle's position.
@@ -115,6 +123,7 @@ SwiftCare GeoAgent fulfills seven core technical objectives (A through G):
 ## 6. Target Users
 
 The platform serves four distinct operational roles:
+
 1. **Control Room Dispatchers (`CONTROL_ROOM`):** Operations officers managing 911 calls, monitoring active metropolitan routes, reviewing AI alerts, and approving reroutes.
 2. **Ambulance Drivers (`DRIVER`):** Field personnel driving emergency vehicles, using a simplified, high-contrast navigation HUD with turn-by-turn maneuvers and signal preemption status.
 3. **Emergency Medical Technicians / Paramedics (`PARAMEDIC`):** Clinical personnel caring for patients en route, entering trauma scores, recording vitals, and preparing receiving emergency departments.
@@ -125,6 +134,7 @@ The platform serves four distinct operational roles:
 ## 7. Main Features
 
 ### 7.1 Core Business Features
+
 - **Metropolitan Fleet Dashboard (`/control-room`):** Real-time situational map displaying all active ambulances, active emergency incidents, road accidents, and corridor clearance states.
 - **What-If Scenario Simulator (`/diff`):** Map-first interactive simulator demonstrating road-constrained rerouting when an unexpected accident blocks the corridor at Domlur on Old Airport Road.
 - **Emergency Mission Detail (`/emergencies/[id]`):** In-depth mission tracking including patient condition, assigned unit, primary corridor, alternative routes, and operator action prompts.
@@ -159,7 +169,7 @@ In simple, accessible terms:
 
 The project employs a clean, layered architectural design:
 
-```
+```text
 [ User Browser / In-Cab Tablet ]
                │
                ▼
@@ -209,7 +219,7 @@ The project employs a clean, layered architectural design:
 
 Below is an exhaustive explanation of every important folder and file in the repository:
 
-```
+```text
 geoagent-emegency-project/
 ├── app/                                    # Next.js 16 App Router (Pages and Next API Route Handlers)
 │   ├── layout.tsx                          # Root layout: ThemeProvider, AuthProvider, Topbar
@@ -288,6 +298,7 @@ geoagent-emegency-project/
 ## 11. Frontend Architecture
 
 The frontend is built on **Next.js 16** with React 19:
+
 - **Client Components (`'use client'`):** Interactive dashboards requiring Leaflet maps, WebSockets, or UI state are declared as client components.
 - **Dynamic Imports (`next/dynamic`):** Leaflet map components are loaded dynamically with `{ ssr: false }` to prevent server-side rendering errors caused by browser-only `window` or `navigator` references.
 - **Global Context Architecture:**
@@ -299,6 +310,7 @@ The frontend is built on **Next.js 16** with React 19:
 ## 12. Backend Architecture
 
 The backend (`server/server.js`) utilizes Express 4 structured around **Domain-Driven Modularization**:
+
 - Each domain module (`auth`, `vehicles`, `emergencies`, `routes`, etc.) encapsulates its own:
   - `*.model.js`: Mongoose schema and database hooks.
   - `*.service.js`: Reusable business logic, mathematical algorithms, and database queries.
@@ -314,8 +326,8 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 | **`/`** | `app/page.tsx` | All / Public | No | None | Landing page, animated hero banner, corridor status, registration CTA, operational guide modal. |
 | **`/login`** | `app/login/page.tsx` | All / Public | No | `POST /api/auth/login` | Secure credentials login form with rate limiting; directs approved users to role-assigned landing pages. |
 | **`/signup`** | `app/signup/page.tsx` | All / Public | No | `POST /api/auth/register` | User registration form with operational role and multi-workspace requests; sets status to PENDING. |
-| **`/control-room`**| `app/control-room/page.tsx`| `CONTROL_ROOM`, `ADMIN` | Yes | `GET /api/vehicles`, `GET /api/emergencies`, `GET /api/incidents` | Central operations center: live map, queue, fleet panel, decision approval card, broadcast alert modal. |
-| **`/control-room/overview`**| `app/control-room/overview/page.tsx`| `CONTROL_ROOM`, `ADMIN` | Yes | `GET /api/emergencies`, `POST /api/emergencies`, `GET /api/vehicles` | Multi-Mission Operations Overview: global emergency status cards, queue filters, and Quick-Dispatch Intake modal. |
+| **`/control-room`** | `app/control-room/page.tsx` | `CONTROL_ROOM`, `ADMIN` | Yes | `GET /api/vehicles`, `GET /api/emergencies`, `GET /api/incidents` | Central operations center: live map, queue, fleet panel, decision approval card, broadcast alert modal. |
+| **`/control-room/overview`** | `app/control-room/overview/page.tsx` | `CONTROL_ROOM`, `ADMIN` | Yes | `GET /api/emergencies`, `POST /api/emergencies`, `GET /api/vehicles` | Multi-Mission Operations Overview: global emergency status cards, queue filters, and Quick-Dispatch Intake modal. |
 | **`/diff`** | `app/diff/page.tsx` | All | No (Demo) | `GET/POST /api/diff/scenarios` | Map-first what-if rerouting simulator: Leaflet map, digital clock, milestone timeline scrubber, tactical HUD. |
 | **`/driver/dashboard`** | `app/driver/dashboard/page.tsx` | `DRIVER`, `ADMIN` | Yes | `GET /api/vehicles/:id`, `POST /api/trajectories` | In-cab turn-by-turn navigation HUD: maneuver cards, speedometer, hospital selector, leg switcher. |
 | **`/emergencies/[id]`** | `app/emergencies/[id]/page.tsx` | `CONTROL_ROOM`, `ADMIN` | Yes | `GET /api/emergencies/:id`, `GET /api/routes` | Mission-specific detail: patient condition, active route, alternative detour options, operator action prompt. |
@@ -330,9 +342,11 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.1 Authentication Endpoints (`/api/auth`)
 
 #### 1. POST `/api/auth/register`
+
 - **Purpose:** Registers a new user account with requested operational role and workspaces.
 - **Auth:** Public (Rate-limited: 30 requests / 15 minutes per IP)
 - **Request Body:**
+
 ```json
 {
   "name": "Arjun Rao",
@@ -343,7 +357,9 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
   "assignedVehicleId": ""
 }
 ```
+
 - **Response `201 Created`:**
+
 ```json
 {
   "success": true,
@@ -359,11 +375,13 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
   }
 }
 ```
+
 - **Validation & Security:** Email must be valid format and unique; password must meet complexity rules; public signups cannot self-assign active `ADMIN` status (assigned `status: 'PENDING'` and `permittedWorkspaces: []` until approved by an administrator via `/admin`).
 - **Database:** Creates document in `users` collection.
 - **Frontend Usage:** `SignupForm.tsx` (`/signup`).
 
 #### 2. POST `/api/auth/login`
+
 - **Purpose:** Authenticates credentials and sets an HTTP-only JWT session cookie for approved accounts.
 - **Auth:** Public (Rate-limited: 30 requests / 15 minutes per IP)
 - **Request Body:** `{ "email": "dispatcher@swiftcare.local", "password": "Password123!" }`
@@ -372,12 +390,14 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 - **Frontend Usage:** `LoginForm.tsx` (`/login`).
 
 #### 3. GET `/api/auth/me`
+
 - **Purpose:** Returns the profile and role of the currently logged-in user.
 - **Auth:** Authenticated (`Bearer <token>` or cookie `auth_token`).
 - **Response `200 OK`:** `{ success: true, user: { ... } }`.
 - **Frontend Usage:** `useAuth` hook in `lib/auth/context.tsx`.
 
 #### 4. POST `/api/auth/logout`
+
 - **Purpose:** Invalidates the session and clears the `auth_token` cookie.
 - **Auth:** Authenticated.
 - **Response `200 OK`:** `{ success: true, message: "Logged out successfully" }`.
@@ -387,6 +407,7 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.2 Vehicle Fleet Endpoints (`/api/vehicles`)
 
 #### 5. GET `/api/vehicles`
+
 - **Purpose:** Retrieves all registered emergency fleet vehicles with optional status filtering.
 - **Auth:** Authenticated.
 - **Query Params:** `?status=AVAILABLE|DISPATCHED|EN_ROUTE|AT_SCENE`
@@ -395,15 +416,18 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 - **Frontend Usage:** `VehicleFleetPanel.tsx` (`/control-room`).
 
 #### 6. GET `/api/vehicles/:vehicleId`
+
 - **Purpose:** Fetches a single vehicle's details and latest GPS position.
 - **Path Params:** `vehicleId` (e.g. `AMB-01`).
 
 #### 7. POST `/api/vehicles`
+
 - **Purpose:** Registers a new vehicle into the fleet.
 - **Auth:** Restricted to `ADMIN`.
 - **Request Body:** `{ vehicleId, registrationNumber, type, driverName, hospitalName, capacity }`.
 
 #### 8. PATCH `/api/vehicles/:vehicleId/status`
+
 - **Purpose:** Updates a vehicle's operational status.
 - **Request Body:** `{ status: "EN_ROUTE" }`.
 - **Realtime:** Broadcasts `vehicle:status` via Socket.IO.
@@ -413,14 +437,17 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.3 Emergency Management Endpoints (`/api/emergencies`)
 
 #### 9. GET `/api/emergencies`
+
 - **Purpose:** Lists all emergency incidents with optional priority and status filters.
 - **Response `200 OK`:** `{ success: true, count: 3, data: [ ... ] }`.
 - **Frontend Usage:** `ActiveEmergenciesPanel.tsx` (`/control-room`).
 
 #### 10. POST `/api/emergencies`
+
 - **Purpose:** Creates a new emergency call record.
 - **Auth:** `CONTROL_ROOM`, `ADMIN`.
 - **Request Body:**
+
 ```json
 {
   "emergencyId": "EMG-0001",
@@ -432,9 +459,11 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
   "description": "Acute cardiac arrest"
 }
 ```
+
 - **Realtime:** Emits `emergency:new` to `control-room`.
 
 #### 11. PATCH `/api/emergencies/:id/assign`
+
 - **Purpose:** Dispatches an available ambulance to an active emergency.
 - **Request Body:** `{ vehicleId: "AMB-01" }`.
 - **Database:** Sets `emergency.assignedVehicleId = "AMB-01"`, `emergency.status = "DISPATCHED"`, and `vehicle.status = "DISPATCHED"`.
@@ -444,8 +473,10 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.4 Telemetry & Trajectory Endpoints (`/api/trajectories`)
 
 #### 12. POST `/api/trajectories`
+
 - **Purpose:** Ingests a live GPS breadcrumb fix, computes speed, snaps to road, and evaluates deviation.
 - **Request Body:**
+
 ```json
 {
   "vehicleId": "AMB-01",
@@ -457,6 +488,7 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
   "timestamp": "2026-09-28T01:10:00.000Z"
 }
 ```
+
 - **Business Logic:**
   1. Validates coordinate bounds.
   2. Queries active route for vehicle.
@@ -466,6 +498,7 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
   6. Emits `telemetry:update` to `control-room` and `vehicle:AMB-01`.
 
 #### 13. GET `/api/trajectories/vehicle/:vehicleId`
+
 - **Purpose:** Fetches the chronological GPS trail for a vehicle (`?limit=50`).
 
 ---
@@ -473,12 +506,14 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.5 Multi-Provider Routing Endpoints (`/api/routes`)
 
 #### 14. POST `/api/routes`
+
 - **Purpose:** Calculates the primary authoritative corridor between origin and destination.
 - **Request Body:** `{ emergencyId, vehicleId, origin, destination }`.
 - **External Call:** Queries Google Routes API (`directions/v2:computeRoutes`) or falls back to OSRM / Canonical.
 - **Response `201 Created`:** Saves route document with GeoJSON `LineString` coordinates.
 
 #### 15. GET `/api/routes/alternatives`
+
 - **Purpose:** Calculates candidate detour routes avoiding active road blockages.
 
 ---
@@ -486,10 +521,12 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.6 GeoAgent Intelligence Endpoints (`/api/geoagent`)
 
 #### 16. POST `/api/geoagent/analyze`
+
 - **Purpose:** Invokes GeoAgent free LLM loop with declarative tools to analyze vehicle situation.
 - **Auth:** Authenticated (Rate-limited: 30 requests / 1 minute per IP)
 - **Request Body:** `{ vehicleId: "AMB-01", emergencyId: "EMG-0001" }`
 - **Response `200 OK`:**
+
 ```json
 {
   "success": true,
@@ -513,13 +550,16 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.7 Decision Engine Endpoints (`/api/decisions`)
 
 #### 17. GET `/api/decisions/active`
+
 - **Purpose:** Returns all decisions currently pending operator action.
 
 #### 18. POST `/api/decisions/:id/approve`
+
 - **Purpose:** Operator approves the recommended reroute or backup dispatch.
 - **Business Logic:** Transitions decision status to `APPROVED` $\to$ `EXECUTED`; updates active corridor geometry; emits `decision:resolved`.
 
 #### 19. POST `/api/decisions/:id/reject`
+
 - **Purpose:** Operator overrides or rejects the recommendation with an audit reason.
 
 ---
@@ -527,9 +567,11 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 ### 14.8 What-If Simulation Endpoints (`/api/diff/scenarios`)
 
 #### 20. GET `/api/diff/scenarios`
+
 - **Purpose:** Returns the deterministic scenario configuration, milestones, and canonical coordinates.
 
 #### 21. POST `/api/diff/scenarios`
+
 - **Purpose:** Calculates a deterministic snapshot for any timestamp $T \in [0, 430\text{ seconds}]$.
 - **Request Body:** `{ "timestampSeconds": 155 }`.
 - **Response `200 OK`:** Contains vehicle coordinates, speed, bearing, active route, detour state, and GeoAgent analysis.
@@ -551,7 +593,7 @@ The backend (`server/server.js`) utilizes Express 4 structured around **Domain-D
 
 MongoDB operates with Mongoose ODM across 9 collections:
 
-```
+```text
 [ users ]              1 ─── * [ emergencies ] 1 ─── 1 [ routes ]
    │                              │                          │
    │ 1                            │ 1                        │ 1
@@ -563,6 +605,7 @@ MongoDB operates with Mongoose ODM across 9 collections:
 ```
 
 ### Complete Schema Definitions
+
 - **`users`**: Fields: `name`, `email` (unique), `password` (bcrypt), `role` (Enum: `CONTROL_ROOM`, `ADMIN`, `DRIVER`, `PARAMEDIC`), `status` (Enum: `PENDING`, `APPROVED`, `SUSPENDED`), `permittedWorkspaces` (Array of workspace Enums), `requestedWorkspaces` (Array), `assignedVehicleId`, `approvedBy`, `approvedAt`. Indexes: `{ email: 1 }`.
 - **`vehicles`**: Fields: `vehicleId` (unique), `registrationNumber` (unique), `type`, `status` (Enum: `AVAILABLE`, `DISPATCHED`, `EN_ROUTE`, `AT_SCENE`, `RETURNING`), `driverName`, `hospitalName`, `capacity`. Indexes: `{ vehicleId: 1 }`, `{ status: 1, isDeleted: 1 }`.
 - **`emergencies`**: Fields: `emergencyId` (unique), `callerName`, `callerContact`, `location` (GeoJSON Point), `priority`, `type`, `status`, `assignedVehicleId`. Indexes: `{ location: '2dsphere' }`, `{ status: 1, priority: 1 }`.
@@ -574,6 +617,7 @@ MongoDB operates with Mongoose ODM across 9 collections:
 - **`clearancecorridors`**: Fields: `corridorId` (unique), `vehicleId`, `routeId`, `status`, `signals` (Array of traffic signal states). Indexes: `{ corridorId: 1 }`.
 
 ### Database Safety Guard & Retention Policies
+
 1. **Destructive Reset Guard (`server/shared/utils/dbSafety.js`)**: All database seeding and reset utilities (`seed-demo-scenario.js`, `seed-demo-scenarios.js`, `demo.service.js`) validate the database connection URI via `assertSafeDatabaseTarget()`. Any wipe/reset on a production target (MongoDB Atlas `mongodb+srv://`, non-local hostname, or database names not containing `test` or `dev`) is immediately aborted with a fatal error unless `ALLOW_PRODUCTION_RESET=true` is explicitly set.
 2. **Telemetry Retention TTL**: High-frequency GPS trajectory breadcrumbs expire after `TELEMETRY_RETENTION_DAYS` (default 30 days) via a background MongoDB TTL index, preventing unbounded storage growth while clinical emergency and decision records remain permanently archived.
 
@@ -582,16 +626,18 @@ MongoDB operates with Mongoose ODM across 9 collections:
 ## 17. Authentication and Authorization (RBAC)
 
 ### 17.1 Authoritative Roles & Responsibilities
+
 SwiftCare enforces strict Role-Based Access Control (RBAC) across both backend REST APIs and Next.js frontend route boundaries. Four primary roles govern access:
 
 | Role | Authoritative Scope | Default Landing Page | Key Permissions |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | **`ADMIN`** | Complete System Administration | `/admin` | Telemetry inspection, collection exploration, pending user registration approvals, role elevation, workspace assignments, account suspension, audit logging |
 | **`CONTROL_ROOM`** | Central Emergency Dispatch | `/control-room` | Mission Assessment HUD, live corridor surveillance, incident queue triage, V2X green-wave clearance, AI decision approval & re-route execution |
 | **`DRIVER`** | Field Vehicle Navigation | `/driver/dashboard` | Real-time vehicle navigation HUD, turn-by-turn guidance, GPS breadcrumb ingestion, vehicle telemetry updates strictly confined to assigned unit (`assignedVehicleId`) |
 | **`PARAMEDIC`** | Pre-Hospital Clinical Care | `/paramedic` | Patient vital signs telemetry (HR, BP, SpO2, GCS), pre-hospital intervention logging, trauma severity scoring, receiving hospital trauma bay handoff |
 
 ### 17.2 Personnel Registration Desk (`/registration` & `/signup`)
+
 1. Prospective personnel register via the public Registration Desk, providing full name, work email, password, requested primary role, requested workspaces, and an optional vehicle identifier (`assignedVehicleId`).
 2. **Privilege Escalation Defense**:
    - All newly registered accounts (including administrative requests) are assigned `status: 'PENDING'`.
@@ -602,6 +648,7 @@ SwiftCare enforces strict Role-Based Access Control (RBAC) across both backend R
    - The backend records `requestedWorkspaces` separately from authoritative `permittedWorkspaces`, preventing unauthorized privilege acquisition before admin verification.
 
 ### 17.3 Admin User Lifecycle Management (`/admin`)
+
 - Embedded directly in the `/admin` console via `components/admin/admin-user-management.tsx`.
 - **Live Account Statuses**:
   - `PENDING`: Awaiting administrator verification. Blocked from login and API access.
@@ -617,12 +664,14 @@ SwiftCare enforces strict Role-Based Access Control (RBAC) across both backend R
   - Socket.IO connection handlers enforce per-packet MongoDB revalidation (`socket.use(...)`). If an authenticated user's account transitions to `SUSPENDED`, their active WebSocket connection is forcibly terminated (`socket.disconnect(true)`) on their next packet.
 
 ### 17.4 Resource Ownership Boundary Protection (`ownershipMiddleware.js`)
+
 - Enforces data isolation between individual emergency responders:
   - An ambulance driver assigned to vehicle `AMB-01` is strictly authorized to update `AMB-01` telemetry, status, and location (`200 OK`).
   - Attempting to update another vehicle (`AMB-02`) returns `403 Forbidden: Drivers can only update their assigned vehicle (AMB-01)`.
   - Dispatchers (`CONTROL_ROOM`) and Administrators (`ADMIN`) retain global fleet coordination authority.
 
 ### 17.5 Authentication Flow
+
 1. User enters email and password into `LoginForm.tsx`.
 2. Form submits `POST /api/auth/login`.
 3. Backend looks up email in `users` collection.
@@ -638,13 +687,16 @@ SwiftCare enforces strict Role-Based Access Control (RBAC) across both backend R
 ## 18. Business Logic & Core Algorithms
 
 ### 1. Cross-Track Distance Formula (Haversine Orthogonal Projection)
+
 To determine if an ambulance has deviated from its path, the system calculates the shortest distance from the vehicle's coordinates $P(lng, lat)$ to every line segment $[A, B]$ along the route polyline:
 $$d = R \cdot \arcsin\left(\sin\left(\frac{\Delta lat}{2}\right)^2 + \cos(lat_1)\cos(lat_2)\sin\left(\frac{\Delta lon}{2}\right)^2\right)$$
 Where $R = 6,371,000\text{ meters}$. If the minimum distance $d_{min} > 100\text{ meters}$, deviation state is flagged.
 
 ### 2. Candidate Alternative Route Scoring
+
 In `decision.rules.js`, candidate detours are scored deterministically:
 $$\text{Score} = \text{ETA Minutes} + \text{Traffic Penalty} + \text{Incident Exposure Penalty}$$
+
 - Traffic penalties: `FREE` (+0), `LIGHT` (+1), `MODERATE` (+2), `HEAVY` (+3), `SEVERE` (+4).
 - Incident penalties: `NONE` (+0), `LOW` (+0), `MEDIUM` (+1), `HIGH` (+2), `CRITICAL` (+3).
 The candidate with the lowest score is selected, provided it saves at least 2 minutes over staying on the blocked path.
@@ -654,7 +706,8 @@ The candidate with the lowest score is selected, provided it saves at least 2 mi
 ## 19. Data Flow Specifications
 
 ### Complete Telemetry & Deviation Flow
-```
+
+```text
 Ambulance GPS Hardware / In-Cab Phone
                │
                ▼ (HTTP POST /api/trajectories)
@@ -693,11 +746,13 @@ Control Room Dashboard (React 19 / Leaflet): Marker moves, orange line grows
   - 🟠 **Orange** (`#EA580C`): Actual GPS Telemetry Breadcrumbs.
   - 🔴 **Red** (`#DC2626`): Road Hazard / Collision Incident.
 - **Dark Mode Map Filter:** Leaflet tile panes are styled via CSS:
+
 ```css
 .dark .leaflet-tile-pane {
   filter: invert(100%) hue-rotate(180deg) brightness(88%) contrast(90%);
 }
 ```
+
 This produces an operations-room aesthetic with visible street names and zero commercial API watermarks.
 
 ---
@@ -705,6 +760,7 @@ This produces an operations-room aesthetic with visible street names and zero co
 ## 21. Feature Workflows & Step-by-Step Journeys
 
 ### Signature Scenario: Domlur Flyover Accident & Detour (`/diff`)
+
 1. **`00:00` Emergency Created:** Critical cardiac call at Manipal Hospital HAL.
 2. **`00:05` Dispatched:** Ambulance `AMB-01` assigned from MG Road Metro Station.
 3. **`00:20` Primary Route Active:** Blue corridor along Old Airport Road.
@@ -726,10 +782,10 @@ This produces an operations-room aesthetic with visible street names and zero co
 | :--- | :--- | :--- | :--- | :--- |
 | `/login` | `LoginForm.tsx` | `/api/auth/login` | POST | Authenticates credentials, sets session cookie |
 | `/signup` | `SignupForm.tsx` | `/api/auth/register` | POST | Creates account with operational role |
-| `/control-room`| `ControlRoomDashboard.tsx`| `/api/vehicles`, `/api/emergencies` | GET | Active fleet list and emergency queue |
-| `/control-room`| `DecisionApprovalCard.tsx`| `/api/decisions/:id/approve` | POST | Authorizes recommended detour |
+| `/control-room` | `ControlRoomDashboard.tsx` | `/api/vehicles`, `/api/emergencies` | GET | Active fleet list and emergency queue |
+| `/control-room` | `DecisionApprovalCard.tsx` | `/api/decisions/:id/approve` | POST | Authorizes recommended detour |
 | `/diff` | `DiffMap.tsx`, `DiffHUD.tsx` | `/api/diff/scenarios` | GET / POST | Deterministic scenario milestones and snapshots |
-| `/driver/dashboard` | `driver-route-planner.tsx`| `/api/routes` | POST | Calculates turn-by-turn navigation corridor |
+| `/driver/dashboard` | `driver-route-planner.tsx` | `/api/routes` | POST | Calculates turn-by-turn navigation corridor |
 | `/emergencies/[id]` | `EmergencyMissionMap.tsx` | `/api/emergencies/:id` | GET | Mission details, patient condition, route |
 | `/admin` | `AdminOverview.tsx` | `/api/admin/system-health` | GET | CPU, RAM, DB latency, API provider status |
 
@@ -740,14 +796,14 @@ This produces an operations-room aesthetic with visible street names and zero co
 | Feature | Primary Frontend Component | Relevant API Route | Domain Service | MongoDB Collection Mutated |
 | :--- | :--- | :--- | :--- | :--- |
 | **User Sign In** | `LoginForm.tsx` | `POST /api/auth/login` | `auth.service.js` | None (Reads `users`) |
-| **User Registration** | `SignupForm.tsx` | `POST /api/auth/register`| `auth.service.js` | `users` |
-| **Fleet Registration**| `AdminVehicles.tsx` | `POST /api/vehicles` | `vehicle.service.js`| `vehicles` |
-| **Emergency Creation**| `CreateEmergencyModal.tsx` | `POST /api/emergencies`| `emergency.service.js`| `emergencies` |
-| **GPS Telemetry Fix** | `DriverNavigationMap.tsx` | `POST /api/trajectories`| `trajectory.service.js`| `trajectories` |
+| **User Registration** | `SignupForm.tsx` | `POST /api/auth/register` | `auth.service.js` | `users` |
+| **Fleet Registration** | `AdminVehicles.tsx` | `POST /api/vehicles` | `vehicle.service.js` | `vehicles` |
+| **Emergency Creation** | `CreateEmergencyModal.tsx` | `POST /api/emergencies` | `emergency.service.js` | `emergencies` |
+| **GPS Telemetry Fix** | `DriverNavigationMap.tsx` | `POST /api/trajectories` | `trajectory.service.js` | `trajectories` |
 | **Corridor Route** | `DiffMap.tsx` | `POST /api/routes` | `routing.service.js` | `routes` |
-| **AI Situation Brief** | `GeoAgentCard.tsx` | `POST /api/geoagent/analyze`| `geoAgent.service.js` | None (Reads DB, calls LLM) |
-| **Reroute Approval** | `DecisionApprovalCard.tsx`| `POST /api/decisions/:id/approve`| `decision.service.js`| `decisions`, `routes` |
-| **V2X Signal Clear** | `ClearanceMonitor.tsx` | `POST /api/clearance/request`| `clearance.service.js`| `clearancecorridors` |
+| **AI Situation Brief** | `GeoAgentCard.tsx` | `POST /api/geoagent/analyze` | `geoAgent.service.js` | None (Reads DB, calls LLM) |
+| **Reroute Approval** | `DecisionApprovalCard.tsx` | `POST /api/decisions/:id/approve` | `decision.service.js` | `decisions`, `routes` |
+| **V2X Signal Clear** | `ClearanceMonitor.tsx` | `POST /api/clearance/request` | `clearance.service.js` | `clearancecorridors` |
 
 ---
 
@@ -826,6 +882,7 @@ This produces an operations-room aesthetic with visible street names and zero co
 ## 30. Testing Infrastructure & Results
 
 All automated test suites execute with verified passing results:
+
 1. **Static Typecheck:** `npx tsc --noEmit` (**0 errors**).
 2. **Next.js Production Build:** `npm run build` (**Turbopack compiled successfully**, 30 optimized route handlers).
 3. **Complete Auth, RBAC & Ownership Suite:** `node server/test-auth-rbac-complete.js` (**46/46 passed**).
@@ -865,15 +922,18 @@ All automated test suites execute with verified passing results:
 ## 33. Future Improvements (Prioritized Roadmap)
 
 ### High Priority
+
 1. **Integrate Redis Socket Adapter:** Add `@socket.io/redis-adapter` to allow multi-instance horizontal scaling on Cloud Run.
 2. **Conversational Search Drawer:** Add an operational natural-language query bar in the Control Room topbar powered by the existing 12 declarative tools.
 
 ### Medium Priority
-3. **Episodic Vector Memory:** Index completed emergency missions into MongoDB Atlas Vector Search to answer queries like *"Which route worked best during evening rainstorms?"*
-4. **Physical V2X Controller Integration:** Connect simulated green-wave signals to actual city SCATS/NTCIP traffic controllers.
+
+1. **Episodic Vector Memory:** Index completed emergency missions into MongoDB Atlas Vector Search to answer queries like *"Which route worked best during evening rainstorms?"*
+2. **Physical V2X Controller Integration:** Connect simulated green-wave signals to actual city SCATS/NTCIP traffic controllers.
 
 ### Future
-5. **Native Mobile Driver App:** Wrap the Driver HUD into a standalone React Native / Expo application with Bluetooth GPS beacon support.
+
+1. **Native Mobile Driver App:** Wrap the Driver HUD into a standalone React Native / Expo application with Bluetooth GPS beacon support.
 
 ---
 
@@ -908,6 +968,7 @@ All automated test suites execute with verified passing results:
 Imagine you are in charge of an ambulance service in a crowded city like Bengaluru, India.
 
 When an ambulance gets dispatched to help someone in an emergency, every second counts. Usually, the ambulance driver uses a standard phone navigation app to reach the patient. But standard apps have big problems during emergencies:
+
 1. They don't tell the hospital dispatch center when the ambulance gets stuck in unexpected traffic.
 2. They don't know that an ambulance has sirens and needs special permissions.
 3. If a sudden crash happens right in front of the ambulance, the driver is on their own.
@@ -915,6 +976,7 @@ When an ambulance gets dispatched to help someone in an emergency, every second 
 **SwiftCare GeoAgent is like a super-smart air traffic control tower for ambulances.**
 
 Here is how it works step-by-step:
+
 1. **The Map on the Big Screen:** In the dispatch room, officers see a live map of the city. Moving vehicle markers show exactly where every ambulance is located.
 2. **The Blue Corridor:** When an ambulance is sent to a patient, a bright Blue line appears on the map showing the official path the ambulance should follow.
 3. **The Invisible Sensor:** As the ambulance drives, a computer algorithm checks its GPS position every second. If the ambulance wanders off its assigned path by more than 100 meters, an alert turns on.

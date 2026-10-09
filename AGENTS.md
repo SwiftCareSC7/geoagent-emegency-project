@@ -28,12 +28,14 @@ UNDERSTAND → MAKE THE SMALLEST COMPLETE CHANGE → VERIFY → STOP
 ## AI Agent Toolkit & Discovery Protocol
 
 ### Four-Agent Shared Standards
+
 1. **Claude Code (`claude`)**: Loads `.claude/settings.json`, `.claude/skills/`, `.mcp.json`, and inherits `CLAUDE.md` → `AGENTS.md`.
 2. **Antigravity (`AGY`)**: Reads `.agents/skills/`, `AGENTS.md`, and IDE MCP configuration.
 3. **OpenCode (`opencode`)**: Reads `AGENTS.md`, `.agents/skills/`, and `opencode.json` (MCP).
 4. **Kilo Code (`kilocode`)**: Reads `.kilorules`, `.kilo/rules.md`, and `AGENTS.md`.
 
 ### Core Workflow Rules
+
 - **Skill Scout**: At the beginning of substantial tasks, consult `docs/ai-toolkit/skill-index.json`. Load only the 1 to 3 skills directly needed from `.agents/skills/<skill-name>/SKILL.md`. Never dump entire skill catalogs into prompt context.
 - **Token-Saver by Default**: Follow `.agents/skills/token-saver/SKILL.md`. Use targeted queries, surgical diffs, and concise operational updates.
 - **Caveman Mode**: When token brevity is requested or context is constrained, invoke `/caveman` (`.agents/skills/caveman/SKILL.md`) to strip conversational filler while keeping technical substance exact.

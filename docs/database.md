@@ -31,6 +31,7 @@ Decision ──────────────────┴────�
 All schemas below are verified directly against backend source code in `server/modules/`.
 
 ### 2.1 `users`
+
 **Model**: `server/modules/auth/user.model.js`  
 Represents dispatchers, supervisors, and administrative personnel.
 
@@ -67,6 +68,7 @@ Represents dispatchers, supervisors, and administrative personnel.
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ email: 1 }` (unique)
   - `{ role: 1, createdAt: -1 }` (administrative listing & role filtering)
@@ -77,6 +79,7 @@ Represents dispatchers, supervisors, and administrative personnel.
 ---
 
 ### 2.2 `vehicles`
+
 **Model**: `server/modules/vehicles/vehicle.model.js`  
 Represents emergency response vehicles (ambulances, fire engines, police units).
 
@@ -112,6 +115,7 @@ Represents emergency response vehicles (ambulances, fire engines, police units).
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ vehicleId: 1 }` (unique)
   - `{ registrationNumber: 1 }` (unique)
@@ -121,6 +125,7 @@ Represents emergency response vehicles (ambulances, fire engines, police units).
 ---
 
 ### 2.3 `emergencies`
+
 **Model**: `server/modules/emergencies/emergency.model.js`  
 Represents emergency response missions.
 
@@ -160,6 +165,7 @@ Represents emergency response missions.
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ location: '2dsphere' }` (spatial proximity)
   - `{ destination: '2dsphere' }`
@@ -170,6 +176,7 @@ Represents emergency response missions.
 ---
 
 ### 2.4 `incidents`
+
 **Model**: `server/modules/incidents/incident.model.js`  
 Represents reported road obstructions, accidents, or hazards.
 
@@ -203,6 +210,7 @@ Represents reported road obstructions, accidents, or hazards.
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ location: '2dsphere' }` (spatial proximity to routes)
   - `{ emergency: 1, isDeleted: 1 }`
@@ -212,6 +220,7 @@ Represents reported road obstructions, accidents, or hazards.
 ---
 
 ### 2.5 `trajectories`
+
 **Model**: `server/modules/trajectories/trajectory.model.js`  
 High-frequency GPS tracking points logged per vehicle.
 
@@ -234,6 +243,7 @@ High-frequency GPS tracking points logged per vehicle.
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ vehicle: 1, timestamp: -1 }` (compound index for fast retrieval of latest fixes and windowed slices)
   - `{ location: '2dsphere' }`
@@ -243,6 +253,7 @@ High-frequency GPS tracking points logged per vehicle.
 ---
 
 ### 2.6 `routes`
+
 **Model**: `server/modules/routes/route.model.js`  
 Planned and alternative navigation paths for emergencies.
 
@@ -285,6 +296,7 @@ Planned and alternative navigation paths for emergencies.
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ routeId: 1 }` (unique)
   - `{ emergency: 1, routeType: 1 }`
@@ -297,6 +309,7 @@ Planned and alternative navigation paths for emergencies.
 ---
 
 ### 2.7 `decisions`
+
 **Model**: `server/modules/decisions/decision.model.js`  
 Authoritative operational decisions produced by the deterministic Decision Engine, reconciled with GeoAgent AI advisory recommendations.
 
@@ -350,6 +363,7 @@ Authoritative operational decisions produced by the deterministic Decision Engin
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ emergency: 1, createdAt: -1 }`
   - `{ emergency: 1, situationHash: 1 }`
@@ -358,6 +372,7 @@ Authoritative operational decisions produced by the deterministic Decision Engin
 ---
 
 ### 2.8 `predictions`
+
 **Model**: `server/modules/analysis/prediction.model.js`  
 Quantitative ETA and delay prediction snapshots produced by the prediction engine for post-incident review and operational transparency.
 
@@ -410,6 +425,7 @@ Quantitative ETA and delay prediction snapshots produced by the prediction engin
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ vehicle: 1, createdAt: -1 }`
   - `{ emergency: 1, createdAt: -1 }`
@@ -455,5 +471,6 @@ During local development, developers who need direct database access can use **M
 ## 6. Database Safety Guard (`server/shared/utils/dbSafety.js`)
 
 To prevent accidental data loss in shared development, staging, or production environments:
+
 - All destructive seed and reset scripts (`seed-demo-scenario.js`, `seed-demo-scenarios.js`, `demo.service.js`) validate the database connection URI using `assertSafeDatabaseTarget()`.
 - Resets are immediately aborted on any production-like target (MongoDB Atlas `mongodb+srv://`, non-local hostnames, or databases whose names do not contain `test` or `dev`) unless `ALLOW_PRODUCTION_RESET=true` is explicitly set in the execution environment.

@@ -1,6 +1,7 @@
 # Production Deployment Guide
 
 This guide covers deploying the SwiftCare GeoAgent system to production:
+
 - **Backend**: Google Cloud Run (containerized Node.js)
 - **Frontend**: Vercel (Next.js)
 - **Database**: MongoDB Atlas (managed)
@@ -34,7 +35,7 @@ Vercel (Frontend)
 ## 1. Prerequisites
 
 | Tool | Version | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | Node.js | 22.x | Runtime |
 | Docker | Latest | Container builds |
 | gcloud CLI | Latest | GCP management |
@@ -70,17 +71,21 @@ cd server && npm run dev  # Backend on :5001
 ## 3. MongoDB Atlas Setup
 
 ### 3.1 Create Cluster
+
 1. Go to [MongoDB Atlas](https://cloud.mongodb.com)
 2. Create a free M0 cluster (or M2/M10 for production)
 3. Select a region close to your Cloud Run region
 
 ### 3.2 Configure Access
+
 1. **Database User**: Create a user with `readWrite` role on the `geoagent-emergency` database
 2. **Network Access**: Add `0.0.0.0/0` for Cloud Run (Cloud Run IPs are dynamic) or configure VPC peering for production
 3. **Connection String**: Copy the `mongodb+srv://` URI
 
 ### 3.3 Verify Indexes
+
 The Mongoose models automatically create indexes on first connection. Verify these exist:
+
 - `users`: `{ email: 1 }` (unique)
 - `vehicles`: `{ vehicleId: 1 }`, `{ registrationNumber: 1 }`
 - `emergencies`: `{ location: '2dsphere' }`
@@ -92,12 +97,14 @@ The Mongoose models automatically create indexes on first connection. Verify the
 ## 4. Google Cloud Setup
 
 ### 4.1 Create Project
+
 ```bash
 gcloud projects create geoagent-prod --name="GeoAgent Production"
 gcloud config set project geoagent-prod
 ```
 
 ### 4.2 Enable APIs
+
 ```bash
 gcloud services enable \
   run.googleapis.com \
@@ -108,6 +115,7 @@ gcloud services enable \
 ```
 
 ### 4.3 Create Artifact Registry
+
 ```bash
 gcloud artifacts repositories create geoagent \
   --repository-format=docker \
@@ -195,6 +203,7 @@ gcloud run deploy geoagent-backend \
 ```
 
 ### 5.2 Store Secrets in Secret Manager
+
 ```bash
 echo -n "mongodb+srv://user:pass@cluster.mongodb.net/geoagent-emergency" | \
   gcloud secrets create geoagent-mongo-uri --data-file=-
@@ -213,6 +222,7 @@ gcloud secrets add-iam-policy-binding geoagent-jwt-secret \
 ```
 
 ### 5.3 Health Verification
+
 ```bash
 SERVICE_URL=$(gcloud run services describe geoagent-backend --region=asia-south1 --format='value(status.url)')
 
@@ -234,19 +244,22 @@ curl ${SERVICE_URL}/api/health/providers
 ## 6. Vercel Frontend Deployment
 
 ### 6.1 Link to Vercel
+
 ```bash
 npx vercel link
 ```
 
 ### 6.2 Configure Environment Variables
+
 In the Vercel dashboard → Project → Settings → Environment Variables:
 
 | Variable | Value |
-|---|---|
+| --- | --- |
 | `NEXT_PUBLIC_API_URL` | `https://geoagent-backend-XXXX-XX.a.run.app/api` |
 | `NEXT_PUBLIC_SOCKET_URL` | `https://geoagent-backend-XXXX-XX.a.run.app` |
 
 ### 6.3 Deploy
+
 ```bash
 # Production deployment
 npx vercel --prod
@@ -259,19 +272,22 @@ Subsequent deploys happen automatically on push to `main` if Vercel GitHub integ
 ## 7. GitHub Actions Setup
 
 ### 7.1 Required Secrets
+
 In GitHub → Repository → **Settings** → **Secrets and variables** → **Actions**:
 
 #### Option A: Workload Identity Federation (Recommended)
+
 | Secret | Value |
-|---|---|
+| --- | --- |
 | `GCP_PROJECT_ID` | Your GCP project ID |
 | `GCP_REGION` | `asia-south1` (or your preferred region) |
 | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/<number>/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
 | `GCP_SERVICE_ACCOUNT` | `geoagent-deployer@<project>.iam.gserviceaccount.com` |
 
 #### Option B: Service Account Key JSON (Simpler alternative)
+
 | Secret | Value |
-|---|---|
+| --- | --- |
 | `GCP_PROJECT_ID` | Your GCP project ID |
 | `GCP_REGION` | `asia-south1` (or your preferred region) |
 | `GCP_SA_KEY` *(or `GCP_CREDENTIALS_JSON`)* | Full contents of the downloaded Service Account JSON key |
@@ -279,6 +295,7 @@ In GitHub → Repository → **Settings** → **Secrets and variables** → **Ac
 > **Note**: If GCP secrets are not yet configured in GitHub, the deployment workflow will gracefully skip the deploy steps and display setup guidance in the GitHub Actions summary rather than failing.
 
 ### 7.2 Workflow Behavior
+
 - **CI** (`.github/workflows/ci.yml`): Runs on every push/PR — lint, typecheck, build, Docker verify
 - **Deploy** (`.github/workflows/deploy.yml`): Runs on push to `main` when `server/**` changes, or via manual `workflow_dispatch` trigger — authenticates, builds container, pushes to Artifact Registry, and deploys to Cloud Run
 
@@ -289,7 +306,7 @@ In GitHub → Repository → **Settings** → **Secrets and variables** → **Ac
 Socket.IO uses an **in-memory adapter**. This means:
 
 | Constraint | Impact |
-|---|---|
+| --- | --- |
 | Single instance only | `--max-instances=1` required |
 | No horizontal scaling | One process handles all connections |
 | Cold start reconnection | Clients auto-reconnect (configured with 15 retries) |
@@ -323,7 +340,7 @@ gcloud run services update-traffic geoagent-backend \
 ## 11. Cost Control
 
 | Service | Expected Cost |
-|---|---|
+| --- | --- |
 | Cloud Run (1 instance, 1 CPU, 512MB) | ~$15–25/month |
 | MongoDB Atlas M0 (free tier) | $0 |
 | Artifact Registry | ~$1–3/month |
@@ -332,5 +349,6 @@ gcloud run services update-traffic geoagent-backend \
 | OpenRouter / OpenCode (Free Tier) | $0 (enforced via max_price: 0) |
 
 To minimize costs:
+
 - Use `--min-instances=0` (accept cold starts) instead of `--min-instances=1`
 - Use mock routing/traffic providers until production traffic warrants live APIs

@@ -9,6 +9,7 @@
 ## 1. Project Architecture Audit
 
 SwiftCare is a full-stack real-time emergency healthcare coordination system:
+
 - **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS v4, Lucide React, Leaflet & React-Leaflet for mapping.
 - **Backend**: Node.js / Express server, MongoDB / Mongoose, Socket.IO real-time dispatch events.
 - **Decision Engine**: Deterministic emergency triage and dispatch rule engine (with human approval gate).
@@ -53,8 +54,9 @@ All four required agents were verified, configured, and bound to the shared repo
 All 30 requested repositories were audited, categorized, and recorded in `docs/ai-toolkit/repository-manifest.json`:
 
 ### Category A: Coding Agents, Workflows & Skills
+
 | Repository | Role | Status | Path / Action |
-|------------|------|--------|---------------|
+| ------------ | ------ | -------- | --------------- |
 | `JuliusBrussee/caveman` | Token compression communication | Newly registered | Canonical arm registered at `.agents/skills/caveman` |
 | `DietrichGebert/ponytail` | Minimalist engineering methodology | Already present & active | `.agents/skills/ponytail`, `AGENTS.md` default |
 | `davepoon/buildwithclaude` | Claude prompt/hook hub | Newly registered | Indexed as reference in `docs/ai-toolkit/references/buildwithclaude.md` |
@@ -72,8 +74,9 @@ All 30 requested repositories were audited, categorized, and recorded in `docs/a
 | `ruvnet/ruflo` | Multi-agent flow runner | Already present | Globally installed at `~/.nvm/.../bin/ruflo` (v3.55.0) |
 
 ### Category B: Browser Automation, Research, Testing & Security
+
 | Repository | Role | Status | Path / Action |
-|------------|------|--------|---------------|
+| ------------ | ------ | -------- | --------------- |
 | `browser-use/browser-use` | Python browser agent core | Newly registered | Documented in `docs/ai-toolkit/references/browser-use.md` |
 | `browser-use/browser-harness` | Chrome CDP automation skill | Newly registered | Registered at `.agents/skills/browser-harness` |
 | `Panniantong/Agent-Reach` | Multi-platform web scraper CLI | Newly registered | Documented in `docs/ai-toolkit/references/agent-reach.md` |
@@ -83,8 +86,9 @@ All 30 requested repositories were audited, categorized, and recorded in `docs/a
 | `dialogflow/agent-human-handoff-nodejs` | Legacy human handoff | Newly registered | Archived upstream; documented as architecture reference |
 
 ### Category C: APIs, MCP, Documentation & Integrations
+
 | Repository | Role | Status | Path / Action |
-|------------|------|--------|---------------|
+| ------------ | ------ | -------- | --------------- |
 | `public-apis/public-apis` | Free API catalog | Newly registered | Indexed in `docs/ai-toolkit/references/public-apis.md` |
 | `n0shake/Public-APIs` | Alternative API catalog | Newly registered | Indexed in `docs/ai-toolkit/references/n0shake-public-apis.md` |
 | `HelpCode-ai/anythingmcp` | Universal API to MCP gateway | Newly registered | Indexed in `docs/ai-toolkit/references/anythingmcp.md` |
@@ -93,8 +97,9 @@ All 30 requested repositories were audited, categorized, and recorded in `docs/a
 | `appwrite/appwrite` | End-to-end BaaS | Newly registered | Massive Docker platform; indexed as reference architecture |
 
 ### Category D: Frontend & Design Resources
+
 | Repository | Role | Status | Path / Action |
-|------------|------|--------|---------------|
+| --- | --- | --- | --- |
 | `Leonxlnx/taste-skill` | Design system generator | Already present | Deduplicated to `.agents/skills/taste-design` (per prompt rules) |
 | `birobirobiro/awesome-shadcn-ui` | Curated shadcn UI blocks | Newly registered | Indexed in `docs/ai-toolkit/references/awesome-shadcn-ui.md` |
 
@@ -103,6 +108,7 @@ All 30 requested repositories were audited, categorized, and recorded in `docs/a
 ## 4. Real Vercel Agent Skills Integration
 
 Audited official `vercel-labs/agent-skills` repository and existing local installations. Integrated:
+
 1. `react-best-practices`: 60KB rule catalog covering modern React/Next.js patterns, server components, and state isolation.
 2. `vercel-optimize`: Comprehensive performance optimization engine (Core Web Vitals, image optimization, edge caching).
 3. `web-design-guidelines`: Accessible, mobile-first visual design heuristics.

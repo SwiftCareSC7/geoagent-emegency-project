@@ -7,6 +7,7 @@ Use this checklist before and after deploying to production.
 ## Pre-Deployment Checklist
 
 ### Infrastructure
+
 - [ ] MongoDB Atlas cluster is created and accessible
 - [ ] MongoDB database user has `readWrite` on `geoagent-emergency`
 - [ ] MongoDB network access allows Cloud Run IPs (`0.0.0.0/0` or VPC peering)
@@ -16,6 +17,7 @@ Use this checklist before and after deploying to production.
 - [ ] Cloud Run service account has Secret Manager access
 
 ### Secrets
+
 - [ ] `MONGO_URI` stored in GCP Secret Manager
 - [ ] `JWT_SECRET` stored in GCP Secret Manager (minimum 64 chars, random)
 - [ ] `OPENROUTER_API_KEY` / `OPENCODE_API_KEY` stored in GCP Secret Manager (if using AI reasoning)
@@ -24,12 +26,14 @@ Use this checklist before and after deploying to production.
 - [ ] No secrets in committed code (grep: `mongodb+srv://`, API keys)
 
 ### Configuration
+
 - [ ] `NODE_ENV=production` set in Cloud Run env vars
 - [ ] `CLIENT_URL` set to Vercel production URL
 - [ ] Vercel env vars set: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SOCKET_URL`
 - [ ] Cloud Run `--min-instances=1 --max-instances=1` (Socket.IO constraint)
 
 ### Code
+
 - [ ] `npm run build` passes (frontend)
 - [ ] `npx tsc --noEmit` passes (TypeScript)
 - [ ] `docker build` succeeds (backend)
@@ -40,12 +44,14 @@ Use this checklist before and after deploying to production.
 ## Post-Deployment Checklist
 
 ### Health Verification
+
 - [ ] `GET /api/health/live` → `200 { status: "ok" }`
 - [ ] `GET /api/health/ready` → `200 { status: "ready", database: "connected" }`
 - [ ] `GET /api/health` → `200 { version, commit, environment: "production" }`
 - [ ] `GET /api/health/providers` → MongoDB: AVAILABLE
 
 ### Functional Verification
+
 - [ ] User can register via frontend
 - [ ] User can log in (cookie set)
 - [ ] User can view dashboard after login
@@ -54,6 +60,7 @@ Use this checklist before and after deploying to production.
 - [ ] CORS: no cross-origin errors in browser console
 
 ### Security Verification
+
 - [ ] Login cookie has: `HttpOnly=true`, `Secure=true`, `SameSite=None`
 - [ ] `/api/health` does NOT expose `MONGO_URI` or any API keys
 - [ ] `/api/health/providers` shows status without credentials
@@ -61,6 +68,7 @@ Use this checklist before and after deploying to production.
 - [ ] Admin endpoints return 403 for non-ADMIN users
 
 ### Monitoring
+
 - [ ] Cloud Run logs are accessible in Cloud Logging
 - [ ] MongoDB Atlas metrics are visible
 - [ ] Vercel deployment logs are accessible

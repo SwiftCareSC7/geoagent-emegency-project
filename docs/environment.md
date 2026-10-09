@@ -7,7 +7,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 ## 1. Backend Server & Database Variables (`server/.env`)
 
 | Variable | Required? | Default | Purpose | Production Behavior |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `PORT` | Optional | `5001` | Port on which the Express & Socket.IO server listens | Set by cloud provider (e.g. `8080`, `5001`) |
 | `NODE_ENV` | Optional | `development` | Environment mode (`development`, `test`, `production`) | Enables strict security headers & cookie flags |
 | `MONGO_URI` | **Required** | `mongodb://127.0.0.1:27017/geoagent-emergency-test` | MongoDB connection string | Managed MongoDB Atlas / replica set connection |
@@ -23,7 +23,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 ## 2. Authentication Variables
 
 | Variable | Required? | Default | Purpose | Production Behavior |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `JWT_SECRET` | **Required** | None | Secret key used to sign and verify JWT tokens | Must be a long, cryptographically random string |
 | `JWT_EXPIRES_IN` | Optional | `30d` | Lifetime duration of issued JWT tokens | Recommended `7d` or `24h` with refresh tokens |
 
@@ -32,7 +32,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 ## 3. GeoAgent AI (Free Models: OpenRouter / OpenCode Zen)
 
 | Variable | Required? | Default | Purpose | Fallback Behavior |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `AI_PROVIDER` | Optional | `auto` | Provider priority: `auto` (OpenRouter, then OpenCode), `openrouter`, or `opencode` | Falls back across models then providers; deterministic fallback if none available |
 | `OPENROUTER_API_KEY` | Optional | None | API Key for OpenRouter (`https://openrouter.ai/api/v1`) | Free models only; verified via live catalog check (`pricing == 0`) |
 | `OPENROUTER_MODEL` | Optional | None | Preferred OpenRouter model ID | If unconfirmed free or absent, auto-selects first confirmed free tool-capable model from catalog |
@@ -42,6 +42,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 | `OPENCODE_BASE_URL` | Optional | `https://opencode.ai/zen/v1` | Custom endpoint base URL for OpenCode | — |
 
 > **Financial & Safety Guards**:
+>
 > - Backend-only: Never prefix AI keys with `NEXT_PUBLIC_`.
 > - Zero-Cost Policy: Calls are strictly guarded with `max_price: { prompt: 0, completion: 0, request: 0 }`. Only catalog-confirmed free models are ever executed.
 > - If all free AI providers fail or are unconfigured, the system automatically uses the deterministic fallback rules without interrupting emergency dispatch operations.
@@ -51,10 +52,10 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 ## 4. Routing & Traffic Providers
 
 | Variable | Required? | Default | Purpose | Fallback Behavior |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `ROUTING_PROVIDER` | Optional | `mock` | Active routing provider (`mock`, `google`, `mapbox`, `osrm`) | Defaults to deterministic mock routing |
-| `GOOGLE_MAPS_API_KEY`| Optional | None | API Key for Google Routes / Directions API | Required only when `ROUTING_PROVIDER=google` |
-| `MAPBOX_ACCESS_TOKEN`| Optional | None | API Token for Mapbox Directions API | Required only when `ROUTING_PROVIDER=mapbox` |
+| `GOOGLE_MAPS_API_KEY` | Optional | None | API Key for Google Routes / Directions API | Required only when `ROUTING_PROVIDER=google` |
+| `MAPBOX_ACCESS_TOKEN` | Optional | None | API Token for Mapbox Directions API | Required only when `ROUTING_PROVIDER=mapbox` |
 | `TRAFFIC_PROVIDER` | Optional | `mock` | Active traffic provider (`mock`, `google`) | Defaults to deterministic mock traffic levels |
 | `DEFAULT_FREE_FLOW_SPEED_KMH` | Optional | `45` | Fallback speed in km/h when telemetry/traffic is missing | Used for ETA arithmetic |
 
@@ -63,9 +64,9 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 ## 5. Threshold Configurations
 
 | Variable | Required? | Default | Purpose |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `ROUTE_WARNING_DISTANCE_METERS` | Optional | `50` | Distance threshold for `WARNING` deviation |
-| `ROUTE_DEVIATION_DISTANCE_METERS`| Optional | `100` | Distance threshold for `DEVIATED` classification |
+| `ROUTE_DEVIATION_DISTANCE_METERS` | Optional | `100` | Distance threshold for `DEVIATED` classification |
 | `ROUTE_CRITICAL_DISTANCE_METERS` | Optional | `250` | Distance threshold for `CRITICAL_DEVIATION` |
 | `BEARING_WARNING_DEGREES` | Optional | `30` | Bearing angle diff threshold for Warning |
 | `BEARING_DEVIATION_DEGREES` | Optional | `60` | Bearing angle diff threshold for Deviation |
@@ -77,7 +78,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 ## 6. Frontend Environment Variables (`.env.local`)
 
 | Variable | Required? | Default | Purpose |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | Optional | `http://localhost:5001/api` | Backend base REST API URL (port 5001) |
 | `NEXT_PUBLIC_SOCKET_URL` | Optional | `http://localhost:5001` | Backend Socket.IO server URL (port 5001) |
 | `NEXT_PUBLIC_CARTO_API_KEY` | Optional | None | CARTO basemap API key for browser raster tile loading without watermark |
@@ -87,7 +88,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 > Set `NEXT_PUBLIC_CARTO_API_KEY` in `.env.local` for local development and in the **Vercel Project Dashboard → Settings → Environment Variables** for production.
 >
 > **Security Rule**: `NEXT_PUBLIC_CARTO_API_KEY` is strictly a public browser client credential for rendering raster map tiles. **Never** prefix backend secrets (`OPENROUTER_API_KEY`, `OPENCODE_API_KEY`, `GOOGLE_MAPS_API_KEY`, `MONGO_URI`, `JWT_SECRET`) with `NEXT_PUBLIC_`.
-
+>
 > **Local Development Note**:
 > The Express and Socket.IO backend defaults to port `5001` (configured in `server/.env`). Configure `NEXT_PUBLIC_API_URL=http://localhost:5001/api` and `NEXT_PUBLIC_SOCKET_URL=http://localhost:5001` in `.env.local` to match. If unconfigured or backend is offline, the frontend gracefully falls back to demonstration data fixtures.
 
@@ -96,7 +97,7 @@ This document lists all environment variables used by the SwiftCare GeoAgentic E
 ## 7. Emergency SMS Notifications (MSG91)
 
 | Variable | Required? | Default | Purpose | Production Behavior |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | `MSG91_PROVIDER` | Optional | `real` | Provider mode: `real` (telecom) or `mock` (webhook testing) | In `mock` mode, requests are safely sent to test endpoint |
 | `MSG91_API_URL` | Optional | `https://control.msg91.com/api/v5/flow` | MSG91 Flow API endpoint | Can be pointed to a mock webhook for non-telecom testing |
 | `MSG91_AUTH_KEY` | Optional | None | MSG91 API Authentication Key | Transmitted in `authkey` header. Never expose to client |

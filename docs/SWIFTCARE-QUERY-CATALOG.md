@@ -7,7 +7,8 @@ This document provides a rigorous, truth-grounded analysis of operational query 
 ## 1. Executive Query Reality Check
 
 ### Current Architectural Reality
-- **What Exists**: 
+
+- **What Exists**:
   - A structured backend intelligence service ([`server/modules/geoagents/geoAgent.tools.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/geoagents/geoAgent.tools.js)) exposing **9 declarative tools** for GeoAgent LLM tool calling.
   - An epistemic situation synthesizer ([`server/modules/geoagents/geoAgent.service.js`](file:///Users/priyanshu/Documents/geoagent-emegency-project/server/modules/geoagents/geoAgent.service.js)) that ingests vehicle state, cross-track deviation, nearby incidents, and ETA to generate natural-language briefings with **Observed**, **Inferred**, and **Unknown** classifications.
   - Deterministic REST endpoints that return counts, statuses, and locations of fleet units and emergencies.
@@ -46,7 +47,7 @@ This document provides a rigorous, truth-grounded analysis of operational query 
 
 To support end-to-end natural-language operator interaction, the system is designed around declarative function calling via GeoAgent AI:
 
-```
+```text
 [ Operator Natural Language Input ]
                │
                ▼
@@ -90,6 +91,7 @@ To support end-to-end natural-language operator interaction, the system is desig
 ## 4. Query Safety & Data Boundary Guardrails
 
 To prevent hallucinations, data leakage, and unauthorized modifications:
+
 1. **Zero Arithmetic Hallucination**: Distances, bearings, speeds, and ETA minutes are computed exclusively by backend TypeScript/JavaScript algorithms. The LLM is instructed never to re-calculate or invent numbers.
 2. **Grounding in Truth**: Situation context and tool call results are the sole authoritative sources of truth. If a vehicle has no recent GPS fixes, the system explicitly reports `GPS_TELEMETRY_ANOMALY`.
 3. **Role-Based Data Filtering**: Sensitive patient notes or medical history are excluded from operational dispatch queries.
@@ -101,6 +103,7 @@ To prevent hallucinations, data leakage, and unauthorized modifications:
 ## 5. Bridging the Gap: Requirements for Full Conversational Search
 
 To upgrade the current structured tool pipeline into a fully conversational operations assistant:
+
 1. **Conversational Front-End Component**: Add an `OperationalQueryHUD` drawer into the Control Room topbar.
 2. **Entity Resolution Pipeline**: Resolve natural-language references (e.g. *"the crash near Domlur"*, *"AMB-1"*) to MongoDB identifiers (`INC-001`, `AMB-01`) using lightweight fuzzy matching.
 3. **Episodic Vector Memory**: Index completed emergency missions into a vector store (e.g. MongoDB Atlas Vector Search or Pinecone) with metadata tags for time-of-day, weather, corridor, and delay outcomes.

@@ -1,5 +1,7 @@
 # SWIFTCARE GEOAGENT
+
 ## Complete, Authoritative Full-Stack System Audit & Technical Project Report
+
 **Author:** DeepMind Antigravity Advanced Agentic Engineering Team  
 **System Status:** Production Hardened & Deterministically Verified  
 **Date of Audit:** September 2026  
@@ -12,6 +14,7 @@
 **SwiftCare GeoAgent** is an advanced, map-first emergency vehicle response and decision-support platform designed to monitor emergency vehicle trajectories in real time, detect corridor disruptions and cross-track route deviations, determine root causes using multimodal sensor data, project quantitative arrival delays, recommend road-constrained detours, and present actionable, three-tier epistemic recommendations to human dispatchers.
 
 Rather than acting as an unconstrained consumer chatbot or relying on black-box heuristics, SwiftCare GeoAgent implements a **dual-engine decision architecture**:
+
 1. **An Authoritative Deterministic Safety Rules Engine** (`decision.rules.js`) that enforces hard operational safety policies, evaluates candidate route scores, verifies threshold margins, and prevents unauthorized database mutations.
 2. **An Advisory Generative Intelligence Engine** (powered by GeoAgent free-model provider abstraction over OpenRouter / OpenCode through `geoAgent.service.js`) that synthesizes complex, chaotic situation contexts (traffic congestion ratios, road incidents, driver telemetry trends) into structured, natural-language executive briefings divided into **Observed**, **Inferred**, and **Unknown** epistemic categories.
 
@@ -28,6 +31,7 @@ In metropolitan emergency response (such as Bengaluru, India), every second dire
 ### The Five Core Questions
 
 #### Question 1: "Has the ambulance deviated from its planned route?"
+
 * **How It Is Solved**: The system ingests vehicle GPS fixes every 1–5 seconds via `POST /api/trajectories` and calculates the minimum cross-track orthogonal distance (`distanceFromRouteMeters`) from the vehicle's coordinates to the planned route polyline using spherical trigonometry (`geospatial.service.js`).
 * **Thresholds**:
   * `< 50 meters`: `ON_ROUTE` (Normal progress)
@@ -37,6 +41,7 @@ In metropolitan emergency response (such as Bengaluru, India), every second dire
 * **UI**: Status pills on the Control Room Dashboard, Driver HUD, and Emergency Mission Map.
 
 #### Question 2: "What caused the deviation?"
+
 * **How It Is Solved**: When a vehicle enters `DEVIATED` or `CRITICAL_DEVIATION`, `analysis.service.js` executes a spatial join against the `Incident` collection within a 500m radius of the vehicle's position, cross-referenced with corridor traffic congestion ratios from `traffic.service.js`.
 * **Causal Classifications**:
   * `ACCIDENT_INDUCED_CONGESTION` (Active road crash detected near corridor)
@@ -47,6 +52,7 @@ In metropolitan emergency response (such as Bengaluru, India), every second dire
   * `UNKNOWN_FACTORS` (Inconclusive sensor data)
 
 #### Question 3: "How much delay is expected?"
+
 * **How It Is Solved**: The quantitative prediction engine (`prediction.service.js`) compares the active route's original baseline travel time (`originalDurationMinutes`) against live traffic speeds, rolling vehicle speeds, and corridor bottlenecks to compute `delayMinutes = currentDurationMinutes - originalDurationMinutes`.
 * **Risk Categorization**:
   * `delayMinutes < 3`: `LOW` risk
@@ -55,11 +61,13 @@ In metropolitan emergency response (such as Bengaluru, India), every second dire
   * `delayMinutes > 10`: `SEVERE` risk (Triggers consideration of backup fleet units)
 
 #### Question 4: "What is the best alternative route?"
+
 * **How It Is Solved**: `routing.service.js` requests road-constrained candidate detours from Google Routes API or OSRM, originating at the ambulance's **current real-time coordinates** and terminating at the **original patient destination**. `decision.rules.js` scores candidates deterministically:
   $$\text{Score} = \text{ETA Minutes} + \text{Traffic Penalty} + \text{Incident Penalty}$$
   A route is only recommended if it provides at least a **2-minute net time advantage** over the congested path.
 
 #### Question 5: "Should another ambulance be dispatched instead?"
+
 * **How It Is Solved**: If the projected delay on the primary vehicle exceeds `maxAcceptableDelayMinutes` (10 minutes), `decision.rules.js` automatically invokes `getNearbyAvailableVehicles`. If an available backup unit can reach the patient at least **3 minutes sooner** than the delayed primary vehicle, the system recommends `CONSIDER_BACKUP`.
 
 ---
@@ -81,6 +89,7 @@ In metropolitan emergency response (such as Bengaluru, India), every second dire
 ## 4. Product Overview
 
 SwiftCare GeoAgent is designed for four primary user groups:
+
 1. **Control Room Dispatchers**: Monitor metropolitan emergency corridors, review deviation alerts, approve/reject recommended reroutes, and coordinate fleet assets.
 2. **Ambulance Drivers**: Receive turn-by-turn navigation guidance, corridor clearance alerts, and reroute updates via a distraction-free mobile HUD.
 3. **Hospital Paramedics & Emergency Bays**: Track incoming patient triage status, vital signs, and arrival ETAs to prepare trauma teams before arrival.
@@ -90,15 +99,15 @@ SwiftCare GeoAgent is designed for four primary user groups:
 
 ## 5. System Capabilities
 
-- **Real-Time GPS Telemetry Tracking**: Snapping to road networks, rolling speed estimation, and trajectory breadcrumb logging.
-- **Dynamic Cross-Track Deviation Engine**: Immediate sub-100m deviation detection.
-- **Corridor Disruption & Incident Correlation**: Real-time identification of road accidents, construction, and severe congestion bottlenecks.
-- **Traffic-Aware ETA Prediction**: Live delay forecasting with risk stratification.
-- **Road-Constrained Detour Routing**: Alternative corridors originating strictly from the vehicle's current location to the locked destination.
-- **Epistemic GeoAgent Advisory Reasoning**: Generative reasoning grounded in verified sensor data with explicit separation of knowns and unknowns.
-- **Human-in-the-Loop Decision Authorization**: Dispatchers retain final approval authority; the system never silently reroutes active emergency units.
-- **V2X Corridor Clearance (Green-Wave)**: Traffic signal preemption and civilian vehicle yield alerts along the emergency path.
-- **What-If Scenario Simulator (`/diff`)**: Deterministic replay sandbox allowing operators to test complex rerouting scenarios under simulated road closures.
+* **Real-Time GPS Telemetry Tracking**: Snapping to road networks, rolling speed estimation, and trajectory breadcrumb logging.
+* **Dynamic Cross-Track Deviation Engine**: Immediate sub-100m deviation detection.
+* **Corridor Disruption & Incident Correlation**: Real-time identification of road accidents, construction, and severe congestion bottlenecks.
+* **Traffic-Aware ETA Prediction**: Live delay forecasting with risk stratification.
+* **Road-Constrained Detour Routing**: Alternative corridors originating strictly from the vehicle's current location to the locked destination.
+* **Epistemic GeoAgent Advisory Reasoning**: Generative reasoning grounded in verified sensor data with explicit separation of knowns and unknowns.
+* **Human-in-the-Loop Decision Authorization**: Dispatchers retain final approval authority; the system never silently reroutes active emergency units.
+* **V2X Corridor Clearance (Green-Wave)**: Traffic signal preemption and civilian vehicle yield alerts along the emergency path.
+* **What-If Scenario Simulator (`/diff`)**: Deterministic replay sandbox allowing operators to test complex rerouting scenarios under simulated road closures.
 
 ---
 
@@ -114,41 +123,44 @@ SwiftCare GeoAgent implements strict enterprise Role-Based Access Control (RBAC)
 | **`ADMIN`** | `/admin`, `/control-room`, `/driver/*`, `/paramedic` | Full administrative oversight: system health, provider diagnostics, user quarantine approvals, account suspension. | Subject to audit logging on all administrative actions. |
 
 ### Account Quarantine & Multi-Workspace Lifecycle
-- **Quarantine on Registration**: Newly registered accounts enter `status: 'PENDING'`. Quarantined users are blocked by `<ProtectedRoute>` until approved by an Administrator.
-- **Multi-Workspace Access**: Users have granular `permittedWorkspaces` allowing cross-role operators (e.g. Supervisor Dispatchers) to toggle seamlessly between dashboards.
-- **Resource Ownership Defense**: `ownershipMiddleware.js` strictly rejects unauthorized modifications to vehicle assets from drivers who are not bound to that specific unit.
+
+* **Quarantine on Registration**: Newly registered accounts enter `status: 'PENDING'`. Quarantined users are blocked by `<ProtectedRoute>` until approved by an Administrator.
+* **Multi-Workspace Access**: Users have granular `permittedWorkspaces` allowing cross-role operators (e.g. Supervisor Dispatchers) to toggle seamlessly between dashboards.
+* **Resource Ownership Defense**: `ownershipMiddleware.js` strictly rejects unauthorized modifications to vehicle assets from drivers who are not bound to that specific unit.
 
 ---
 
 ## 7. Complete Feature Inventory
 
 An inventory of all 17 backend modules and 11 frontend route views:
-- **Backend Modules**: `admin`, `analysis`, `auth`, `clearance`, `communication`, `decisions`, `deviation`, `emergencies`, `geoagents`, `health`, `incidents`, `orchestration`, `realtime`, `routes`, `traffic`, `trajectories`, `vehicles`.
-- **Frontend Views**:
-  - `/`: Public landing page with feature cards, system guide, and role login cards.
-  - `/login`: Unified authentication portal with credentials form, session recovery, and role redirection.
-  - `/registration` & `/signup`: User registration desk with 4-role interactive grid, multi-workspace requests, assigned vehicle binding, and quarantine notification.
-  - `/control-room`: Central metropolitan emergency operations dashboard with live map, queue, fleet panel, and 5-Question Mission HUD.
-  - `/control-room/overview`: Multi-Mission Operations Overview with status cards, queue filters, and Quick-Dispatch Emergency Intake modal.
-  - `/diff`: Map-first hypothetical emergency scenario simulator with deterministic 13-stage timeline and 5-color corridor hierarchy.
-  - `/emergencies/[id]`: Mission detail page with patient telemetry, corridor route, and decision approval cards.
-  - `/driver/dashboard`: In-cab navigation HUD with maneuver guidance, speedometer, and destination hospital selector.
-  - `/paramedic`: Pre-hospital triage workflow for recording patient vitals and coordinating ER handoffs.
-  - `/emergency-lab`: Multi-scenario emergency simulation sandbox with real-time incident injection.
-  - `/admin`: Administrative system health monitor, user governance approvals console, and raw database explorer.
+
+* **Backend Modules**: `admin`, `analysis`, `auth`, `clearance`, `communication`, `decisions`, `deviation`, `emergencies`, `geoagents`, `health`, `incidents`, `orchestration`, `realtime`, `routes`, `traffic`, `trajectories`, `vehicles`.
+* **Frontend Views**:
+  * `/`: Public landing page with feature cards, system guide, and role login cards.
+  * `/login`: Unified authentication portal with credentials form, session recovery, and role redirection.
+  * `/registration` & `/signup`: User registration desk with 4-role interactive grid, multi-workspace requests, assigned vehicle binding, and quarantine notification.
+  * `/control-room`: Central metropolitan emergency operations dashboard with live map, queue, fleet panel, and 5-Question Mission HUD.
+  * `/control-room/overview`: Multi-Mission Operations Overview with status cards, queue filters, and Quick-Dispatch Emergency Intake modal.
+  * `/diff`: Map-first hypothetical emergency scenario simulator with deterministic 13-stage timeline and 5-color corridor hierarchy.
+  * `/emergencies/[id]`: Mission detail page with patient telemetry, corridor route, and decision approval cards.
+  * `/driver/dashboard`: In-cab navigation HUD with maneuver guidance, speedometer, and destination hospital selector.
+  * `/paramedic`: Pre-hospital triage workflow for recording patient vitals and coordinating ER handoffs.
+  * `/emergency-lab`: Multi-scenario emergency simulation sandbox with real-time incident injection.
+  * `/admin`: Administrative system health monitor, user governance approvals console, and raw database explorer.
 
 ---
 
 ## 8. High-Level Architecture
 
 The platform follows a layered architectural design:
-- **Presentation Layer**: Next.js 16 App Router, React 19, Tailwind CSS v4, Lucide React, Leaflet 1.9.4.
-- **API & Orchestration Layer**: Express 4 server (port 5001) + Next.js Server Route Handlers for serverless execution.
-- **Intelligence Layer**:
-  - Authoritative: Deterministic Decision Engine (`decision.rules.js`).
-  - Advisory: GeoAgent Free LLM (`geoAgent.service.js` / `geoagent.provider.js`) with 9 declarative tools.
-- **Persistence Layer**: MongoDB 7.0+ with Mongoose ODM, utilizing 2dsphere spatial indexes.
-- **Realtime Layer**: Socket.IO 4.8 with room-based broadcast topology (`control-room`, `vehicle:{id}`, `emergency:{id}`).
+
+* **Presentation Layer**: Next.js 16 App Router, React 19, Tailwind CSS v4, Lucide React, Leaflet 1.9.4.
+* **API & Orchestration Layer**: Express 4 server (port 5001) + Next.js Server Route Handlers for serverless execution.
+* **Intelligence Layer**:
+  * Authoritative: Deterministic Decision Engine (`decision.rules.js`).
+  * Advisory: GeoAgent Free LLM (`geoAgent.service.js` / `geoagent.provider.js`) with 9 declarative tools.
+* **Persistence Layer**: MongoDB 7.0+ with Mongoose ODM, utilizing 2dsphere spatial indexes.
+* **Realtime Layer**: Socket.IO 4.8 with room-based broadcast topology (`control-room`, `vehicle:{id}`, `emergency:{id}`).
 
 *(See [`docs/SWIFTCARE-ARCHITECTURE.md`](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/SWIFTCARE-ARCHITECTURE.md) for full architectural diagrams).*
 
@@ -156,23 +168,24 @@ The platform follows a layered architectural design:
 
 ## 9. Frontend Architecture
 
-- **State Management**: React state hooks (`useState`, `useCallback`, `useEffect`) combined with custom real-time hooks (`useAuth`, `useSocket`).
-- **Data Fetching**: Resilient dual-mode data fetching: attempts live REST API endpoints; on network failure or offline mode, falls back to rich canonical demo fixtures (`lib/demo-fixtures.ts`).
-- **Styling & Theming**: Tailwind CSS v4 with unified CSS custom properties (`hsl(...)`), supporting seamless Light and Dark modes. Dark mode tiles utilize an inverted tactical filter to remove all map watermarks while preserving street clarity.
+* **State Management**: React state hooks (`useState`, `useCallback`, `useEffect`) combined with custom real-time hooks (`useAuth`, `useSocket`).
+* **Data Fetching**: Resilient dual-mode data fetching: attempts live REST API endpoints; on network failure or offline mode, falls back to rich canonical demo fixtures (`lib/demo-fixtures.ts`).
+* **Styling & Theming**: Tailwind CSS v4 with unified CSS custom properties (`hsl(...)`), supporting seamless Light and Dark modes. Dark mode tiles utilize an inverted tactical filter to remove all map watermarks while preserving street clarity.
 
 ---
 
 ## 10. Backend Architecture
 
-- **Server Architecture**: Node.js ES Module environment (`server/server.js`) running Express 4.
-- **Security Middleware**: Helmet security headers, CORS origin verification with regex support for Vercel subdomains, HTTP-only cookie parsing.
-- **Provider Health Service**: Proactively monitors Google Routes API, Google Roads API, and AI Provider endpoints, exposing statuses (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`) via `GET /api/health/providers`.
+* **Server Architecture**: Node.js ES Module environment (`server/server.js`) running Express 4.
+* **Security Middleware**: Helmet security headers, CORS origin verification with regex support for Vercel subdomains, HTTP-only cookie parsing.
+* **Provider Health Service**: Proactively monitors Google Routes API, Google Roads API, and AI Provider endpoints, exposing statuses (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`) via `GET /api/health/providers`.
 
 ---
 
 ## 11. Database Architecture
 
 MongoDB serves as the central data store across 9 collections:
+
 1. `users`: Credentials, bcrypt password hashes (12 rounds), operational roles.
 2. `vehicles`: Fleet inventory, status, driver info, capacity.
 3. `emergencies`: Active and historical emergency incidents with GeoJSON Point coordinates.
@@ -198,33 +211,36 @@ The system provides 38 REST endpoints categorized under `/api/auth`, `/api/vehic
 ## 13. Realtime Architecture
 
 Real-time synchronization uses Socket.IO 4.8.
-- **Room Topography**:
-  - `control-room`: Global dispatch updates, fleet movements, and pending decision alerts.
-  - `vehicle:{vehicleId}`: Streamlined updates for specific driver navigation units.
-  - `emergency:{emergencyId}`: Emergency-specific triage and route changes.
-  - `clearance`: High-frequency V2X traffic signal states.
-- **Failover**: If the WebSocket connection drops, client dashboards automatically fail over to HTTP polling every 5 seconds.
+
+* **Room Topography**:
+  * `control-room`: Global dispatch updates, fleet movements, and pending decision alerts.
+  * `vehicle:{vehicleId}`: Streamlined updates for specific driver navigation units.
+  * `emergency:{emergencyId}`: Emergency-specific triage and route changes.
+  * `clearance`: High-frequency V2X traffic signal states.
+* **Failover**: If the WebSocket connection drops, client dashboards automatically fail over to HTTP polling every 5 seconds.
 
 ---
 
 ## 14. Map Architecture
 
 The visual interface is **map-first**.
-- **Engine**: Leaflet 1.9.4.
-- **Base Layer**: High-definition Google Maps tiles with tactical dark CSS filter (`filter: invert(100%) hue-rotate(180deg) brightness(88%) contrast(90%)`).
-- **Zero Watermark**: Eliminates third-party API key watermarks while displaying clear street typography.
-- **Route Semantics**:
-  - 🔵 **Blue** (`#2563EB`): Active Planned Corridor
-  - 🟣 **Purple** (`#9333EA`): Recommended Detour Alternative
-  - ⚪ **Gray** (`#64748B`): Secondary Alternative Corridors
-  - 🟠 **Orange** (`#EA580C`): Actual GPS Telemetry Trajectory
-  - 🔴 **Red** (`#DC2626`): Road Blockage / Hazard Collision
+
+* **Engine**: Leaflet 1.9.4.
+* **Base Layer**: High-definition Google Maps tiles with tactical dark CSS filter (`filter: invert(100%) hue-rotate(180deg) brightness(88%) contrast(90%)`).
+* **Zero Watermark**: Eliminates third-party API key watermarks while displaying clear street typography.
+* **Route Semantics**:
+  * 🔵 **Blue** (`#2563EB`): Active Planned Corridor
+  * 🟣 **Purple** (`#9333EA`): Recommended Detour Alternative
+  * ⚪ **Gray** (`#64748B`): Secondary Alternative Corridors
+  * 🟠 **Orange** (`#EA580C`): Actual GPS Telemetry Trajectory
+  * 🔴 **Red** (`#DC2626`): Road Blockage / Hazard Collision
 
 ---
 
 ## 15. Multi-Provider Routing System
 
 The routing engine (`server/modules/routes/routing.service.js`) supports three providers:
+
 1. `GoogleRoutingProvider`: Uses Google Routes API (`directions/v2:computeRoutes`) with `TRAFFIC_AWARE_OPTIMAL` routing and polyline decoding.
 2. `OsrmRoutingProvider`: OpenStreetMap public routing engine for open-data road routing.
 3. `CanonicalRoutingProvider`: Pre-computed, high-density road corridors across metropolitan Bengaluru for deterministic fallback.
@@ -235,45 +251,47 @@ The routing engine (`server/modules/routes/routing.service.js`) supports three p
 
 ## 16. Traffic System
 
-- **Live Provider**: Queries Google Routes traffic duration metrics to compute congestion ratios.
-- **Traffic Levels**: `FREE` (< 0.2), `LIGHT` (0.2 – 0.4), `MODERATE` (0.4 – 0.6), `HEAVY` (0.6 – 0.8), `SEVERE` (> 0.8).
-- **ETA Impact**: Congestion ratio scales travel time duration penalties linearly.
+* **Live Provider**: Queries Google Routes traffic duration metrics to compute congestion ratios.
+* **Traffic Levels**: `FREE` (< 0.2), `LIGHT` (0.2 – 0.4), `MODERATE` (0.4 – 0.6), `HEAVY` (0.6 – 0.8), `SEVERE` (> 0.8).
+* **ETA Impact**: Congestion ratio scales travel time duration penalties linearly.
 
 ---
 
 ## 17. Telemetry & Ingestion Pipeline
 
-- **Ingestion**: Raw GPS fixes accepted via `POST /api/trajectories`.
-- **Validation**: Latitude (-90 to 90) and Longitude (-180 to 180) validation.
-- **Calculation**: Haversine distance, spherical bearing angle, and cross-track offset calculated on every fix.
+* **Ingestion**: Raw GPS fixes accepted via `POST /api/trajectories`.
+* **Validation**: Latitude (-90 to 90) and Longitude (-180 to 180) validation.
+* **Calculation**: Haversine distance, spherical bearing angle, and cross-track offset calculated on every fix.
 
 ---
 
 ## 18. Deviation Detection Engine
 
 The deviation engine (`server/modules/deviation/deviation.service.js`) operates without external API dependencies:
-- Converts route geometry into segment lines.
-- Projects vehicle position onto the nearest segment to find cross-track distance.
-- Categorizes deviation into `ON_ROUTE`, `WARNING`, `DEVIATED`, or `CRITICAL_DEVIATION`.
+
+* Converts route geometry into segment lines.
+* Projects vehicle position onto the nearest segment to find cross-track distance.
+* Categorizes deviation into `ON_ROUTE`, `WARNING`, `DEVIATED`, or `CRITICAL_DEVIATION`.
 
 ---
 
 ## 19. ETA & Delay Prediction
 
-- **Baseline**: Original planned travel time.
-- **Live Computation**:
+* **Baseline**: Original planned travel time.
+* **Live Computation**:
   $$\text{Current ETA} = \text{Remaining Distance} / \text{Rolling Speed} + \text{Traffic Delay}$$
-- **Delay Delta**: Emitted as `delayMinutes`. Delays $> 10\text{ min}$ automatically trigger backup ambulance queries.
+* **Delay Delta**: Emitted as `delayMinutes`. Delays $> 10\text{ min}$ automatically trigger backup ambulance queries.
 
 ---
 
 ## 20. GeoAgent Intelligence Layer
 
 GeoAgent is an advisory operational reasoning agent:
-- **Model**: Free-tier models via OpenRouter or OpenCode Zen (`geoagent.provider.js`), catalog-verified free with `max_price: 0`.
-- **Epistemic Discipline**: Explicitly organizes insights into **Observed** (raw sensor facts), **Inferred** (deductive conclusions), and **Unknown** (information gaps).
-- **Deterministic Boundary**: The LLM does NOT calculate distances or ETAs, and cannot modify database records directly.
-- **Fallback**: If AI keys are absent or providers fail, `generateFallbackResponse` executes a deterministic rule-based assessment with confidence 0.80.
+
+* **Model**: Free-tier models via OpenRouter or OpenCode Zen (`geoagent.provider.js`), catalog-verified free with `max_price: 0`.
+* **Epistemic Discipline**: Explicitly organizes insights into **Observed** (raw sensor facts), **Inferred** (deductive conclusions), and **Unknown** (information gaps).
+* **Deterministic Boundary**: The LLM does NOT calculate distances or ETAs, and cannot modify database records directly.
+* **Fallback**: If AI keys are absent or providers fail, `generateFallbackResponse` executes a deterministic rule-based assessment with confidence 0.80.
 
 ---
 
@@ -292,44 +310,46 @@ GeoAgent is an advisory operational reasoning agent:
 ## 22. Emergency Simulator & What-If Studio (`/diff`)
 
 The `/diff` simulator provides an interactive what-if studio:
-- **Corridor**: MG Road Metro Station to Manipal Hospital HAL.
-- **Scenario**: At `T+120s`, a severe collision blocks Old Airport Road at the Domlur flyover.
-- **Flow**: System detects disruption $\to$ calculates Indiranagar 100ft Rd detour $\to$ GeoAgent analyzes situation $\to$ Operator approves reroute $\to$ Ambulance diverts from its current position $\to$ Arrives safely at Manipal Hospital.
-- **Controls**: Play, Pause, Reset, Step (+5s, +10s, +30s, +60s), Speed Multipliers (0.5x to 10x), Timeline scrubber (0 to 430s).
+
+* **Corridor**: MG Road Metro Station to Manipal Hospital HAL.
+* **Scenario**: At `T+120s`, a severe collision blocks Old Airport Road at the Domlur flyover.
+* **Flow**: System detects disruption $\to$ calculates Indiranagar 100ft Rd detour $\to$ GeoAgent analyzes situation $\to$ Operator approves reroute $\to$ Ambulance diverts from its current position $\to$ Arrives safely at Manipal Hospital.
+* **Controls**: Play, Pause, Reset, Step (+5s, +10s, +30s, +60s), Speed Multipliers (0.5x to 10x), Timeline scrubber (0 to 430s).
 
 ---
 
 ## 23. Emergency Memory
 
-- **Current Implementation**: Relational historical persistence. All past emergencies, trajectory breadcrumbs, operator decisions, and prediction errors are stored in MongoDB.
-- **Query Support**: Historical records can be queried via MongoDB aggregations (`Decision.find({ status: 'APPROVED' })`).
-- **Status**: **PARTIALLY IMPLEMENTED**. Semantic vector search and episodic RAG memory retrieval are **PLANNED** for future releases.
+* **Current Implementation**: Relational historical persistence. All past emergencies, trajectory breadcrumbs, operator decisions, and prediction errors are stored in MongoDB.
+* **Query Support**: Historical records can be queried via MongoDB aggregations (`Decision.find({ status: 'APPROVED' })`).
+* **Status**: **PARTIALLY IMPLEMENTED**. Semantic vector search and episodic RAG memory retrieval are **PLANNED** for future releases.
 
 ---
 
 ## 24. Mission Safety Net
 
 The Mission Safety Net guarantees multi-layered operational resilience:
-- **Tier 1 (Corridor Resilience)**: Primary route $\to$ Viable detour alternative.
-- **Tier 2 (Asset Resilience)**: If vehicle delay $> 10\text{ min}$ $\to$ Dispatch available backup ambulance.
-- **Tier 3 (Facility Resilience)**: If receiving hospital ER is on diversion $\to$ Driver selects alternate facility from `BENGALURU_HOSPITALS` catalog.
-- **Tier 4 (Fail-Safe Escalation)**: If all alternatives fail $\to$ Immediate `ALERT_CONTROL_ROOM` audio-visual emergency alarm.
+
+* **Tier 1 (Corridor Resilience)**: Primary route $\to$ Viable detour alternative.
+* **Tier 2 (Asset Resilience)**: If vehicle delay $> 10\text{ min}$ $\to$ Dispatch available backup ambulance.
+* **Tier 3 (Facility Resilience)**: If receiving hospital ER is on diversion $\to$ Driver selects alternate facility from `BENGALURU_HOSPITALS` catalog.
+* **Tier 4 (Fail-Safe Escalation)**: If all alternatives fail $\to$ Immediate `ALERT_CONTROL_ROOM` audio-visual emergency alarm.
 
 ---
 
 ## 25. Natural-Language Query Capability
 
-- **Current Capabilities**: Structured tool execution via 12 declarative tools. Answers factual questions about vehicle locations, fleet availability counts, deviation statuses, and delay metrics.
-- **Current Limitations**: No free-form conversational chat bar; no arbitrary Text-to-Mongo translation; no episodic historical comparisons.
+* **Current Capabilities**: Structured tool execution via 12 declarative tools. Answers factual questions about vehicle locations, fleet availability counts, deviation statuses, and delay metrics.
+* **Current Limitations**: No free-form conversational chat bar; no arbitrary Text-to-Mongo translation; no episodic historical comparisons.
 *(See [`docs/SWIFTCARE-QUERY-CATALOG.md`](file:///Users/priyanshu/Documents/geoagent-emegency-project/docs/SWIFTCARE-QUERY-CATALOG.md) for full capability analysis).*
 
 ---
 
 ## 26. Authentication Architecture
 
-- **Algorithm**: JSON Web Tokens (JWT) signed with HMAC-SHA256 (`JWT_SECRET`).
-- **Transport**: Stored in an `httpOnly`, `sameSite: 'lax'` cookie (`auth_token`) to mitigate XSS risks.
-- **Hashing**: Passwords hashed with `bcryptjs` using 12 salt rounds.
+* **Algorithm**: JSON Web Tokens (JWT) signed with HMAC-SHA256 (`JWT_SECRET`).
+* **Transport**: Stored in an `httpOnly`, `sameSite: 'lax'` cookie (`auth_token`) to mitigate XSS risks.
+* **Hashing**: Passwords hashed with `bcryptjs` using 12 salt rounds.
 
 ---
 
@@ -341,49 +361,51 @@ Protected routes enforce authorization via `verifyToken` and `requireRole` middl
 
 ## 28. Security Hardening
 
-- **Helmet**: Enforces HTTP security headers.
-- **CORS**: Whitelists only authorized origins (`CLIENT_URL`, localhost, and `*.vercel.app`).
-- **Input Sanitization**: Geographic coordinates clamped to valid Earth bounds; string descriptions sanitized.
-- **Prompt Injection Defense**: Incident notes and caller text are treated as untrusted strings in LLM prompts.
+* **Helmet**: Enforces HTTP security headers.
+* **CORS**: Whitelists only authorized origins (`CLIENT_URL`, localhost, and `*.vercel.app`).
+* **Input Sanitization**: Geographic coordinates clamped to valid Earth bounds; string descriptions sanitized.
+* **Prompt Injection Defense**: Incident notes and caller text are treated as untrusted strings in LLM prompts.
 
 ---
 
 ## 29. Observability & Health Probes
 
-- `GET /api/health`: Basic application uptime and version metadata.
-- `GET /api/health/live`: Process liveness probe for Cloud Run / Kubernetes container orchestration.
-- `GET /api/health/ready`: Database readiness probe (returns 503 if MongoDB disconnects).
-- `GET /api/health/providers`: External API provider health evaluator (Google Routes, Google Roads, AI Providers).
+* `GET /api/health`: Basic application uptime and version metadata.
+* `GET /api/health/live`: Process liveness probe for Cloud Run / Kubernetes container orchestration.
+* `GET /api/health/ready`: Database readiness probe (returns 503 if MongoDB disconnects).
+* `GET /api/health/providers`: External API provider health evaluator (Google Routes, Google Roads, AI Providers).
 
 ---
 
 ## 30. Testing Architecture
 
 The codebase includes comprehensive automated test suites:
-- **Unit & Algorithmic Tests**: `test-navigation-engine.js`, `test-coordinate-conversions.js`, `test-polyline-decoding.mjs`, `tests/diff-scenario-engine.test.mjs` (10/10 passed).
-- **Security & RBAC Suites**: `test-auth-rbac-complete.js` (46/46 passed), `test-registration-workspaces-e2e.js` (33/33 passed), `test-targeted-rbac-socket.js` (23/23 passed), `test-admin-e2e.js` (60/60 passed).
-- **Database Safety & Lifecycle**: `test-db-safety.js` (4/4 passed), `test-telemetry-retention.js` (3/3 passed).
-- **Integration & Mission Tests**: `test-control-room-e2e.js` (12/12 passed), `test-google-osrm-routing.js`, `test-clearance-v2x.js`.
-- **Python Routing & V2X Bridge**: `routing-engine/demo_member2.py` and `routing-engine/v2x_corridor_bridge.py` (0 exit code).
-- **E2E Scenario Tests**: `e2e/diff-scenario.spec.ts` (8/8 passed).
-- **Authentication & RBAC E2E**: `e2e/auth.spec.ts` (14/14 passed).
-- **TypeScript Static Verification**: `npx tsc --noEmit` (**0 errors**).
-- **Next.js Production Build**: `npm run build` (**Turbopack compiled successfully**, 30 optimized route handlers).
+
+* **Unit & Algorithmic Tests**: `test-navigation-engine.js`, `test-coordinate-conversions.js`, `test-polyline-decoding.mjs`, `tests/diff-scenario-engine.test.mjs` (10/10 passed).
+* **Security & RBAC Suites**: `test-auth-rbac-complete.js` (46/46 passed), `test-registration-workspaces-e2e.js` (33/33 passed), `test-targeted-rbac-socket.js` (23/23 passed), `test-admin-e2e.js` (60/60 passed).
+* **Database Safety & Lifecycle**: `test-db-safety.js` (4/4 passed), `test-telemetry-retention.js` (3/3 passed).
+* **Integration & Mission Tests**: `test-control-room-e2e.js` (12/12 passed), `test-google-osrm-routing.js`, `test-clearance-v2x.js`.
+* **Python Routing & V2X Bridge**: `routing-engine/demo_member2.py` and `routing-engine/v2x_corridor_bridge.py` (0 exit code).
+* **E2E Scenario Tests**: `e2e/diff-scenario.spec.ts` (8/8 passed).
+* **Authentication & RBAC E2E**: `e2e/auth.spec.ts` (14/14 passed).
+* **TypeScript Static Verification**: `npx tsc --noEmit` (**0 errors**).
+* **Next.js Production Build**: `npm run build` (**Turbopack compiled successfully**, 30 optimized route handlers).
 
 ---
 
 ## 31. Deployment Architecture
 
-- **Frontend**: Deployed on **Vercel** with Next.js App Router edge optimization.
-- **Backend**: Containerized via `Dockerfile` and configured for **Google Cloud Run** or **Render** (`render.yaml`).
-- **Database**: **MongoDB Atlas** (v7.0+) with replica set support.
-- **Scaling Rule**: Due to Socket.IO's in-memory adapter, backend instances must use `--max-instances=1` unless a Redis adapter is introduced.
+* **Frontend**: Deployed on **Vercel** with Next.js App Router edge optimization.
+* **Backend**: Containerized via `Dockerfile` and configured for **Google Cloud Run** or **Render** (`render.yaml`).
+* **Database**: **MongoDB Atlas** (v7.0+) with replica set support.
+* **Scaling Rule**: Due to Socket.IO's in-memory adapter, backend instances must use `--max-instances=1` unless a Redis adapter is introduced.
 
 ---
 
 ## 32. End-to-End User Journeys
 
 ### Journey 1: Dispatcher Corridor Triage
+
 1. Logs in as Dispatcher $\to$ Directed to `/control-room`.
 2. Receives incoming emergency call $\to$ Creates emergency incident.
 3. System calculates primary corridor and assigns nearest ambulance (`AMB-01`).
@@ -393,6 +415,7 @@ The codebase includes comprehensive automated test suites:
 7. Dispatcher clicks `APPROVE REROUTE` $\to$ Route updates in real time.
 
 ### Journey 2: Ambulance Driver In-Cab Navigation
+
 1. Logs in as Driver $\to$ Directed to `/driver/dashboard`.
 2. HUD displays Leg 1 navigation maneuvers to patient scene.
 3. Telemetry streams back to dispatch automatically.
@@ -404,7 +427,7 @@ The codebase includes comprehensive automated test suites:
 
 ## 33. Complete Emergency Walkthrough (Signature Demo)
 
-```
+```text
 [00:00] Critical Emergency created at Manipal Hospital HAL
    │
 [00:05] AMB-01 dispatched from MG Road Metro Station
@@ -486,26 +509,29 @@ The codebase includes comprehensive automated test suites:
 ## 40. Implemented vs. Planned Classification
 
 ### Implemented
-- Live GPS trajectory tracking and road snapping.
-- Cross-track deviation calculation with 4 severity thresholds.
-- Dynamic incident and traffic congestion correlation.
-- Multi-provider road routing (Google Routes, OSRM, Canonical).
-- Epistemic GeoAgent advisory reasoning with 3-tier output.
-- Deterministic decision rules engine with human approval flow.
-- Map-first What-If scenario simulator at `/diff`.
-- Role-based authentication and navigation HUDs.
-- Automated Playwright and integration test suites.
+
+* Live GPS trajectory tracking and road snapping.
+* Cross-track deviation calculation with 4 severity thresholds.
+* Dynamic incident and traffic congestion correlation.
+* Multi-provider road routing (Google Routes, OSRM, Canonical).
+* Epistemic GeoAgent advisory reasoning with 3-tier output.
+* Deterministic decision rules engine with human approval flow.
+* Map-first What-If scenario simulator at `/diff`.
+* Role-based authentication and navigation HUDs.
+* Automated Playwright and integration test suites.
 
 ### Partially Implemented
-- Google Roads API snapping (Implemented in backend, but falls back to canonical when API keys are unconfigured).
-- Historical Emergency Memory (Logged relationally in MongoDB; vector episodic retrieval is planned).
-- Real-time V2X signal preemption (Simulated and software-modelled; live physical hardware integration is demo-only).
+
+* Google Roads API snapping (Implemented in backend, but falls back to canonical when API keys are unconfigured).
+* Historical Emergency Memory (Logged relationally in MongoDB; vector episodic retrieval is planned).
+* Real-time V2X signal preemption (Simulated and software-modelled; live physical hardware integration is demo-only).
 
 ### Planned
-- Free-form natural-language conversational query assistant.
-- Episodic vector memory store with semantic search.
-- Multi-instance Socket.IO clustering via Redis adapter.
-- Native mobile applications (React Native / Expo).
+
+* Free-form natural-language conversational query assistant.
+* Episodic vector memory store with semantic search.
+* Multi-instance Socket.IO clustering via Redis adapter.
+* Native mobile applications (React Native / Expo).
 
 ---
 
@@ -537,6 +563,7 @@ The codebase includes comprehensive automated test suites:
 ## 44. Demo & Verification Instructions
 
 ### 1. Launch Backend Server
+
 ```bash
 cd server
 npm install
@@ -545,6 +572,7 @@ npm run dev
 ```
 
 ### 2. Launch Next.js Frontend
+
 ```bash
 npm install
 npm run dev
@@ -552,9 +580,11 @@ npm run dev
 ```
 
 ### 3. Run Scenario Simulator
+
 Open **`http://localhost:3000/diff`** in your browser. Click **Play** or press **Space** to observe the complete emergency response, accident detection, and rerouting flow.
 
 ### 4. Run Automated Test Suites
+
 ```bash
 # Static TypeScript verification
 npx tsc --noEmit

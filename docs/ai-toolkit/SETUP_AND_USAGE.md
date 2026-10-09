@@ -7,6 +7,7 @@ This guide describes how to use the integrated AI Coding Toolkit across **Claude
 ## 1. Agent Discovery & Architecture
 
 All four agents share a unified canonical store for project skills:
+
 - **Canonical Skill Directory**: `.agents/skills/`
 - **Claude Code Skill Mirror**: `.claude/skills/` (symlinked directly to `.agents/skills/`)
 - **Shared Instructions**: `AGENTS.md` (inherited by `CLAUDE.md`, `.kilorules`, `.kilo/rules.md`, and OpenCode)
@@ -15,7 +16,7 @@ All four agents share a unified canonical store for project skills:
 - **Repository Manifest**: `docs/ai-toolkit/repository-manifest.json`
 
 | Agent | Config Path | Skills Path | MCP Config | Instructions File |
-|-------|-------------|-------------|------------|-------------------|
+| ------- | ------------- | ------------- | ------------ | ------------------- |
 | **Claude Code** (`claude`) | `.claude/settings.json` | `.claude/skills/` | `.mcp.json` | `CLAUDE.md` (`@AGENTS.md`) |
 | **Antigravity** (`AGY`) | `~/.gemini/config/` | `.agents/skills/` | `.gemini/config/mcp_config.json` | `AGENTS.md` |
 | **OpenCode** (`opencode`) | `opencode.json` | `.agents/skills/` | `opencode.json` | `AGENTS.md`, `.opencode/instructions.md` |
@@ -50,7 +51,7 @@ Every agent session must prioritize context token conservation:
 ## 3. Tool Activation Cheat Sheet
 
 | Task | Primary Tool / Skill | Invocation Command |
-|------|----------------------|-------------------|
+| ------ | ---------------------- | ------------------- |
 | **Code Navigation** | Graft | `graft ask "<query>" --source` or `graft skeleton <file>` |
 | **Code Minimalism** | Ponytail | `/ponytail` or `.agents/skills/ponytail/SKILL.md` |
 | **Compressed Output** | Caveman | `/caveman [lite\|full\|ultra]` |

@@ -132,6 +132,7 @@ erDiagram
 All schemas below are verified against active code in `server/modules/*/*.model.js`.
 
 ### 2.1 `users` Collection
+
 - **Source**: `server/modules/auth/user.model.js`
 - **Fields**:
   - `name`: String (Required, trimmed)
@@ -152,6 +153,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `{ assignedVehicleId: 1 }` (Vehicle ownership resolution)
 
 ### 2.2 `vehicles` Collection
+
 - **Source**: `server/modules/vehicles/vehicle.model.js`
 - **Fields**:
   - `vehicleId`: String (Required, unique, immutable, e.g. `AMB-01`)
@@ -168,6 +170,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `{ status: 1, isDeleted: 1 }` (Dispatch querying)
 
 ### 2.3 `emergencies` Collection
+
 - **Source**: `server/modules/emergencies/emergency.model.js`
 - **Fields**:
   - `emergencyId`: String (Required, unique, e.g. `EMG-0001`)
@@ -184,6 +187,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `{ status: 1, priority: 1 }` (Control room triage queue)
 
 ### 2.4 `routes` Collection
+
 - **Source**: `server/modules/routes/route.model.js`
 - **Fields**:
   - `routeId`: String (Required, unique)
@@ -201,6 +205,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `{ geometry: '2dsphere' }`
 
 ### 2.5 `trajectories` Collection
+
 - **Source**: `server/modules/trajectories/trajectory.model.js`
 - **Fields**:
   - `vehicleId`: String (Required)
@@ -219,6 +224,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `{ timestamp: 1 }` (Configurable TTL retention index with partialFilterExpression `{ source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }` to protect clinical audit records)
 
 ### 2.6 `incidents` Collection
+
 - **Source**: `server/modules/incidents/incident.model.js`
 - **Fields**:
   - `incidentId`: String (Required, unique)
@@ -232,6 +238,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `{ isActive: 1, severity: 1 }`
 
 ### 2.7 `decisions` Collection
+
 - **Source**: `server/modules/decisions/decision.model.js`
 - **Fields**:
   - `decisionId`: String (Required, unique)
@@ -251,6 +258,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `{ status: 1, createdAt: -1 }` (Pending decision queue)
 
 ### 2.8 `predictions` Collection
+
 - **Source**: `server/modules/analysis/prediction.model.js`
 - **Fields**:
   - `vehicleId`: String
@@ -264,6 +272,7 @@ All schemas below are verified against active code in `server/modules/*/*.model.
   - `{ vehicleId: 1, createdAt: -1 }`
 
 ### 2.9 `clearancecorridors` Collection
+
 - **Source**: `server/modules/clearance/clearance.model.js`
 - **Fields**:
   - `corridorId`: String (Required, unique)
@@ -280,12 +289,16 @@ All schemas below are verified against active code in `server/modules/*/*.model.
 ## 3. Database Safety Guard & Retention Architecture
 
 ### 3.1 Destructive Operation Protection (`server/shared/utils/dbSafety.js`)
+
 To safeguard production emergency data from inadvertent wiping during development or testing, all seeding scripts (`seed-demo-scenario.js`, `seed-demo-scenarios.js`) and administrative reset services (`demo.service.js`) invoke `assertSafeDatabaseTarget(uri)` prior to running `deleteMany()`, `dropDatabase()`, or schema teardowns:
+
 - **Atlas Protection**: Any URI starting with `mongodb+srv://` or pointing to a remote non-local host is blocked immediately.
 - **Environment Exemption**: If execution on a remote database is deliberately intended, it requires explicit provision of `ALLOW_PRODUCTION_RESET=true`.
 - **Naming Rule**: Allowed local databases must include `test` or `dev` in their connection URI when resetting.
 
 ### 3.2 Automated Telemetry Retention TTL
+
 High-frequency vehicle breadcrumbs are pruned automatically via MongoDB's native TTL engine:
+
 - Trajectory documents are indexed on `{ timestamp: 1 }` with `expireAfterSeconds: TELEMETRY_RETENTION_DAYS * 86400` (default 30 days).
 - A MongoDB `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }` ensures that clinical triage records and permanent legal audit trails (`source: 'AUDIT'`) are never pruned.

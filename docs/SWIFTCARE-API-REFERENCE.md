@@ -9,6 +9,7 @@ This document provides the authoritative reference for all REST API endpoints, N
 All authenticated endpoints require an active session via an **HTTP-only cookie (`auth_token`)** or an **`Authorization: Bearer <jwt>`** header.
 
 ### Roles & Access Matrix
+
 - **`CONTROL_ROOM`**: Dispatcher console, emergency creation, reroute decisions, situation analysis.
 - **`DRIVER`**: Vehicle dashboard, turn-by-turn navigation HUD, leg progression.
 - **`PARAMEDIC`**: Patient triage, vital signs entry, hospital handoff status.
@@ -19,9 +20,12 @@ All authenticated endpoints require an active session via an **HTTP-only cookie 
 ## 2. Authentication Endpoints (`/api/auth`)
 
 ### POST `/api/auth/register`
+
 Creates a new user account with an operational role. Accounts default to `PENDING` quarantine status for supervisory verification.
+
 - **Access**: Public (Rate limited: max 30 requests per 15 min)
 - **Request Body**:
+
 ```json
 {
   "name": "Jane Doe",
@@ -33,7 +37,9 @@ Creates a new user account with an operational role. Accounts default to `PENDIN
   "assignedVehicleId": "AMB-01" // required for DRIVER
 }
 ```
+
 - **Response `201 Created`**:
+
 ```json
 {
   "success": true,
@@ -53,16 +59,21 @@ Creates a new user account with an operational role. Accounts default to `PENDIN
 ```
 
 ### POST `/api/auth/login`
+
 Authenticates credentials and sets an HTTP-only JWT cookie.
+
 - **Access**: Public
 - **Request Body**:
+
 ```json
 {
   "email": "dispatcher@swiftcare.local",
   "password": "Password123!"
 }
 ```
+
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -80,9 +91,12 @@ Authenticates credentials and sets an HTTP-only JWT cookie.
 ```
 
 ### GET `/api/auth/me`
+
 Retrieves the profile of the currently authenticated user.
+
 - **Access**: Authenticated (`Bearer` or Cookie)
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -99,9 +113,12 @@ Retrieves the profile of the currently authenticated user.
 ```
 
 ### POST `/api/auth/logout`
+
 Clears the session cookie and invalidates client credentials.
+
 - **Access**: Authenticated
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -114,12 +131,15 @@ Clears the session cookie and invalidates client credentials.
 ## 3. Vehicle Fleet Endpoints (`/api/vehicles`)
 
 ### GET `/api/vehicles`
+
 List all registered emergency vehicles with optional status filtering.
+
 - **Access**: Authenticated
 - **Query Parameters**:
   - `status`: Filter by `AVAILABLE`, `DISPATCHED`, `EN_ROUTE`, `AT_SCENE`, `RETURNING`, `MAINTENANCE`
   - `type`: `AMBULANCE`, `FIRE_ENGINE`, `POLICE`
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -141,9 +161,11 @@ List all registered emergency vehicles with optional status filtering.
 ```
 
 ### GET `/api/vehicles/:vehicleId`
+
 Fetch complete state, assigned emergency, and latest telemetry for a single unit.
 
 ### POST `/api/vehicles`
+
 Register a new vehicle into the fleet (Admin only).
 
 ---
@@ -151,13 +173,18 @@ Register a new vehicle into the fleet (Admin only).
 ## 4. Emergency Management Endpoints (`/api/emergencies`)
 
 ### GET `/api/emergencies`
+
 List emergencies with optional status filter (`PENDING`, `DISPATCHED`, `EN_ROUTE`, `ON_SCENE`, `TRANSPORTING`, `RESOLVED`, `CANCELLED`).
+
 - **Response `200 OK`**: Array of emergency objects.
 
 ### POST `/api/emergencies`
+
 Create a new emergency record.
+
 - **Access**: `CONTROL_ROOM`, `ADMIN`
 - **Request Body**:
+
 ```json
 {
   "emergencyId": "EMG-0001",
@@ -175,6 +202,7 @@ Create a new emergency record.
 ```
 
 ### PATCH `/api/emergencies/:id/assign`
+
 Assign an available ambulance unit to an active emergency incident.
 
 ---
@@ -182,8 +210,11 @@ Assign an available ambulance unit to an active emergency incident.
 ## 5. Telemetry & Trajectory Endpoints (`/api/trajectories`)
 
 ### POST `/api/trajectories`
+
 Ingest raw vehicle GPS telemetry fixes, compute cross-track distance, and evaluate deviation.
+
 - **Request Body**:
+
 ```json
 {
   "vehicleId": "AMB-01",
@@ -195,7 +226,9 @@ Ingest raw vehicle GPS telemetry fixes, compute cross-track distance, and evalua
   "timestamp": "2026-09-28T01:10:00.000Z"
 }
 ```
+
 - **Response `201 Created`**:
+
 ```json
 {
   "success": true,
@@ -210,6 +243,7 @@ Ingest raw vehicle GPS telemetry fixes, compute cross-track distance, and evalua
 ```
 
 ### GET `/api/trajectories/vehicle/:vehicleId`
+
 Fetch chronological trajectory breadcrumb points for a vehicle (supports `?limit=50`).
 
 ---
@@ -217,8 +251,11 @@ Fetch chronological trajectory breadcrumb points for a vehicle (supports `?limit
 ## 6. Multi-Provider Routing Endpoints (`/api/routes`)
 
 ### POST `/api/routes`
+
 Calculate and persist authoritative route corridors between origin and destination.
+
 - **Request Body**:
+
 ```json
 {
   "emergencyId": "EMG-0001",
@@ -227,7 +264,9 @@ Calculate and persist authoritative route corridors between origin and destinati
   "destination": { "type": "Point", "coordinates": [77.649028, 12.957836] }
 }
 ```
+
 - **Response `201 Created`**:
+
 ```json
 {
   "success": true,
@@ -246,6 +285,7 @@ Calculate and persist authoritative route corridors between origin and destinati
 ```
 
 ### GET `/api/routes/alternatives`
+
 Fetch real road candidate alternative routes avoiding active corridor blockages.
 
 ---
@@ -253,15 +293,20 @@ Fetch real road candidate alternative routes avoiding active corridor blockages.
 ## 7. GeoAgent & Intelligence Endpoints (`/api/geoagent`)
 
 ### POST `/api/geoagent/analyze`
+
 Triggers GeoAgent free-model LLM operational reasoning (OpenRouter / OpenCode) with 3-tier epistemic output and deterministic fallback.
+
 - **Request Body**:
+
 ```json
 {
   "vehicleId": "AMB-01",
   "emergencyId": "EMG-0001"
 }
 ```
+
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -310,12 +355,16 @@ Triggers GeoAgent free-model LLM operational reasoning (OpenRouter / OpenCode) w
 ## 8. Decision Engine Endpoints (`/api/decisions`)
 
 ### GET `/api/decisions/active`
+
 Retrieve currently pending decisions awaiting operator approval.
 
 ### POST `/api/decisions/:id/approve`
+
 Operator authorizes the recommended detour or backup dispatch.
+
 - **Access**: `CONTROL_ROOM`, `ADMIN`
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -330,6 +379,7 @@ Operator authorizes the recommended detour or backup dispatch.
 ```
 
 ### POST `/api/decisions/:id/reject`
+
 Operator overrides or rejects the recommendation with an audit reason.
 
 ---
@@ -337,10 +387,13 @@ Operator overrides or rejects the recommendation with an audit reason.
 ## 9. Simulation & What-If Endpoints (`/api/diff/scenarios`)
 
 ### GET `/api/diff/scenarios`
+
 Returns the deterministic what-if scenario metadata, 13 progressive milestones, and corridor coordinates.
 
 ### POST `/api/diff/scenarios`
+
 Calculates a simulation snapshot for any arbitrary simulation timestamp `T` (0 to 430 seconds):
+
 - **Request Body**: `{ "timestampSeconds": 155 }`
 - **Response `200 OK`**: Snapshot containing vehicle position, speed, route layers, accident state, and GeoAgent analysis.
 
@@ -351,19 +404,25 @@ Calculates a simulation snapshot for any arbitrary simulation timestamp `T` (0 t
 Strictly gated behind both JWT authentication (`protect`) and `ADMIN` role (`requireRole('ADMIN')`).
 
 ### GET `/api/admin/stats`
+
 Returns system counts, database connectivity metrics, and telemetry volumes across all collections.
 
 ### GET `/api/admin/health`
+
 Evaluates database latency ping, server uptime, memory usage, and component health.
 
 ### GET `/api/admin/providers`
+
 Evaluates upstream provider health status (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`) without exposing API keys.
 
 ### GET `/api/admin/users`
+
 Lists registered users with optional role, status, and search filters.
+
 - **Access**: `ADMIN`
 - **Query Params**: `?role=DRIVER&status=PENDING&page=1&limit=20`
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -384,9 +443,12 @@ Lists registered users with optional role, status, and search filters.
 ```
 
 ### PATCH `/api/admin/users/:id/approve`
+
 Approves a quarantined user account, activating full login access.
+
 - **Access**: `ADMIN`
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -401,9 +463,12 @@ Approves a quarantined user account, activating full login access.
 ```
 
 ### PATCH `/api/admin/users/:id/suspend`
+
 Suspends a user account immediately, blocking subsequent requests and revoking token validity.
+
 - **Access**: `ADMIN`
 - **Response `200 OK`**:
+
 ```json
 {
   "success": true,
@@ -416,9 +481,12 @@ Suspends a user account immediately, blocking subsequent requests and revoking t
 ```
 
 ### PATCH `/api/admin/users/:id/role`
+
 Updates a user's assigned role and permitted workspace boundaries.
+
 - **Access**: `ADMIN`
 - **Request Body**:
+
 ```json
 {
   "role": "CONTROL_ROOM",
@@ -445,7 +513,7 @@ Updates a user's assigned role and permitted workspace boundaries.
 ## 12. Resource Ownership Middleware (`requireVehicleOwnership`)
 
 Enforces strict resource-level security in `server/shared/middleware/ownershipMiddleware.js`:
+
 - **`ADMIN` & `CONTROL_ROOM`**: Granted organization-wide dispatch and fleet authority.
 - **`DRIVER`**: Restriced strictly to operations matching `req.user.assignedVehicleId`. Attempting to modify or report telemetry for other vehicles returns `403 Forbidden`.
 - **`PARAMEDIC`**: Restricted to assigned clinical emergency and vehicle operations.
-

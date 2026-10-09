@@ -9,7 +9,7 @@
 ## 1. Summary of Verification Checks
 
 | Check Category | Target | Method | Status | Details |
-|----------------|--------|--------|--------|---------|
+| ---------------- | -------- | -------- | -------- | --------- |
 | **Project Compilation** | Next.js / TypeScript | `npx tsc --noEmit` | **PASSED** | 0 type errors across whole codebase |
 | **Graft Code Graph** | Repo Context Engine | `graft ask "triage emergency decision engine" --source` | **PASSED** | Ranked exact symbols; 22,085 tokens saved |
 | **Repository Manifest** | 30 Repositories | `JSON.parse` schema audit | **PASSED** | All 30 requested repos audited & recorded |
@@ -28,6 +28,7 @@
 ## 2. Agent Configuration Verification
 
 ### Claude Code (`claude`)
+
 - Path: `~/.local/bin/claude`
 - Settings: `.claude/settings.json` (Graft statusline, hooks for tool-savings and post-edit)
 - MCP Config: `.mcp.json` (`graft mcp`)
@@ -35,18 +36,21 @@
 - Status: Fully verified and active.
 
 ### Antigravity (`AGY`)
+
 - Native project skills directory: `.agents/skills/`
 - User plugin directory: `~/.gemini/config/plugins/`
 - Instructions: `AGENTS.md`
 - Status: Fully verified and active.
 
 ### OpenCode (`opencode`)
+
 - Path: `~/.nvm/versions/node/v24.18.0/bin/opencode`
 - Config: `opencode.json` (MCP Graft server enabled)
 - Instructions: `AGENTS.md` and `.opencode/instructions.md`
 - Status: Fully verified and active.
 
 ### Kilo Code (`kilocode`)
+
 - Extension: `kilocode.kilo-code-7.8.8-darwin-arm64`
 - Rules: `.kilorules` and `.kilo/rules.md`
 - Instructions: Inherits `AGENTS.md`

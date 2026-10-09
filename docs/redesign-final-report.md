@@ -37,7 +37,7 @@ The redesigned product delivers a **calm, high-trust, operational, human-centere
 
 The core requirement of the redesign was that the UI must **visibly and directly answer the 5 critical dispatch questions from actual application state without hardcoding or obscure navigation**:
 
-```
+```text
 +------------------------------------------------------------------------------------------------------------------------+
 |                                      MISSION ASSESSMENT & GEOAGENT REASONING                                           |
 +-----------------------------------+-----------------------------------+------------------------------------------------+
@@ -98,12 +98,14 @@ All tests executed with 100% pass rates across unit, integration, and end-to-end
 ## 7. How to Run the Redesigned Website
 
 1. **Start Backend Server:**
+
    ```bash
    cd /Users/priyanshu/Documents/geoagent-emegency-project/server
    npm run dev # Starts Express API & Socket.IO server on port 5001
    ```
 
 2. **Start Frontend Next.js Server:**
+
    ```bash
    cd /Users/priyanshu/Documents/geoagent-emegency-project
    npm run dev # Starts Next.js on port 3000

@@ -4,16 +4,17 @@
 
 The following table lists the active and supported versions of the **SwiftCare GeoAgent** platform receiving security patches:
 
-| Version | Supported          | Status |
-| ------- | ------------------ | ------ |
-| 2.8.x   | :white_check_mark: | Current Stable Release (Hardened RBAC, DB Safety, Rate Limiting) |
-| 2.7.x   | :white_check_mark: | Supported (Multi-Workspace RBAC) |
-| 2.6.x   | :x:                | Deprecated |
-| < 2.6   | :x:                | Unsupported |
+| Version | Supported | Status |
+| --- | --- | --- |
+| 2.8.x | :white_check_mark: | Current Stable Release (Hardened RBAC, DB Safety, Rate Limiting) |
+| 2.7.x | :white_check_mark: | Supported (Multi-Workspace RBAC) |
+| 2.6.x | :x: | Deprecated |
+| < 2.6 | :x: | Unsupported |
 
 ## Security Architecture & Protections
 
 SwiftCare GeoAgent incorporates security-in-depth principles across its full stack:
+
 - **Authentication**: Passwords hashed with bcrypt (12 salt rounds); sessions managed via `httpOnly`, `sameSite: 'lax'` JWT cookies.
 - **Role-Based Access Control**: Strict role verification (`ADMIN`, `CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`) across both Next.js App Router and Express route handlers.
 - **Account Quarantining**: Public registrations default strictly to `status: 'PENDING'` with zero permitted workspaces until approved by an administrator via `/admin`.
