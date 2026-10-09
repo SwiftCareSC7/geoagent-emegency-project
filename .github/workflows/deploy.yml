@@ -20,12 +20,14 @@ concurrency:
 env:
   SERVICE_NAME: geoagent-backend
   IMAGE_NAME: geoagent-backend
-  GCP_REGION: ${{ secrets.GCP_REGION || 'asia-south1' }}
+  GCP_REGION: ${{ vars.GCP_REGION || 'asia-south1' }}
 
 jobs:
   deploy:
     name: Build & Deploy to Cloud Run
     runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
 
     # Required for Workload Identity Federation
     permissions:
@@ -42,7 +44,7 @@ jobs:
           WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           WIF_SA: ${{ secrets.GCP_SERVICE_ACCOUNT }}
           SA_KEY: ${{ secrets.GCP_SA_KEY || secrets.GCP_CREDENTIALS_JSON }}
-          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          PROJECT_ID: ${{ env.GCP_PROJECT_ID }}
         run: |
           if [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SA" ]; then
             echo "auth_method=wif" >> $GITHUB_OUTPUT
@@ -101,15 +103,15 @@ jobs:
         run: |
           docker build \
             --build-arg COMMIT_SHA=${{ github.sha }} \
-            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:latest \
             .
 
       - name: Push Docker image
         if: steps.check-auth.outputs.can_deploy == 'true'
         run: |
-          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:latest
 
       - name: Deploy to Cloud Run
         if: steps.check-auth.outputs.can_deploy == 'true'
@@ -117,7 +119,7 @@ jobs:
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.GCP_REGION }}
-          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/${{ env.IMAGE_NAME }}:${{ github.sha }}
           flags: |
             --port=8080
             --min-instances=1
