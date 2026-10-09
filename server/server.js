@@ -210,7 +210,7 @@ realtimeService.init(server, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173'
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Bind to 0.0.0.0 for Cloud Run / container networking
 server.listen(PORT, '0.0.0.0', () => {
