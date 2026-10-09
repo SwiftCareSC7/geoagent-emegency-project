@@ -20,7 +20,7 @@ concurrency:
 env:
   SERVICE_NAME: geoagent-backend
   IMAGE_NAME: geoagent-backend
-  GCP_REGION: ${{ vars.GCP_REGION || 'asia-south1' }}
+  GCP_REGION: asia-south1
 
 jobs:
   deploy:
