@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getBackendUrl } from '@/lib/backend-url'
+
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
+  const backendUrl = getBackendUrl()
+  if (!backendUrl) {
+    return NextResponse.json({ success: false, error: 'Admin user service temporarily unavailable' }, { status: 503 })
+  }
 
   try {
     const res = await fetch(`${backendUrl}/api/admin/users`, {
@@ -16,9 +21,7 @@ export async function GET(request: NextRequest) {
     const data = await res.json()
     return NextResponse.json(data, { status: res.status })
   } catch (err) {
-    return NextResponse.json(
-      { success: false, error: 'Admin user service temporarily unavailable' },
-      { status: 503 }
-    )
+    console.error('[BFF] admin/users proxy failed:', err instanceof Error ? err.name : 'error')
+    return NextResponse.json({ success: false, error: 'Admin user service temporarily unavailable' }, { status: 503 })
   }
 }

@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { UserRole } from '@/lib/api/types'
 import type { Workspace } from '@/lib/auth/roles'
 
+import { getBackendUrl } from '@/lib/backend-url'
+
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
+  const backendUrl = getBackendUrl()
   const body = await request.json().catch(() => ({}))
   const { name, email, password, role } = body
 
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
 
   // 2. Authoritative backend registration
   try {
+    if (!backendUrl) throw new Error('BACKEND_URL not configured')
     const backendRes = await fetch(`${backendUrl}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

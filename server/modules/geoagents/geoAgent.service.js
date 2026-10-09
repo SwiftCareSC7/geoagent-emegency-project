@@ -6,7 +6,7 @@ import predictionService from '../analysis/prediction.service.js';
 import routingService from '../routes/routing.service.js';
 import { createLlmProvider } from './geoagent.provider.js';
 import { geoAgentConstants } from './geoagent.constants.js';
-import { geoAgentToolDeclarations, executeGeoAgentTool } from './geoagent.tools.js';
+import { geoAgentToolDeclarations, executeGeoAgentTool } from './geoAgent.tools.js';
 import { createAgentState, runAgentLoop, compareRoutes, applyAdvisoryPolicy, missingSlots } from './geoagent.agent.js';
 import { GEOAGENT_SYSTEM_PROMPT } from './prompts/geoagent.system.js';
 import { validateGeoAgentOutput, sanitizeText } from './geoagent.schemas.js';

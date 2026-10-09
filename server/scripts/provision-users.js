@@ -3,7 +3,8 @@
  *
  * Securely provisions and repairs accounts for all four operational roles
  * (CONTROL_ROOM, DRIVER, PARAMEDIC, ADMIN) as well as the primary administrator
- * account for spec.priyanshu@gmail.com.
+ * account for spec.priyanshu@gmail.com (only when ADMIN_PASSWORD is set).
+ * Test/dev fixtures only; production admin: server/scripts/bootstrap-admin.js.
  *
  * Security compliance:
  * - Passwords are securely hashed with bcrypt (work factor 12)
@@ -41,7 +42,7 @@ const ACCOUNTS_SPEC = [
     name: 'Priyanshu (Admin)',
     role: 'ADMIN',
     permittedWorkspaces: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
-    pass: process.env.ADMIN_PASSWORD || 'FzhexDCVDMj7AFb'
+    pass: process.env.ADMIN_PASSWORD // no default: skipped unless set
   },
   {
     email: 'admin@swiftcare.local',
@@ -76,12 +77,16 @@ const ACCOUNTS_SPEC = [
 ];
 
 export async function provisionUsers() {
+  // Fixtures use well-known passwords: never allow them against production. Use bootstrap-admin.js there.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('provision-users.js is a test fixture script and refuses to run with NODE_ENV=production');
+  }
   console.log(`[Provision] Connecting to database: ${MONGO_URI.replace(/\/\/.*@/, '//***@')}`);
   await mongoose.connect(MONGO_URI);
 
   const results = [];
 
-  for (const acc of ACCOUNTS_SPEC) {
+  for (const acc of ACCOUNTS_SPEC.filter((a) => a.pass)) {
     const normalizedEmail = acc.email.trim().toLowerCase();
     const salt = await bcrypt.genSalt(SALT_ROUNDS);
     const hashedPassword = await bcrypt.hash(acc.pass, salt);

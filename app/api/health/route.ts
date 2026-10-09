@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
+import { getBackendUrl } from '@/lib/backend-url'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const backendUrl = process.env.BACKEND_URL
-  if (backendUrl && !backendUrl.includes('localhost')) {
+  const backendUrl = getBackendUrl()
+  if (backendUrl) {
     try {
       const res = await fetch(`${backendUrl}/api/health`, { next: { revalidate: 0 } })
       if (res.ok) {
@@ -14,6 +15,11 @@ export async function GET() {
     } catch (err) {
       console.error('[BFF] health GET failed:', err)
     }
+  }
+
+  // Production must not report a fabricated healthy state when the backend is unreachable.
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ status: 'unavailable', error: 'backend unreachable' }, { status: 503 })
   }
 
   return NextResponse.json({

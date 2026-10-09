@@ -1,0 +1,6 @@
+# Reviewed false positives only (truncated JWT doc placeholders, throwaway test-only JWT secrets).
+# The ec91f02 ADMIN_PASSWORD findings are intentionally NOT listed: real credential, rotate it.
+d21078564e27522013876bc4bf216952684c71a3:docs/SWIFTCARE-API-REFERENCE.md:generic-api-key:61
+84fd48e489d0d77d74631ecf05549da2ba7d9c54:docs/socket-events.md:generic-api-key:19
+6d166e04ba2c1e1e1957d401a31e0c53f29aaea7:server/test-auth-e2e.js:generic-api-key:35
+947ef99e6300358111f8e30ff5be7cef8aee2746:server/test-dashboard-e2e.js:generic-api-key:45

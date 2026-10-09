@@ -23,7 +23,7 @@ async function runTests() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: 'spec.priyanshu@gmail.com',
-      password: process.env.ADMIN_PASSWORD || 'FzhexDCVDMj7AFb',
+      password: process.env.ADMIN_PASSWORD,
     }),
   })
   const loginData = await loginRes.json()

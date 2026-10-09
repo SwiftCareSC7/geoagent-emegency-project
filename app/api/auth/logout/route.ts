@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getBackendUrl } from '@/lib/backend-url'
+
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
+  const backendUrl = getBackendUrl()
 
   try {
+    if (!backendUrl) throw new Error('BACKEND_URL not configured')
     await fetch(`${backendUrl}/api/auth/logout`, {
       method: 'POST',
       headers: {

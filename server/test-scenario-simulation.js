@@ -51,7 +51,7 @@ import deviationService from './modules/deviation/deviation.service.js';
 import analysisService from './modules/analysis/analysis.service.js';
 import predictionService from './modules/analysis/prediction.service.js';
 import routeComparisonService from './modules/routes/routeComparison.service.js';
-import geoAgentService from './modules/geoagents/geoagent.service.js';
+import geoAgentService from './modules/geoagents/geoAgent.service.js';
 import decisionService from './modules/decisions/decision.service.js';
 
 async function runScenarioSimulation() {

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { getBackendUrl } from '@/lib/backend-url'
+
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
+  const backendUrl = getBackendUrl()
   const cookieToken = request.cookies.get('token')?.value
   const authHeader = request.headers.get('authorization')
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined
@@ -18,6 +20,7 @@ export async function GET(request: NextRequest) {
 
   // Authoritative backend /auth/me session verification
   try {
+    if (!backendUrl) throw new Error('BACKEND_URL not configured')
     const headers: Record<string, string> = {}
     if (request.headers.get('cookie')) {
       headers['cookie'] = request.headers.get('cookie')!

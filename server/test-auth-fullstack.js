@@ -208,7 +208,7 @@ async function runAuthSuite() {
       headers: { 'Content-Type': 'application/json' },
       body: {
         email: 'spec.priyanshu@gmail.com',
-        password: process.env.ADMIN_PASSWORD || 'FzhexDCVDMj7AFb'
+        password: process.env.ADMIN_PASSWORD
       }
     });
     assert(adminLogin.status === 200, 'Admin login succeeds with 200 OK');
