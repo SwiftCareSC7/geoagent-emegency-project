@@ -36,6 +36,8 @@ __pycache__/
 # IDE / Editor
 .vscode/
 .idea/
+.commandcode/
+
 
 # Secrets & Credentials
 service-account*.json
