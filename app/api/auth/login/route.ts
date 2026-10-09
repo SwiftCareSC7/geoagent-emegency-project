@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getBackendUrl } from '@/lib/backend-url'
+import { getBackendUrl, BACKEND_TIMEOUT_MS } from '@/lib/backend-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
   try {
     if (!backendUrl) throw new Error('BACKEND_URL not configured')
     const backendRes = await fetch(`${backendUrl}/api/auth/login`, {
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
     }
     return response
   } catch (err) {
+    console.error('[BFF] login: backend call failed:', err instanceof Error ? err.message : 'error')
     // Fail closed: Never authenticate against local demo accounts when backend fails
     return NextResponse.json(
       {

@@ -278,6 +278,7 @@ export function SignupForm() {
                     </div>
                     <input
                       id="name"
+                      autoComplete="name"
                       type="text"
                       required
                       value={name}
@@ -300,6 +301,7 @@ export function SignupForm() {
                     <input
                       id="email"
                       type="email"
+                      autoComplete="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -331,7 +333,7 @@ export function SignupForm() {
                         >
                           <Icon className={`size-5 mb-1.5 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
                           <span className="font-semibold text-xs text-foreground">{r.name}</span>
-                          <span className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{r.role}</span>
+                          <span className="text-[10px] text-foreground/80 mt-0.5 line-clamp-1">{r.role}</span>
                         </button>
                       )
                     })}
@@ -367,7 +369,7 @@ export function SignupForm() {
                           />
                           <div className="min-w-0 flex-1">
                             <span className="text-xs font-semibold text-foreground block">{w.label}</span>
-                            <span className="text-[10px] text-muted-foreground block leading-tight">{w.description}</span>
+                            <span className="text-[10px] text-foreground/80 block leading-tight">{w.description}</span>
                           </div>
                         </label>
                       )
@@ -411,6 +413,7 @@ export function SignupForm() {
                       <input
                         id="password"
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -420,6 +423,7 @@ export function SignupForm() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                         className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
                       >
                         {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -434,6 +438,7 @@ export function SignupForm() {
                     <input
                       id="confirmPassword"
                       type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
                       required
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}

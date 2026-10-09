@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getBackendUrl } from '@/lib/backend-url'
+import { getBackendUrl, BACKEND_TIMEOUT_MS } from '@/lib/backend-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,12 +34,14 @@ export async function GET(request: NextRequest) {
     }
 
     const backendRes = await fetch(`${backendUrl}/api/auth/me`, {
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
       headers,
       next: { revalidate: 0 },
     })
     const data = await backendRes.json()
     return NextResponse.json(data, { status: backendRes.status })
   } catch (err) {
+    console.error('[BFF] me: backend call failed:', err instanceof Error ? err.message : 'error')
     return NextResponse.json(
       { success: false, error: 'Authentication service temporarily unavailable' },
       { status: 503 }
