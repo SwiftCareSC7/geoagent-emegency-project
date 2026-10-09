@@ -3,11 +3,14 @@ services:
     name: geoagent-backend
     runtime: node
     plan: free
-    buildCommand: cd server && npm install
+    buildCommand: cd server && npm ci
+    healthCheckPath: /api/health
     startCommand: cd server && node server.js
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 22
       - key: PORT
         value: 10000
       - key: MONGO_URI

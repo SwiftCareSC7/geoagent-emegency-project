@@ -15,7 +15,9 @@ export async function GET() {
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     })
     if (!res.ok) {
-      return NextResponse.json({ status: 'unavailable', reason: `backend_http_${res.status}` }, { status: 503 })
+      // x-render-routing=no-server means the Render service has no live deploy (e.g. failed build / bad MONGO_URI).
+      const hint = res.headers.get('x-render-routing') ?? undefined
+      return NextResponse.json({ status: 'unavailable', reason: `backend_http_${res.status}`, hint }, { status: 503 })
     }
     return NextResponse.json({ status: 'ok', backend: 'ready' })
   } catch (err) {
