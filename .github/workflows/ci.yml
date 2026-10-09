@@ -24,7 +24,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
 
   lint-and-build:
     name: Lint, Typecheck & Frontend Build
@@ -94,26 +93,34 @@ jobs:
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           
-          # Wait for backend server to be ready on port 5001
-          echo "Waiting for backend server to be ready on port 5001..."
+          # Wait for backend server and database readiness on port 5001
+          echo "Waiting for backend server and database readiness on port 5001..."
           SERVER_READY=false
           for i in $(seq 1 30); do
-            if curl -sf http://127.0.0.1:5001/api/health > /dev/null 2>&1; then
-              echo "Backend server is listening on port 5001!"
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/api/health/ready 2>/dev/null || true)
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ Backend and database are ready (HTTP 200)!"
               SERVER_READY=true
               break
             fi
+            echo "Readiness probe status=$HTTP_STATUS (attempt $i/30)..."
             sleep 1
           done
 
           if [ "$SERVER_READY" != "true" ]; then
-            echo "❌ Backend server failed to start within 30 seconds!"
+            echo "❌ Backend and database failed readiness check within 30 seconds!"
+            curl -s http://127.0.0.1:5001/api/health || true
+            curl -s http://127.0.0.1:5001/api/health/ready || true
             exit 1
           fi
+
+          # Provision required test users in test database
+          node server/scripts/provision-users.js
 
           # Run test suites against live server
           node server/test-auth-rbac-complete.js
           node server/test-targeted-rbac-socket.js
+          node server/test-auth-fallback-security.js
 
       - name: Run Navigation Engine & Emergency Lifecycle Tests
         env:

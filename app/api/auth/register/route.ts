@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  findUserByEmail,
-  usersStore,
-  hashPassword,
-  createToken,
-  toSafeUser,
-  ServerUser,
-} from '@/lib/auth/server-store'
 import type { UserRole } from '@/lib/api/types'
 import type { Workspace } from '@/lib/auth/roles'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL
+  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
   const body = await request.json().catch(() => ({}))
   const { name, email, password, role } = body
 
@@ -69,70 +61,36 @@ export async function POST(request: NextRequest) {
     requestedWorkspaces.unshift(assignedRole)
   }
 
-  // 2. If external backend is reachable, try forwarding first
-  if (backendUrl && !backendUrl.includes('localhost') && !backendUrl.includes('127.0.0.1')) {
-    try {
-      const backendRes = await fetch(`${backendUrl}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          password,
-          role: assignedRole,
-          requestedRole: assignedRole,
-          requestedWorkspaces,
-          assignedVehicleId: body.assignedVehicleId || null,
-        }),
-      })
-      const data = await backendRes.json()
-      const response = NextResponse.json(data, { status: backendRes.status })
-      const setCookie = backendRes.headers.get('set-cookie')
-      if (setCookie) {
-        response.headers.set('set-cookie', setCookie)
-      }
-      return response
-    } catch (err) {
-      console.warn('[BFF] External backend registration proxy failed, using serverless fallback:', err)
+  // 2. Authoritative backend registration
+  try {
+    const backendRes = await fetch(`${backendUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role: assignedRole,
+        requestedRole: assignedRole,
+        requestedWorkspaces,
+        assignedVehicleId: body.assignedVehicleId || null,
+      }),
+    })
+    const data = await backendRes.json()
+    const response = NextResponse.json(data, { status: backendRes.status })
+    const setCookie = backendRes.headers.get('set-cookie')
+    if (setCookie) {
+      response.headers.set('set-cookie', setCookie)
     }
-  }
-
-  // 3. Check duplicate email in serverless store
-  const existingUser = findUserByEmail(email)
-  if (existingUser) {
+    return response
+  } catch (err) {
+    // Fail closed: Never create local-only accounts when authoritative backend is down
     return NextResponse.json(
-      { success: false, error: 'Email is already registered. Please sign in or use another email.' },
-      { status: 409 }
+      {
+        success: false,
+        error: 'Registration service temporarily unavailable. Please try again later.',
+      },
+      { status: 503 }
     )
   }
-
-  // 4. Create new user in PENDING status (quarantined until admin approval)
-  const newUser: ServerUser = {
-    id: `usr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    name: name.trim(),
-    email: email.trim().toLowerCase(),
-    role: assignedRole,
-    status: 'PENDING',
-    requestedRole: assignedRole,
-    requestedWorkspaces,
-    permittedWorkspaces: [],
-    assignedVehicleId: body.assignedVehicleId || null,
-    passwordHash: hashPassword(password),
-    passwords: [password],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  usersStore.set(newUser.email, newUser)
-
-  const safeUser = toSafeUser(newUser)
-
-  return NextResponse.json(
-    {
-      success: true,
-      message: 'Registration submitted successfully. Account is pending administrator review.',
-      user: safeUser,
-    },
-    { status: 201 }
-  )
 }

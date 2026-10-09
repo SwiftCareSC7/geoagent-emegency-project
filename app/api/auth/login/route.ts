@@ -1,15 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  findUserByEmail,
-  verifyUserPassword,
-  createToken,
-  toSafeUser,
-} from '@/lib/auth/server-store'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  const backendUrl = process.env.BACKEND_URL
+  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'
   const body = await request.json().catch(() => ({}))
   const { email, password } = body
 
@@ -20,76 +14,30 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // 1. If backend URL is provided (e.g. deployed container/Express API), try proxying
-  if (backendUrl && !backendUrl.includes('localhost') && !backendUrl.includes('127.0.0.1')) {
-    try {
-      const backendRes = await fetch(`${backendUrl}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      const data = await backendRes.json()
-      const response = NextResponse.json(data, { status: backendRes.status })
+  // Authoritative backend authentication
+  try {
+    const backendRes = await fetch(`${backendUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await backendRes.json()
+    const response = NextResponse.json(data, { status: backendRes.status })
 
-      // Forward Set-Cookie headers
-      const setCookie = backendRes.headers.get('set-cookie')
-      if (setCookie) {
-        response.headers.set('set-cookie', setCookie)
-      }
-      return response
-    } catch (err) {
-      console.warn('[BFF] External backend login proxy failed, using serverless fallback:', err)
+    // Forward Set-Cookie headers from authoritative backend
+    const setCookie = backendRes.headers.get('set-cookie')
+    if (setCookie) {
+      response.headers.set('set-cookie', setCookie)
     }
-  }
-
-  // 2. Direct serverless authentication
-  const user = findUserByEmail(email)
-  if (!user || !verifyUserPassword(user, password)) {
+    return response
+  } catch (err) {
+    // Fail closed: Never authenticate against local demo accounts when backend fails
     return NextResponse.json(
-      { success: false, error: 'Invalid email or password' },
-      { status: 401 }
+      {
+        success: false,
+        error: 'Authentication service temporarily unavailable. Please try again later.',
+      },
+      { status: 503 }
     )
   }
-
-  if (user.status === 'PENDING') {
-    return NextResponse.json(
-      { success: false, error: 'Account registration is pending administrator approval' },
-      { status: 403 }
-    )
-  }
-
-  if (user.status === 'SUSPENDED') {
-    return NextResponse.json(
-      { success: false, error: 'Account has been suspended. Please contact an administrator.' },
-      { status: 403 }
-    )
-  }
-
-  if (user.status === 'REJECTED') {
-    return NextResponse.json(
-      { success: false, error: 'Account registration was rejected by administrator' },
-      { status: 403 }
-    )
-  }
-
-  const token = createToken(user.id, user.role)
-  const safeUser = toSafeUser(user)
-
-  const response = NextResponse.json({
-    success: true,
-    message: 'Login successful',
-    user: safeUser,
-  })
-
-  response.cookies.set({
-    name: 'token',
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 30 * 24 * 60 * 60,
-    path: '/',
-  })
-
-  return response
 }

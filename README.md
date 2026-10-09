@@ -81,8 +81,9 @@ Trajectories          Routes                     │         │
 ## 2. Technology Stack
 
 ### Frontend
+
 | Layer | Technology | Details |
-|---|---|---|
+| --- | --- | --- |
 | Framework | Next.js 16 | App Router, Turbopack, React 19 |
 | Styling | Tailwind CSS v4 | PostCSS pipeline, custom design tokens |
 | Icons | Lucide React | SVG icon library |
@@ -93,8 +94,9 @@ Trajectories          Routes                     │         │
 | Dev Port | `http://localhost:3000` | — |
 
 ### Backend Core
+
 | Layer | Technology | Details |
-|---|---|---|
+| --- | --- | --- |
 | Runtime | Node.js (ES Modules) | `"type": "module"` |
 | Framework | Express.js | HTTP Server + CORS + Helmet |
 | Real-Time | Socket.IO 4.8 | Room-isolated push, handshake JWT auth |
@@ -105,8 +107,9 @@ Trajectories          Routes                     │         │
 | Dev Port | `http://localhost:5001` | — |
 
 ### Python Spatial Routing Engine (Member 2)
+
 | Layer | Technology | Details |
-|---|---|---|
+| --- | --- | --- |
 | Runtime | Python 3.11+ | Standalone spatial analysis |
 | Algorithms | Haversine, cross-track error | Corridor intersection, bearing calculation |
 | V2X | Green-wave scoring | Traffic signal preemption evaluation |
@@ -274,7 +277,7 @@ Trajectories          Routes                     │         │
 ### ✅ Backend — FULLY IMPLEMENTED (Parts 1–12)
 
 | Part | Feature Area | Status | Key Capabilities |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | **Server Foundation** | ✅ Done | Express server, MongoDB connection, CORS, Helmet, centralized error handler |
 | 2 | **Authentication & RBAC** | ✅ Done | JWT issuance, bcrypt (12 rounds), dual transport (cookie + Bearer), 4 roles (`ADMIN`, `CONTROL_ROOM`, `DRIVER`, `PARAMEDIC`) |
 | 3 | **Vehicle Management** | ✅ Done | Fleet registry, CRUD, unique `vehicleId`, compound status index, lifecycle states (`AVAILABLE` → `DISPATCHED` → `EN_ROUTE` → `AT_SCENE` → `TRANSPORTING` → `MAINTENANCE`) |
@@ -294,6 +297,7 @@ Trajectories          Routes                     │         │
 **Backend API Modules**: 13 route files serving 45+ REST endpoints across `auth`, `vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `deviation`, `traffic`, `analysis`, `geoagents`, `decisions`, `orchestration`, `admin`.
 
 **Test Coverage**: 100% pass rate across all unit, integration, and security test suites.
+
 - Canonical System Integration Suite (`test-part11-system-hardening.js`): 17/17 passed (23 steps).
 - Security, RBAC & Anomaly Suite (`test-part11-security-hardening.js`): 14/14 passed.
 - Interactive Geospatial Map Suite (`test-part10-control-room-map.js`): 9/9 passed.
@@ -308,7 +312,7 @@ Trajectories          Routes                     │         │
 ### ✅ Python Spatial Routing & V2X Engine — FULLY IMPLEMENTED (Member 2)
 
 | Feature | Status | Details |
-|---|---|---|
+| --- | --- | --- |
 | **Dynamic Corridor Routing** | ✅ Done | Haversine distance, cross-track error detection |
 | **V2X Green-Wave Scoring** | ✅ Done | Traffic signal preemption scoring for emergency corridor clearance |
 | **GeoJSON Export** | ✅ Done | Routes exported to `routes_geojson.json` |
@@ -322,7 +326,7 @@ Trajectories          Routes                     │         │
 ### ✅ Frontend UI, Maps & Authentication — FULLY IMPLEMENTED
 
 | Feature | Status | Details |
-|---|---|---|
+| --- | --- | --- |
 | **Next.js 16 App Router Setup** | ✅ Done | Turbopack, React 19, TypeScript, Tailwind CSS v4, PostCSS |
 | **Authentication & Session** | ✅ Done | Real `POST /api/auth/login`, `POST /api/auth/register`, `GET /api/auth/me`, `POST /api/auth/logout`, HTTP-only cookie transport, session persistence |
 | **Role-Based Access Control (4 Roles)** | ✅ Done | Strict enforcement of `ADMIN`, `CONTROL_ROOM`, `DRIVER`, and `PARAMEDIC` across backend, JWT sessions, and frontend route protection |
@@ -360,10 +364,11 @@ Trajectories          Routes                     │         │
 ## 5. What Still Needs to Be Done (TODO)
 
 ### 🔴 Core Capabilities — COMPLETED
+
 Authentication, Dashboard REST domain feeds, Real Interactive Leaflet GIS Map, Bengaluru Corridors, Spatio-Temporal Forecasting, V2X Signal Preemption, Patient Severity Triage Routing, Emergency Detail Corridor Analysis, External Providers (Google Routes, Roads, Traffic), Real-Time Prediction Engine, Decision Engine Rationale, Admin Observability Console, and Socket.IO real-time streaming are **fully implemented and verified (298/298 tests passing)**.
 
 | # | Task | Status | Details |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | **Wire `lib/api` to the real backend** | ✅ Done | Centralized API client (`lib/api/client.ts`) and typed modules (`vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `analysis`, `decisions`, `orchestration`, `auth`, `admin`) connected to Express REST endpoints. |
 | 2 | **Implement real Login flow** | ✅ Done | `POST /api/auth/login` → issues HTTP-only cookie → populates session → redirects to dashboard. |
 | 3 | **Implement real Signup flow** | ✅ Done | `POST /api/auth/register` → assigns `CONTROL_ROOM` → creates account → auto-authenticates. |
@@ -390,7 +395,7 @@ Authentication, Dashboard REST domain feeds, Real Interactive Leaflet GIS Map, B
 ### 🟠 NEXT PHASE — Fleet Control Room & Platform Expansion
 
 | # | Task | Priority | Details |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 21 | **Multi-Monitor CAD Wall Display** | 🟠 High | Dedicated multi-emergency tiled video-wall view (`/control-room/overview`) complementing the active single-corridor `/control-room` dispatch console. |
 | 22 | **Direct Emergency Intake Modal** | 🟡 Medium | Operator modal form to intake and dispatch emergency calls directly from the dashboard topbar. |
 | 23 | **Automated Python Microservice Bridge** | 🟡 Medium | Optional FastAPI wrapper around `routing-engine/routes_engine.py` for headless batch calculations if needed outside Node.js. |
@@ -404,11 +409,13 @@ Authentication, Dashboard REST domain feeds, Real Interactive Leaflet GIS Map, B
 ## 6. Quick Start & Setup
 
 ### Prerequisites
+
 - **Node.js**: v18.0.0 or higher
 - **MongoDB**: v6.0 or higher (local daemon or MongoDB Atlas)
 - **Python**: v3.11 or higher (optional, for standalone routing engine)
 
 ### 1. Clone & Install
+
 ```bash
 # Clone the repository
 git clone https://github.com/SwiftCareSC7/geoagent-emegency-project.git
@@ -425,6 +432,7 @@ cd ..
 ```
 
 ### 2. Configure Backend Environment (`server/.env`)
+
 ```env
 PORT=5001
 NODE_ENV=development
@@ -439,9 +447,11 @@ OPENCODE_MODEL=
 ROUTING_PROVIDER=mock
 TRAFFIC_PROVIDER=mock
 ```
+
 *(For complete environment reference, see [`docs/environment.md`](docs/environment.md)).*
 
 #### GeoAgent AI providers (free models only)
+
 ```text
 GeoAgent
 → provider abstraction (server/modules/geoagents/geoagent.provider.js)
@@ -449,6 +459,7 @@ GeoAgent
 → OpenCode free models
 → deterministic SwiftCare fallback
 ```
+
 - **Only free models are ever selected.** A model is called only if the provider's live model catalog confirms it is free: OpenRouter = every listed price is `0` and `tools` is supported; OpenCode = the `-free` model id suffix. A configured `*_MODEL` that is not confirmed free is never called.
 - **Paid models must never be used.** OpenRouter requests also send `provider.max_price = 0` and `require_parameters: true`, so OpenRouter refuses any paid or tool-less endpoint.
 - **OpenRouter free models are supported** (verified with live tool calling). Free models have daily quotas; when the quota is exhausted (`429 free-models-per-day`) the provider is paused and the deterministic fallback is used.
@@ -457,12 +468,16 @@ GeoAgent
 - Status: `GET /api/health/providers` → `providers.geoAgentAI` (provider, model, free, tool-calling, availability, last failure; never keys).
 
 ### 3. Configure Frontend Map Basemap (`.env.local`)
+
 To eliminate the CARTO "API KEY REQUIRED" raster tile watermark:
+
 1. Obtain a free basemap API key at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey) (free up to 5M requests/month).
 2. Add to `.env.local`:
-```env
-NEXT_PUBLIC_CARTO_API_KEY=your_carto_basemap_key
-```
+
+   ```env
+   NEXT_PUBLIC_CARTO_API_KEY=your_carto_basemap_key
+   ```
+
 3. For production on Vercel: Add `NEXT_PUBLIC_CARTO_API_KEY` under **Vercel Project Dashboard → Settings → Environment Variables**, then trigger a redeploy.
 4. *Security boundary*: `NEXT_PUBLIC_CARTO_API_KEY` is strictly for browser raster tiles. Never expose backend secrets (`GOOGLE_MAPS_API_KEY`, `OPENROUTER_API_KEY`, `OPENCODE_API_KEY`, `MONGO_URI`, `JWT_SECRET`) in frontend variables.
 
@@ -482,6 +497,7 @@ python demo_member2.py
 ```
 
 ### 5. Canonical Demonstration Scenario (Part 12)
+
 ```bash
 # Seed the canonical demo mission (Emergency E-DEMO-001, Vehicle AMB-DEMO-01)
 node server/seed-demo-scenario.js --clean
@@ -498,6 +514,7 @@ node server/demo-telemetry-player.js --all --interval 3000
 ```
 
 ### Health & Provider Check
+
 ```bash
 # General health check
 curl http://localhost:5001/api/health
@@ -536,6 +553,7 @@ node test-targeted-rbac-socket.js     # Vehicle ownership validation, Socket.IO 
 node test-db-safety.js                # Database safety guard preventing accidental resets of remote/production DBs
 node test-telemetry-retention.js      # Trajectory TTL retention index verification
 ```
+
 **Audit Result**: **100% passing across all test suites with zero failures (37/37 final audit passed)**.
 **TypeScript Verification**: `npm run lint` (`tsc --noEmit`) — 0 errors.
 **Production Build**: `npm run build` — 100% optimized without build warnings.
@@ -561,7 +579,9 @@ Complete API, database, and event documentation is available in the `docs/` dire
 For developers connecting the frontend dashboard to the backend:
 
 ### 1. Authentication
+
 Send credentials to `POST /api/auth/login`. The server returns an HTTP-only `token` cookie (`SameSite=Strict`, 7 days) and user profile:
+
 ```javascript
 const res = await fetch('http://localhost:5001/api/auth/login', {
   method: 'POST',
@@ -574,7 +594,9 @@ const { user } = await res.json();
 ```
 
 ### 2. Calling REST Endpoints
+
 Pass `credentials: 'include'` for cookie auth or `Authorization: Bearer <token>`:
+
 ```javascript
 // Trigger full end-to-end situation analysis for an emergency
 const analysisRes = await fetch('http://localhost:5001/api/orchestration/emergencies/EMG-0001/analyze', {
@@ -585,7 +607,9 @@ const { data } = await analysisRes.json();
 ```
 
 ### 3. Subscribing to Real-Time Push Events
+
 Connect to Socket.IO and join the control room:
+
 ```javascript
 import { io } from 'socket.io-client';
 
@@ -608,7 +632,7 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 ## 10. Production Considerations
 
 | Area | Current Status | Production Recommendation |
-|---|---|---|
+| --- | --- | --- |
 | **Live Routing** | Google Routes & Mock providers | Set `ROUTING_PROVIDER=google` or `mapbox` with valid API keys in `.env` |
 | **Live Traffic** | Google Traffic & Mock providers | Set `TRAFFIC_PROVIDER=google` with Google Maps key for live corridor congestion |
 | **Interactive Map** | **Interactive Leaflet GIS Map** | Production Leaflet map (`real-interactive-map.tsx`) with Bengaluru routes, Google Traffic layer, spatio-temporal forecast, V2X signals, and GPS simulation |
@@ -626,7 +650,7 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 ## 11. Team & Member Contributions
 
 | Member | Responsibility | Key Deliverables |
-|---|---|---|
+| --- | --- | --- |
 | **Member 1** | Backend Core & AI (Node.js) | Express server, 13 domain modules (auth → admin), MongoDB models, GeoAgent free-model AI provider abstraction (OpenRouter / OpenCode) with zero-cost guards, 7 automated test suites (298 assertions), documentation, security hardening |
 | **Member 2** | Python Spatial Engine & V2X | Routing engine, V2X green-wave scoring, GeoJSON export, Leaflet visualizer, telemetry simulator |
 | **Member 3** | Frontend UI & Interactive Map (Next.js) | Next.js 16 setup, landing page, login/signup, driver dashboard, real Leaflet GIS map with Bengaluru routing & V2X, emergency detail corridor analysis, admin console, design tokens |
@@ -635,7 +659,7 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 
 ## Summary: Current State at a Glance
 
-```
+```text
 ✅ Backend API (40+ endpoints, 13 modules)      → COMPLETE & TESTED (298/298 tests passing)
 ✅ Python Routing Engine (V2X, maps)             → COMPLETE & STANDALONE
 ✅ Real Interactive Leaflet GIS Map              → COMPLETE (Bengaluru corridors, V2X, Spatio-Temporal forecast, simulation)
@@ -654,7 +678,7 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 ## 12. Production Deployment
 
 | Component | Target | Configuration |
-|---|---|---|
+| --- | --- | --- |
 | Backend | Google Cloud Run | `server/Dockerfile`, `--min-instances=1 --max-instances=1` |
 | Frontend | Vercel | `.vercelignore`, auto-deploy on push |
 | Database | MongoDB Atlas | Managed, connection via Secret Manager |
