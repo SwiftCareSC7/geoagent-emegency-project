@@ -119,6 +119,8 @@ async function runDashboardVerification() {
       email: 'operator@swiftcare.local',
       password: hashedPassword,
       role: 'CONTROL_ROOM',
+      status: 'APPROVED',
+      permittedWorkspaces: ['CONTROL_ROOM']
     });
     assert(!!operator._id, 'Operator test user created in MongoDB');
 

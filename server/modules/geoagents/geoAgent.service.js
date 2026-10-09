@@ -57,7 +57,10 @@ class GeoAgentService {
       likelyCause = geoAgentConstants.causes.TRAFFIC_CONGESTION;
     }
 
-    const safeEta = eta || { currentMinutes: 0, originalMinutes: 0, delayMinutes: 0 };
+    // getVehicleSituation reports the delay under `situation.delay`, not `eta`; reading eta.delayMinutes gave `undefined`
+    // (garbled text) and silently disabled the >=10 min backup recommendation.
+    const delayMinutes = [situation.delay?.delayMinutes, eta?.delayMinutes].find(Number.isFinite) ?? 0;
+    const safeEta = { currentMinutes: 0, originalMinutes: 0, ...eta, delayMinutes };
     const backupRecommended = safeEta.delayMinutes >= 10;
 
     return {
@@ -238,7 +241,7 @@ class GeoAgentService {
     // 5. Check for LLM client
     const ai = this.getAIClient();
     if (!ai) {
-      const fallback = this.generateFallbackResponse(situation, 'No free AI provider configured (OPENCODE_API_KEY / OPENROUTER_API_KEY)');
+      const fallback = this.generateFallbackResponse({ ...situation, emergencyId: emergency.emergencyId }, 'No free AI provider configured (OPENCODE_API_KEY / OPENROUTER_API_KEY)');
       fallback.comparison = comparison;
       fallback.prediction = prediction;
       fallback.whyRouteChanged = comparison.whyRouteChanged;
@@ -347,7 +350,7 @@ When you have enough evidence, output the final structured JSON object.
       return result;
     } catch (error) {
       console.error(`[GeoAgentService] run=${runId} AI unavailable, deterministic fallback: ${error.message}`);
-      return withContext(this.generateFallbackResponse(situation, `AI inference error: ${error.message}`));
+      return withContext(this.generateFallbackResponse({ ...situation, emergencyId: emergency.emergencyId }, `AI inference error: ${error.message}`));
     }
   }
 

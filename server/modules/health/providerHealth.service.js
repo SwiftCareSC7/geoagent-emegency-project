@@ -7,6 +7,7 @@
  * CRITICAL SECURITY: Never logs or exposes API keys or secrets in payloads.
  */
 
+import { PROVIDERS } from '../geoagents/geoagent.provider.js';
 import mongoose from 'mongoose';
 import realtimeService from '../realtime/realtime.service.js';
 import pythonRoutingBridge from '../routes/pythonRoutingBridge.service.js';
@@ -41,8 +42,11 @@ class ProviderHealthService {
     const routingProvider = (process.env.ROUTING_PROVIDER || 'mock').toLowerCase();
     const trafficProvider = (process.env.TRAFFIC_PROVIDER || 'mock').toLowerCase();
     const googleMapsConfigured = this.isConfigured(process.env.GOOGLE_MAPS_API_KEY);
-    const geminiConfigured = this.isConfigured(process.env.GEMINI_API_KEY);
-    const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    // The GeoAgent LLM is OpenRouter/OpenCode (geoagent.provider.js), not Gemini; report what the agent really uses.
+    // Key kept as `gemini` in the payload for frontend compatibility.
+    const aiLabels = Object.values(PROVIDERS).filter((d) => this.isConfigured(process.env[d.keyEnv])).map((d) => d.label);
+    const geminiConfigured = aiLabels.length > 0;
+    const geminiModel = 'free models (auto-selected per request)';
 
     // 1. Google Routes API Health
     let googleRoutesStatus = 'NOT_CONFIGURED';
@@ -65,10 +69,10 @@ class ProviderHealthService {
 
     // 3. Gemini AI Health
     let geminiStatus = 'NOT_CONFIGURED';
-    let geminiMessage = 'Gemini API key is not configured (Deterministic rule fallback active)';
+    let geminiMessage = 'No LLM provider key (OPENROUTER_API_KEY / OPENCODE_API_KEY) configured (Deterministic rule fallback active)';
     if (geminiConfigured) {
       geminiStatus = 'AVAILABLE';
-      geminiMessage = `Gemini reasoning layer ready (${geminiModel})`;
+      geminiMessage = `LLM provider key configured: ${aiLabels.join(', ')} (not live-probed; deterministic fallback on failure)`;
     }
 
     // 4. MongoDB Health (non-invasive readyState check)
@@ -118,7 +122,7 @@ class ProviderHealthService {
           message: googleRoadsMessage
         },
         gemini: {
-          provider: 'google-genai',
+          provider: geminiConfigured ? aiLabels.join('+').toLowerCase() : 'none',
           model: geminiModel,
           status: geminiStatus,
           configured: geminiConfigured,

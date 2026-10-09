@@ -17,7 +17,8 @@ import {
   Radio,
   Stethoscope,
   Lock,
-  Car
+  Car,
+  ShieldCheck
 } from 'lucide-react'
 
 import { useAuth } from '@/lib/auth/context'
@@ -53,6 +54,13 @@ const AVAILABLE_ROLES: {
     label: 'Field Paramedic Officer',
     description: 'Patient vital signs, trauma logging, and hospital handoff readiness',
     icon: Stethoscope
+  },
+  {
+    role: 'ADMIN',
+    name: 'Admin',
+    label: 'System Administrator',
+    description: 'Request only: an existing administrator must approve admin access',
+    icon: ShieldCheck
   }
 ]
 
@@ -316,7 +324,7 @@ export function SignupForm() {
                   <label className="text-xs font-semibold text-foreground">
                     Primary Operational Role Requested
                   </label>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {AVAILABLE_ROLES.map((r) => {
                       const Icon = r.icon
                       const isSelected = selectedRole === r.role

@@ -103,9 +103,12 @@ const adminUser = await User.create({
   name: 'Audit Administrator',
   email: 'audit.admin@geoagent.test',
   password: 'HashedPassword123!',
-  role: 'ADMIN'
+  role: 'ADMIN',
+  status: 'APPROVED',
+  permittedWorkspaces: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC']
 });
-const adminToken = generateToken(adminUser);
+const adminToken = generateToken(adminUser._id, adminUser.role);
+
 
 let passedChecks = 0;
 let totalChecks = 0;

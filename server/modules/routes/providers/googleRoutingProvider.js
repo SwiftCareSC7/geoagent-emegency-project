@@ -202,16 +202,13 @@ class GoogleRoutingProvider {
    * @param {String} name Identifier name for error messages
    */
   validateCoordinates(point, name = 'coordinate') {
-    if (Array.isArray(point) && point.length >= 2) {
-      point = { type: 'Point', coordinates: [Number(point[0]), Number(point[1])] };
-    }
-    if (!point || typeof point !== 'object') {
-      const error = new Error(`Invalid ${name}: point must be a GeoJSON object or [longitude, latitude] array`);
+    if (!point || typeof point !== 'object' || Array.isArray(point)) {
+      const error = new Error(`Invalid ${name}: must be a GeoJSON Point with [longitude, latitude]`);
       error.status = 400;
       error.isOperational = true;
       throw error;
     }
-    if ((point.type && point.type !== 'Point') || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
+    if (point.type !== 'Point' || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
       const error = new Error(`Invalid ${name}: must be a GeoJSON Point with [longitude, latitude]`);
       error.status = 400;
       error.isOperational = true;
