@@ -12,6 +12,12 @@ import {
   Radio,
   ShieldAlert,
   GitCompare,
+  Mic,
+  MicOff,
+  Users,
+  History,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
@@ -104,6 +110,27 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
   const [prediction, setPrediction] = useState<PredictionResult | null>(null)
   const [decision, setDecision] = useState<Decision | null>(null)
   const [comparisonData, setComparisonData] = useState<any>(null)
+
+  // Phase 3: Manual Override & Assignment State
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false)
+  const [overrideReason, setOverrideReason] = useState('')
+  const [overrideLoading, setOverrideLoading] = useState(false)
+  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false)
+  const [selectedVehicleForAssignment, setSelectedVehicleForAssignment] = useState<string | null>(null)
+  const [assignmentLoading, setAssignmentLoading] = useState(false)
+  const [auditHistory, setAuditHistory] = useState<Decision[]>([])
+  const [auditHistoryOpen, setAuditHistoryOpen] = useState(false)
+
+  // Phase 4: Push-to-Talk State
+  const [isRecording, setIsRecording] = useState(false)
+  const [isTransmitting, setIsTransmitting] = useState(false)
+  const [micPermission, setMicPermission] = useState<'granted' | 'denied' | 'prompt' | 'unavailable'>('prompt')
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const [voiceModalOpen, setVoiceModalOpen] = useState(false)
+
+  // Phase 5: Task Routing Recommendations State
+  const [taskRecommendations, setTaskRecommendations] = useState<any[]>([])
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false)
 
   // Fetch real data from live backend REST endpoints
   const fetchLiveData = useCallback(async () => {
@@ -266,6 +293,129 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
     const res = await decisionApi.execute(decisionId)
     if (res.data) setDecision(res.data)
     fetchLiveData()
+  }
+
+  // Phase 3: Manual Override Handler
+  const handleManualOverride = async () => {
+    if (!selectedRoute) return
+    setOverrideLoading(true)
+    try {
+      const res = await routeApi.override(selectedRoute.routeId, {
+        overrideReason: overrideReason || 'Manual override by control room operator'
+      })
+      if (res.data) {
+        setSelectedRoute(res.data)
+        setOverrideModalOpen(false)
+        setOverrideReason('')
+        fetchLiveData()
+      }
+    } catch (err) {
+      console.error('Manual override failed:', err)
+    } finally {
+      setOverrideLoading(false)
+    }
+  }
+
+  // Phase 3: Vehicle Assignment Handler
+  const handleVehicleAssignment = async () => {
+    if (!selectedEmergency || !selectedVehicleForAssignment) return
+    setAssignmentLoading(true)
+    try {
+      const res = await emergencyApi.assignVehicle(selectedEmergency.emergencyId, selectedVehicleForAssignment)
+      if (res.data) {
+        setAssignmentModalOpen(false)
+        setSelectedVehicleForAssignment(null)
+        fetchLiveData()
+      }
+    } catch (err) {
+      console.error('Vehicle assignment failed:', err)
+    } finally {
+      setAssignmentLoading(false)
+    }
+  }
+
+  // Phase 3: Fetch Audit History
+  const fetchAuditHistory = async () => {
+    if (!selectedEmergency) return
+    try {
+      const res = await decisionApi.list({ emergencyId: selectedEmergency.emergencyId })
+      if (res.data) setAuditHistory(res.data)
+    } catch (err) {
+      console.error('Failed to fetch audit history:', err)
+    }
+  }
+
+  // Phase 4: Push-to-Talk Handlers
+  const checkMicPermission = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setMicPermission('unavailable')
+      return
+    }
+    try {
+      const permission = await navigator.permissions.query({ name: 'microphone' as PermissionName })
+      setMicPermission(permission.state as 'granted' | 'denied' | 'prompt')
+    } catch {
+      setMicPermission('prompt')
+    }
+  }
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      setMicPermission('granted')
+      setIsRecording(true)
+      setRecordingDuration(0)
+      const interval = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1)
+      }, 1000)
+      // Store stream for cleanup (simplified - would need full WebRTC for real transmission)
+      ;(window as any).audioStream = stream
+      ;(window as any).recordingInterval = interval
+    } catch (err) {
+      setMicPermission('denied')
+      console.error('Microphone access denied:', err)
+    }
+  }
+
+  const stopRecording = () => {
+    setIsRecording(false)
+    setIsTransmitting(true)
+    const stream = (window as any).audioStream
+    const interval = (window as any).recordingInterval
+    if (stream) {
+      stream.getTracks().forEach((track: MediaStreamTrack) => track.stop())
+    }
+    if (interval) clearInterval(interval)
+    // Simulate transmission delay
+    setTimeout(() => {
+      setIsTransmitting(false)
+      setRecordingDuration(0)
+    }, 2000)
+  }
+
+  // Phase 5: Fetch Task Routing Recommendations
+  const fetchTaskRecommendations = async () => {
+    if (!selectedEmergencyId) return
+    setRecommendationsLoading(true)
+    try {
+      // Use new backend endpoint for task recommendations
+      const response = await fetch(`/api/orchestration/emergencies/${encodeURIComponent(selectedEmergencyId)}/recommendations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setTaskRecommendations(data.data || [])
+      } else {
+        setTaskRecommendations([])
+      }
+    } catch (err) {
+      console.error('Failed to fetch task recommendations:', err)
+      setTaskRecommendations([])
+    } finally {
+      setRecommendationsLoading(false)
+    }
   }
 
   // Real-time Socket.IO subscriptions for Control Room fleet and emergency updates
@@ -489,6 +639,71 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
               Broadcast Alert
             </Button>
 
+            {/* Phase 3: Manual Override Button */}
+            {selectedRoute && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setOverrideModalOpen(true)}
+              >
+                <ShieldAlert />
+                Manual Override
+              </Button>
+            )}
+
+            {/* Phase 3: Vehicle Assignment Button */}
+            {selectedEmergency && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAssignmentModalOpen(true)}
+              >
+                <Users />
+                Assign Unit
+              </Button>
+            )}
+
+            {/* Phase 3: Audit History Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                fetchAuditHistory()
+                setAuditHistoryOpen(true)
+              }}
+            >
+              <History />
+              Audit History
+            </Button>
+
+            {/* Phase 4: Push-to-Talk Button */}
+            <Button
+              variant={isRecording ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => {
+                if (isRecording) {
+                  stopRecording()
+                } else {
+                  checkMicPermission()
+                  setVoiceModalOpen(true)
+                }
+              }}
+            >
+              {isRecording ? <MicOff /> : <Mic />}
+              {isRecording ? 'Stop' : 'Push-to-Talk'}
+            </Button>
+
+            {/* Phase 5: Task Recommendations Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchTaskRecommendations}
+              disabled={recommendationsLoading}
+            >
+              <Radio />
+              {recommendationsLoading ? 'Loading...' : 'Task Routing'}
+            </Button>
+
             <Link
               href="/diff"
               className="inline-flex items-center gap-1.5 rounded-lg border border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 px-3 py-1.5 text-xs font-semibold shadow-xs transition-colors"
@@ -707,6 +922,250 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
           )
         }
       />
+
+      {/* Phase 3: Manual Override Modal */}
+      <Modal
+        open={overrideModalOpen}
+        onClose={() => setOverrideModalOpen(false)}
+        title="Manual Route Override"
+        description="Manually override the current route. This action will be logged in the audit history."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setOverrideModalOpen(false)} disabled={overrideLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleManualOverride}
+              disabled={overrideLoading || !overrideReason.trim()}
+            >
+              {overrideLoading ? 'Overriding...' : 'Confirm Override'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-2">Override Reason (Required)</label>
+            <textarea
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              placeholder="Explain why this manual override is necessary..."
+              className="w-full min-h-[100px] rounded-md border border-border bg-background px-3 py-2 text-sm"
+              disabled={overrideLoading}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            ⚠️ Manual overrides bypass automated routing recommendations. Ensure you have verified the alternative route is safe and appropriate.
+          </p>
+        </div>
+      </Modal>
+
+      {/* Phase 3: Vehicle Assignment Modal */}
+      <Modal
+        open={assignmentModalOpen}
+        onClose={() => setAssignmentModalOpen(false)}
+        title="Assign Response Unit"
+        description="Select an available vehicle to assign to this emergency."
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setAssignmentModalOpen(false)} disabled={assignmentLoading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleVehicleAssignment}
+              disabled={assignmentLoading || !selectedVehicleForAssignment}
+            >
+              {assignmentLoading ? 'Assigning...' : 'Confirm Assignment'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            {vehicles.filter(v => v.status === 'AVAILABLE').length === 0 ? (
+              <p className="text-sm text-muted-foreground">No available vehicles to assign.</p>
+            ) : (
+              vehicles.filter(v => v.status === 'AVAILABLE').map((vehicle) => (
+                <button
+                  key={vehicle.vehicleId}
+                  type="button"
+                  onClick={() => setSelectedVehicleForAssignment(vehicle.vehicleId)}
+                  className={`w-full text-left p-3 rounded-md border ${
+                    selectedVehicleForAssignment === vehicle.vehicleId
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:bg-muted/50'
+                  }`}
+                  disabled={assignmentLoading}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{vehicle.vehicleId}</p>
+                      <p className="text-xs text-muted-foreground">{vehicle.registrationNumber}</p>
+                    </div>
+                    {selectedVehicleForAssignment === vehicle.vehicleId && (
+                      <CheckCircle2 className="size-4 text-primary" />
+                    )}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {/* Phase 3: Audit History Modal */}
+      <Modal
+        open={auditHistoryOpen}
+        onClose={() => setAuditHistoryOpen(false)}
+        title="Audit History"
+        description="History of decisions and overrides for this emergency."
+        footer={
+          <Button onClick={() => setAuditHistoryOpen(false)}>Close</Button>
+        }
+      >
+        <div className="space-y-3 max-h-[400px] overflow-y-auto">
+          {auditHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No audit history available.</p>
+          ) : (
+            auditHistory.map((decision) => (
+              <div key={decision.decisionId} className="p-3 rounded-md border border-border bg-muted/30">
+                <div className="flex items-start justify-between mb-2">
+                  <span className="text-xs font-mono text-muted-foreground">{decision.decisionId}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${
+                    decision.status === 'EXECUTED' ? 'bg-green-500/20 text-green-700' :
+                    decision.status === 'PENDING_OPERATOR_ACTION' ? 'bg-yellow-500/20 text-yellow-700' :
+                    'bg-red-500/20 text-red-700'
+                  }`}>
+                    {decision.status}
+                  </span>
+                </div>
+                <p className="text-sm font-medium mb-1">{decision.primaryAction}</p>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {new Date(decision.createdAt || decision.executedAt || Date.now()).toLocaleString()}
+                </p>
+                {decision.details?.reasoning && (
+                  <p className="text-xs text-muted-foreground italic">
+                    {decision.details.reasoning.join(', ')}
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
+
+      {/* Phase 4: Push-to-Talk Modal */}
+      <Modal
+        open={voiceModalOpen}
+        onClose={() => {
+          if (!isRecording) setVoiceModalOpen(false)
+        }}
+        title="Push-to-Talk Communication"
+        description={
+          micPermission === 'unavailable'
+            ? 'Microphone is not available in this browser or environment.'
+            : micPermission === 'denied'
+            ? 'Microphone permission was denied. Please enable it in your browser settings.'
+            : isRecording
+            ? `Recording... ${recordingDuration}s`
+            : 'Press and hold to record voice message.'
+        }
+        footer={
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (!isRecording) setVoiceModalOpen(false)
+            }}
+            disabled={isRecording}
+          >
+            {isRecording ? 'Recording in progress...' : 'Close'}
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+              disabled={isRecording || micPermission === 'denied' || micPermission === 'unavailable'}
+              className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
+                isRecording
+                  ? 'bg-red-500 animate-pulse'
+                  : 'bg-primary hover:bg-primary/90'
+              }`}
+            >
+              {isRecording ? <MicOff className="size-8 text-white" /> : <Mic className="size-8 text-white" />}
+            </button>
+          </div>
+          {isTransmitting && (
+            <div className="text-center text-sm text-muted-foreground">
+              Transmitting voice message...
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground text-center">
+            {isRecording
+              ? 'Release to stop recording and transmit'
+              : 'Press and hold to record voice message for the assigned unit'}
+          </p>
+          <p className="text-[10px] text-muted-foreground text-center">
+            Note: This is a simulated voice transmission. End-to-end audio requires WebRTC signaling and STUN/TURN server configuration.
+          </p>
+        </div>
+      </Modal>
+
+      {/* Phase 5: Task Routing Recommendations */}
+      {taskRecommendations.length > 0 && (
+        <div className="fixed bottom-4 right-4 w-96 max-h-[500px] overflow-y-auto rounded-xl border border-border bg-card shadow-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Radio className="size-4 text-primary" />
+              Task Routing Recommendations
+            </h3>
+            <button
+              type="button"
+              onClick={() => setTaskRecommendations([])}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <XCircle className="size-4" />
+            </button>
+          </div>
+          <div className="space-y-3">
+            {taskRecommendations.map((rec, idx) => (
+              <div key={idx} className="p-3 rounded-md border border-border bg-muted/30">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{rec.action || 'Unknown Action'}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${
+                    rec.confidence > 0.8 ? 'bg-green-500/20 text-green-700' :
+                    rec.confidence > 0.5 ? 'bg-yellow-500/20 text-yellow-700' :
+                    'bg-red-500/20 text-red-700'
+                  }`}>
+                    {Math.round((rec.confidence || 0) * 100)}% confidence
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">{rec.reason || 'No reason provided'}</p>
+                {rec.vehicleId && (
+                  <p className="text-xs font-mono text-muted-foreground">Vehicle: {rec.vehicleId}</p>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <Button size="sm" variant="outline" className="text-xs">
+                    Approve
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs">
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-3">
+            Recommendations are generated by the GeoAgent AI service using available data. Human approval is required before execution.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

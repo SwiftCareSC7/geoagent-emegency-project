@@ -6,6 +6,7 @@ import analysisService from '../analysis/analysis.service.js';
 import predictionService from '../analysis/prediction.service.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
+import Trajectory from '../trajectories/trajectory.model.js';
 import realtimeService from '../realtime/realtime.service.js';
 import Decision from '../decisions/decision.model.js';
 import { isRerouteCandidateUnchanged } from '../decisions/rerouteCandidate.js';
@@ -545,6 +546,205 @@ class RouteService {
     }
 
     return updatedRoute;
+  }
+
+  /**
+   * Recalculates route from vehicle's current position
+   * @param {String} vehicleId Vehicle ID
+   * @param {String} routeId Route ID (optional, finds active route if not provided)
+   * @param {Object} options { reason, userId, preference }
+   * @returns {Promise<Object>} Updated route
+   */
+  async recalculateRouteFromCurrentPosition(vehicleId, routeId = null, options = {}) {
+    const { reason = 'Manual re-route request', userId = null, preference = 'FASTEST' } = options;
+
+    // 1. Find vehicle
+    const isVehicleObjectId = typeof vehicleId === 'string' && vehicleId.match(/^[0-9a-fA-F]{24}$/);
+    const vehicle = await Vehicle.findOne(
+      isVehicleObjectId ? { _id: vehicleId, isDeleted: false } : { vehicleId, isDeleted: false }
+    );
+    if (!vehicle) {
+      const error = new Error('Vehicle not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // 2. Find active route for this vehicle
+    const routeQuery = { vehicle: vehicle._id, status: 'ACTIVE' };
+    if (routeId) {
+      const isRouteObjectId = typeof routeId === 'string' && routeId.match(/^[0-9a-fA-F]{24}$/);
+      if (isRouteObjectId) {
+        routeQuery._id = routeId;
+      } else {
+        routeQuery.routeId = routeId;
+      }
+    }
+    const route = await Route.findOne(routeQuery).sort({ createdAt: -1 });
+    if (!route) {
+      const error = new Error('No active route found for this vehicle');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // 3. Get latest trajectory (current position)
+    const latestTrajectory = await Trajectory.findOne({ vehicle: vehicle._id }).sort({ timestamp: -1 });
+    if (!latestTrajectory) {
+      const error = new Error('No trajectory data available for this vehicle');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // 4. Calculate new route from current position to destination
+    const currentOrigin = latestTrajectory.location;
+    const destination = route.destination;
+    const newRouteData = await routingService.getRoute(currentOrigin, destination, { preference });
+
+    // 5. Update route with new geometry
+    route.geometry = newRouteData.geometry;
+    route.distance = newRouteData.distanceMeters;
+    route.duration = newRouteData.durationSeconds;
+    route.origin = currentOrigin;
+    route.steps = newRouteData.steps || [];
+    route.routeType = 'RECALCULATED';
+    route.updatedBy = userId;
+    await route.save();
+
+    // 6. Broadcast over Socket.IO
+    try {
+      const emergency = await Emergency.findById(route.emergency);
+      const payload = {
+        routeId: route.routeId,
+        emergencyId: emergency?.emergencyId || null,
+        vehicleId: vehicle.vehicleId,
+        routeType: route.routeType,
+        status: 'REROUTE_CALCULATED',
+        distanceMeters: route.distance,
+        durationSeconds: route.duration,
+        preference: route.preference,
+        stepsCount: (route.steps || []).length,
+        origin: currentOrigin,
+        reason,
+        timestamp: new Date().toISOString()
+      };
+
+      realtimeService.emitRouteUpdated(
+        emergency?.emergencyId || 'ALL',
+        vehicle.vehicleId,
+        payload
+      );
+    } catch (err) {
+      console.error(`[RouteService] Re-route socket broadcast error: ${err.message}`);
+    }
+
+    return route;
+  }
+
+  /**
+   * Manually override a route with specified geometry
+   * @param {String} routeId
+   * @param {Object} overrideData { newGeometry, overrideReason, userId }
+   * @returns {Promise<Object>} Updated route
+   */
+  async overrideRoute(routeId, overrideData = {}) {
+    const { newGeometry, overrideReason, userId } = overrideData;
+
+    const route = await Route.findOne({ routeId });
+    if (!route) {
+      const error = new Error('Route not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // Validate new geometry if provided
+    if (newGeometry) {
+      if (!newGeometry.type || newGeometry.type !== 'LineString') {
+        const error = new Error('Invalid geometry type: must be LineString');
+        error.status = 400;
+        error.isOperational = true;
+        throw error;
+      }
+      if (!Array.isArray(newGeometry.coordinates) || newGeometry.coordinates.length < 2) {
+        const error = new Error('Invalid geometry: must have at least 2 coordinates');
+        error.status = 400;
+        error.isOperational = true;
+        throw error;
+      }
+
+      route.geometry = newGeometry;
+      
+      // Recalculate distance and duration using routing service
+      try {
+        const routeData = await routingService.getRoute(route.origin, route.destination, {
+          preference: route.preference || 'FASTEST'
+        });
+        route.distance = routeData.distanceMeters;
+        route.duration = routeData.durationSeconds;
+      } catch (calcErr) {
+        console.warn(`[RouteService] Could not recalculate distance/duration for override: ${calcErr.message}`);
+      }
+    }
+
+    route.routeType = 'MANUAL_OVERRIDE';
+    route.status = 'ACTIVE';
+    route.updatedBy = userId;
+    await route.save();
+
+    // Log override in decision history
+    try {
+      const Decision = await import('../decisions/decision.model.js').then(m => m.default);
+      const decision = new Decision({
+        decisionId: `DEC-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+        emergency: route.emergency,
+        vehicle: route.vehicle,
+        primaryAction: 'MANUAL_ROUTE_OVERRIDE',
+        severity: 'WARNING',
+        status: 'EXECUTED',
+        reasonCodes: ['MANUAL_OVERRIDE'],
+        details: {
+          summary: 'Control room operator manually overrode route',
+          reasoning: [`Override reason: ${overrideReason || 'Not specified'}`],
+          originalRouteId: route.routeId,
+          overrideBy: userId
+        },
+        executedAt: new Date()
+      });
+      await decision.save();
+    } catch (decisionErr) {
+      console.error(`[RouteService] Failed to log override in decision history: ${decisionErr.message}`);
+    }
+
+    // Broadcast over Socket.IO
+    try {
+      const emergency = await Emergency.findById(route.emergency);
+      const vehicle = await Vehicle.findById(route.vehicle);
+      const payload = {
+        routeId: route.routeId,
+        emergencyId: emergency?.emergencyId || null,
+        vehicleId: vehicle?.vehicleId || null,
+        routeType: route.routeType,
+        status: 'MANUAL_OVERRIDE',
+        distanceMeters: route.distance,
+        durationSeconds: route.duration,
+        preference: route.preference,
+        stepsCount: (route.steps || []).length,
+        reason: overrideReason || 'Manual override by control room',
+        timestamp: new Date().toISOString()
+      };
+
+      realtimeService.emitRouteUpdated(
+        emergency?.emergencyId || 'ALL',
+        vehicle?.vehicleId || 'ALL',
+        payload
+      );
+    } catch (err) {
+      console.error(`[RouteService] Manual override socket broadcast error: ${err.message}`);
+    }
+
+    return route;
   }
 }
 

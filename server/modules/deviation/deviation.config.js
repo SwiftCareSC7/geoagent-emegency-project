@@ -1,16 +1,19 @@
 /**
- * Configuration thresholds for route deviation analysis.
- * Initial prototype thresholds — can be overridden via environment variables.
- */
+
+Configuration thresholds for route deviation analysis.
+
+Initial prototype thresholds — can be overridden via environment variables.
+*/
 export const deviationConfig = {
-  warningDistanceMeters: parseFloat(process.env.ROUTE_WARNING_DISTANCE_METERS) || 50,
-  deviationDistanceMeters: parseFloat(process.env.ROUTE_DEVIATION_DISTANCE_METERS) || 100,
-  criticalDistanceMeters: parseFloat(process.env.ROUTE_CRITICAL_DISTANCE_METERS) || 250,
-  bearingWarningDegrees: parseFloat(process.env.BEARING_WARNING_DEGREES) || 30,
-  bearingDeviationDegrees: parseFloat(process.env.BEARING_DEVIATION_DEGREES) || 60,
-  gpsStabilityWindow: parseInt(process.env.GPS_STABILITY_WINDOW, 10) || 3,
-  routeDegradationConfirmations: Math.max(1, parseInt(process.env.ROUTE_DEGRADATION_CONFIRMATIONS, 10) || 2),
-  routeRecoveryConfirmations: Math.max(1, parseInt(process.env.ROUTE_RECOVERY_CONFIRMATIONS, 10) || 2)
+warningDistanceMeters: parseFloat(process.env.ROUTE_WARNING_DISTANCE_METERS) || 50,
+deviationDistanceMeters: parseFloat(process.env.ROUTE_DEVIATION_DISTANCE_METERS) || 100,
+criticalDistanceMeters: parseFloat(process.env.ROUTE_CRITICAL_DISTANCE_METERS) || 250,
+bearingWarningDegrees: parseFloat(process.env.BEARING_WARNING_DEGREES) || 30,
+bearingDeviationDegrees: parseFloat(process.env.BEARING_DEVIATION_DEGREES) || 60,
+gpsStabilityWindow: parseInt(process.env.GPS_STABILITY_WINDOW, 10) || 3,
+rerouteCooldownSeconds: parseInt(process.env.REROUTE_COOLDOWN_SECONDS, 10) || 30,
+routeDegradationConfirmations: Math.max(1, parseInt(process.env.ROUTE_DEGRADATION_CONFIRMATIONS, 10) || 2),
+routeRecoveryConfirmations: Math.max(1, parseInt(process.env.ROUTE_RECOVERY_CONFIRMATIONS, 10) || 2)
 };
 
 export default deviationConfig;

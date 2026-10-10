@@ -2,7 +2,7 @@ import express from 'express';
 import { protect } from '../auth/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/roleMiddleware.js';
 import { validateOrchestrationRequest } from './orchestration.validation.js';
-import { analyzeEmergencyWorkflow } from './orchestration.controller.js';
+import { analyzeEmergencyWorkflow, getTaskRecommendations } from './orchestration.controller.js';
 
 const router = express.Router();
 
@@ -19,6 +19,17 @@ router.post(
   requireRole('CONTROL_ROOM', 'ADMIN'),
   validateOrchestrationRequest,
   analyzeEmergencyWorkflow
+);
+
+/**
+ * @route   POST /api/orchestration/emergencies/:emergencyId/recommendations
+ * @desc    Get task routing recommendations from GeoAgent AI
+ * @access  Private (CONTROL_ROOM, ADMIN)
+ */
+router.post(
+  '/emergencies/:emergencyId/recommendations',
+  requireRole('CONTROL_ROOM', 'ADMIN'),
+  getTaskRecommendations
 );
 
 export default router;
