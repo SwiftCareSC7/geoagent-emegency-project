@@ -1,5 +1,5 @@
 import { geoAgentConstants } from './modules/geoagents/geoagent.constants.js';
-import { geoAgentToolDeclarations, executeGeoAgentTool } from './modules/geoagents/geoagent.tools.js';
+import { geoAgentToolDeclarations, executeGeoAgentTool } from './modules/geoagents/geoAgent.tools.js';
 import { validateGeoAgentOutput, sanitizeText } from './modules/geoagents/geoagent.schemas.js';
 import geoAgentService from './modules/geoagents/geoAgent.service.js';
 

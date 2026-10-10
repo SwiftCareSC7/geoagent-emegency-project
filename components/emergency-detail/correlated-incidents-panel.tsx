@@ -75,16 +75,16 @@ export function CorrelatedIncidentsPanel({
   const hasLinked = linkedIncidents.length > 0
 
   return (
-    <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md p-6 shadow-sm">
-      <div className="flex items-center justify-between pb-4 border-b border-zinc-100 dark:border-zinc-800/80">
+    <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-md hover:shadow-lg transition-all text-card-foreground">
+      <div className="flex items-center justify-between pb-4 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
-            <TrafficCone className="h-5 w-5 text-amber-500" />
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50 text-base">
+            <TrafficCone className="h-5 w-5 text-red-500" />
+            <h3 className="font-bold text-zinc-900 dark:text-zinc-50 text-base">
               Corridor Hazards & Road Incidents
             </h3>
-            <span className="font-mono text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded">
-              {correlatedIncidents.length} active
+            <span className="font-mono text-xs bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-bold">
+              🔴 {correlatedIncidents.length} active
             </span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">

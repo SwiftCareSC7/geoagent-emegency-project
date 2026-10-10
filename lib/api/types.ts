@@ -29,6 +29,8 @@ export interface GeoJSONLineString {
 // ---------------------------------------------------------------------------
 
 export type UserRole = 'ADMIN' | 'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'
+export type UserStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'REJECTED'
+export type Workspace = 'ADMIN' | 'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'
 
 /** Safe user object (password never returned by backend) */
 export interface User {
@@ -36,6 +38,13 @@ export interface User {
   name: string
   email: string
   role: UserRole
+  status?: UserStatus
+  approvedBy?: string | null
+  approvedAt?: string | null
+  assignedVehicleId?: string | null
+  requestedRole?: UserRole
+  requestedWorkspaces?: Workspace[]
+  permittedWorkspaces?: Workspace[]
   createdAt?: string
   updatedAt?: string
 }
@@ -45,6 +54,10 @@ export interface RegisterPayload {
   email: string
   password: string
   role?: UserRole
+  assignedVehicleId?: string
+  requestedRole?: UserRole
+  requestedWorkspaces?: Workspace[]
+  permittedWorkspaces?: Workspace[]
 }
 
 export interface LoginPayload {
@@ -84,6 +97,9 @@ export interface Vehicle {
   driverContact?: string
   hospitalName?: string
   hospitalCode?: string
+  speed?: number
+  heading?: number
+  location?: GeoJSONPoint
   createdAt?: string
   updatedAt?: string
 }
@@ -155,6 +171,14 @@ export interface Emergency {
   destination?: GeoJSONPoint
   assignedVehicle?: AssignedVehicleSummary | string | null
   createdBy?: string
+  communication?: {
+    lastSmsStatus?: 'READY' | 'SENDING' | 'SUBMITTED' | 'DELIVERED' | 'FAILED' | 'UNKNOWN'
+    lastSmsProvider?: string
+    lastSmsSentAt?: string
+    lastSmsRecipient?: string
+    lastSmsMessageId?: string
+    lastSmsError?: string
+  }
   createdAt?: string
   updatedAt?: string
 }
@@ -234,7 +258,7 @@ export interface UpdateIncidentPayload {
 // Trajectories
 // ---------------------------------------------------------------------------
 
-export type TrajectorySource = 'DEVICE' | 'SIMULATOR' | 'MANUAL' | 'API'
+export type TrajectorySource = 'DEVICE' | 'SIMULATOR' | 'API'
 
 export interface Trajectory {
   id?: string
@@ -242,6 +266,8 @@ export interface Trajectory {
   vehicle?: string
   vehicleId?: string
   location: GeoJSONPoint
+  mapMatchedLocation?: GeoJSONPoint
+  mapMatchDistanceMeters?: number
   speed: number // km/h
   heading?: number // 0-360 degrees
   timestamp: string
@@ -262,7 +288,7 @@ export interface IngestTrajectoryPayload {
 // Routes
 // ---------------------------------------------------------------------------
 
-export type RouteType = 'PLANNED' | 'ALTERNATIVE' | 'CURRENT' | 'HISTORICAL'
+export type RouteType = 'PLANNED' | 'ALTERNATIVE' | 'CURRENT' | 'RECOMMENDED' | 'HISTORICAL'
 export type RouteStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ABANDONED'
 export type RouteProvider = 'MOCK' | 'GOOGLE' | 'MAPBOX' | 'OSRM'
 
@@ -292,9 +318,14 @@ export interface Route {
   geometry: GeoJSONLineString
   distance: number // meters
   duration: number // seconds
+  distanceMeters?: number
+  durationSeconds?: number
+  description?: string
   provider?: RouteProvider
   status: RouteStatus
   routeType?: RouteType
+  rerouteDecisionId?: string | null
+  rerouteCandidateId?: string | null
   createdAt?: string
   updatedAt?: string
 }
@@ -357,6 +388,9 @@ export interface TrafficAnalysis {
   freeFlowSpeedKmh: number
   congestionRatio: number
   source: string
+  retrievedAt?: string
+  trafficDelaySeconds?: number
+  epistemicType?: 'OBSERVED' | 'DERIVED' | 'INFERRED' | 'UNKNOWN'
 }
 
 export interface EtaAnalysis {
@@ -365,6 +399,8 @@ export interface EtaAnalysis {
   remainingDistanceMeters: number
   estimatedSpeedKmh: number
   status: string
+  trafficFreshness?: 'FRESH' | 'STALE' | 'UNAVAILABLE' | 'UNKNOWN'
+  incidentImpactStatus?: 'NONE' | 'QUALITATIVE_ONLY'
 }
 
 export interface DelayAnalysis {
@@ -395,34 +431,75 @@ export interface SituationAnalysis {
 // ---------------------------------------------------------------------------
 
 export type DecisionAction =
-  | 'MAINTAIN_ROUTE'
+  | 'CONTINUE'
   | 'REROUTE'
-  | 'DISPATCH_BACKUP'
+  | 'CONSIDER_BACKUP'
   | 'ALERT_CONTROL_ROOM'
-  | 'REQUEST_TRAFFIC_OVERRIDE'
-  | 'ESCALATE_TO_SUPERVISOR'
-  | 'STANDBY'
+  | 'NO_ACTION'
 
-export type DecisionSeverity = 'INFO' | 'WARNING' | 'CRITICAL'
+export type DecisionSeverity = 'NORMAL' | 'WARNING' | 'CRITICAL'
 
 export type DecisionStatus =
   | 'PENDING_OPERATOR_ACTION'
   | 'APPROVED'
   | 'REJECTED'
   | 'EXECUTED'
-  | 'EXPIRED'
-  | 'AUTO_APPLIED'
+  | 'CANCELLED'
 
 export interface Decision {
-  id: string
+  id?: string
+  _id?: string
   decisionId: string
-  emergency: string
-  vehicle: string
-  primaryAction: DecisionAction
-  severity: DecisionSeverity
+  emergency?: string
+  emergencyId?: string
+  vehicle?: string
+  vehicleId?: string
+  primaryAction?: DecisionAction
+  actions?: DecisionAction[]
+  action?: string | DecisionAction
+  severity?: DecisionSeverity
   status: DecisionStatus
-  reasonCodes: string[]
-  situationHash: string
+  reasonCodes?: string[]
+  situationHash?: string
+  rerouteCandidate?: {
+    candidateId: string
+    geometry: { type: 'LineString'; coordinates: [number, number][] }
+    distanceMeters: number
+    durationSeconds: number
+    preference?: 'FASTEST' | 'SHORTEST'
+    provider?: string
+    description?: string
+    steps?: Array<{
+      maneuver?: string
+      instruction: string
+      distance: number
+      duration: number
+      startLocation?: number[]
+      endLocation?: number[]
+      stepPolyline?: number[][]
+    }>
+  } | null
+  approvedCandidateId?: string | null
+  inputSnapshot?: {
+    routeStatus?: string | null
+    routeVersion?: number | null
+    routeUpdatedAt?: string | null
+    alternativeRoutesConsidered?: number
+    [key: string]: unknown
+  }
+  details?: {
+    summary?: string
+    reasoning?: string[]
+    [key: string]: any
+  }
+  evaluatedAt?: string
+  approvedBy?: string
+  approvedAt?: string
+  rejectedBy?: string
+  rejectedAt?: string
+  rejectionReason?: string
+  executedAt?: string
+  executionSummary?: string
   createdAt?: string
   updatedAt?: string
 }
@@ -457,6 +534,16 @@ export interface PredictionResult {
   inputsSummary?: Record<string, unknown>
   modelVersion?: string
   trafficSource?: string
+  trafficFreshness?: 'FRESH' | 'STALE' | 'UNAVAILABLE' | 'UNKNOWN'
+  routeDegradationSignal?: {
+    status: 'CLEAR' | 'PENDING' | 'SUSTAINED' | 'RECOVERING' | 'RECOVERED'
+    active: boolean
+    confirmed: boolean
+    reasonCodes: string[]
+    observations: number
+    shouldReevaluate: boolean
+    decisionRequestPending?: boolean
+  }
   predictedAt: string
 }
 
@@ -650,6 +737,8 @@ export interface AdminProviderStatus {
   provider?: string
   mode?: string
   details?: string
+  engine?: string
+  version?: string
 }
 
 export interface AdminSystemHealthSummary {
@@ -684,4 +773,3 @@ export interface AdminQueryParams {
   sortDir?: 'asc' | 'desc' | '1' | '-1'
   [key: string]: string | number | undefined
 }
-

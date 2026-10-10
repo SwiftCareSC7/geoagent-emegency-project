@@ -122,14 +122,17 @@ const forgedRes = await fetch(`${BASE_URL}/api/auth/me`, {
 });
 assert(forgedRes.status === 401, 'Forged JWT token rejected with 401 Unauthorized');
 
-// Create test tokens
+// Approve operator account and create approved admin for authenticated RBAC verification
+dbUser.status = 'APPROVED';
+await dbUser.save();
 const operatorToken = generateToken(dbUser._id, 'CONTROL_ROOM');
 
 const adminUser = new User({
   name: 'System Admin',
   email: 'admin@geoagent.test',
-  password: 'AdminPassword123!',
-  role: 'ADMIN'
+  password: process.env.ADMIN_PASSWORD || 'TestAdminSecret123!',
+  role: 'ADMIN',
+  status: 'APPROVED'
 });
 await adminUser.save();
 const adminToken = generateToken(adminUser._id, 'ADMIN');

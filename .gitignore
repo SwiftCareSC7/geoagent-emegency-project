@@ -36,3 +36,36 @@ __pycache__/
 # IDE / Editor
 .vscode/
 .idea/
+.commandcode/
+.claude/
+
+
+# Secrets & Credentials
+service-account*.json
+gcp-key*.json
+credentials*.json
+*.key
+*mcp_config.json
+
+# Docker
+docker-compose.override.yml
+
+# Playwright Test Artifacts
+test-results/
+playwright-report/
+.agents/claims/
+
+# Impeccable engine binaries (re-downloaded by `npx impeccable update`)
+**/skills/impeccable/scripts/bin/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# Local SQLite databases
+data/
+*.db
+*.db-shm
+*.db-wal
+
+.vercel
+.env*

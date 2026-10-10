@@ -21,6 +21,7 @@ import geoagentRoutes from './modules/geoagents/geoagent.routes.js';
 import decisionRoutes from './modules/decisions/decision.routes.js';
 import orchestrationRoutes from './modules/orchestration/orchestration.routes.js';
 import adminRoutes from './modules/admin/admin.routes.js';
+import clearanceRoutes from './modules/clearance/clearance.routes.js';
 import realtimeService from './modules/realtime/realtime.service.js';
 
 import path from 'path';
@@ -32,6 +33,35 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
+
+// --- Environment Validation ---
+const validateEnvironment = () => {
+  const env = process.env.NODE_ENV || 'development';
+  const required = ['JWT_SECRET', 'MONGO_URI'];
+  const missing = required.filter((v) => !process.env[v]);
+
+  if (env === 'production' && missing.length > 0) {
+    console.error(`❌ FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  } else if (missing.length > 0) {
+    console.warn(`⚠️  Missing environment variables (non-fatal in ${env}): ${missing.join(', ')}`);
+  }
+
+  // Log provider configuration (never log actual keys)
+  const routing = process.env.ROUTING_PROVIDER || 'mock';
+  const traffic = process.env.TRAFFIC_PROVIDER || 'mock';
+  const geminiConfigured = !!process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'your_gemini_api_key';
+  const googleConfigured = !!process.env.GOOGLE_MAPS_API_KEY && process.env.GOOGLE_MAPS_API_KEY !== 'your_google_maps_key';
+
+  if (routing === 'google' && !googleConfigured) {
+    console.warn('Google Maps routing unavailable: GOOGLE_MAPS_API_KEY is not configured. Falling back to OpenStreetMap/OSRM real road router.');
+  }
+
+  console.log(`[Config] NODE_ENV=${env}, ROUTING=${routing}, TRAFFIC=${traffic}`);
+  console.log(`[Config] Google API: ${googleConfigured ? 'configured' : 'not configured'}, Gemini: ${geminiConfigured ? 'configured' : 'not configured'}`);
+};
+
+validateEnvironment();
 
 // Connect to MongoDB
 connectDB();
@@ -52,8 +82,8 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:3000',
   'http://localhost:5173',
-  // Vercel deployments — auto-allow any *.vercel.app subdomain
-  /^https:\/\/.*\.vercel\.app$/
+  // Canonical production frontend (any other *.vercel.app app is not trusted)
+  'https://geoagent-emegency-project-livid.vercel.app'
 ].filter(Boolean);
 
 const corsOptions = {
@@ -82,17 +112,51 @@ app.use(express.json());
 app.use(cookieParser());
 
 
-// --- Routes ---
+// --- Health & Observability Routes ---
+
+const startedAt = new Date().toISOString();
+
+// Render, uptime monitors and browsers hit the bare backend URL; answer instead of logging a 404.
+app.get('/', (req, res) => {
+  res.status(200).json({ success: true, message: 'GeoAgentic backend', health: '/api/health' });
+});
 
 /**
- * Basic health endpoint
- * Returns a safe status message without leaking any internal details.
+ * Basic health endpoint with safe version info
+ * Returns application metadata without leaking secrets.
  */
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'GeoAgentic backend is running'
+    message: 'GeoAgentic backend is running',
+    version: '2.0.0',
+    commit: process.env.COMMIT_SHA || 'unknown',
+    environment: process.env.NODE_ENV || 'development',
+    uptime: Math.floor(process.uptime()),
+    startedAt
   });
+});
+
+/**
+ * Liveness probe — process is alive and can handle requests.
+ * Cloud Run / container orchestrators use this to detect crashed processes.
+ * Must NOT depend on external services (MongoDB, Google APIs, etc.).
+ */
+app.get('/api/health/live', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+/**
+ * Readiness probe — application can serve normal traffic.
+ * Returns 503 if MongoDB is disconnected.
+ */
+app.get('/api/health/ready', (req, res) => {
+  const mongoState = mongoose.connection.readyState;
+  // 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
+  if (mongoState === 1) {
+    return res.status(200).json({ status: 'ready', database: 'connected' });
+  }
+  return res.status(503).json({ status: 'not_ready', database: 'disconnected' });
 });
 
 /**
@@ -110,11 +174,12 @@ app.get('/api/health/providers', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to evaluate provider health',
-      error: error.message
+      message: 'Failed to evaluate provider health'
     });
   }
 });
+
+// --- Domain Routes ---
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -130,6 +195,7 @@ app.use('/api/geoagent', geoagentRoutes);
 app.use('/api/decisions', decisionRoutes);
 app.use('/api/orchestration', orchestrationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/clearance', clearanceRoutes);
 
 
 
@@ -149,9 +215,10 @@ realtimeService.init(server, {
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173'
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
-server.listen(PORT, () => {
+// Bind to 0.0.0.0 for Cloud Run / container networking
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
 
@@ -174,4 +241,4 @@ const gracefulShutdown = async (signal) => {
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
-
+export default app;

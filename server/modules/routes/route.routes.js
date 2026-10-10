@@ -2,13 +2,22 @@ import express from 'express';
 import { protect } from '../auth/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/roleMiddleware.js';
 import { validateRouteCreate } from './route.validation.js';
-import { createRoute, getRoutes, getRoute, getRouteAnalysis, compareRoute } from './route.controller.js';
+import { createRoute, getRoutes, getRoute, getRouteAnalysis, compareRoute, getCorridorV2X, calculateRoute, acceptReroute } from './route.controller.js';
 
 const router = express.Router();
 
-// Apply auth middleware to all routes
+// Calculation does not mutate DB or expose private user data — allow route planner & navigation
+router.post('/calculate', calculateRoute);
+
+// Apply auth middleware to remaining management routes
 router.use(protect);
-router.use(requireRole('CONTROL_ROOM', 'ADMIN'));
+router.use(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'));
+
+router.post(
+  '/:routeId/accept-reroute',
+  requireRole('CONTROL_ROOM', 'ADMIN'),
+  acceptReroute
+);
 
 router.route('/')
   .post(validateRouteCreate, createRoute)
@@ -23,5 +32,7 @@ router.route('/:routeId/analysis')
 router.route('/:routeId/compare')
   .get(compareRoute);
 
-export default router;
+router.route('/:routeId/corridor-v2x')
+  .get(getCorridorV2X);
 
+export default router;

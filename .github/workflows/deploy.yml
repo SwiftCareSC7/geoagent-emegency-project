@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────
+# SwiftCare GeoAgent — Backend Deployment Workflow (Cloud Run)
+# 
+# NOTE: Production backend runs on Render via render.yaml.
+# Render auto-deploys on git push to the main branch.
+#
+# This Google Cloud Run workflow is kept as a ready-to-use template.
+# To activate Cloud Run deployment:
+# 1. Add your GCP credentials in GitHub Repository Settings:
+#    Settings → Secrets and variables → Actions:
+#      - GCP_PROJECT_ID
+#      - GCP_WORKLOAD_IDENTITY_PROVIDER & GCP_SERVICE_ACCOUNT (or GCP_SA_KEY)
+# 2. Uncomment the jobs section below.
+# ─────────────────────────────────────────────────────────
+name: Deploy Backend (Cloud Run - Inactive)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+# To activate, uncomment below:
+#
+# env:
+#   SERVICE_NAME: geoagent-backend
+#   IMAGE_NAME: geoagent-backend
+#   GCP_REGION: asia-south1
+#
+# jobs:
+#   deploy:
+#     name: Build & Deploy to Cloud Run
+#     runs-on: ubuntu-latest
+#     env:
+#       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+#     permissions:
+#       contents: read
+#       id-token: write
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+#
+#       - name: Authenticate to Google Cloud (Workload Identity Federation)
+#         uses: google-github-actions/auth@v2
+#         with:
+#           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+#           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+#
+#       - name: Authenticate to Google Cloud (Service Account Key)
+#         uses: google-github-actions/auth@v2
+#         with:
+#           credentials_json: ${{ secrets.GCP_SA_KEY || secrets.GCP_CREDENTIALS_JSON }}
+#
+#       - name: Set up Cloud SDK
+#         uses: google-github-actions/setup-gcloud@v2
+#
+#       - name: Configure Docker for Artifact Registry
+#         run: gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+#
+#       - name: Build Docker image
+#         working-directory: server
+#         run: |
+#           docker build \
+#             --build-arg COMMIT_SHA=${{ github.sha }} \
+#             -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/geoagent-backend:${{ github.sha }} \
+#             -t asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/geoagent-backend:latest \
+#             .
+#
+#       - name: Push Docker image
+#         run: |
+#           docker push asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/geoagent-backend:${{ github.sha }}
+#           docker push asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/geoagent-backend:latest
+#
+#       - name: Deploy to Cloud Run
+#         uses: google-github-actions/deploy-cloudrun@v2
+#         with:
+#           service: geoagent-backend
+#           region: asia-south1
+#           image: asia-south1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/geoagent/geoagent-backend:${{ github.sha }}
+#           flags: |
+#             --port=8080
+#             --min-instances=1
+#             --max-instances=1
+#             --cpu=1
+#             --memory=512Mi
+#             --timeout=300
+#             --concurrency=80
+#             --allow-unauthenticated
+#             --set-env-vars=NODE_ENV=production,COMMIT_SHA=${{ github.sha }}
+#
+#       - name: Verify deployment health
+#         run: |
+#           SERVICE_URL=$(gcloud run services describe geoagent-backend \
+#             --region=asia-south1 \
+#             --format='value(status.url)')
+#           echo "Service URL: $SERVICE_URL"
+#           sleep 10
+#           curl -sf "${SERVICE_URL}/api/health/live" || (echo "Health check failed" && exit 1)
+#           echo "✅ Deployment healthy"

@@ -8,6 +8,7 @@ import {
 } from './vehicle.controller.js';
 import { protect } from '../auth/auth.middleware.js';
 import { requireRole } from '../../shared/middleware/roleMiddleware.js';
+import { requireVehicleOwnership } from '../../shared/middleware/ownershipMiddleware.js';
 import { validateVehicleCreate, validateVehicleUpdate } from './vehicle.validation.js';
 
 const router = express.Router();
@@ -17,17 +18,22 @@ router.use(protect);
 
 router
   .route('/')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getVehicles)
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), getVehicles)
   // POST: ADMIN only
   .post(requireRole('ADMIN'), validateVehicleCreate, createVehicle);
 
 router
   .route('/:vehicleId')
-  // GET: CONTROL_ROOM & ADMIN
-  .get(requireRole('CONTROL_ROOM', 'ADMIN'), getVehicle)
-  // PATCH: CONTROL_ROOM & ADMIN
-  .patch(requireRole('CONTROL_ROOM', 'ADMIN'), validateVehicleUpdate, updateVehicle)
+  // GET: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC (with ownership check)
+  .get(requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'), requireVehicleOwnership, getVehicle)
+  // PATCH: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC with resource ownership check
+  .patch(
+    requireRole('CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'),
+    requireVehicleOwnership,
+    validateVehicleUpdate,
+    updateVehicle
+  )
   // DELETE: ADMIN only
   .delete(requireRole('ADMIN'), deleteVehicle);
 

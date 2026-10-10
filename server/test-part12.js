@@ -154,7 +154,7 @@ console.log('✔ Error handler preserves 404 for missing routes');
 const adminUser = new User({
   name: 'Admin User',
   email: 'admin@geoagent.test',
-  password: 'AdminPassword123!',
+  password: process.env.ADMIN_PASSWORD,
   role: 'ADMIN'
 });
 await adminUser.save();

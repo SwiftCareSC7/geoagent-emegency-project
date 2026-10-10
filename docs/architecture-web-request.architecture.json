@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Full-Stack Web Architecture with Redis Cache and PostgreSQL",
+    "output": "docs/architecture-web-request.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "request-cache-miss-path",
+        "label": "Web Request & Cache Path",
+        "focus": ["browser", "cdn", "web", "api", "cache", "db"],
+        "note": "Follow incoming browser request through the API, checking Redis first, falling back to PostgreSQL on miss, then refilling cache."
+      },
+      {
+        "id": "identity-and-session",
+        "label": "Identity & Security",
+        "focus": ["browser", "auth", "web", "api", "cache"],
+        "note": "Inspect user authentication with JWT verification and fast session token lookup in Redis."
+      },
+      {
+        "id": "async-background-work",
+        "label": "Async Background Work",
+        "focus": ["api", "queue", "worker", "db"],
+        "note": "Non-blocking background tasks decoupled via Redis streams and task queue drained by async workers."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Web Browser",
+      "sublabel": "Client Application",
+      "pos": [40, 300],
+      "size": [120, 60]
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "Auth Service",
+      "sublabel": "JWT / OAuth 2.0",
+      "pos": [40, 110],
+      "size": [120, 64],
+      "tag": "JWT Token"
+    },
+    {
+      "id": "cdn",
+      "type": "cloud",
+      "label": "Cloud Edge CDN",
+      "sublabel": "TLS Termination :443",
+      "pos": [250, 300],
+      "size": [130, 60]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "Web Frontend",
+      "sublabel": "Next.js App Server",
+      "pos": [460, 300],
+      "size": [130, 60]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API Backend",
+      "sublabel": "Node.js / Express API",
+      "pos": [670, 300],
+      "size": [130, 60]
+    },
+    {
+      "id": "cache",
+      "type": "database",
+      "label": "Redis Cache",
+      "sublabel": "cache :6379",
+      "pos": [670, 150],
+      "size": [130, 60],
+      "tag": "LRU + TTL Caching"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "primary :5432",
+      "pos": [880, 300],
+      "size": [130, 60],
+      "tag": "ACID Source of Truth"
+    },
+    {
+      "id": "queue",
+      "type": "messagebus",
+      "label": "Task Queue",
+      "sublabel": "Redis Queue / BullMQ",
+      "pos": [670, 450],
+      "size": [130, 60]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "Async Worker",
+      "sublabel": "Background Job Runner",
+      "pos": [880, 450],
+      "size": [130, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Virtual Private Cloud (VPC)",
+      "wraps": ["web", "api", "cache", "db", "queue", "worker"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Data Tier Security Perimeter",
+      "wraps": ["cache", "db"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "browser-to-cdn",
+      "from": "browser",
+      "to": "cdn",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "auth-verify",
+      "from": "auth",
+      "to": "api",
+      "label": "verify token",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [[620, 142], [620, 246], [735, 246]]
+    },
+    {
+      "id": "cdn-to-web",
+      "from": "cdn",
+      "to": "web"
+    },
+    {
+      "id": "web-to-api",
+      "from": "web",
+      "to": "api"
+    },
+    {
+      "id": "api-cache-check",
+      "from": "api",
+      "to": "cache",
+      "label": "read-through",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDy": -68
+    },
+    {
+      "id": "api-db-fallback",
+      "from": "api",
+      "to": "db",
+      "label": "SQL query",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-enqueue",
+      "from": "api",
+      "to": "queue",
+      "label": "enqueue",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 58
+    },
+    {
+      "id": "queue-to-worker",
+      "from": "queue",
+      "to": "worker"
+    },
+    {
+      "id": "worker-to-db",
+      "from": "worker",
+      "to": "db",
+      "label": "persist",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDy": -40
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Edge & Presentation Layer",
+      "items": [
+        "Browser dispatches secure HTTPS requests via Cloud Edge CDN",
+        "Static HTML/JS served directly with low edge latency",
+        "Next.js App Server renders dynamic pages and issues backend API calls"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Cache-Aside Lifecycle (Redis & PostgreSQL)",
+      "items": [
+        "1. Read-Through Check: API queries Redis using hashed entity keys (< 2ms)",
+        "2. Cache Miss: API falls back to PostgreSQL primary database via indexed SQL query",
+        "3. Cache Fill: API writes data back to Redis with a bounded TTL (SETEX)",
+        "4. Subsequent requests hit Redis directly, reducing database load by up to 90%"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Security & Asynchronous Offloading",
+      "items": [
+        "Auth Service validates signed JWT tokens and role claims",
+        "Redis and PostgreSQL isolated in a protected Data Tier security perimeter",
+        "Non-blocking background jobs offloaded via Task Queue to dedicated async workers"
+      ]
+    }
+  ]
+}

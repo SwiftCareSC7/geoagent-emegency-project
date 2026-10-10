@@ -205,16 +205,29 @@ class AdminService {
   /**
    * Users listing (Sanitized: strictly excludes password hash)
    */
-  async getUsers({ page, limit, skip, sortOptions, role, search }) {
+  async getUsers({ page, limit, skip, sortOptions, role, status, search }) {
     const filter = {};
-    if (role && ['CONTROL_ROOM', 'ADMIN'].includes(role)) {
+    if (role && ['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(role)) {
       filter.role = role;
     }
+    if (status) {
+      if (status === 'APPROVED') {
+        filter.$or = [{ status: 'APPROVED' }, { status: { $exists: false } }, { status: null }];
+      } else if (['PENDING', 'SUSPENDED', 'REJECTED'].includes(status)) {
+        filter.status = status;
+      }
+    }
     if (search) {
-      filter.$or = [
+      const searchCondition = [
         { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchCondition }];
+        delete filter.$or;
+      } else {
+        filter.$or = searchCondition;
+      }
     }
 
     const [total, users] = await Promise.all([
@@ -227,14 +240,41 @@ class AdminService {
         .lean()
     ]);
 
-    const formatted = users.map(u => ({
-      id: u._id.toString(),
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      createdAt: u.createdAt,
-      updatedAt: u.updatedAt
-    }));
+    const formatted = users.map(u => {
+      const uStatus = u.status || 'APPROVED';
+      let permitted = [];
+      if (uStatus === 'APPROVED') {
+        if (u.permittedWorkspaces && u.permittedWorkspaces.length > 0) {
+          permitted = u.permittedWorkspaces;
+        } else if (u.role === 'ADMIN') {
+          permitted = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        } else if (u.role === 'CONTROL_ROOM') {
+          permitted = ['CONTROL_ROOM'];
+        } else if (u.role === 'DRIVER') {
+          permitted = ['DRIVER'];
+        } else if (u.role === 'PARAMEDIC') {
+          permitted = ['PARAMEDIC'];
+        } else {
+          permitted = ['CONTROL_ROOM'];
+        }
+      }
+
+      return {
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: uStatus,
+        requestedRole: u.requestedRole || u.role,
+        requestedWorkspaces: u.requestedWorkspaces && u.requestedWorkspaces.length > 0 ? u.requestedWorkspaces : [u.role],
+        permittedWorkspaces: permitted,
+        approvedBy: u.approvedBy ? u.approvedBy.toString() : null,
+        approvedAt: u.approvedAt || null,
+        assignedVehicleId: u.assignedVehicleId || null,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt
+      };
+    });
 
     return {
       items: formatted,
@@ -245,6 +285,147 @@ class AdminService {
         totalPages: Math.ceil(total / limit) || 1
       }
     };
+  }
+
+  /**
+   * Update user registration/account status (APPROVED, SUSPENDED, PENDING, REJECTED)
+   */
+  async updateUserStatus(userId, status, adminId, approvalData = {}) {
+    if (!['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED'].includes(status)) {
+      const error = new Error('Invalid status. Allowed: PENDING, APPROVED, SUSPENDED, REJECTED');
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // A user cannot approve, reject, or suspend their own registration
+    if (adminId && userId && String(userId) === String(adminId)) {
+      const error = new Error('Forbidden: Administrators cannot approve, reject, or modify their own registration status');
+      error.status = 403;
+      error.isOperational = true;
+      throw error;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    user.status = status;
+
+    if (status === 'APPROVED') {
+      user.approvedBy = adminId;
+      user.approvedAt = new Date();
+
+      // Role determination upon approval:
+      // If admin explicitly specified an approved role in approvalData, use it.
+      // Otherwise, keep user's existing role, ensuring that a previous unverified ADMIN request is NEVER activated!
+      if (approvalData.role) {
+        if (!['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(approvalData.role)) {
+          const error = new Error('Invalid approved role. Allowed: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC');
+          error.status = 400;
+          error.isOperational = true;
+          throw error;
+        }
+        user.role = approvalData.role;
+      } else {
+        if (user.role === 'ADMIN') {
+          // Defense-in-depth: If an ordinary approval is invoked on an account that had an unverified ADMIN request,
+          // it must never activate as ADMIN unless explicitly granted by admin above.
+          user.role = 'CONTROL_ROOM';
+        }
+      }
+
+      // Permitted workspaces determination upon approval:
+      // Approval must save only the workspaces that the administrator actually approved.
+      // It must not blindly copy every requested permission into granted permissions.
+      if (approvalData.permittedWorkspaces && Array.isArray(approvalData.permittedWorkspaces)) {
+        const valid = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        const explicitlyApproved = approvalData.permittedWorkspaces.filter(w => valid.includes(w));
+        // Non-admin cannot receive ADMIN workspace
+        const filtered = user.role === 'ADMIN' ? explicitlyApproved : explicitlyApproved.filter(w => w !== 'ADMIN');
+        if (user.role !== 'ADMIN' && !filtered.includes(user.role)) {
+          filtered.push(user.role);
+        }
+        user.permittedWorkspaces = Array.from(new Set(filtered));
+      } else {
+        // Default to granting ONLY the approved role's workspace
+        if (user.role === 'ADMIN') {
+          user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        } else if (user.role === 'CONTROL_ROOM') {
+          user.permittedWorkspaces = ['CONTROL_ROOM'];
+        } else if (user.role === 'DRIVER') {
+          user.permittedWorkspaces = ['DRIVER'];
+        } else if (user.role === 'PARAMEDIC') {
+          user.permittedWorkspaces = ['PARAMEDIC'];
+        } else {
+          user.permittedWorkspaces = ['CONTROL_ROOM'];
+        }
+      }
+
+      if (approvalData.assignedVehicleId !== undefined) {
+        user.assignedVehicleId = approvalData.assignedVehicleId ? approvalData.assignedVehicleId.trim() : null;
+      }
+    } else if (status === 'REJECTED') {
+      user.permittedWorkspaces = [];
+      user.approvedBy = adminId;
+      user.approvedAt = new Date();
+    } else if (status === 'SUSPENDED') {
+      user.permittedWorkspaces = [];
+    } else if (status === 'PENDING') {
+      user.permittedWorkspaces = [];
+    }
+
+    await user.save();
+    return user.toSafeObject();
+  }
+
+  /**
+   * Update user role and permitted workspaces assignment
+   */
+  async updateUserRole(userId, { role, permittedWorkspaces, assignedVehicleId }, adminId) {
+    if (role && !['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(role)) {
+      const error = new Error('Invalid role. Allowed: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC');
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    if (role) {
+      user.role = role;
+    }
+    if (permittedWorkspaces && Array.isArray(permittedWorkspaces)) {
+      const valid = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+      const sanitized = permittedWorkspaces.filter(w => valid.includes(w));
+      const filtered = user.role === 'ADMIN' ? sanitized : sanitized.filter(w => w !== 'ADMIN');
+      if (user.role !== 'ADMIN' && !filtered.includes(user.role)) {
+        filtered.push(user.role);
+      }
+      user.permittedWorkspaces = Array.from(new Set(filtered));
+    } else if (role) {
+      if (role === 'ADMIN') user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+      else if (role === 'CONTROL_ROOM') user.permittedWorkspaces = ['CONTROL_ROOM'];
+      else if (role === 'DRIVER') user.permittedWorkspaces = ['DRIVER'];
+      else if (role === 'PARAMEDIC') user.permittedWorkspaces = ['PARAMEDIC'];
+    }
+
+    if (assignedVehicleId !== undefined) {
+      user.assignedVehicleId = assignedVehicleId ? assignedVehicleId.trim() : null;
+    }
+
+    await user.save();
+    return user.toSafeObject();
   }
 
   /**
@@ -737,6 +918,133 @@ class AdminService {
         limit,
         total,
         totalPages: Math.ceil(total / limit) || 1
+      }
+    };
+  }
+
+  /**
+   * Prediction Validation Analytics & Ground-Truth Performance Metrics
+   * Evaluates historical predictions against completed emergency outcomes.
+   */
+  async getPredictionAnalytics() {
+    const predictions = await Prediction.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .populate('emergency', 'emergencyId status createdAt updatedAt')
+      .populate('vehicle', 'vehicleId status')
+      .lean();
+
+    const sampleCount = predictions.length;
+    const errors = [];
+    let severeDelayMisses = 0;
+    let truePositives = 0;
+    let falsePositives = 0;
+    let falseNegatives = 0;
+    let within1MinCount = 0;
+    let within3MinCount = 0;
+    let within5MinCount = 0;
+
+    for (const p of predictions) {
+      if (!p.emergency) continue;
+      if (['RESOLVED', 'AT_SCENE'].includes(p.emergency.status) && p.emergency.updatedAt && p.predictedEta) {
+        const actualArrival = new Date(p.emergency.updatedAt).getTime();
+        const predEta = new Date(p.predictedEta).getTime();
+        const diffMinutes = Math.abs(predEta - actualArrival) / 60000;
+        errors.push(diffMinutes);
+
+        if (diffMinutes <= 1.0) within1MinCount++;
+        if (diffMinutes <= 3.0) within3MinCount++;
+        if (diffMinutes <= 5.0) within5MinCount++;
+
+        const actualDelayMinutes = Math.max(0, (actualArrival - new Date(p.baselineEta || p.createdAt).getTime()) / 60000);
+        const predictedHighRisk = ['HIGH', 'CRITICAL'].includes(p.delayRisk);
+        const actualHighRisk = actualDelayMinutes >= 8.0;
+
+        if (predictedHighRisk && actualHighRisk) truePositives++;
+        else if (predictedHighRisk && !actualHighRisk) falsePositives++;
+        else if (!predictedHighRisk && actualHighRisk) {
+          falseNegatives++;
+          if (actualDelayMinutes >= 12.0) severeDelayMisses++;
+        }
+      }
+    }
+
+    const evaluatedCount = errors.length;
+    let mae = null;
+    let medianError = null;
+    let maxError = null;
+
+    if (evaluatedCount > 0) {
+      mae = Number((errors.reduce((a, b) => a + b, 0) / evaluatedCount).toFixed(2));
+      const sorted = [...errors].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      medianError = sorted.length % 2 !== 0 ? sorted[mid] : Number(((sorted[mid - 1] + sorted[mid]) / 2).toFixed(2));
+      maxError = Number(Math.max(...errors).toFixed(2));
+    }
+
+    const decisions = await Decision.find().sort({ createdAt: -1 }).limit(100).lean();
+    const totalDecisions = decisions.length;
+    let geminiAgreedWithDeterministic = 0;
+    let operatorApproved = 0;
+    let operatorRejected = 0;
+    let counterfactualAnalysesCount = 0;
+
+    for (const d of decisions) {
+      if (d.geoAgentRecommendation?.action && d.primaryAction) {
+        if (d.geoAgentRecommendation.action === d.primaryAction) geminiAgreedWithDeterministic++;
+      }
+      if (d.status === 'APPROVED' || d.status === 'EXECUTED') operatorApproved++;
+      if (d.status === 'REJECTED') operatorRejected++;
+      if (d.primaryAction === 'REROUTE') counterfactualAnalysesCount++;
+    }
+
+    return {
+      model: {
+        name: 'Kinematic-Traffic Exponential Blend',
+        version: 'v1.3-exponential-traffic-blend',
+        type: 'Heuristic / Statistical-Kinematic (Deterministic Rule-Based, Non-ML)',
+        trafficIntegration: 'Real-time Google Routes durationInTraffic vs Static baseline',
+        deviationIntegration: 'Cross-track geodesic distance & bearing offset penalty',
+        v2xIntegration: 'Green-wave corridor signal preemption time advantage',
+        autoRetraining: false,
+        governance: 'Model weights are deterministic and frozen. Changes require explicit versioning and validation.'
+      },
+      evaluation: {
+        totalPredictions: sampleCount,
+        evaluatedGroundTruthSamples: evaluatedCount,
+        sampleSizeStatus: evaluatedCount >= 5 ? 'SUFFICIENT' : 'INSUFFICIENT_DATA',
+        sampleSizeMessage: evaluatedCount >= 5
+          ? `Sample size (N=${evaluatedCount}) meets statistical benchmark threshold.`
+          : `Sample size (N=${evaluatedCount}) is insufficient for certified accuracy claims (< 5 completed ground-truth cases). Baseline calibration in progress.`,
+        maeMinutes: mae,
+        medianErrorMinutes: medianError,
+        maxErrorMinutes: maxError,
+        toleranceBuckets: evaluatedCount >= 5 ? {
+          within1MinutePercent: Number(((within1MinCount / evaluatedCount) * 100).toFixed(1)),
+          within3MinutesPercent: Number(((within3MinCount / evaluatedCount) * 100).toFixed(1)),
+          within5MinutesPercent: Number(((within5MinCount / evaluatedCount) * 100).toFixed(1))
+        } : null,
+        riskClassification: {
+          truePositives,
+          falsePositives,
+          falseNegatives,
+          severeDelayMisses,
+          safetyNote: severeDelayMisses === 0
+            ? 'Zero dangerous severe-delay false negatives observed in current sample window.'
+            : `${severeDelayMisses} severe-delay misses surfaced for model tuning.`
+        }
+      },
+      routingAndCounterfactuals: {
+        totalEvaluatedReroutes: counterfactualAnalysesCount,
+        counterfactualLabel: 'ESTIMATED / COUNTERFACTUAL',
+        counterfactualDisclaimer: 'Alternative route time savings represent model-projected counterfactual estimates and are never claimed as observed facts unless alternative was physically traversed.'
+      },
+      aiGovernance: {
+        totalDecisionsEvaluated: totalDecisions,
+        geminiAgreementRatePercent: totalDecisions > 0 ? Number(((geminiAgreedWithDeterministic / totalDecisions) * 100).toFixed(1)) : null,
+        operatorApprovalRatePercent: totalDecisions > 0 ? Number(((operatorApproved / totalDecisions) * 100).toFixed(1)) : null,
+        operatorRejections: operatorRejected,
+        agreementDisclaimer: 'AI and operator agreement reflects operational alignment with deterministic safety policy, not independent physical correctness.'
       }
     };
   }

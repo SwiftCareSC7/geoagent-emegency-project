@@ -24,6 +24,40 @@ const lineStringSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
+const routeLegSchema = new mongoose.Schema({
+  legNumber: { type: Number, required: true },
+  type: {
+    type: String,
+    enum: ['TO_EMERGENCY', 'TO_HOSPITAL'],
+    required: true
+  },
+  title: { type: String },
+  originName: { type: String },
+  destinationName: { type: String },
+  origin: { type: pointSchema, required: true },
+  destination: { type: pointSchema, required: true },
+  geometry: { type: lineStringSchema, required: true },
+  distance: { type: Number, required: true, min: 0 },
+  duration: { type: Number, required: true, min: 0 },
+  status: {
+    type: String,
+    enum: ['ACTIVE', 'PLANNED', 'COMPLETED'],
+    default: 'PLANNED'
+  },
+  trafficDelay: { type: Number, default: 0 },
+  steps: [
+    {
+      maneuver: { type: String, default: 'CONTINUE' },
+      instruction: { type: String, required: true },
+      distance: { type: Number, default: 0 },
+      duration: { type: Number, default: 0 },
+      startLocation: { type: [Number] },
+      endLocation: { type: [Number] },
+      stepPolyline: { type: [[Number]] }
+    }
+  ]
+}, { _id: false });
+
 const routeSchema = new mongoose.Schema(
   {
     routeId: {
@@ -51,6 +85,17 @@ const routeSchema = new mongoose.Schema(
       type: pointSchema,
       required: true
     },
+    emergencyLocation: {
+      type: pointSchema
+    },
+    hospitalLocation: {
+      type: pointSchema
+    },
+    legs: [routeLegSchema],
+    activeLegIndex: {
+      type: Number,
+      default: 0
+    },
     geometry: {
       type: lineStringSchema,
       required: true
@@ -72,14 +117,56 @@ const routeSchema = new mongoose.Schema(
     },
     routeType: {
       type: String,
-      enum: ['PLANNED', 'ALTERNATIVE', 'CURRENT'],
+      enum: ['PLANNED', 'ALTERNATIVE', 'CURRENT', 'RECOMMENDED', 'HISTORICAL'],
       default: 'PLANNED'
+    },
+    rerouteDecisionId: {
+      type: String,
+      default: null
+    },
+    rerouteCandidateId: {
+      type: String,
+      default: null
     },
     status: {
       type: String,
       enum: ['ACTIVE', 'COMPLETED', 'CANCELLED'],
       default: 'ACTIVE'
     },
+    preference: {
+      type: String,
+      enum: ['FASTEST', 'SHORTEST'],
+      default: 'FASTEST'
+    },
+    steps: [
+      {
+        maneuver: {
+          type: String,
+          default: 'CONTINUE'
+        },
+        instruction: {
+          type: String,
+          required: true
+        },
+        distance: {
+          type: Number,
+          default: 0
+        },
+        duration: {
+          type: Number,
+          default: 0
+        },
+        startLocation: {
+          type: [Number]
+        },
+        endLocation: {
+          type: [Number]
+        },
+        stepPolyline: {
+          type: [[Number]]
+        }
+      }
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

@@ -1,5 +1,44 @@
 import routeService from './route.service.js';
+import decisionService from '../decisions/decision.service.js';
 import analysisService from '../analysis/analysis.service.js';
+import corridorGreenWaveService from './corridorGreenWave.service.js';
+import Route from './route.model.js';
+import Vehicle from '../vehicles/vehicle.model.js';
+
+/**
+ * @desc    Calculate route plan with turn-by-turn maneuvers (Fastest vs Shortest)
+ * @route   POST /api/routes/calculate
+ * @access  Public
+ */
+export const calculateRoute = async (req, res, next) => {
+  try {
+    const { origin, destination, preference, computeAlternatives } = req.body;
+    if (!origin || !destination) {
+      return res.status(400).json({
+        success: false,
+        message: 'Origin and destination GeoJSON Points are required'
+      });
+    }
+
+    const plan = await routeService.calculateRoutePlan(origin, destination, {
+      preference: preference || 'FASTEST',
+      computeAlternatives: computeAlternatives !== false
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Route plan calculated successfully',
+      data: plan
+    });
+  } catch (error) {
+    if (error.message && error.message.includes('Unable to calculate route')) {
+      res.status(502);
+    } else {
+      res.status(400);
+    }
+    next(error);
+  }
+};
 
 /**
  * @desc    Generate and create a new route
@@ -142,3 +181,56 @@ export const compareRoute = async (req, res, next) => {
   }
 };
 
+/**
+ * @desc    Get real-time V2X corridor and green-wave analysis for a route
+ * @route   GET /api/routes/:routeId/corridor-v2x
+ * @access  Private (CONTROL_ROOM, ADMIN)
+ */
+export const getCorridorV2X = async (req, res, next) => {
+  try {
+    const { routeId } = req.params;
+    const route = await Route.findOne({ routeId });
+    if (!route) {
+      const err = new Error('Route not found');
+      err.status = 404;
+      throw err;
+    }
+    const vehicle = await Vehicle.findById(route.vehicle);
+    if (!vehicle) {
+      const err = new Error('Vehicle for route not found');
+      err.status = 404;
+      throw err;
+    }
+    const result = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicle.vehicleId);
+    res.status(200).json({
+      success: true,
+      message: 'V2X corridor and green-wave analysis generated',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Accept and activate a recommended reroute
+ * @route   POST /api/routes/:routeId/accept-reroute
+ * @access  Private (CONTROL_ROOM, ADMIN)
+ */
+export const acceptReroute = async (req, res, next) => {
+  try {
+    const { routeId } = req.params;
+    const { decisionId } = req.body || {};
+    const userId = req.user._id;
+
+    const route = await decisionService.executeRerouteForRoute(routeId, userId, decisionId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Reroute accepted and activated successfully',
+      data: route.toSafeObject()
+    });
+  } catch (error) {
+    next(error);
+  }
+};

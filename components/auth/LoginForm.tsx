@@ -1,82 +1,63 @@
 'use client'
 
+import React, { useState } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
-  AlertCircle,
-  Ambulance,
+  Shield,
+  KeyRound,
+  Mail,
   ArrowRight,
   Eye,
   EyeOff,
-  Loader2,
+  AlertCircle,
+  Clock,
+  Lock
 } from 'lucide-react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import React, { useState } from 'react'
 
-import { Button } from '@/components/ui/button'
-import { ApiError } from '@/lib/api/types'
 import { useAuth } from '@/lib/auth/context'
-
-const inputClass =
-  'w-full rounded-lg border border-input bg-card px-3 py-2.5 text-sm text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-50 disabled:cursor-not-allowed'
+import { getRoleDashboard, isRouteAllowedForUser } from '@/lib/auth/roles'
+import { Button } from '@/components/ui/button'
+import { BrandLogo } from '@/components/brand-logo'
+import { ThemeToggleCompact } from '@/components/theme-toggle'
 
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectPath = searchParams.get('redirect') || '/driver/dashboard'
+  const redirectTarget = searchParams.get('redirect')
 
-  const { login } = useAuth()
+  const { login, loading: authLoading } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
-  const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-
-  const validate = (): boolean => {
-    const errors: { email?: string; password?: string } = {}
-
-    if (!email.trim()) {
-      errors.email = 'Email address is required'
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      errors.email = 'Please enter a valid email address'
-    }
-
-    if (!password) {
-      errors.password = 'Password is required'
-    }
-
-    setFieldErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isPendingNotice, setIsPendingNotice] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setFormError(null)
-
-    if (!validate()) return
+    if (!email || !password) {
+      setErrorMessage('Please enter both your email and password.')
+      return
+    }
 
     setSubmitting(true)
+    setErrorMessage(null)
+    setIsPendingNotice(false)
+
     try {
-      await login({
-        email: email.trim().toLowerCase(),
-        password,
-      })
-      // Successful login updates AuthContext user state via login()
-      router.push(redirectPath)
-    } catch (err: unknown) {
-      if (err instanceof ApiError) {
-        if (err.isUnauthorized) {
-          setFormError('Invalid email or password. Please check your credentials.')
-        } else if (err.isNetworkError) {
-          setFormError('Unable to reach the server. Please verify the backend is running.')
-        } else {
-          setFormError(err.message)
-        }
-      } else if (err instanceof Error) {
-        setFormError(err.message)
-      } else {
-        setFormError('An unexpected error occurred during login. Please try again.')
+      const user = await login({ email, password })
+      const defaultDashboard = getRoleDashboard(user.role)
+      const target = redirectTarget && isRouteAllowedForUser(user, redirectTarget)
+        ? redirectTarget
+        : defaultDashboard
+      router.push(target)
+    } catch (err: any) {
+      const msg = err?.message || 'Authentication failed. Please verify your credentials.'
+      setErrorMessage(msg)
+      if (msg.toLowerCase().includes('pending') || msg.toLowerCase().includes('approval')) {
+        setIsPendingNotice(true)
       }
     } finally {
       setSubmitting(false)
@@ -84,131 +65,141 @@ export function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm">
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-        <span className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Ambulance className="size-6" />
-        </span>
-        <h1 className="mt-4 font-display text-2xl font-bold text-card-foreground">
-          Welcome back
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Log in to your SwiftCare account.
-        </p>
-
-        {/* Error notification */}
-        {formError && (
-          <div
-            role="alert"
-            className="mt-4 flex items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
-          >
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            <p className="font-medium leading-snug">{formError}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-1.5 block text-sm font-medium text-foreground"
-            >
-              Email address
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              disabled={submitting}
-              placeholder="operator@geoagent.local"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                if (fieldErrors.email) {
-                  setFieldErrors((prev) => ({ ...prev, email: undefined }))
-                }
-              }}
-              className={`${inputClass} ${fieldErrors.email ? 'border-destructive focus:border-destructive focus:ring-destructive/30' : ''}`}
-            />
-            {fieldErrors.email && (
-              <p className="mt-1 text-xs text-destructive">{fieldErrors.email}</p>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-foreground"
-              >
-                Password
-              </label>
-            </div>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? 'text' : 'password'}
-                required
-                autoComplete="current-password"
-                disabled={submitting}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value)
-                  if (fieldErrors.password) {
-                    setFieldErrors((prev) => ({ ...prev, password: undefined }))
-                  }
-                }}
-                className={`${inputClass} pr-10 ${fieldErrors.password ? 'border-destructive focus:border-destructive focus:ring-destructive/30' : ''}`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex={-1}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </button>
-            </div>
-            {fieldErrors.password && (
-              <p className="mt-1 text-xs text-destructive">{fieldErrors.password}</p>
-            )}
-          </div>
-
-          <Button
-            type="submit"
-            size="lg"
-            disabled={submitting}
-            className="w-full font-semibold"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Authenticating...
-              </>
-            ) : (
-              <>
-                Log in
-                <ArrowRight className="size-4" />
-              </>
-            )}
-          </Button>
-        </form>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          New to SwiftCare?{' '}
-          <Link
-            href="/signup"
-            className="font-semibold text-primary hover:underline"
-          >
-            Register now
+    <div className="min-h-svh flex flex-col justify-between bg-background text-foreground">
+      {/* Top Bar */}
+      <header className="border-b border-border/60 bg-card/40 px-4 py-3 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <BrandLogo height={26} fallbackClassName="font-display text-sm font-bold tracking-tight text-foreground" />
           </Link>
-        </p>
-      </div>
+          <div className="flex items-center gap-3">
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-mono font-medium text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              AUTH SERVICE ONLINE
+            </span>
+            <ThemeToggleCompact />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
+        <div className="w-full max-w-md space-y-6">
+          {/* Card Container */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-xl backdrop-blur-sm sm:p-8">
+            <div className="space-y-2 text-center">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                <Lock className="size-6" />
+              </div>
+              <h1 className="font-display text-2xl font-bold tracking-tight text-card-foreground">
+                SwiftCare Sign In
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Authoritative portal access for emergency services and operations personnel.
+              </p>
+            </div>
+
+            {/* Error Notification */}
+            {errorMessage && (
+              <div
+                className={`mt-6 rounded-xl border p-3.5 text-xs ${
+                  isPendingNotice
+                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    : 'border-destructive/30 bg-destructive/10 text-destructive dark:text-rose-400'
+                }`}
+                role="alert"
+              >
+                <div className="flex items-start gap-2.5">
+                  {isPendingNotice ? (
+                    <Clock className="size-4 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-1">
+                    <p className="font-semibold">{isPendingNotice ? 'Approval Pending' : 'Authentication Error'}</p>
+                    <p className="leading-relaxed">{errorMessage}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between" htmlFor="email">
+                  <span>Work Email</span>
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                    <Mail className="size-4" />
+                  </div>
+                  <input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="officer@swiftcare.local"
+                    className="w-full rounded-xl border border-input bg-background/80 py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between" htmlFor="password">
+                  <span>Password</span>
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                    <KeyRound className="size-4" />
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className="w-full rounded-xl border border-input bg-background/80 py-2.5 pl-9 pr-10 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={submitting || authLoading}
+                className="w-full mt-2 font-semibold flex items-center justify-center gap-2 py-2.5"
+              >
+                <span>{submitting ? 'Verifying Credentials...' : 'Authenticate & Enter'}</span>
+                <ArrowRight className="size-4" />
+              </Button>
+            </form>
+
+            {/* Link to Registration */}
+            <div className="mt-8 border-t border-border/60 pt-5 text-center text-xs text-muted-foreground">
+              Don&apos;t have an operational account?{' '}
+              <Link href="/signup" className="font-semibold text-primary hover:underline">
+                Register New Personnel
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-border/40 py-4 text-center text-xs text-muted-foreground font-mono">
+        SwiftCare GeoAgent System — Authoritative Access Gated by Role-Based Access Control
+      </footer>
     </div>
   )
 }

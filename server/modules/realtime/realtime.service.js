@@ -22,12 +22,18 @@ class RealtimeService {
     const allowedOrigins = Array.from(new Set([
       clientUrl,
       'http://localhost:3000',
-      'http://localhost:5173'
+      'http://localhost:5173',
+      // Canonical production frontend (matches Express CORS config)
+      'https://geoagent-emegency-project-livid.vercel.app'
     ].filter(Boolean)));
 
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: allowedOrigins,
+        origin: (origin, callback) => {
+          if (!origin) return callback(null, true);
+          const isAllowed = allowedOrigins.includes(origin);
+          return callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
+        },
         credentials: true,
         methods: ['GET', 'POST', 'PATCH', 'DELETE']
       },
@@ -227,6 +233,24 @@ class RealtimeService {
     if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
     if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
     this.emitToRooms(rooms, REALTIME_EVENTS.DECISION_EXECUTED, payload);
+  }
+
+  /**
+   * Emits SMS communication status event
+   */
+  emitSmsStatus(emergencyId, vehicleId, payload) {
+    const rooms = [REALTIME_ROOMS.CONTROL_ROOM];
+    if (emergencyId) rooms.push(REALTIME_ROOMS.emergency(emergencyId));
+    if (vehicleId) rooms.push(REALTIME_ROOMS.vehicle(vehicleId));
+
+    let eventName = REALTIME_EVENTS.SMS_SUBMITTED;
+    if (payload.status === 'DELIVERED') eventName = REALTIME_EVENTS.SMS_DELIVERED;
+    else if (payload.status === 'FAILED') eventName = REALTIME_EVENTS.SMS_FAILED;
+
+    this.emitToRooms(rooms, eventName, payload);
+    // Also emit friendly colon-formatted alias (e.g. 'sms:submitted', 'sms:failed')
+    const colonEvent = `sms:${payload.status ? payload.status.toLowerCase() : 'update'}`;
+    this.emitToRooms(rooms, colonEvent, payload);
   }
 }
 

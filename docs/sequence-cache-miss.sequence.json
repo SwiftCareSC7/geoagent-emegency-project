@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Web Request Lifecycle: Redis Cache Miss and PostgreSQL Fill",
+    "output": "docs/sequence-cache-miss.html",
+    "viewBox": [1080, 560],
+    "column_fit": "spread",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "request-and-auth",
+        "label": "Request & Authentication",
+        "focus": ["browser", "cdn", "api", "auth"],
+        "note": "Client sends HTTPS request through Edge CDN to the API server for JWT token verification."
+      },
+      {
+        "id": "cache-miss-fallback",
+        "label": "Redis Cache Miss Fallback",
+        "focus": ["api", "redis", "db"],
+        "note": "API checks Redis first; upon cache miss, queries PostgreSQL primary database as source of truth."
+      },
+      {
+        "id": "fill-and-respond",
+        "label": "Cache Fill & Client Response",
+        "focus": ["db", "api", "redis", "queue", "cdn", "browser"],
+        "note": "API fills Redis with bounded TTL (SETEX), enqueues async telemetry, and returns 200 OK."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "browser", "type": "external", "label": "Web Browser", "sublabel": "Client Application" },
+    { "id": "cdn", "type": "cloud", "label": "Edge CDN", "sublabel": "TLS Termination :443" },
+    { "id": "api", "type": "backend", "label": "API Backend", "sublabel": "Node.js / Express" },
+    { "id": "auth", "type": "security", "label": "Auth Service", "sublabel": "JWT Validation" },
+    { "id": "redis", "type": "database", "label": "Redis Cache", "sublabel": "cache :6379" },
+    { "id": "db", "type": "database", "label": "PostgreSQL", "sublabel": "primary :5432" },
+    { "id": "queue", "type": "messagebus", "label": "Task Queue", "sublabel": "BullMQ / Events" }
+  ],
+  "segments": [
+    { "from": 150, "to": 250, "label": "Inbound Request & Auth" },
+    { "from": 260, "to": 370, "label": "Cache Miss & DB Fallback" },
+    { "from": 380, "to": 480, "label": "Cache Fill & Response" }
+  ],
+  "messages": [
+    { "id": "browser-req", "from": "browser", "to": "cdn", "y": 160, "label": "GET /api/emergencies", "variant": "default" },
+    { "id": "cdn-forward", "from": "cdn", "to": "api", "y": 185, "label": "forward HTTPS", "variant": "emphasis" },
+    { "id": "verify-jwt", "from": "api", "to": "auth", "y": 210, "label": "verify JWT token", "variant": "security" },
+    { "id": "auth-ok", "from": "auth", "to": "api", "y": 238, "label": "token claims ok", "variant": "return" },
+    { "id": "cache-check", "from": "api", "to": "redis", "y": 270, "label": "GET cache:emergencies", "variant": "default" },
+    { "id": "cache-miss", "from": "redis", "to": "api", "y": 298, "label": "nil (cache miss)", "variant": "return" },
+    { "id": "db-query", "from": "api", "to": "db", "y": 330, "label": "SELECT * FROM emergencies", "variant": "emphasis" },
+    { "id": "db-rows", "from": "db", "to": "api", "y": 358, "label": "return recordset (rows)", "variant": "return" },
+    { "id": "cache-fill", "from": "api", "to": "redis", "y": 390, "label": "SETEX key 60s (fill cache)", "variant": "dashed" },
+    { "id": "queue-event", "from": "api", "to": "queue", "y": 418, "label": "emit telemetry event", "variant": "dashed" },
+    { "id": "api-res", "from": "api", "to": "cdn", "y": 443, "label": "200 OK (JSON payload)", "variant": "return" },
+    { "id": "client-render", "from": "cdn", "to": "browser", "y": 468, "label": "deliver payload & render", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "cdn", "from": 180, "to": 474, "type": "cloud" },
+    { "participant": "api", "from": 185, "to": 450, "type": "backend" },
+    { "participant": "auth", "from": 205, "to": 244, "type": "security" },
+    { "participant": "redis", "from": 265, "to": 304, "type": "database" },
+    { "participant": "db", "from": 325, "to": 364, "type": "database" },
+    { "participant": "queue", "from": 413, "to": 449, "type": "messagebus" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Inbound & Auth Validation",
+      "items": [
+        "Browser calls the API endpoint over secure HTTPS through Edge CDN",
+        "Edge CDN terminates TLS and forwards the request to backend API",
+        "API verifies JWT bearer token signature and permissions with Auth Service"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Cache-Aside Lifecycle",
+      "items": [
+        "API checks Redis first for pre-warmed serialized data (< 2ms)",
+        "On cache miss (nil), API falls back to PostgreSQL primary database",
+        "PostgreSQL executes indexed query and returns fresh data rows",
+        "API fills Redis cache with SETEX and explicit 60-second TTL"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Decoupled Response & Async Telemetry",
+      "items": [
+        "API asynchronously enqueues telemetry/audit event without blocking",
+        "API returns 200 OK JSON response back to Edge CDN and Web Browser",
+        "Subsequent requests hit Redis cache directly, avoiding DB overhead"
+      ]
+    }
+  ]
+}

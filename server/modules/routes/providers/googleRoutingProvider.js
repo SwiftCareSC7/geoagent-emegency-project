@@ -66,14 +66,37 @@ class GoogleRoutingProvider {
       'routes.staticDuration',
       'routes.distanceMeters',
       'routes.polyline.encodedPolyline',
-      'routes.legs',
+      'routes.description',
       'routes.warnings',
-      'routes.description'
+      'routes.legs.distanceMeters',
+      'routes.legs.duration',
+      'routes.legs.staticDuration',
+      'routes.legs.startLocation',
+      'routes.legs.endLocation',
+      'routes.legs.steps.navigationInstruction',
+      'routes.legs.steps.distanceMeters',
+      'routes.legs.steps.staticDuration',
+      'routes.legs.steps.polyline.encodedPolyline',
+      'routes.legs.steps.startLocation',
+      'routes.legs.steps.endLocation'
     ].join(',');
     
     // In-memory route cache with 60-second TTL to avoid duplicate billing
     this.cache = new Map();
     this.cacheTtlMs = 60 * 1000;
+    this.circuitOpenUntil = 0;
+  }
+
+  /**
+   * Safe check for whether Google API key is configured and circuit is not open
+   * @returns {boolean}
+   */
+  isAvailable() {
+    if (this.circuitOpenUntil && Date.now() < this.circuitOpenUntil) {
+      return false;
+    }
+    const key = process.env.GOOGLE_MAPS_API_KEY;
+    return Boolean(key && typeof key === 'string' && key.trim().length > 10);
   }
 
   /**
@@ -83,7 +106,7 @@ class GoogleRoutingProvider {
   _getCacheKey(origin, destination, options = {}) {
     const orig = origin.coordinates.map((c) => c.toFixed(4)).join(',');
     const dest = destination.coordinates.map((c) => c.toFixed(4)).join(',');
-    const pref = options.routingPreference || 'TRAFFIC_AWARE_OPTIMAL';
+    const pref = options.routingPreference || options.preference || 'TRAFFIC_AWARE_OPTIMAL';
     const alt = Boolean(options.computeAlternativeRoutes);
     return `${orig}_${dest}_${pref}_${alt}`;
   }
@@ -110,6 +133,50 @@ class GoogleRoutingProvider {
       ? rawRoute.distanceMeters
       : 0;
 
+    // Extract navigation steps if present in legs
+    const steps = [];
+    if (Array.isArray(rawRoute.legs)) {
+      for (const leg of rawRoute.legs) {
+        if (Array.isArray(leg.steps)) {
+          for (const step of leg.steps) {
+            const stepDist = typeof step.distanceMeters === 'number' ? step.distanceMeters : 0;
+            const stepDur = parseDurationSeconds(step.staticDuration);
+            const instruction = step.navigationInstruction?.instructions || 'Continue straight';
+            const rawManeuver = (step.navigationInstruction?.maneuver || 'STRAIGHT').toUpperCase();
+            
+            let maneuver = 'CONTINUE';
+            if (rawManeuver.includes('SHARP_LEFT')) maneuver = 'SHARP_LEFT';
+            else if (rawManeuver.includes('SHARP_RIGHT')) maneuver = 'SHARP_RIGHT';
+            else if (rawManeuver.includes('SLIGHT_LEFT')) maneuver = 'SLIGHT_LEFT';
+            else if (rawManeuver.includes('SLIGHT_RIGHT')) maneuver = 'SLIGHT_RIGHT';
+            else if (rawManeuver.includes('LEFT')) maneuver = 'TURN_LEFT';
+            else if (rawManeuver.includes('RIGHT')) maneuver = 'TURN_RIGHT';
+            else if (rawManeuver.includes('UTURN') || rawManeuver.includes('U_TURN')) maneuver = 'U_TURN';
+            else if (rawManeuver.includes('ROUNDABOUT') || rawManeuver.includes('ROTARY')) maneuver = 'ROUNDABOUT';
+            else if (rawManeuver.includes('RAMP')) maneuver = 'RAMP';
+            else if (rawManeuver.includes('FORK')) maneuver = rawManeuver.includes('LEFT') ? 'FORK_LEFT' : 'FORK_RIGHT';
+            else if (rawManeuver.includes('MERGE')) maneuver = 'MERGE';
+            else if (rawManeuver.includes('DEPART')) maneuver = 'DEPART';
+            else if (rawManeuver.includes('ARRIVE')) maneuver = 'ARRIVE';
+
+            const stepPoly = step.polyline?.encodedPolyline ? decodeGooglePolyline(step.polyline.encodedPolyline) : [];
+            const startLocation = step.startLocation?.latLng ? [step.startLocation.latLng.longitude, step.startLocation.latLng.latitude] : undefined;
+            const endLocation = step.endLocation?.latLng ? [step.endLocation.latLng.longitude, step.endLocation.latLng.latitude] : undefined;
+
+            steps.push({
+              maneuver,
+              instruction,
+              distance: stepDist,
+              duration: stepDur,
+              startLocation,
+              endLocation,
+              stepPolyline: stepPoly
+            });
+          }
+        }
+      }
+    }
+
     return {
       geometry: {
         type: 'LineString',
@@ -122,6 +189,7 @@ class GoogleRoutingProvider {
       provider: 'GOOGLE',
       description: rawRoute.description || (index === 0 ? 'Primary Route (Optimal Traffic)' : `Alternative Route ${index}`),
       warnings: rawRoute.warnings || [],
+      steps,
       isAlternative: index > 0,
       candidateIndex: index,
       retrievedAt: new Date().toISOString()
@@ -134,13 +202,13 @@ class GoogleRoutingProvider {
    * @param {String} name Identifier name for error messages
    */
   validateCoordinates(point, name = 'coordinate') {
-    if (!point || typeof point !== 'object') {
-      const error = new Error(`Invalid ${name}: point must be a GeoJSON object`);
+    if (!point || typeof point !== 'object' || Array.isArray(point)) {
+      const error = new Error(`Invalid ${name}: must be a GeoJSON Point with [longitude, latitude]`);
       error.status = 400;
       error.isOperational = true;
       throw error;
     }
-    if ((point.type && point.type !== 'Point') || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
+    if (point.type !== 'Point' || !Array.isArray(point.coordinates) || point.coordinates.length < 2) {
       const error = new Error(`Invalid ${name}: must be a GeoJSON Point with [longitude, latitude]`);
       error.status = 400;
       error.isOperational = true;
@@ -159,6 +227,7 @@ class GoogleRoutingProvider {
       error.isOperational = true;
       throw error;
     }
+    return point;
   }
 
   /**
@@ -170,8 +239,8 @@ class GoogleRoutingProvider {
    */
   async getRoute(origin, destination, options = {}) {
     // 1. Validate inputs before doing any work
-    this.validateCoordinates(origin, 'origin');
-    this.validateCoordinates(destination, 'destination');
+    origin = this.validateCoordinates(origin, 'origin');
+    destination = this.validateCoordinates(destination, 'destination');
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
@@ -218,6 +287,7 @@ class GoogleRoutingProvider {
       },
       travelMode: 'DRIVE',
       routingPreference,
+      departureTime: new Date().toISOString(),
       computeAlternativeRoutes: computeAlternatives,
       routeModifiers: {
         avoidTolls: false,
@@ -247,7 +317,7 @@ class GoogleRoutingProvider {
     }
 
     const controller = new AbortController();
-    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 8000;
+    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 2500;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
@@ -279,9 +349,11 @@ class GoogleRoutingProvider {
           : `HTTP ${response.status} ${response.statusText}`;
 
         if (response.status === 403) {
+          this.circuitOpenUntil = Date.now() + 15 * 60 * 1000;
           throw new Error(`Google Routes API access denied: ${errorMsg}`);
         }
         if (response.status === 429) {
+          this.circuitOpenUntil = Date.now() + 15 * 60 * 1000;
           throw new Error(`Google Routes API quota exceeded: ${errorMsg}`);
         }
         throw new Error(`Google Routes API error (${response.status}): ${errorMsg}`);

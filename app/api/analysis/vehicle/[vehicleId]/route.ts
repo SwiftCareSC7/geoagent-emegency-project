@@ -1,0 +1,39 @@
+import { NextResponse, NextRequest } from 'next/server'
+import { DEMO_DEVIATION, DEMO_PREDICTION } from '@/lib/demo-fixtures'
+import { backendAuthHeaders } from '@/lib/backend-url'
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<Record<string, string>> }
+) {
+  const { vehicleId } = await params as { vehicleId: string }
+  const backendUrl = process.env.BACKEND_URL
+  if (backendUrl && !backendUrl.includes('localhost')) {
+    try {
+      const res = await fetch(`${backendUrl}/api/analysis/vehicle/${encodeURIComponent(vehicleId)}`, {
+        next: { revalidate: 0 },
+        headers: await backendAuthHeaders(),
+      })
+      if (res.status === 401 || res.status === 403) return NextResponse.json(await res.json().catch(() => ({ success: false })), { status: res.status })
+      if (res.ok) {
+        const data = await res.json()
+        return NextResponse.json(data)
+      }
+    } catch (err) {
+      console.error('[BFF] analysis vehicle GET failed:', err)
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: 'Situation analysis retrieved',
+    data: {
+      vehicleId,
+      deviation: DEMO_DEVIATION,
+      prediction: DEMO_PREDICTION,
+      evaluatedAt: new Date().toISOString(),
+    },
+  })
+}

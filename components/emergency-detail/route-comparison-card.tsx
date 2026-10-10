@@ -20,7 +20,9 @@ interface RouteComparisonCardProps {
   whatIfDoNothing?: {
     estimatedDelayMinutes?: number;
     riskLevel?: string;
+    operationalRisk?: string;
     summary?: string;
+    [key: string]: any;
   };
   currentEtaMinutes?: number | null;
   plannedEtaMinutes?: number | null;
@@ -31,159 +33,231 @@ export function RouteComparisonCard({
   alternatives = [],
   whyRouteChanged = [],
   whatIfDoNothing,
-  currentEtaMinutes = 14,
-  plannedEtaMinutes = 10
+  currentEtaMinutes,
+  plannedEtaMinutes
 }: RouteComparisonCardProps) {
-  const primaryAlt = alternatives && alternatives.length > 0 ? alternatives[0] : null;
+  // Normalize candidate alternatives
+  const candidateAlts = Array.isArray(alternatives) ? alternatives : [];
+  const primaryAlt = candidateAlts.length > 0 ? candidateAlts[0] : null;
 
-  const currentEta = currentEtaMinutes || 14;
-  const altEta = primaryAlt ? Math.max(1, Math.round((primaryAlt.durationSeconds || primaryAlt.duration || 600) / 60)) : Math.max(1, currentEta - 5);
-  const timeSaved = Math.max(0, currentEta - altEta);
+  // Real backend calculations
+  const currentDistanceM = currentRoute ? (currentRoute.distanceMeters || currentRoute.distance || 0) : 0;
+  const currentEta = currentEtaMinutes ?? (currentRoute ? Math.round((currentRoute.durationSeconds || currentRoute.duration || 0) / 60) : 0);
+  const plannedEta = plannedEtaMinutes ?? currentEta;
+  const currentDelay = Math.max(0, currentEta - plannedEta);
 
-  const currentDistanceM = currentRoute ? currentRoute.distance : 4800;
-  const altDistanceM = primaryAlt ? (primaryAlt.distanceMeters || primaryAlt.distance || Math.round(currentDistanceM * 1.08)) : Math.round(currentDistanceM * 1.08);
-  const distanceDeltaM = altDistanceM - currentDistanceM;
+  const primaryAltEta = primaryAlt ? (primaryAlt.etaMinutes ?? Math.round((primaryAlt.durationSeconds || primaryAlt.duration || 0) / 60)) : currentEta;
+  const primaryAltDistanceM = primaryAlt ? (primaryAlt.distanceMeters || primaryAlt.distance || 0) : currentDistanceM;
+  const timeSaved = primaryAlt ? Math.max(0, currentEta - primaryAltEta) : 0;
+  const distanceDeltaM = primaryAltDistanceM - currentDistanceM;
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-md shadow-xl">
+    <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-xl text-card-foreground transition-all">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
             <Split className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-zinc-100">Corridor Comparison & Rationale</h3>
-            <p className="text-xs text-zinc-400">
-              Evidence-based evaluation: Active Corridor vs Best Alternative Candidate
+            <h3 className="font-bold text-foreground">Candidate Route Comparison &amp; What-If Analysis</h3>
+            <p className="text-xs text-muted-foreground">
+              Authoritative multi-corridor evaluation evaluated by backend RouteComparisonService
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-zinc-800/80 px-2.5 py-1 text-xs text-zinc-400 border border-zinc-700/50">
-          <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-          <span>Gemini 2.5 Flash + Google Routes</span>
+        <div className="flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground border border-border font-mono">
+          <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+          <span>Authoritative Backend Comparison</span>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        {/* Section 1: "Why did the route change?" */}
-        <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-3">
-            <HelpCircle className="h-4 w-4 text-indigo-400" />
-            <span>Why Reroute is Recommended</span>
-          </div>
-
-          {whyRouteChanged && whyRouteChanged.length > 0 ? (
-            <div className="space-y-2 text-xs">
-              {whyRouteChanged.map((reason, idx) => (
-                <div key={idx} className="flex items-start gap-2 text-zinc-300">
-                  <span className="text-indigo-400 font-bold mt-0.5">•</span>
-                  <span>{reason}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2 text-xs text-zinc-400">
-              <div className="flex items-start gap-2">
-                <span className="text-emerald-400 font-bold">•</span>
-                <span>Active corridor traffic delay increased due to corridor bottleneck.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-emerald-400 font-bold">•</span>
-                <span>Vehicle telemetry indicates slowing speed relative to free-flow baseline.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <span className="text-emerald-400 font-bold">•</span>
-                <span>Alternative bypass corridor provides cleaner clearance for emergency transit.</span>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-4 pt-3 border-t border-zinc-800/60 text-[11px] text-zinc-500">
-            Source: <span className="text-zinc-400 font-medium">Google Routes API + Telemetry Stream + Incident Correlation</span>
-          </div>
+      {/* WHAT-IF OPERATIONAL VIEW (IF WE CONTINUE vs IF WE REROUTE) */}
+      <div className="mt-5">
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+          <Clock className="h-4 w-4 text-amber-500" />
+          <span>What-If Operational Projection: Continue vs Reroute</span>
         </div>
 
-        {/* Section 2: "What if we do nothing?" */}
-        <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 p-4">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-300 mb-3">
-            <Clock className="h-4 w-4 text-amber-400" />
-            <span>What If We Do Nothing?</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Scenario A: 🔵 If We Continue (Planned / Active Corridor) */}
+          <div className="rounded-xl border-2 border-blue-500/40 bg-blue-500/5 p-4 space-y-3 shadow-xs">
+            <div className="flex items-center justify-between border-b border-blue-500/20 pb-2">
+              <span className="text-xs font-black text-blue-700 dark:text-blue-300 uppercase tracking-wide flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-blue-600 inline-block" />
+                Scenario A: If We Continue
+              </span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                ACTIVE CORRIDOR
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-center font-mono">
+              <div className="p-2 rounded bg-card border border-border">
+                <span className="text-[10px] text-muted-foreground block">Projected ETA</span>
+                <span className="text-sm font-bold text-foreground">~{currentEta}m</span>
+              </div>
+              <div className="p-2 rounded bg-card border border-border">
+                <span className="text-[10px] text-muted-foreground block">Corridor Delay</span>
+                <span className="text-sm font-bold text-rose-600 dark:text-rose-400">+{currentDelay}m</span>
+              </div>
+              <div className="p-2 rounded bg-card border border-border">
+                <span className="text-[10px] text-muted-foreground block">Risk Tier</span>
+                <span className="text-sm font-bold text-amber-600 dark:text-amber-400">{whatIfDoNothing?.operationalRisk || (currentDelay > 5 ? 'HIGH' : 'ELEVATED')}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {whatIfDoNothing?.summary || 'Continuing along the congested corridor will accumulate traffic penalties and delay emergency arrival.'}
+            </p>
           </div>
 
-          <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
-            {whatIfDoNothing?.summary ||
-              'If the vehicle remains on the current route without intervention, transit time will incur heavy traffic delay.'}
-          </p>
+          {/* Scenario B: 🟣 If We Reroute (Recommended Alternative Detour) */}
+          <div className="rounded-xl border-2 border-purple-500/50 bg-purple-500/5 p-4 space-y-3 shadow-md shadow-purple-500/10">
+            <div className="flex items-center justify-between border-b border-purple-500/20 pb-2">
+              <span className="text-xs font-black text-purple-700 dark:text-purple-300 uppercase tracking-wide flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-purple-600 inline-block" />
+                Scenario B: If We Reroute
+              </span>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/40">
+                RECOMMENDED ALTERNATIVE
+              </span>
+            </div>
 
-          <div className="rounded-lg border border-zinc-800/60 bg-zinc-900/60 p-3 text-xs space-y-2 font-mono">
-            <div className="flex justify-between items-center text-zinc-300">
-              <span className="text-zinc-500">Maintain Current Route:</span>
-              <span className="font-semibold text-red-400">ETA ~{currentEta} min (+{Math.max(0, currentEta - (plannedEtaMinutes ?? 10))} min delay)</span>
+            <div className="grid grid-cols-3 gap-2 text-center font-mono">
+              <div className="p-2 rounded bg-card border border-border">
+                <span className="text-[10px] text-muted-foreground block">Projected ETA</span>
+                <span className="text-sm font-bold text-purple-600 dark:text-purple-400">~{primaryAltEta}m</span>
+              </div>
+              <div className="p-2 rounded bg-card border border-border">
+                <span className="text-[10px] text-muted-foreground block">Time Saved</span>
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{timeSaved > 0 ? `-${timeSaved}m` : '0m'}</span>
+              </div>
+              <div className="p-2 rounded bg-card border border-border">
+                <span className="text-[10px] text-muted-foreground block">Distance Delta</span>
+                <span className="text-sm font-bold text-foreground">
+                  {distanceDeltaM > 0 ? `+${(distanceDeltaM / 1000).toFixed(1)}km` : `${(distanceDeltaM / 1000).toFixed(1)}km`}
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between items-center text-zinc-300">
-              <span className="text-zinc-500">Switch to Alternative:</span>
-              <span className="font-semibold text-emerald-400">ETA ~{altEta} min ({timeSaved > 0 ? `saves ${timeSaved} min` : 'similar'})</span>
-            </div>
-            <div className="flex justify-between items-center text-zinc-300">
-              <span className="text-zinc-500">Distance Trade-Off:</span>
-              <span className="text-zinc-400">{distanceDeltaM > 0 ? `+${(distanceDeltaM / 1000).toFixed(2)} km longer bypass` : 'Identical distance'}</span>
-            </div>
+
+            <p className="text-xs text-purple-800 dark:text-purple-200 leading-relaxed">
+              {timeSaved > 0
+                ? `Rerouting via the alternative corridor bypasses congestion, saving ${timeSaved} minutes in critical arrival time.`
+                : 'Alternative corridor provides comparable transit time with lower incident exposure risk.'}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Comparison Matrix Table */}
-      <div className="mt-5 overflow-x-auto rounded-lg border border-zinc-800/80 bg-zinc-950/50">
+      {/* Rationale: "Why Did the Route Change?" */}
+      <div className="mt-5 rounded-xl border border-border bg-muted/40 p-4">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
+          <HelpCircle className="h-4 w-4 text-primary" />
+          <span>Causal Evidence &amp; Trigger Rationale</span>
+        </div>
+
+        {whyRouteChanged && whyRouteChanged.length > 0 ? (
+          <div className="space-y-1.5 text-xs">
+            {whyRouteChanged.map((reason, idx) => (
+              <div key={idx} className="flex items-start gap-2 text-foreground">
+                <span className="text-primary font-bold mt-0.5">•</span>
+                <span>{reason}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground italic">
+            Corridor conditions evaluated within nominal limits. No critical disruption triggers detected.
+          </div>
+        )}
+      </div>
+
+      {/* Candidate Corridors Matrix Table (CURRENT ROUTE, ALTERNATIVE 1, ALTERNATIVE 2) */}
+      <div className="mt-5 overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full text-left text-xs">
-          <thead className="border-b border-zinc-800 bg-zinc-900/80 text-[11px] uppercase tracking-wider text-zinc-400">
+          <thead className="border-b border-border bg-muted/60 text-[11px] uppercase tracking-wider text-muted-foreground">
             <tr>
-              <th className="py-2.5 px-4 font-semibold">Candidate Corridor</th>
+              <th className="py-2.5 px-4 font-semibold">Corridor Candidate</th>
               <th className="py-2.5 px-4 font-semibold">Provider</th>
-              <th className="py-2.5 px-4 font-semibold">Projected ETA</th>
-              <th className="py-2.5 px-4 font-semibold">Total Distance</th>
-              <th className="py-2.5 px-4 font-semibold">Traffic Condition</th>
-              <th className="py-2.5 px-4 font-semibold">Recommendation</th>
+              <th className="py-2.5 px-4 font-semibold">ETA</th>
+              <th className="py-2.5 px-4 font-semibold">Distance</th>
+              <th className="py-2.5 px-4 font-semibold">Traffic Delay</th>
+              <th className="py-2.5 px-4 font-semibold">Time Saved</th>
+              <th className="py-2.5 px-4 font-semibold">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/60 font-mono">
-            <tr className="hover:bg-zinc-900/40">
-              <td className="py-3 px-4 font-sans font-medium text-zinc-200">
+          <tbody className="divide-y divide-border/60 font-mono">
+            {/* 🔵 PLANNED / ACTIVE CORRIDOR */}
+            <tr className="hover:bg-muted/40 bg-blue-500/5">
+              <td className="py-3 px-4 font-sans font-medium text-foreground">
                 <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-amber-400" />
-                  <span>{currentRoute?.routeId ? `Current (${currentRoute.routeId})` : 'Current Route'}</span>
+                  <span className="h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0" />
+                  <span className="font-bold text-blue-700 dark:text-blue-300">
+                    {currentRoute?.description || (currentRoute?.routeId ? `Current (${currentRoute.routeId})` : 'Planned / Active Corridor')}
+                  </span>
                 </div>
               </td>
-              <td className="py-3 px-4 text-zinc-400">{currentRoute?.provider || 'GOOGLE'}</td>
-              <td className="py-3 px-4 font-bold text-amber-400">~{currentEta} min</td>
-              <td className="py-3 px-4 text-zinc-300">{(currentDistanceM / 1000).toFixed(2)} km</td>
-              <td className="py-3 px-4">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                  HEAVY
+              <td className="py-3 px-4 text-muted-foreground">{currentRoute?.provider || 'GOOGLE'}</td>
+              <td className="py-3 px-4 font-bold text-blue-700 dark:text-blue-300">~{currentEta}m</td>
+              <td className="py-3 px-4 text-foreground">{(currentDistanceM / 1000).toFixed(2)} km</td>
+              <td className="py-3 px-4 text-rose-600 dark:text-rose-400">+{currentDelay}m</td>
+              <td className="py-3 px-4 text-muted-foreground">Baseline</td>
+              <td className="py-3 px-4 font-sans">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                  ACTIVE CORRIDOR
                 </span>
               </td>
-              <td className="py-3 px-4 font-sans text-zinc-500">Active (Slowing)</td>
             </tr>
 
-            <tr className="bg-emerald-500/5 hover:bg-emerald-500/10">
-              <td className="py-3 px-4 font-sans font-medium text-emerald-300">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{primaryAlt?.name || primaryAlt?.description || 'Alternative Corridor B (Express Bypass)'}</span>
-                </div>
-              </td>
-              <td className="py-3 px-4 text-zinc-400">{primaryAlt?.provider || 'GOOGLE'}</td>
-              <td className="py-3 px-4 font-bold text-emerald-400">~{altEta} min</td>
-              <td className="py-3 px-4 text-zinc-300">{(altDistanceM / 1000).toFixed(2)} km</td>
-              <td className="py-3 px-4">
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                  FREE / MODERATE
-                </span>
-              </td>
-              <td className="py-3 px-4 font-sans font-semibold text-emerald-400">
-                Recommended ({timeSaved > 0 ? `Saves ${timeSaved}m` : 'Optimal'})
-              </td>
-            </tr>
+            {/* 🟣 ALTERNATIVES */}
+            {candidateAlts.length > 0 ? (
+              candidateAlts.map((alt, idx) => {
+                const altDuration = alt.durationSeconds || alt.duration || 0;
+                const altEta = alt.etaMinutes ?? Math.max(1, Math.round(altDuration / 60));
+                const altDistM = alt.distanceMeters || alt.distance || 0;
+                const altTimeSaved = Math.max(0, currentEta - altEta);
+                const altTrafficSec = alt.trafficDelaySeconds || 0;
+                const isRecommended = alt.isRecommended || idx === 0;
+
+                return (
+                  <tr key={idx} className={isRecommended ? 'bg-purple-500/5 hover:bg-purple-500/10' : 'hover:bg-muted/40'}>
+                    <td className="py-3 px-4 font-sans font-medium text-foreground">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${isRecommended ? 'bg-purple-600 animate-pulse' : 'bg-slate-400'}`} />
+                        <span className={isRecommended ? 'font-bold text-purple-700 dark:text-purple-300' : 'text-muted-foreground'}>
+                          {alt.name || alt.description || (isRecommended ? 'Recommended Alternative Detour' : `Alternative Route ${idx + 1}`)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground">{alt.provider || 'GOOGLE'}</td>
+                    <td className={`py-3 px-4 font-bold ${isRecommended ? 'text-purple-700 dark:text-purple-300' : 'text-foreground'}`}>~{altEta}m</td>
+                    <td className="py-3 px-4 text-foreground">{(altDistM / 1000).toFixed(2)} km</td>
+                    <td className="py-3 px-4 text-muted-foreground">+{Math.round(altTrafficSec / 60)}m</td>
+                    <td className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
+                      {altTimeSaved > 0 ? `saves ${altTimeSaved}m` : '0m'}
+                    </td>
+                    <td className="py-3 px-4 font-sans">
+                      {isRecommended ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/40">
+                          RECOMMENDED
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-500/15 text-slate-700 dark:text-slate-300 border border-slate-500/30">
+                          OTHER ALTERNATIVE
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={7} className="py-4 px-4 text-center text-muted-foreground italic">
+                  No alternative route candidates returned by routing service for this destination.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

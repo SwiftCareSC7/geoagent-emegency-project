@@ -7,30 +7,34 @@ The GeoAgentic Emergency Response System uses **Socket.IO** for live, bidirectio
 ## 1. Connection & Authentication
 
 ### Handshake Authentication
+
 All Socket.IO client connections must pass a valid JWT token during the initial connection handshake.
 
 **Client Connection Options**:
+
 ```javascript
 import { io } from 'socket.io-client';
 
 // Option A: Passing Bearer Token in Auth Object
-const socket = io('http://localhost:5000', {
+const socket = io('http://localhost:5001', {
   auth: {
-    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+    token: '<jwt>'
   },
   transports: ['websocket', 'polling']
 });
 
 // Option B: Browser Cookie Session (withCredentials)
-const socket = io('http://localhost:5000', {
+const socket = io('http://localhost:5001', {
   withCredentials: true,
   transports: ['websocket', 'polling']
 });
 ```
 
-### Authorization Rules
-- Handshake verifies the user's role.
-- Sockets without a valid JWT or belonging to non-operational roles (outside `CONTROL_ROOM` or `ADMIN`) are rejected with `Authentication error`.
+### Authorization & Revocation Rules
+
+- **Handshake Validation**: Handshake verifies user identity, role, and approval status (`status === 'APPROVED'`). Sockets without valid JWTs or for pending/suspended accounts are rejected immediately.
+- **Per-Packet Revalidation**: Sockets are protected with middleware (`socket.use(...)`) re-verifying user account status in MongoDB. If an administrator suspends or revokes access while a socket is connected, the connection is forcibly terminated (`disconnect(true)`) on its next event.
+- **Room Join Authorization**: Sockets with `ADMIN` or `CONTROL_ROOM` may join global `control-room` fleet feeds. `DRIVER` accounts are restricted to their assigned vehicle room (`vehicle:${assignedVehicleId}`); unauthorized room join requests are rejected.
 
 ---
 
@@ -39,7 +43,7 @@ const socket = io('http://localhost:5000', {
 Clients join isolated channel rooms to prevent global message flooding:
 
 | Room Name | Intended Subscribers | Description |
-|---|---|---|
+| --- | --- | --- |
 | `control-room` | Control Room Operators, Dispatch Supervisors | Receives global fleet updates, emergency alerts, new decisions |
 | `emergency:${emergencyId}` | Assigned Dispatchers, Field Coordinators | Receives updates specifically for emergency call `:emergencyId` |
 | `vehicle:${vehicleId}` | Ambulance Driver, Vehicle Telematics | Receives navigation updates, reroutes, and alerts for `:vehicleId` |
@@ -47,8 +51,10 @@ Clients join isolated channel rooms to prevent global message flooding:
 ### Joining & Leaving Rooms (Client → Server)
 
 #### `room:join`
+
 - **Direction**: `CLIENT → SERVER`
 - **Payload**:
+
   ```json
   {
     "room": "emergency:EMG-0001"
@@ -56,8 +62,10 @@ Clients join isolated channel rooms to prevent global message flooding:
   ```
 
 #### `room:leave`
+
 - **Direction**: `CLIENT → SERVER`
 - **Payload**:
+
   ```json
   {
     "room": "emergency:EMG-0001"
@@ -73,9 +81,11 @@ All server-emitted events are authoritative and emitted only after state changes
 ### 3.1 Emergency & Dispatch Events
 
 #### `emergency.created`
+
 - **Room**: `control-room`
 - **Trigger**: New emergency intake (`POST /api/emergencies`)
 - **Payload**:
+
   ```json
   {
     "emergencyId": "EMG-0001",
@@ -87,9 +97,11 @@ All server-emitted events are authoritative and emitted only after state changes
   ```
 
 #### `emergency.updated`
+
 - **Room**: `control-room`, `emergency:${emergencyId}`
 - **Trigger**: Emergency update or vehicle assignment (`PATCH /api/emergencies/:id`)
 - **Payload**:
+
   ```json
   {
     "emergencyId": "EMG-0001",
@@ -104,9 +116,11 @@ All server-emitted events are authoritative and emitted only after state changes
 ### 3.2 Vehicle & Trajectory Events
 
 #### `vehicle.status_updated`
+
 - **Room**: `control-room`, `vehicle:${vehicleId}`
 - **Trigger**: Vehicle status transition (`PATCH /api/vehicles/:id` or vehicle assignment)
 - **Payload**:
+
   ```json
   {
     "vehicleId": "AMB-101",
@@ -116,9 +130,11 @@ All server-emitted events are authoritative and emitted only after state changes
   ```
 
 #### `trajectory.ingested`
+
 - **Room**: `control-room`, `vehicle:${vehicleId}`
 - **Trigger**: New GPS fix uploaded (`POST /api/trajectories`)
 - **Payload**:
+
   ```json
   {
     "vehicleId": "AMB-101",
@@ -134,9 +150,11 @@ All server-emitted events are authoritative and emitted only after state changes
 ### 3.3 Deviation & Incident Events
 
 #### `deviation.detected`
+
 - **Room**: `control-room`, `emergency:${emergencyId}`, `vehicle:${vehicleId}`
 - **Trigger**: Route deviation calculation crosses threshold (`GET /api/deviation/vehicle/:id`)
 - **Payload**:
+
   ```json
   {
     "vehicleId": "AMB-101",
@@ -150,9 +168,11 @@ All server-emitted events are authoritative and emitted only after state changes
   ```
 
 #### `incident.created`
+
 - **Room**: `control-room`
 - **Trigger**: New road hazard or incident report (`POST /api/incidents`)
 - **Payload**:
+
   ```json
   {
     "incidentId": "INC-501",
@@ -167,9 +187,11 @@ All server-emitted events are authoritative and emitted only after state changes
 ### 3.4 GeoAgent AI & Decision Engine Events
 
 #### `geoagent.analyzed`
+
 - **Room**: `control-room`, `emergency:${emergencyId}`
-- **Trigger**: Gemini GeoAgent completes reasoning (`POST /api/geoagent/analyze`)
+- **Trigger**: GeoAgent AI completes reasoning (`POST /api/geoagent/analyze`)
 - **Payload**:
+
   ```json
   {
     "emergencyId": "EMG-0001",
@@ -182,9 +204,11 @@ All server-emitted events are authoritative and emitted only after state changes
   ```
 
 #### `decision.created`
+
 - **Room**: `control-room`, `emergency:${emergencyId}`
 - **Trigger**: Authoritative Decision evaluated (`POST /api/decisions/analyze`)
 - **Payload**:
+
   ```json
   {
     "decisionId": "DEC-9001",
@@ -198,9 +222,11 @@ All server-emitted events are authoritative and emitted only after state changes
   ```
 
 #### `decision.status_updated`
+
 - **Room**: `control-room`, `emergency:${emergencyId}`
 - **Trigger**: Operator approves or rejects decision (`PATCH /api/decisions/:id/approve`)
 - **Payload**:
+
   ```json
   {
     "decisionId": "DEC-9001",
@@ -215,9 +241,11 @@ All server-emitted events are authoritative and emitted only after state changes
 ### 3.5 Real-Time Prediction & Delay Events
 
 #### `prediction.updated`
+
 - **Room**: `control-room`, `emergency:${emergencyId}`, `vehicle:${vehicleId}`
 - **Trigger**: Prediction engine recalculates rolling ETA, delay risk, and confidence
 - **Payload**:
+
   ```json
   {
     "vehicleId": "AMB-101",
@@ -245,6 +273,39 @@ All server-emitted events are authoritative and emitted only after state changes
       }
     ],
     "predictedAt": "2026-08-30T01:06:20.000Z"
+  }
+  ```
+
+---
+
+### 3.6 V2X Green-Wave & Corridor Clearance Events
+
+#### `v2x.green_wave.updated`
+
+- **Room**: `control-room`, `emergency:${emergencyId}`, `vehicle:${vehicleId}`
+- **Trigger**: Dynamic corridor evaluation updates traffic signal preemption status
+- **Payload**:
+
+  ```json
+  {
+    "vehicleId": "AMB-101",
+    "routeId": "ROUTE-001",
+    "corridorHealth": "PREEMPTION_ACTIVE",
+    "preemptedCount": 3,
+    "totalSignals": 4,
+    "civilianAlertedCount": 112,
+    "timeSavedMinutes": 3.5,
+    "signals": [
+      {
+        "signalId": "SIG-MG-01",
+        "name": "MG Road / Brigade Rd Junction",
+        "distanceToAmbulanceMeters": 180,
+        "currentState": "FORCED_GREEN_4S",
+        "preemptionActive": true,
+        "secondsToClear": 12
+      }
+    ],
+    "timestamp": "2026-08-30T01:06:25.000Z"
   }
   ```
 

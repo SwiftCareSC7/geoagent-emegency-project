@@ -38,6 +38,35 @@ export const protect = async (req, res, next) => {
         return next(error);
       }
 
+      // Defense-in-depth: Immediately block tokens from suspended, pending, or rejected accounts
+      if (user.status === 'SUSPENDED') {
+        const error = new Error('Account has been suspended');
+        error.status = 403;
+        error.isOperational = true;
+        return next(error);
+      }
+
+      if (user.status === 'PENDING') {
+        const error = new Error('Account registration is pending administrator approval');
+        error.status = 403;
+        error.isOperational = true;
+        return next(error);
+      }
+
+      if (user.status === 'REJECTED') {
+        const error = new Error('Account registration was rejected');
+        error.status = 403;
+        error.isOperational = true;
+        return next(error);
+      }
+
+      if (user.status !== 'APPROVED') {
+        const error = new Error('Account is not authorized');
+        error.status = 403;
+        error.isOperational = true;
+        return next(error);
+      }
+
       // Attach user to request object
       req.user = user;
       next();

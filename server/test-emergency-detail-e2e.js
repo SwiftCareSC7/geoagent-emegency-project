@@ -86,7 +86,7 @@ async function runTests() {
   console.log('1. Authentication');
   const loginRes = await request('POST', '/auth/login', {
     email: 'operator@swiftcare.local',
-    password: 'Operator123!',
+    password: process.env.OPERATOR_PASSWORD,
   });
   assert(loginRes.status === 200, 'Login returns 200 OK');
   assert(loginRes.body.success === true, 'Login response has success: true');

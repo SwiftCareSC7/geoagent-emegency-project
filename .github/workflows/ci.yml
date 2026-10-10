@@ -1,0 +1,148 @@
+# ─────────────────────────────────────────────────────────
+# SwiftCare GeoAgent — CI Pipeline
+# Runs on every push and pull request
+# ─────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  security-scan:
+    name: Secret & Credential Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Open-source CLI (the gitleaks-action needs an org license). Pinned + checksum-verified; findings fail the job.
+      - name: Install Gitleaks v8.30.1
+        run: |
+          curl -sSfL -o gitleaks.tgz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tgz" | sha256sum -c -
+          tar -xzf gitleaks.tgz gitleaks
+
+      # Current files must be clean (no baseline). History is scanned against a baseline holding only the
+      # reviewed legacy findings (.gitleaks-baseline.json, values redacted), so any NEW secret fails the job.
+      - name: Scan current checkout
+        run: ./gitleaks dir --redact --no-banner --exit-code 1 .
+
+      - name: Scan git history (new findings only)
+        run: ./gitleaks git --redact --no-banner --exit-code 1 --baseline-path .gitleaks-baseline.json .
+
+  lint-and-build:
+    name: Lint, Typecheck & Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # ── Frontend ──
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: TypeScript typecheck
+        run: npx tsc --noEmit
+
+      - name: Build Next.js frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://placeholder.run.app/api
+          NEXT_PUBLIC_SOCKET_URL: https://placeholder.run.app
+
+  backend-tests:
+    name: Backend Test Suites & Security Verifications
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Run Database Safety & Retention Tests
+        run: |
+          node server/test-db-safety.js
+          node server/test-telemetry-retention.js
+
+      - name: Run Backend Auth & RBAC Security Tests
+        env:
+          MONGO_URI: mongodb://127.0.0.1:27017/geoagent-emergency-test
+          JWT_SECRET: test-jwt-secret-for-ci-security-testing-only-12345
+          DISABLE_RATE_LIMITS: "true"
+          PORT: 5001
+        run: |
+          # Throwaway fixture passwords, generated per run (never committed)
+          for v in ADMIN OPERATOR DRIVER PARAMEDIC; do export ${v}_PASSWORD="$(openssl rand -hex 12)Aa1!"; done
+          # Start the backend server in background
+          node server/server.js &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          
+          # Wait for backend server and database readiness on port 5001
+          echo "Waiting for backend server and database readiness on port 5001..."
+          SERVER_READY=false
+          for i in $(seq 1 30); do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/api/health/ready 2>/dev/null || true)
+            if [ "$HTTP_STATUS" = "200" ]; then
+              echo "✅ Backend and database are ready (HTTP 200)!"
+              SERVER_READY=true
+              break
+            fi
+            echo "Readiness probe status=$HTTP_STATUS (attempt $i/30)..."
+            sleep 1
+          done
+
+          if [ "$SERVER_READY" != "true" ]; then
+            echo "❌ Backend and database failed readiness check within 30 seconds!"
+            curl -s http://127.0.0.1:5001/api/health || true
+            curl -s http://127.0.0.1:5001/api/health/ready || true
+            exit 1
+          fi
+
+          # Provision required test users in test database
+          node server/scripts/provision-users.js
+
+          # Run test suites against live server
+          node server/test-auth-rbac-complete.js
+          node server/test-targeted-rbac-socket.js
+          node server/test-auth-fallback-security.js
+
+      - name: Run Navigation Engine & Emergency Lifecycle Tests
+        env:
+          MONGO_URI: mongodb://127.0.0.1:27017/geoagent-emergency-test
+          JWT_SECRET: test-jwt-secret-for-ci-security-testing-only-12345
+        run: |
+          node server/test-google-osrm-routing.js
+          node server/test-navigation-engine.js
+          node server/test-part9.js
+
+      - name: Verify Backend Docker Build
+        working-directory: server
+        run: docker build -t geoagent-backend-ci-test .

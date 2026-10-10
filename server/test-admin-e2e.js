@@ -106,8 +106,12 @@ async function runTests() {
       name: 'System Admin',
       email: 'admin_test@geoagent.local',
       password: 'hashed_password_for_testing_only',
-      role: 'ADMIN'
+      role: 'ADMIN',
+      status: 'APPROVED'
     });
+  } else {
+    adminUser.status = 'APPROVED';
+    await adminUser.save();
   }
 
   // Ensure a Control Room operator exists
@@ -117,8 +121,12 @@ async function runTests() {
       name: 'Dispatch Operator',
       email: 'operator_test@geoagent.local',
       password: 'hashed_password_for_testing_only',
-      role: 'CONTROL_ROOM'
+      role: 'CONTROL_ROOM',
+      status: 'APPROVED'
     });
+  } else {
+    operatorUser.status = 'APPROVED';
+    await operatorUser.save();
   }
 
   const adminToken = generateToken(adminUser._id);

@@ -5,8 +5,20 @@ import realtimeService from '../realtime/realtime.service.js';
  * Generate a unique incident ID (e.g., INC-0001)
  */
 const generateIncidentId = async () => {
-  const count = await Incident.countDocuments();
-  return `INC-${String(count + 1).padStart(4, '0')}`;
+  const latest = await Incident.findOne({}, { incidentId: 1 }).sort({ createdAt: -1 });
+  let nextNum = 1;
+  if (latest && latest.incidentId) {
+    const match = latest.incidentId.match(/INC-(\d+)/);
+    if (match) {
+      nextNum = parseInt(match[1], 10) + 1;
+    }
+  }
+  let candidate = `INC-${String(nextNum).padStart(4, '0')}`;
+  while (await Incident.exists({ incidentId: candidate })) {
+    nextNum++;
+    candidate = `INC-${String(nextNum).padStart(4, '0')}`;
+  }
+  return candidate;
 };
 
 /**

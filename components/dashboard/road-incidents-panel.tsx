@@ -99,12 +99,12 @@ export function RoadIncidentsPanel({
   })
 
   return (
-    <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="flex flex-col rounded-2xl border-2 border-border bg-card p-6 shadow-md hover:shadow-lg transition-all text-card-foreground">
       {/* Panel Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-warning/10 text-warning">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30">
               <AlertTriangle className="size-4" />
             </span>
             <h3 className="font-display text-base font-bold text-card-foreground">

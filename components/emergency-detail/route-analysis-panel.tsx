@@ -14,7 +14,6 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import type { Route } from '@/lib/api/types'
-import { RealInteractiveMap } from '@/components/dashboard/real-interactive-map'
 import { cn } from '@/lib/utils'
 
 interface RouteAnalysisPanelProps {
@@ -79,17 +78,17 @@ export function RouteAnalysisPanel({ route, loading = false, error = null }: Rou
   const isMockProvider = route.provider === 'MOCK' || !route.provider
 
   return (
-    <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md p-6 shadow-sm">
+    <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-md hover:shadow-lg transition-all text-card-foreground">
       {/* Title Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100 dark:border-zinc-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
-            <RouteIcon className="h-5 w-5 text-emerald-500" />
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50 text-base">
-              Expected Route Corridor
+            <RouteIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <h3 className="font-bold text-zinc-900 dark:text-zinc-50 text-base">
+              Planned / Active Route Corridor
             </h3>
-            <span className="font-mono text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded">
-              {route.routeId}
+            <span className="font-mono text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full font-semibold">
+              🔵 {route.routeId}
             </span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
@@ -121,7 +120,7 @@ export function RouteAnalysisPanel({ route, loading = false, error = null }: Rou
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5">
         <div className="rounded-xl border border-zinc-200/60 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-950/50 p-3.5">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">
-            <Milestone className="h-3.5 w-3.5 text-emerald-500" />
+            <Milestone className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
             <span>Total Distance</span>
           </div>
           <p className="font-mono text-base font-bold text-zinc-900 dark:text-zinc-100">
@@ -150,7 +149,7 @@ export function RouteAnalysisPanel({ route, loading = false, error = null }: Rou
             <GitBranch className="h-3.5 w-3.5 text-indigo-500" />
             <span>Route Classification</span>
           </div>
-          <p className="font-mono text-xs font-bold text-zinc-900 dark:text-zinc-100">
+          <p className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400">
             {route.routeType || 'PLANNED'}
           </p>
           <span className="text-[10px] text-zinc-400 mt-0.5 block">
@@ -175,7 +174,7 @@ export function RouteAnalysisPanel({ route, loading = false, error = null }: Rou
       {/* Geometry Origin & Destination Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-zinc-200/60 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950/30 text-xs">
         <div className="flex items-start gap-2">
-          <CornerDownRight className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+          <CornerDownRight className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
           <div>
             <span className="font-medium text-zinc-600 dark:text-zinc-400">Route Origin:</span>
             <p className="font-mono text-zinc-900 dark:text-zinc-100">
@@ -192,11 +191,6 @@ export function RouteAnalysisPanel({ route, loading = false, error = null }: Rou
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Real Interactive Map View */}
-      <div className="mt-4">
-        <RealInteractiveMap height="340px" />
       </div>
     </div>
   )

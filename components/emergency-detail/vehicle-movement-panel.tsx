@@ -26,6 +26,8 @@ interface VehicleMovementPanelProps {
   error?: string | null
   page?: number
   limit?: number
+  freshness?: 'LIVE' | 'STALE' | 'OFFLINE' | 'UNKNOWN'
+  ageString?: string
   onPageChange?: (newPage: number) => void
   onRefresh?: () => void
 }
@@ -63,6 +65,8 @@ export function VehicleMovementPanel({
   error = null,
   page = 1,
   limit = 5,
+  freshness = 'UNKNOWN',
+  ageString = '',
   onPageChange,
   onRefresh,
 }: VehicleMovementPanelProps) {
@@ -85,17 +89,17 @@ export function VehicleMovementPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 backdrop-blur-md p-6 shadow-sm">
+    <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-md hover:shadow-lg transition-all text-card-foreground">
       {/* Title & Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-zinc-100 dark:border-zinc-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-cyan-500" />
-            <h3 className="font-semibold text-zinc-900 dark:text-zinc-50 text-base">
-              Vehicle Movement & Telemetry
+            <Activity className="h-5 w-5 text-orange-500" />
+            <h3 className="font-bold text-zinc-900 dark:text-zinc-50 text-base">
+              Actual Vehicle Movement & GPS Trajectory
             </h3>
-            <span className="font-mono text-xs bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded">
-              {vehicle.vehicleId}
+            <span className="font-mono text-xs bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/30 px-2 py-0.5 rounded-full font-bold">
+              🟠 {vehicle.vehicleId}
             </span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
@@ -104,6 +108,26 @@ export function VehicleMovementPanel({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Freshness Badge */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono border border-zinc-200/60 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70">
+            {freshness === 'LIVE' ? (
+              <span className="flex items-center gap-1 text-emerald-500 dark:text-emerald-400 font-bold">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>LIVE</span>
+              </span>
+            ) : freshness === 'STALE' ? (
+              <span className="flex items-center gap-1 text-amber-500 font-semibold">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                <span>STALE {ageString ? `(${ageString})` : ''}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 text-zinc-400">
+                <span className="h-2 w-2 rounded-full bg-zinc-400" />
+                <span>UNKNOWN</span>
+              </span>
+            )}
+          </div>
+
           {onRefresh && (
             <Button
               variant="outline"
@@ -276,7 +300,7 @@ export function VehicleMovementPanel({
       {/* Telemetry Operational Notice */}
       <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center gap-2 text-[11px] text-zinc-400">
         <Radio className="h-3.5 w-3.5 text-zinc-400" />
-        <span>Latest received positions fetched via REST API. Live WebSocket streaming is deferred.</span>
+        <span>Persisted GPS fixes received via real-time telemetry stream. Filtered with spatial jitter detection.</span>
       </div>
     </div>
   )

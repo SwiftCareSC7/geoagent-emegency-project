@@ -1,9 +1,11 @@
 # GeoAgentic Emergency Response System — AI Memory
 
 ## 1. Project Purpose & Scope
-The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intelligent decision-support and dispatch platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic congestion or road hazards, calculate delays, recommend alternative routes, evaluate V2X green-wave corridor clearances, run advisory Gemini AI reasoning, and evaluate authoritative operational decisions in real time.
+
+The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intelligent decision-support and dispatch platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify causes such as traffic congestion or road hazards, calculate delays, recommend alternative routes, evaluate V2X green-wave corridor clearances, run advisory free-model LLM reasoning (OpenRouter / OpenCode), and evaluate authoritative operational decisions in real time.
 
 **Repository Scope**:
+
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, Lucide React (located at root `/app`, `/components`, `/lib`, `/public`).
 - **Backend Core**: Node.js (ESM), Express, MongoDB + Mongoose 8, Socket.IO 4.8 (located at `/server`).
 - **Spatial Routing Engine**: Python standalone spatial analysis, corridor deviation, and V2X engine (located at `/routing-engine`).
@@ -14,12 +16,14 @@ The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intellig
 ## 2. Technology Stack
 
 ### Frontend Core
+
 - **Framework**: Next.js 16 (Turbopack, App Router)
 - **UI Components**: React 19, Tailwind CSS v4, Lucide React, Base UI
 - **Language**: TypeScript (`@/*` path aliasing)
 - **Target Port**: `http://localhost:3000`
 
 ### Backend Core
+
 - **Runtime**: Node.js (ES Modules)
 - **Framework**: Express.js + Node HTTP Server
 - **Real-Time Layer**: Socket.IO 4.8 (room-isolated push streaming, handshake JWT authentication)
@@ -27,10 +31,11 @@ The **GeoAgentic Emergency Response System** (SwiftCare GeoAgent) is an intellig
 - **ODM**: Mongoose (v8.4+)
 - **Security**: `bcryptjs` (salt rounds: 12), `jsonwebtoken`, `helmet`, `cors`, `cookie-parser`
 - **Geospatial Processing**: `@turf/turf` (v7.4+, WGS84, GeoJSON Point & LineString)
-- **AI Decision Support**: `@google/genai` (v2.19+, Google Gemini 2.5 Flash SDK)
-- **Target Port**: `http://localhost:5000`
+- **AI Decision Support**: OpenAI-compatible HTTP fetch over catalog-verified free models (OpenRouter / OpenCode Zen) with zero-cost price guards (`max_price: 0`)
+- **Target Port**: `http://localhost:5001`
 
 ### Python Spatial Routing Engine (Member 2)
+
 - **Runtime**: Python 3.11+
 - **Algorithms**: Haversine formula, cross-track error, bearing, corridor intersection, V2X green-wave signal clearance scoring
 - **Visualizer**: Leaflet.js interactive map (`routing-engine/map_visualizer.html`)
@@ -76,7 +81,7 @@ Trajectories          Routes                     │         │
                        Situation Analysis                  │
                                  │                         │
                                  ▼                         │
-                       GeoAgent AI (Gemini)                │
+                       GeoAgent AI (Free LLM)              │
                            (Advisory)                      │
                                  │                         │
                                  ▼                         │
@@ -102,59 +107,104 @@ Trajectories          Routes                     │         │
 │   ├── page.tsx                              # Landing page
 │   ├── login/page.tsx                        # Real authenticated login interface
 │   ├── signup/page.tsx                       # Real authenticated registration interface
-│   └── driver/dashboard/page.tsx             # Protected driver telemetry mission dashboard
+│   ├── registration/page.tsx                 # Official Personnel Registration Desk
+│   ├── control-room/page.tsx                 # Dispatcher console & Mission Assessment HUD
+│   ├── control-room/overview/page.tsx        # Multi-Emergency Overview & Emergency Intake Modal
+│   ├── driver/dashboard/page.tsx             # Protected driver telemetry & operations dashboard
+│   ├── paramedic/page.tsx                    # Pre-hospital paramedic clinical triage workspace
+│   ├── emergencies/[id]/page.tsx             # Emergency corridor analysis & intelligence view
+│   ├── diff/page.tsx                         # What-If scenario diff simulator
+│   ├── emergency-lab/page.tsx                # Interactive scenario stress-testing workbench
+│   └── admin/page.tsx                        # Admin system observability & database explorer
 ├── components/                               # React UI Components
+│   ├── admin/                                # Admin console components
+│   │   ├── admin-overview.tsx                # System metrics, DB health & latency ping
+│   │   ├── admin-database-explorer.tsx       # Tabbed collection browser & sanitized inspector
+│   │   └── admin-user-management.tsx         # Live user approval, suspension & role console
 │   ├── auth/                                 # Authentication UI Components
 │   │   ├── LoginForm.tsx                     # Production login form with validation & errors
-│   │   ├── SignupForm.tsx                    # Production registration with password rules
-│   │   └── ProtectedRoute.tsx                # Client route guard & role access control
+│   │   ├── SignupForm.tsx                    # Production registration with 4 roles & multi-workspace
+│   │   └── ProtectedRoute.tsx                # Client route guard, status check & workspace gating
 │   ├── dashboard/                            # Mission dashboard widgets
-│   │   └── dashboard-topbar.tsx              # Top bar with authenticated user & logout
+│   │   ├── dashboard-topbar.tsx              # Top bar with authenticated user, role badge & admin link
+│   │   ├── driver-dashboard.tsx              # Dual-tab dashboard (operations / telemetry) with offline fallback
+│   │   ├── real-interactive-map.tsx          # Real Leaflet GIS map with Bengaluru routing, V2X & simulation
+│   │   ├── map-placeholder.tsx               # Wrapper delegating to RealInteractiveMap
+│   │   ├── emergency-summary-cards.tsx       # Dynamic operational counters
+│   │   ├── active-emergencies-panel.tsx      # Filterable emergency call stream
+│   │   ├── vehicle-fleet-panel.tsx           # Fleet registry & deployment status
+│   │   ├── road-incidents-panel.tsx          # Road hazards & spatial disruptions
+│   │   ├── eta-summary.tsx                   # ETA comparison widget
+│   │   ├── geoagent-card.tsx                 # AI recommendation card with executive takeaways & meters
+│   │   ├── route-status-cards.tsx            # Route status cards
+│   │   ├── stat-card.tsx                     # Statistical metric card
+│   │   └── timeline-panel.tsx                # Event timeline panel
+│   ├── emergency-detail/                     # Deep-dive corridor intelligence components
+│   │   ├── emergency-detail-view.tsx         # Master coordinator with concurrent data fetching
+│   │   ├── emergency-overview-card.tsx       # Emergency metadata, priority & assigned unit
+│   │   ├── vehicle-movement-panel.tsx        # Latest GPS fix strip & paginated trajectory table
+│   │   ├── route-analysis-panel.tsx          # Planned route details & provider attribution
+│   │   ├── deviation-analysis-panel.tsx      # Deviation metrics, progress meter & evidence tags
+│   │   ├── correlated-incidents-panel.tsx    # Road hazards along response corridor
+│   │   ├── route-comparison-card.tsx         # Trade-off matrix & "What if do nothing" projection
+│   │   ├── prediction-intelligence-panel.tsx # ETA prediction, delay risk, confidence meter & factors
+│   │   ├── decision-approval-card.tsx        # Authoritative decision approval & state machine
+│   │   └── epistemic-breakdown-card.tsx      # 3-tier breakdown (OBSERVED / INFERRED / UNKNOWN)
 │   ├── landing/                              # Landing page sections
 │   └── ui/                                   # Base UI primitives
 ├── lib/                                      # Frontend Utilities & API Client
 │   ├── api/                                  # Centralized typed API client
 │   │   ├── client.ts                         # Fetch wrapper (credentials: 'include', network error normalization)
-│   │   ├── types.ts                          # Full TypeScript interfaces derived from OpenAPI 3.0
+│   │   ├── types.ts                          # Full TypeScript interfaces derived from backend schemas
 │   │   ├── auth.ts                           # Auth API methods (register, login, logout, getMe)
 │   │   ├── vehicles.ts                       # Vehicle CRUD API
 │   │   ├── emergencies.ts                    # Emergency management API
 │   │   ├── incidents.ts                      # Road hazards API
 │   │   ├── trajectories.ts                   # GPS telemetry API
+│   │   ├── routes.ts                         # Planned routes & comparison API
+│   │   ├── analysis.ts                       # Situation analysis & prediction API
+│   │   ├── decisions.ts                      # Decision lifecycle API
+│   │   ├── orchestration.ts                  # Unified workflow analyze API
+│   │   ├── admin.ts                          # Admin stats, health & collection explorer API
 │   │   └── index.ts                          # API barrel export
 │   ├── auth/                                 # Client-side Auth State & Session
 │   │   ├── types.ts                          # AuthState & AuthContextType interfaces
 │   │   ├── session.ts                        # Session retrieval (401 vs network error handling)
-│   │   └── context.tsx                       # AuthContext, AuthProvider & useAuth hook
-│   ├── api.ts                                # Legacy adapter (mock data fallback)
-│   ├── mock-data.ts                          # Static demo dashboard data
+│   │   └── context.tsx                       # AuthContext with resilient local development fallback
+│   ├── socket/                               # Real-time WebSocket layer
+│   │   ├── client.ts                         # Socket.IO client singleton with auto-reconnect
+│   │   └── useRealtime.ts                    # React hooks (useSocketStatus, useRealtimeEmergency)
+│   ├── mock-data.ts                          # Static fallback & demo dashboard data
 │   └── utils.ts                              # Classname styling utilities
 ├── public/                                   # Frontend Static Assets
-├── next.config.mjs                           # Next.js build configuration
-├── tsconfig.json                             # TypeScript configuration
-├── postcss.config.mjs                        # Tailwind CSS v4 configuration
 ├── routing-engine/                           # Python Spatial Routing & V2X Module
 │   ├── routes_engine.py                      # Main routing & green-wave calculation
 │   ├── geo_utils.py                          # Spatial math utilities
 │   ├── simulate_telemetry_stream.py          # GPS simulation streamer
+│   ├── demo_member2.py                       # Demo entry point
 │   ├── map_visualizer.html                   # Leaflet interactive map visualizer
+│   ├── routes_geojson.json                   # Exported route GeoJSON data
+│   ├── telemetry_output.json                 # Simulated telemetry output
 │   └── MEMBER2_GUIDE.md                      # Guide for routing engine
 ├── server/
+│   ├── server.js                             # Express server entry + graceful shutdown
 │   ├── config/
-│   │   └── db.js                             # MongoDB connection & error handler
+│   │   └── db.js                             # MongoDB connection & non-crashing handler
 │   ├── modules/
 │   │   ├── auth/                             # User auth, JWT, cookies, RBAC
 │   │   ├── vehicles/                         # Vehicle fleet registry & CRUD
 │   │   ├── emergencies/                      # Emergency calls & vehicle dispatch
 │   │   ├── incidents/                        # Road hazards & spatial correlation
 │   │   ├── trajectories/                     # GPS ingestion & trajectory history
-│   │   ├── routes/                           # Routing engine & provider abstraction
+│   │   ├── routes/                           # Routing engine & Google Routes provider
 │   │   ├── deviation/                        # Route deviation detection & jitter filtering
-│   │   ├── traffic/                          # Traffic abstraction & mock provider
-│   │   ├── analysis/                         # Situation analysis orchestrator & ETA engine
-│   │   ├── geoagents/                        # Production GeoAgent AI (Gemini function-calling)
+│   │   ├── traffic/                          # Traffic abstraction & Google Traffic provider
+│   │   ├── analysis/                         # Situation analysis & prediction engine v1.3
+│   │   ├── geoagents/                        # Free-model LLM provider abstraction & 9 tools
 │   │   ├── decisions/                        # Authoritative Decision Engine & state machine
 │   │   ├── orchestration/                    # Full end-to-end mission coordinator
+│   │   ├── admin/                            # Secure admin stats & collection explorer
+│   │   ├── health/                           # Upstream provider health evaluation
 │   │   └── realtime/                         # Socket.IO handlers, room streaming
 │   ├── shared/
 │   │   └── middleware/                       # Centralized error handler & security
@@ -270,7 +320,7 @@ Trajectories          Routes                     │         │
 
 - **Architecture & System Flow**:
   - The system has moved from mock routing/traffic behavior to real external data and real-time intelligence:
-    `Real Vehicle Telemetry → Trajectory Processing → Google Roads / Routes → Real Traffic-Aware Routing → ETA / Delay Prediction → Gemini Decision Reasoning → Decision Engine → Socket.IO → Control Room Frontend`.
+    `Real Vehicle Telemetry → Trajectory Processing → Google Roads / Routes → Real Traffic-Aware Routing → ETA / Delay Prediction → GeoAgent Advisory Reasoning → Decision Engine → Socket.IO → Control Room Frontend`.
 - **Backend External Providers**:
   - **Google Routes Provider** (`server/modules/routes/providers/googleRoutingProvider.js`):
     - Implements Google Routes API (`computeRoutes`) with explicit field masks: `routes.duration,routes.staticDuration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs,routes.warnings,routes.description`.
@@ -287,7 +337,7 @@ Trajectories          Routes                     │         │
     - Derives traffic congestion ratio deterministically from Google Routes `durationSeconds` vs `staticDurationSeconds`.
     - Explicitly categorizes `epistemicType: 'DERIVED'` (distinguishing `OBSERVED`, `DERIVED`, and `UNKNOWN`).
   - **Provider Health & Safety** (`server/modules/health/providerHealth.service.js` & `GET /api/health/providers`):
-    - Evaluates Google Routes, Google Roads, and Gemini AI status (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`).
+    - Evaluates Google Routes, Google Roads, and AI Provider status (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`).
     - Zero credential leak: never returns API keys or internal secrets in JSON payloads.
 - **Telemetry Ingestion Hardening** (`server/modules/trajectories/trajectory.service.js`):
   - Validates coordinate bounds: longitude in `[-180, 180]`, latitude in `[-90, 90]`.
@@ -302,7 +352,7 @@ Trajectories          Routes                     │         │
   - Persists prediction snapshots in MongoDB with index on `vehicleId` and `createdAt`.
   - Exposes `GET /api/analysis/vehicle/:vehicleId/prediction` REST endpoint.
 - **GeoAgent & Decision Engine Integration** (`server/modules/geoagents/geoAgent.service.js` & `decision.service.js`):
-  - Gemini 2.5 Flash acts as advisory reasoning engine; deterministic safety rules make authoritative decisions.
+  - GeoAgent free-model LLM acts as advisory reasoning engine; deterministic safety rules make authoritative decisions.
   - Generates comparative trade-off matrix: "Why did the route change?" (evidence-based triggers) and "What if we do nothing?" (delay and risk penalties).
   - Enforces state machine requiring operator approval: decisions transition to `PENDING_OPERATOR_ACTION` and require operator `/approve` or `/reject` actions before execution.
 - **Socket.IO Real-Time Streaming** (`server/modules/realtime/` & `lib/socket/`):
@@ -342,7 +392,7 @@ Trajectories          Routes                     │         │
   - `admin.service.js`:
     - `getSystemStats()`: Real operational counts across all 8 verified collections (`users`, `vehicles`, `emergencies`, `incidents`, `trajectories`, `routes`, `decisions`, `predictions`). Uses `Trajectory.estimatedDocumentCount()` for $O(1)$ constant-time count over high-frequency GPS fixes.
     - `getDatabaseHealth()`: Safe ping latency test via `mongoose.connection.db.admin().ping()`. Reports `CONNECTED`, `DEGRADED`, or `DISCONNECTED` with roundtrip latency in ms without exposing credentials.
-    - `getSystemHealthSummary()`: Combines database health with provider statuses (Google Routes, Google Roads, Gemini 2.5 Flash, Socket.IO).
+    - `getSystemHealthSummary()`: Combines database health with provider statuses (Google Routes, Google Roads, AI Providers, Socket.IO).
     - Paginated readers with safe projection: `getUsers` (strictly omits `password`), `getVehicles`, `getEmergencies`, `getIncidents`, `getRoutes`, `getTrajectories` (bounded slices), `getPredictions`, `getDecisions`.
   - `admin.controller.js`: Request handlers with structured JSON audit logging (endpoint, userId, action, resource, durationMs, statusCode).
   - `admin.routes.js`: Protected by `protect` and `requireRole('ADMIN')`.
@@ -374,7 +424,7 @@ Trajectories          Routes                     │         │
 ## 14. Real-Time Intelligence Pipeline & Route Comparison Engine
 
 - **End-to-End Pipeline**:
-  `Real GPS Telemetry → Trajectory Processing → Deviation Analysis → Current Vehicle State → Google Routes API (Traffic-Aware) → ETA / Delay Prediction → Candidate Route Comparison ("What if we do nothing?") → Structured Evidence → Gemini 2.5 Flash Advisory Reasoning → Deterministic Decision Engine → Operator Approval → Execution → Socket.IO Streaming → Control Room Frontend`.
+  `Real GPS Telemetry → Trajectory Processing → Deviation Analysis → Current Vehicle State → Google Routes API (Traffic-Aware) → ETA / Delay Prediction → Candidate Route Comparison ("What if we do nothing?") → Structured Evidence → GeoAgent Advisory Reasoning → Deterministic Decision Engine → Operator Approval → Execution → Socket.IO Streaming → Control Room Frontend`.
 - **Google Routes Provider Hardening** (`server/modules/routes/providers/googleRoutingProvider.js`):
   - Pre-request coordinate validation (`validateCoordinates`) enforcing WGS84 boundaries: longitude `[-180, 180]`, latitude `[-90, 90]`.
   - Enforces maximum 25 intermediate waypoints supported by computeRoutes.
@@ -410,3 +460,417 @@ Trajectories          Routes                     │         │
   - `server/test-intelligence-pipeline.js`: 26/26 passing assertions.
   - Total automated verification assertions: **298 / 298 passing (100% pass rate)**.
   - TypeScript typecheck (`npx tsc --noEmit`): 0 errors.
+
+---
+
+## 15. Interactive Leaflet GIS Map & Bengaluru Corridor Simulation
+
+- **Map Architecture (`components/dashboard/real-interactive-map.tsx`)**:
+  - Client-rendered Leaflet GIS map dynamically loaded with `window.L` checking to avoid SSR hydration conflicts.
+  - Centered on Bengaluru metropolitan emergency corridor (`[12.968, 77.622]`).
+  - Replaces legacy SVG placeholder while preserving the component interface through `components/dashboard/map-placeholder.tsx`.
+- **Live Bengaluru Routes & Trajectories**:
+  - **Planned Route A (Blue Solid)**: MG Road Metro → Mayo Hall → Trinity Circle → Command Hospital Junction → Domlur Flyover → Murugeshpalya → Manipal Hospital.
+  - **Deviated Trajectory (Red Dashed)**: Divergence along Indiranagar 100ft Road with animated live ambulance marker.
+  - **Recommended Route B (Green Solid)**: 100ft Rd bypass → HAL 2nd Stage → Airport Rd bypass → Manipal Hospital (11.0 min ETA, saves 5.0 mins).
+  - **Alternative Route C (Amber Dashed)**: Shanthi Nagar → Inner Ring Rd → Ejipura Flyover → Manipal Hospital.
+- **Client-Side Simulation Engine**:
+  - Full playback controls: Play, Pause, Reset.
+  - Advances ambulance coordinate step-by-step along waypoints.
+  - Dynamically computes live telemetry: instantaneous speed, bearing heading, and cross-track deviation distance in meters.
+  - Web Audio API synthesizer generates emergency vehicle siren audio cues on toggle.
+
+---
+
+## 16. Spatio-Temporal Forecasting, Traffic Layers & V2X Preemption
+
+- **Multi-Tile Map Layer Switcher**:
+  - **Dark Mode**: High-contrast operational night view (CartoDB Dark Matter).
+  - **Google Traffic Layer**: Live traffic flow overlay highlighting severe congestion bottlenecks in red/amber.
+  - **Satellite Imagery**: High-resolution ESRI World Imagery for topographical and building context.
+- **Predictive Spatio-Temporal Traffic Forecast**:
+  - Interactive horizon selector: `+0m` (Current), `+10m`, `+20m`, `+30m`.
+  - Simulates dynamic traffic wave propagation along major arteries.
+  - Updates corridor friction metrics and recalculates estimated time savings across alternative bypass routes.
+- **V2X Green-Wave Traffic Signal Preemption**:
+  - Real-time preemption status points at 4 critical corridor intersections:
+    1. Mayo Hall Junction: `GREEN_WAVE_ACTIVE`
+    2. 100ft Rd Signal #1: `FORCED_GREEN_4S`
+    3. HAL 2nd Stage Signal #2: `PREEMPTION_QUEUED`
+    4. Airport Rd Bypass Signal #3: `CLEAR_CORRIDOR`
+  - Visual signal markers with status-dependent pulsing rings and corridor clearance timers.
+
+---
+
+## 17. Patient Severity Triage Routing & Clinical Protocol Adjustment
+
+- **Triage Priority Selector**:
+  - `CRITICAL_CARDIAC`: Immediate life support protocol, prioritizes Cath Lab facility readiness, alerts Manipal Hospital cardiac team.
+  - `SEVERE_TRAUMA`: Multi-system trauma protocol, prioritizes Level-1 Trauma Centers with dedicated surgical bays.
+  - `MODERATE`: Standard emergency dispatch protocol.
+- **Clinical Protocol Routing Impact**:
+  - Adjusts dynamic ETA thresholds and delay tolerance: Critical Cardiac triggers deviation alarms at lower thresholds (> 50m).
+  - Hospital bed capacity warnings surface in real time when trauma or cardiac ICU beds are occupied.
+
+---
+
+## 18. Analytics UI Polish, Offline Graceful Degradation & Local Dev Resilience
+
+- **User-Friendly Analytics Panels**:
+  - `geoagent-card.tsx`: Added executive takeaway callouts and visual progress meters for route efficiency.
+  - `deviation-analysis-panel.tsx`: Progress meter indicating cross-track divergence versus warning/critical thresholds.
+  - `prediction-intelligence-panel.tsx`: Visual model confidence meters and live factor attribution tags.
+- **Offline & Local Development Resilience**:
+  - `driver-dashboard.tsx`: When backend Express APIs are offline or return empty collections, gracefully falls back to structured demonstration fixtures (`MOCK_VEHICLES`, `MOCK_EMERGENCIES`, `MOCK_INCIDENTS`), removing intrusive red sync banners for a polished user experience.
+  - `lib/auth/context.tsx`: Resilient local session fallback preventing unhandled login drops when developing detached from MongoDB.
+  - `server/config/db.js`: Non-crashing connection handler allowing the Express server to stay alive for offline mock responses if MongoDB is temporarily stopped.
+
+---
+
+## 19. Production Deployment Architecture (Phase 8)
+
+- **Target Stack**:
+  - Backend: Google Cloud Run (containerized Node.js/Express/Socket.IO)
+  - Frontend: Vercel (Next.js)
+  - Database: MongoDB Atlas (managed)
+  - CI/CD: GitHub Actions (lint, typecheck, build, Docker, deploy)
+- **Dockerfile** (`server/Dockerfile`):
+  - Multi-stage build: `node:22-slim` builder → slim runner
+  - Non-root user (`node`), production-only dependencies
+  - Health check built into container definition
+- **CI Pipeline** (`.github/workflows/ci.yml`):
+  - Runs on every push/PR: TypeScript typecheck, Next.js build, Docker build verification
+- **Deploy Pipeline** (`.github/workflows/deploy.yml`):
+  - Runs on push to `main` (server changes only)
+  - Workload Identity Federation authentication (no long-lived keys)
+  - Build → Artifact Registry → Cloud Run deployment
+  - Post-deploy health verification
+- **Server Hardening** (`server/server.js`):
+  - Environment validation: `JWT_SECRET` and `MONGO_URI` required in production (fatal if missing)
+  - Bind `0.0.0.0` for Cloud Run container networking
+  - Liveness probe: `GET /api/health/live` (no external deps)
+  - Readiness probe: `GET /api/health/ready` (checks MongoDB)
+  - Version/uptime metadata in `GET /api/health`
+  - Production error suppression (no stack traces)
+- **Database Security** (`server/config/db.js`):
+  - Connection string redacted from logs (masks credentials)
+  - Production fail-fast: crashes if MongoDB unreachable (no silent fallback)
+- **Cross-Domain Auth** (`server/modules/auth/auth.controller.js`):
+  - `SameSite=None; Secure; HttpOnly` in production (Vercel → Cloud Run)
+  - `SameSite=Lax` in development (localhost same-origin)
+  - Logout uses same cookie options for consistent clearing
+- **Socket.IO CORS** (`server/modules/realtime/realtime.service.js`):
+  - Dynamic origin check function matching Express CORS pattern
+  - Vercel subdomain regex: `/^https:\/\/.*\.vercel\.app$/`
+  - Single-instance constraint documented (no Redis adapter)
+- **Provider Health** (`server/modules/health/providerHealth.service.js`):
+  - MongoDB health via `mongoose.connection.readyState`
+  - Non-invasive check (no ping query)
+- **Security Hardening**:
+  - `.gitignore`: blocks `service-account*.json`, `gcp-key*.json`, `credentials*.json`, `*.key`
+  - No secrets in committed code
+  - Credential separation: GCP Secret Manager for production, `.env` for development
+- **Documentation**:
+  - `docs/deployment.md`: Full deployment guide (Atlas, Cloud Run, Vercel, WIF, rollback)
+  - `docs/deployment-checklist.md`: Pre/post-deployment operator checklists
+- **Socket.IO Scaling Constraint**: Cloud Run must use `--max-instances=1` because the in-memory adapter does not support multi-instance broadcasting. Future work: add `@socket.io/redis-adapter`.
+- **Python Routing Engine**: Standalone spatial tool now integrated via headless CLI bridge (`v2x_corridor_bridge.py`) with zero-dependency Node.js fallback (`fallbackV2XEngine`).
+
+---
+
+## 20. 10-Tier Operational Intelligence Pipeline (V2X & Corridor Green-Wave)
+
+- **Target Pipeline Architecture**:
+  1. `Vehicle GPS`: Live telemetry coordinate fixes (`lat`, `lng`, `speed`, `heading`, `timestamp`).
+  2. `Node.js Telemetry`: `server/modules/trajectories/trajectory.service.js` ingests, validates, writes to MongoDB, updates vehicle state, and triggers throttled background prediction & V2X corridor analysis.
+  3. `Python Routing / V2X Engine`: `routing-engine/v2x_corridor_bridge.py` + `server/modules/routes/pythonRoutingBridge.service.js`. Runs high-precision Python spatial engine for cross-track deviation and V2X intersection calculations. Includes seamless in-process JS fallback (`fallbackV2XEngine`) for container environments without Python.
+  4. `Corridor + Green-Wave Analysis`: `server/modules/routes/corridorGreenWave.service.js`. Evaluates dynamic signal preemption states (`APPROACHING`, `PREEMPTION_REQUESTED`, `FORCED_GREEN_4S`, `GREEN_WAVE_ACTIVE`, `HOLDING_RED`), civilian vehicle yield alerts, and minutes saved by traffic light clearance.
+  5. `Google Traffic-Aware Routes`: `server/modules/routes/providers/googleRoutingProvider.js` evaluates live congestion on primary corridor vs alternative bypass routes.
+  6. `Prediction Engine`: `server/modules/analysis/prediction.service.js` incorporates V2X green-wave delay reductions into ETA calculations.
+  7. `Route Comparison`: `server/modules/routes/routeComparison.service.js` factors corridor clearance and green-wave feasibility into deterministic "What if we do nothing?" scenario analysis.
+  8. `GeoAgent Reasoning`: Free-model LLM loop grounded with tools including `getCorridorGreenWaveStatus`.
+  9. `Decision Engine`: `server/modules/decisions/decision.service.js` authoritative deterministic rules evaluating `CORRIDOR_BLOCKED` and `GREEN_WAVE_PREEMPTION_ACTIVE` reason codes.
+  10. `Control Room`: Real-time Socket.IO emission (`v2x.green_wave.updated`, `orchestration.completed`) updating the Control Room operator dashboard with 3-tier epistemic breakdown and dynamic signal states.
+- **Test Suite**: `server/test-v2x-corridor-pipeline.js` (11/11 tests passing).
+
+---
+
+## 21. Part 10 — Interactive Geospatial Control Room (Operational Map Engine)
+
+- **Architecture Overview**:
+  - Transitioned the Control Room from static placeholders into a production-grade, modular geospatial engine powered by Leaflet (`1.9.4`).
+  - Strict Grounding Constraint: **Zero Fake Data**. No fake movement, no fake routes, no fake traffic, no fake incidents, no fake ETA values. Clean empty states ("No active emergency missions") when database collections are unpopulated.
+  - Performance Rule: **No Map Destruction**. Leaflet instance is instantiated once inside `MapView`. Real-time Socket.IO events update individual Leaflet layer groups incrementally via in-place `setLatLng` and polyline coordinate mutations without losing operator zoom/pan context.
+  - Security Boundary: **Frontend Visualization Only**. Google Routes/Roads server API keys remain strictly backend-only. The frontend map consumes public tile layers (CartoDB Dark Matter default, OpenStreetMap standard, ESRI World Imagery satellite) and GeoJSON geometries emitted by the Node.js backend.
+- **Component Architecture** (`components/map/`):
+  - `types.ts`: TypeScript contracts for `MapVehicle`, `MapEmergency`, `MapRoute`, `MapIncident`, `MapTrajectory`, `MapDeviation`, `MapPrediction`, `MapLayerVisibility`, `MapSelectionState`. Coordinate translation utilities `toLatLng` and `toLatLngArray` ([lng, lat] GeoJSON to [lat, lng] Leaflet). Telemetry freshness classification (`<15s` LIVE, `15s–60s` STALE, `>60s` OFFLINE).
+  - `popup-content.ts`: Sanitized, high-contrast, accessible HTML popup templates for vehicles, emergencies, routes, incidents, and deviation alerts with units, timestamps, and epistemic tags.
+  - `layers/vehicle-layer.ts`: `VehicleLayerManager` managing Leaflet markers with heading rotation, live/stale/offline pulsing halos, and smooth position updates without marker recreation.
+  - `layers/route-layer.ts`: `RouteLayerManager` rendering actual GeoJSON `LineString` paths for `PLANNED` (blue), `CURRENT`/`ACTIVE` (emerald), and `ALTERNATIVE` (amber dashed) routes with origin (🚩) and destination hospital (🏥) pin markers.
+  - `layers/incident-layer.ts`: `IncidentLayerManager` rendering road hazard markers with severity color hierarchy (`CRITICAL` rose with pulse, `HIGH` orange, `MEDIUM` amber, `LOW` slate).
+  - `layers/trajectory-layer.ts`: `TrajectoryLayerManager` rendering bounded recent GPS breadcrumbs as a cyan dashed trail.
+  - `layers/deviation-layer.ts`: `DeviationLayerManager` rendering warning circles and cross-track indicators when backend reports `DEVIATED` or `CRITICAL_DEVIATION`.
+  - `map-view.tsx`: Core Leaflet map wrapper with dynamic CSS injection, tile layers, and standard layer groups.
+  - `map-controls.tsx`: Floating operator control group (zoom in/out, fit selected corridor, layer toggles, basemap switcher, reset view).
+  - `map-legend.tsx`: Collapsible operational legend.
+  - `control-room-map.tsx`: Main map orchestrator integrating REST initial state, incremental Socket.IO event updates, corridor selection, reconnect re-sync, and honest empty states.
+  - `components/dashboard/map-placeholder.tsx`: Drop-in wrapper delegating directly to `ControlRoomMap`.
+- **Integrated Surfaces**:
+  - `components/dashboard/driver-dashboard.tsx`: Overview tab and Corridor tab now render live `ControlRoomMap` using actual backend state; all legacy mock fallback arrays removed.
+  - `components/emergency-detail/route-analysis-panel.tsx`: Emergency detail corridor map renders live `ControlRoomMap` with vehicle trajectory breadcrumbs and candidate route geometries.
+- **Verification Suite**: `server/test-part10-control-room-map.js` (9/9 criteria passing).
+
+---
+
+## 22. Part 11 — Full System Hardening, Security & End-to-End Validation
+
+- **System Objectives**: Proved that the complete SwiftCare GeoAgent system operates safely, correctly, securely, and predictably under real conditions, attacks, anomalies, edge cases, and external provider failures without fake data or ungrounded assertions.
+- **Role Architecture**: Expanded native backend user roles to four independently verified personas:
+  - `ADMIN`: Full platform oversight, user management, fleet provisioning, audit log inspection, system stats.
+  - `CONTROL_ROOM`: Emergency mission creation, vehicle dispatch, decision proposal reviews, route approval/rejection.
+  - `DRIVER`: Assigned vehicle telemetry ingestion, turn-by-turn waypoint tracking, navigation guidance.
+  - `PARAMEDIC`: Clinical triage priority updates, patient status transmission, hospital bay readiness monitoring.
+- **Role Access Matrix**:
+
+  | Resource / Endpoint | ADMIN | CONTROL_ROOM | DRIVER | PARAMEDIC | Unauthenticated |
+  | :--- | :--- | :--- | :--- | :--- | :--- |
+  | `GET /api/admin/*` | READ | 403 Forbidden | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/vehicles` | CREATE | 403 Forbidden | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `GET /api/vehicles` | READ | READ | READ | READ | 401 Unauthorized |
+  | `POST /api/emergencies` | CREATE | CREATE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `GET /api/emergencies/:id` | READ | READ | READ | READ | 401 Unauthorized |
+  | `POST /api/trajectories` | CREATE | CREATE | CREATE | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/decisions/:id/approve` | APPROVE | APPROVE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/decisions/:id/reject` | REJECT | REJECT | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+  | `POST /api/decisions/:id/execute` | EXECUTE | EXECUTE | 403 Forbidden | 403 Forbidden | 401 Unauthorized |
+
+- **Security & Reliability Domains Verified** (`server/test-part11-security-hardening.js` — 14/14 Passed):
+  1. *Role Access Matrix & Independent Backend Authorization*: Strict endpoint-level middleware enforcement blocks privilege escalation.
+  2. *IDOR Prevention & Resource Isolation*: Non-existent/unowned entities return 404; path traversal/SQL/Mongo injection payloads safely rejected.
+  3. *Zero Secret Leakage*: Audit confirmed zero exposure of `AIzaSy`, `sk-ant-`, `mongodb+srv://`, `JWT_SECRET`, or `NEXT_PUBLIC_*` sensitive tokens across client bundles.
+  4. *Cookie Security Attributes*: Authentication tokens set with `HttpOnly=true`, `SameSite=Lax` (dev) / `SameSite=None` (prod), `Secure=true` (prod).
+  5. *MongoDB Query Injection Defense*: Operators `$where`, `$regex`, `$ne`, `$gt`, and unauthorized sort fields rejected with 400 Bad Request.
+  6. *GPS Telemetry Anomaly Hardening*: Rejects out-of-bound coordinates (`lat < -90` or `> 90`, `lng < -180` or `> 180`), negative speeds (`< 0`), impossible speeds (`> 250 km/h`), invalid headings (`< 0` or `>= 360`), and future timestamps (`> 2 min`). GPS jitter analyzed via temporal windowing.
+  7. *Route & Traffic Fault Tolerance*: Zero-distance and zero-speed edge conditions calculate gracefully without divide-by-zero or NaN bugs.
+  8. *Prediction Determinism*: Identical telemetry, route, and traffic inputs produce deterministic delay projections and confidence metrics.
+  9. *Prompt Injection Defense & Transparent AI Fallback*: `sanitizeText` strips executable scripts/markup; untrusted descriptions encapsulated in `untrustedCallerDescription`; offline AI providers trigger explicit `AI_ANALYSIS_UNAVAILABLE` status without spoofing AI reasoning.
+  10. *Python / V2X Subprocess Security & Status*: In-process JS fallback engine guarantees zero shell injection vectors while matching Python schema.
+  11. *Concurrency & Idempotency*: `situationHash` prevents duplicate proposal generation; atomic state transitions reject concurrent double-approvals.
+  12. *Socket.IO Handshake Security & Payload Integrity*: Unauthenticated socket handshakes rejected; payloads strictly typed without leaking internal DB hashes.
+  13. *Database Integrity & Soft-Delete Enforcement*: Soft-deleted vehicles (`isDeleted: true`) strictly excluded from active dispatch queries.
+  14. *Provider Failure Matrix*: Verified degradation paths across all 5 operational configurations (Scenarios A through E).
+- **Canonical 23-Step System Integration Test** (`server/test-part11-system-hardening.js` — 17/17 Passed):
+  - Step 1: User authentication and JWT issuance.
+  - Step 2: Emergency E1 creation with GeoJSON coordinates.
+  - Step 3: Vehicle V1 assignment to Emergency E1.
+  - Steps 4 & 5: Telemetry ingestion & trajectory persistence.
+  - Step 6: Route matching and geodesic deviation analysis.
+  - Step 7: Corridor traffic analysis and congestion penalty calculation.
+  - Steps 8 & 9: Google primary route and alternative bypass candidate lookup.
+  - Step 10: Quantitative prediction engine ETA & delay projection.
+  - Step 11: Python / V2X corridor green-wave preemption calculation.
+  - Steps 12 & 13: Deterministic route candidate comparison & 3-tier epistemic evidence.
+  - Step 14: GeoAgent advisory reasoning / honest fallback generation.
+  - Steps 15 & 16: Deterministic decision engine proposal generation & situation hash validation.
+  - Step 17: Real-time operator notification contract emission.
+  - Steps 18, 19 & 20: Operator approval & atomic state transition (`PENDING_OPERATOR_ACTION` -> `APPROVED`).
+  - Step 21: Decision execution (`APPROVED` -> `EXECUTED`).
+  - Step 22: Socket.IO broadcast envelopes and frontend TypeScript contract conformance.
+  - Step 23: Admin observability and audit trail ledger inspection without credential leakage.
+
+---
+
+## 23. Part 12 — Final Production & Demo Readiness (Release Candidate)
+
+- **Phase Objective**: Complete final system hardening, establish a canonical and repeatable demonstration scenario, enforce truthful data labeling, audit provider health and security boundaries, and deliver a production release candidate.
+- **Canonical Demonstration Scenario**:
+  - **Emergency**: `E-DEMO-001` (Priority: `CRITICAL`, Type: `MEDICAL`, Description: Acute myocardial infarction near Mayo Hall Junction).
+  - **Vehicle**: `AMB-DEMO-01` (Registration: `KA-01-DEMO-991`, Status: `EN_ROUTE`, Assigned to `E-DEMO-001`).
+  - **Planned Route**: `ROUTE-DEMO-01` (5.5 km primary corridor via Mayo Hall → Trinity Circle → Manipal Hospital HAL).
+  - **Alternative Bypass**: `ROUTE-DEMO-ALT` (5.2 km via 100ft Rd bypass corridor with V2X signal preemption).
+  - **Road Incident**: `INC-DEMO-01` (Multi-vehicle collision blocking Trinity Overpass).
+  - **Personnel**: Operator `operator@swiftcare.local` (Password: `<OPERATOR_PASSWORD from env>`), Admin `admin@swiftcare.local` (Password: `<ADMIN_PASSWORD from env>`).
+  - **Canonical Seeder**: `node server/seed-demo-scenario.js [--clean]` (Isolated, repeatable, non-destructive to production).
+  - **Controlled Telemetry Playback Engine**: `node server/demo-telemetry-player.js`
+    - Stage 0 (`00:00`): Normal speed (45 km/h, ON_ROUTE, 0m cross-track, LOW risk).
+    - Stage 1 (`00:20`): Speed dropping approaching Trinity Circle bottleneck (26 km/h, DEVIATED, MEDIUM risk).
+    - Stage 2 (`00:40`): Severe traffic jam behind incident (11 km/h, +8.4 min delay, CRITICAL risk).
+    - Stage 3 (`01:00`): Driver diverges onto bypass link (32 km/h, DEVIATED 175m, HIGH risk).
+    - Stage 4 (`01:20`): Real-time prediction engine recalculates delay (+9.5 min projected delay).
+    - Stage 5 (`01:40`): Alternative corridor bypass & V2X green-wave evaluated (signals cleared: 2/4, -1.6m saved).
+    - Stage 6 (`02:00`): Advisory reasoning & deterministic rules propose decision (`DEC-XXXX`, `PENDING_OPERATOR_ACTION`).
+    - Stage 7 (`02:20`): Control Room operator approves decision; state atomically transitions to `APPROVED` then `EXECUTED`; active route switches to `ROUTE-DEMO-ALT`.
+- **Truth in Data Labeling**:
+  - Distinguishes `REAL DATA` (hardware GPS, verified Google Routes/Traffic) from `DEMO / SIMULATION` (`source: SIMULATOR`, `source: MOCK`).
+  - Telemetry strips and popups display explicit `SIMULATOR` badges when running playback.
+- **Provider Health Infrastructure**:
+  - Expanded `server/modules/health/providerHealth.service.js` to report all 6 services:
+    1. `mongodb`: Connection state and live latency ping.
+    2. `googleRoutes`: Google Routes API key validation and mode.
+    3. `googleRoads`: Google Roads API key validation and mode.
+    4. `aiProviders`: OpenRouter / OpenCode Zen status and advisory reasoning readiness.
+    5. `pythonV2X`: Python 3.12 subprocess availability vs in-process JS fallback engine.
+    6. `socketIO`: Live broadcast push readiness.
+  - Admin Overview dashboard (`components/admin/admin-overview.tsx`) renders dedicated status badges for all 6 subsystems.
+- **Concurrency & Key Generation Hardening**:
+  - Replaced naive `countDocuments() + 1` ID generation with monotonic check and conflict retry loop for decisions (`DEC-XXXX`), emergencies (`EMG-XXXX`), and incidents (`INC-XXXX`).
+  - Completely eliminates MongoDB `E11000 duplicate key error` under concurrent socket/REST triggers.
+- **Data Retention & TTL Recommendations**:
+  - `trajectories`: Rolling 30–90 day TTL index on `timestamp` recommended for production scale.
+  - `predictions`: Rolling 30-day retention for resolved emergencies.
+  - `emergencies`, `vehicles`, `decisions`: Permanent audit log; soft-deletion enforced.
+
+---
+
+## 24. Part 13 — Combined Final Integration, CARTO Map Fix & Prediction Validation
+
+- **Critical Map Fix (CARTO Dark Matter Authentication)**:
+  - **Mapping Library**: Leaflet 1.9.4 (client-only dynamic import, `components/map/map-view.tsx`, `components/dashboard/real-interactive-map.tsx`).
+  - **Tile Provider**: CARTO Dark Matter raster basemap (`carto_dark`).
+  - **Root Cause of Watermark**: CARTO instituted mandatory API key enforcement on hosted raster basemaps (`basemaps.cartocdn.com`). Unauthenticated tile requests return tiles stamped with "API KEY REQUIRED" watermark.
+  - **Configuration**: Added `NEXT_PUBLIC_CARTO_API_KEY` environment variable. Authenticated tile template: `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=${encodeURIComponent(cartoKey)}` (subdomains `abcd`, maxZoom 19).
+  - **Provider Health & Error Handling**:
+    - Added `MapProviderHealth` type (`AVAILABLE`, `DEGRADED`, `UNAVAILABLE`, `NOT_CONFIGURED`).
+    - Added `darkTiles.on('tileerror')` listener in `map-view.tsx` to detect tile load dropouts and report `DEGRADED`.
+    - Added non-intrusive operational notice banner in `components/map/control-room-map.tsx` when unconfigured, allowing one-click instant switch to OpenStreetMap (`osm`).
+    - Overlays (vehicles, emergencies, routes, incidents, trajectories, deviations, V2X signals) remain architecturally isolated and fully interactive regardless of basemap tile availability.
+  - **Separation of Architectural Responsibilities**:
+    - *Visualization*: Leaflet + CARTO basemap tiles (browser client).
+    - *Routing*: Google Routes API (strictly backend-only via `GOOGLE_MAPS_API_KEY`).
+    - *Spatial Computation*: Turf.js (backend geodesic projection & corridor deviation).
+    - *V2X Clearance*: Python spatial engine (`routing-engine/corridor_green_wave.py`) with JS fallback.
+
+- **Real-World Prediction Ground-Truth Validation**:
+  - **Model Version**: `v1.3-exponential-traffic-blend`.
+  - **Model Classification**: Truthfully categorized as **Heuristic / Statistical-Kinematic (Deterministic Rule-Based, Non-ML)**. It is not an artificial neural network or black-box ML model.
+  - **Ground-Truth Evaluation Methodology**: Historical predictions are evaluated against completed emergencies (`status: 'RESOLVED'` or `status: 'AT_SCENE'`).
+    - Compares `predictedEta` against actual arrival timestamp (`emergency.updatedAt` / trajectory completion).
+    - Calculates Mean Absolute Error (MAE), Median Absolute Error, and Maximum Error.
+    - Calculates tolerance buckets: percentage within $\le 1$ min, $\le 3$ min, $\le 5$ min.
+  - **Small-Sample Size Protection**:
+    - Requires $N \ge 5$ completed ground-truth cases before computing tolerance percentages.
+    - If $N < 5$, explicitly flags `INSUFFICIENT_DATA` with message: *"Sample size (N) is insufficient for certified accuracy claims (< 5 completed ground-truth cases). Baseline calibration in progress."* Never reports misleading $0\%$ or $100\%$ claims from 1–2 emergencies.
+  - **Delay-Risk Matrix & Safety Priority**:
+    - Evaluates predicted risk (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) vs actual delay.
+    - Prioritizes severe-delay misses: situations where model predicted LOW/MEDIUM risk but actual delay became severe ($\ge 10$ min). Surfaces these prominently.
+  - **Counterfactual Route Recommendation Honesty**:
+    - Alternative route time savings are explicitly marked `ESTIMATED / COUNTERFACTUAL`.
+    - Untraversed alternative routes are never claimed as observed physical facts.
+  - **AI Governance & Epistemic Separation**:
+    - Explicitly decouples: (1) GeoAgent advisory recommendation, (2) Deterministic safety policy action, (3) Human operator decision (`APPROVED`/`REJECTED`), and (4) Actual physical outcome.
+    - Tracks agreement rates while emphasizing that agreement with deterministic safety rules reflects policy alignment, not ground-truth physical accuracy.
+  - **Model Governance**:
+    - Model weights are frozen and deterministic. Live emergency data is never used for automatic uncontrolled model retraining.
+
+- **Admin Observability & Prediction Dashboard**:
+  - `components/admin/admin-overview.tsx` now renders:
+    - 6-provider health grid including CARTO Basemap tile status.
+    - Dedicated **Prediction Model Performance & Ground-Truth Validation** dashboard card showing model name, version, type, sample size $N$, MAE, median error, 3-minute tolerance, high-risk miss count, and AI governance stats.
+  - Backend API: `GET /api/admin/prediction-analytics` powered by `admin.service.js` `getPredictionAnalytics()`.
+
+- **Security & Secret Scan**:
+  - Scanned repository for secret leaks: 0 real credentials committed.
+  - Verified no backend secrets (`GOOGLE_MAPS_API_KEY`, `OPENROUTER_API_KEY`, `JWT_SECRET`, `MONGO_URI`) exist in client-side code or under `NEXT_PUBLIC_*`.
+  - Only `NEXT_PUBLIC_CARTO_API_KEY` is permitted client-side for raster basemap tiles.
+
+- **Verification**: `server/test-final-integration-audit.js` (37/37 passed, 100%).
+
+---
+
+## 20. GeoAgent Free-Model LLM Provider Abstraction & OpenRouter Diagnostics
+
+- **Provider Abstraction Architecture** (`server/modules/geoagents/geoagent.provider.js`):
+  - Standardized OpenAI-compatible HTTP `fetch` client (zero SDK overhead, pure native ES module).
+  - Enforces strict server-side zero-price guards (`max_price: { prompt: 0, completion: 0, request: 0 }`).
+  - Implements dynamic catalog discovery querying `/api/v1/models` to discover tool-capable free models with minimum context window ($\ge 16,000$ tokens).
+  - Configurable priority via `AI_PROVIDER` (`auto`, `openrouter`, or `opencode`). Default `auto` prioritizes OpenRouter, then OpenCode, then deterministic rules.
+  - Multi-tier error resilience:
+    - 401/403 or daily 429 quota errors trigger `AUTH_COOLDOWN_MS` (10-minute cooldown) to protect upstream hosts.
+    - Rate limits (429) back off dynamically based on `retry-after` header.
+    - Model-specific failures automatically roll over to the next eligible free model in the live catalog.
+    - OpenCode 403 `FreeTierError` server-side blocks are safely caught and routed to fallback.
+- **OpenRouter Connectivity & Diagnostic Verification**:
+  - Investigated reported `UND_ERR_CONNECT_TIMEOUT` and curl edge stalls:
+    - Diagnosed as transient external Cloudflare edge stalls (`104.18.3.115`), not codebase defects or bad credentials.
+    - Node.js 24 native `fetch` confirmed healthy and connected in 197ms.
+    - Verified proxy environment: `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` confirmed unset; documented that Node 24 requires `--use-env-proxy` if a proxy is configured in enterprise environments.
+  - API Key Validation:
+    - Authenticated `GET https://openrouter.ai/api/v1/key` responded `200 OK` in 427ms.
+    - Confirmed free tier active (`is_free_tier: true`, zero quota consumption, no balance deducted).
+  - Live Free Model Inference:
+    - Validated live tool-calling reasoning using `inclusionai/ling-3.1-flash` (confirmed 0 pricing).
+    - Single prompt returned clean `PONG` response in 3218ms at $0 cost.
+- **Automated Verification**:
+  - `tests/geoagent-provider.test.mjs`: 12/12 passing (catalog filtering, price guards, fallback order, cooldowns).
+  - `tests/geoagent-agent.test.mjs`: 11/11 passing (epistemic reasoning loop, tool invocation, fallback safety).
+  - `npm run lint` (`tsc --noEmit`): 0 errors.
+
+---
+
+## 21. Production RBAC, Registration Desk, Multi-Workspace Access & User Lifecycle
+
+- **Four Authoritative Roles & Dynamic Redirection**:
+  - `ADMIN` $\to$ `/admin`: System telemetry, provider health, user review, role elevation, and workspace management.
+  - `CONTROL_ROOM` $\to$ `/control-room`: Corridor surveillance, 5-question mission assessment HUD, and live dispatch.
+  - `DRIVER` $\to$ `/driver/dashboard`: Turn-by-turn navigation HUD, active corridor guidance, and vehicle telemetry.
+  - `PARAMEDIC` $\to$ `/paramedic`: Pre-hospital patient vital signs, trauma logging, and hospital handoff readiness.
+- **Personnel Registration Desk (`/registration` & `/signup`)**:
+  - 4-role responsive grid selector (Admin, Control, Ambulance, Field Paramedic).
+  - Multi-workspace selection checkboxes allowing personnel to request cross-departmental access.
+  - Optional vehicle identifier (`assignedVehicleId`) displayed when Driver role or Driver workspace is selected.
+  - Unconditional quarantining: New public signups always default to `status: 'PENDING'`.
+  - Unapproved accounts are blocked at login with `403 Forbidden: Account registration is pending administrator approval`.
+- **Admin User Management Console (`components/admin/admin-user-management.tsx`)**:
+  - Live table embedded inside `/admin` with status filtering (`PENDING`, `APPROVED`, `SUSPENDED`).
+  - 1-click Approval (`PATCH /api/admin/users/:id/approve`), Account Suspension (`PATCH /api/admin/users/:id/suspend`), and Role & Workspace Reassignment (`PATCH /api/admin/users/:id/role`).
+  - Immutable audit logging recording `approvedBy` and `approvedAt`.
+- **Resource Ownership Boundaries (`server/shared/middleware/ownershipMiddleware.js`)**:
+  - Enforces zero lateral movement: Ambulance drivers can only update their assigned vehicle (`assignedVehicleId`).
+  - Control room dispatchers and admins retain global fleet management authority.
+- **Automated Verification Suites**:
+  - `server/test-auth-rbac-complete.js`: 46/46 passed.
+  - `server/test-registration-workspaces-e2e.js`: 33/33 passed.
+  - `server/test-auth-fullstack.js`: 38/38 passed.
+  - `server/test-auth-e2e.js`: 31/31 passed.
+  - `server/test-admin-e2e.js`: 60/60 passed.
+
+---
+
+## 22. Security Hardening, Database Safety & Multi-Mission Operations
+
+- **Destructive Database Operation Safety Guard (`server/shared/utils/dbSafety.js`)**:
+  - Prevents catastrophic accidental drops/resets against production MongoDB instances.
+  - Validates connection URI with `assertSafeDatabaseTarget()` in `seed-demo-scenario.js`, `seed-demo-scenarios.js`, and `demo.service.js`.
+  - Aborts immediately on `mongodb+srv://`, non-localhost addresses, or databases not including `test` or `dev` unless overridden by `ALLOW_PRODUCTION_RESET=true`.
+  - Verified: `server/test-db-safety.js` (4/4 passed).
+
+- **Automated Telemetry Retention TTL (`server/modules/trajectories/trajectory.model.js`)**:
+  - Configurable TTL index on `{ timestamp: 1 }` (`TELEMETRY_RETENTION_DAYS`, default 30 days).
+  - Uses MongoDB `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }` ensuring that clinical emergency records and permanent legal audit trails (`source: 'AUDIT'`) are never pruned.
+  - Verified: `server/test-telemetry-retention.js` (3/3 passed).
+
+- **Real-Time Revocation on Suspension & Ownership Validation**:
+  - Socket.IO connection handlers enforce per-packet MongoDB revalidation (`socket.use(...)`). If an authenticated user's account transitions to `SUSPENDED`, their active WebSocket connection is forcibly terminated (`socket.disconnect(true)`) on their next packet.
+  - Telemetry ingestion routes (`POST /api/trajectories`) enforce driver vehicle ownership check.
+  - Verified: `server/test-targeted-rbac-socket.js` (23/23 passed).
+
+- **Sliding-Window Rate Limiting (`server/shared/middleware/rateLimiter.js`)**:
+  - Authentication routes: 30 requests / 15 minutes per IP (`/api/auth/login`, `/api/auth/register`).
+  - AI analysis routes: 30 requests / 1 minute per IP (`/api/geoagent/analyze`).
+  - High-frequency vehicle GPS telemetry endpoints remain exempt from rate limits to avoid operational disruption.
+
+- **Multi-Emergency Control Room Overview (`/control-room/overview`)**:
+  - Global mission cards, filter chips (`ALL`, `CRITICAL`, `EN_ROUTE`, `PENDING`), emergency queue count badges.
+  - Emergency Intake Modal (`CreateEmergencyModal`) integrated with `emergencyApi.create()` and Bengaluru coordinate presets (MG Road, Domlur, Indiranagar, Manipal Hospital HAL).
+
+- **Continuous Integration Pipeline Hardening (`.github/workflows/ci.yml`)**:
+  - Automated secret audit via `gitleaks-action`.
+  - Static typecheck (`npx tsc --noEmit`).
+  - Next.js Turbopack production build (`npm run build`).
+  - MongoDB 7.0 container running full security, DB safety, telemetry retention, and RBAC test suites.
+
+- **Future Roadmap**:
+  1. Field-driver mobile app (React Native / Android).
+  2. Direct city traffic signal controller integration (NTCIP / SCATS protocol).
+  3. City-scale deep learning spatio-temporal traffic flow prediction.
+  4. Multi-region horizontal Socket.IO scaling via Redis adapter.

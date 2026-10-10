@@ -8,6 +8,7 @@
  */
 
 import adminService from './admin.service.js';
+import demoService from './demo.service.js';
 import { validatePaginationAndSort, sanitizeSearchString } from './admin.validation.js';
 
 function auditLog(req, resource, durationMs, statusCode = 200) {
@@ -75,6 +76,21 @@ class AdminController {
     }
   }
 
+  async getPredictionAnalytics(req, res, next) {
+    const start = Date.now();
+    try {
+      const analytics = await adminService.getPredictionAnalytics();
+      auditLog(req, 'prediction-analytics', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        data: analytics
+      });
+    } catch (error) {
+      auditLog(req, 'prediction-analytics', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
   async getUsers(req, res, next) {
     const start = Date.now();
     try {
@@ -93,6 +109,7 @@ class AdminController {
         skip: validation.skip,
         sortOptions: validation.sortOptions,
         role: req.query.role,
+        status: req.query.status,
         search: sanitizeSearchString(req.query.search)
       });
 
@@ -104,6 +121,93 @@ class AdminController {
       });
     } catch (error) {
       auditLog(req, 'users', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
+  async updateUserStatus(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const updatedUser = await adminService.updateUserStatus(id, status, req.user._id, req.body);
+      auditLog(req, 'update-user-status', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: `User status updated to ${status}`,
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'update-user-status', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async updateUserRole(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const { role, permittedWorkspaces, assignedVehicleId } = req.body;
+      const updatedUser = await adminService.updateUserRole(id, { role, permittedWorkspaces, assignedVehicleId }, req.user._id);
+      auditLog(req, 'update-user-role', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User role, permitted workspaces, and assignments updated',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'update-user-role', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async approveUser(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const updatedUser = await adminService.updateUserStatus(id, 'APPROVED', req.user._id, req.body);
+      auditLog(req, 'approve-user', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User registration approved successfully',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'approve-user', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async rejectUser(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const updatedUser = await adminService.updateUserStatus(id, 'REJECTED', req.user._id);
+      auditLog(req, 'reject-user', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User registration rejected',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'reject-user', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async suspendUser(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const updatedUser = await adminService.updateUserStatus(id, 'SUSPENDED', req.user._id);
+      auditLog(req, 'suspend-user', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User account suspended',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'suspend-user', Date.now() - start, error.status || 500);
       next(error);
     }
   }
@@ -347,6 +451,42 @@ class AdminController {
       });
     } catch (error) {
       auditLog(req, 'decisions', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
+  async getDemoScenarios(req, res, next) {
+    try {
+      const scenarios = demoService.getScenarios();
+      return res.status(200).json({
+        success: true,
+        data: scenarios
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async seedDemoScenarios(req, res, next) {
+    const start = Date.now();
+    try {
+      const result = await demoService.seedDemoScenarios({ clean: req.body?.clean !== false });
+      auditLog(req, 'demo-seed', Date.now() - start, 200);
+      return res.status(200).json(result);
+    } catch (error) {
+      auditLog(req, 'demo-seed', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
+  async resetDemoData(req, res, next) {
+    const start = Date.now();
+    try {
+      const result = await demoService.resetDemoData();
+      auditLog(req, 'demo-reset', Date.now() - start, 200);
+      return res.status(200).json(result);
+    } catch (error) {
+      auditLog(req, 'demo-reset', Date.now() - start, 500);
       next(error);
     }
   }

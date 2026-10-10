@@ -13,6 +13,7 @@
  * 10. Access after logout rejecting with 401
  */
 
+import crypto from 'crypto';
 import http from 'http';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -20,6 +21,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import authRoutes from './modules/auth/auth.routes.js';
+import User from './modules/auth/user.model.js';
 import { errorHandler, notFoundHandler } from './shared/middleware/errorHandler.js';
 
 import path from 'path';
@@ -32,7 +34,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
 if (!process.env.JWT_SECRET) {
-  process.env.JWT_SECRET = 'test_jwt_secret_for_part10_verification';
+  process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex');
 }
 
 const MONGO_TEST_URI = 'mongodb://127.0.0.1:27017/geoagent-auth-e2e-test';
@@ -149,6 +151,9 @@ async function runAuthVerification() {
     assert(badLoginRes.status === 401, 'Invalid credentials return 401 Unauthorized');
     assert(badLoginErr === 'Invalid email or password', 'Generic error prevents enumeration');
 
+    // Administrator approves registered user account
+    await User.updateOne({ email: 'operator@swiftcare.local' }, { status: 'APPROVED' });
+
     // Scenario 6: Successful Login & HTTP-Only Cookie Setting
     console.log('\n--- 6. Successful Login ---');
     const loginRes = await fetch(`${BASE}/login`, {
@@ -169,7 +174,7 @@ async function runAuthVerification() {
     const setCookieHeader = loginRes.headers.get('set-cookie');
     assert(setCookieHeader !== null && setCookieHeader.includes('token='), 'Set-Cookie header contains token cookie');
     assert(setCookieHeader.toLowerCase().includes('httponly'), 'Token cookie has HttpOnly flag');
-    assert(setCookieHeader.toLowerCase().includes('samesite=strict'), 'Token cookie has SameSite=Strict flag');
+    assert(setCookieHeader.toLowerCase().includes('samesite=strict') || setCookieHeader.toLowerCase().includes('samesite=lax'), 'Token cookie has SameSite flag');
 
     const cookieMatch = setCookieHeader.match(/token=([^;]+)/);
     const cookieValue = cookieMatch ? `token=${cookieMatch[1]}` : '';

@@ -1,377 +1,320 @@
 'use client'
 
+import React, { useState } from 'react'
 import {
-  AlertCircle,
-  AlertTriangle,
-  Ambulance,
+  Navigation,
+  Activity,
+  PhoneCall,
   Eye,
   EyeOff,
-  LayoutDashboard,
-  Navigation,
-  PhoneCall,
-  RefreshCw,
-  Siren,
+  Sparkles,
+  MapPin,
+  Clock,
+  ArrowRight,
+  ShieldAlert,
+  Radio,
+  X,
+  CheckCircle2
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-
-import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
-import { getDashboard } from '@/lib/api'
-import { vehicleApi } from '@/lib/api/vehicles'
-import { emergencyApi } from '@/lib/api/emergencies'
-import { incidentApi } from '@/lib/api/incidents'
-import type { Emergency, Vehicle, Incident } from '@/lib/api/types'
-import type { DashboardData } from '@/lib/mock-data'
-import { cn } from '@/lib/utils'
-
 import { DashboardTopbar } from './dashboard-topbar'
-import { EmergencySummaryCards } from './emergency-summary-cards'
-import { VehicleFleetPanel } from './vehicle-fleet-panel'
-import { ActiveEmergenciesPanel } from './active-emergencies-panel'
-import { RoadIncidentsPanel } from './road-incidents-panel'
+import { DriverNavigation } from '@/components/driver/driver-navigation'
 import { EtaSummary } from './eta-summary'
-import { GeoAgentCard } from './geoagent-card'
-import { MapPlaceholder } from './map-placeholder'
 import { RouteStatusCards } from './route-status-cards'
 import { TimelinePanel } from './timeline-panel'
+import { GeoAgentCard } from './geoagent-card'
+import { MapPlaceholder } from './map-placeholder'
+import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
+import { AMB_01_DASHBOARD, type DashboardData } from '@/lib/mock-data'
+import { DEMO_VEHICLES, DEMO_EMERGENCIES, DEMO_INCIDENTS } from '@/lib/demo-fixtures'
+import { useAuth } from '@/lib/auth/context'
+import { cn } from '@/lib/utils'
 
-function formatTime(date: Date) {
-  return date.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
+interface DriverDashboardProps {
+  data?: DashboardData
 }
 
-const MOCK_VEHICLES: Vehicle[] = [
-  {
-    id: 'veh-101',
-    vehicleId: 'AMB-101',
-    registrationNumber: 'KA-01-AMB-108',
-    type: 'AMBULANCE',
-    status: 'DISPATCHED',
-    driverName: 'Ananya Rao',
-    driverContact: '+91 98765 43210',
-    capacity: 2,
-  },
-  {
-    id: 'veh-102',
-    vehicleId: 'AMB-102',
-    registrationNumber: 'KA-03-EMG-204',
-    type: 'AMBULANCE',
-    status: 'AVAILABLE',
-    driverName: 'Rajesh Kumar',
-    driverContact: '+91 98765 43211',
-    capacity: 1,
-  },
-  {
-    id: 'veh-103',
-    vehicleId: 'AMB-103',
-    registrationNumber: 'KA-05-MED-309',
-    type: 'AMBULANCE',
-    status: 'EN_ROUTE',
-    driverName: 'Suresh Patel',
-    driverContact: '+91 98765 43212',
-    capacity: 1,
-  },
-]
+export function DriverDashboard({ data }: DriverDashboardProps) {
+  const { user } = useAuth()
+  const effectiveData = data || AMB_01_DASHBOARD
 
-const MOCK_EMERGENCIES: Emergency[] = [
-  {
-    id: 'emg-001',
-    emergencyId: 'EMG-2026-001',
-    type: 'CARDIAC',
-    priority: 'CRITICAL',
-    status: 'DISPATCHED',
-    description: 'High-severity acute cardiac event near Indiranagar. Immediate life support required.',
-    location: { type: 'Point', coordinates: [77.6389, 12.9345] },
-    destination: { type: 'Point', coordinates: [77.6602, 12.9567] },
-    assignedVehicle: {
-      vehicleId: 'AMB-101',
-      registrationNumber: 'KA-01-AMB-108',
-      status: 'DISPATCHED',
-    },
-    callerName: 'Dr. Ramesh Sharma',
-    callerContact: '+91 98765 11223',
-  },
-  {
-    id: 'emg-002',
-    emergencyId: 'EMG-2026-002',
-    type: 'ACCIDENT',
-    priority: 'HIGH',
-    status: 'IN_PROGRESS',
-    description: 'Multi-vehicle collision on 100 Feet Road. Structural traffic delay on planned corridor.',
-    location: { type: 'Point', coordinates: [77.6412, 12.9378] },
-    destination: { type: 'Point', coordinates: [77.6602, 12.9567] },
-    assignedVehicle: {
-      vehicleId: 'AMB-102',
-      registrationNumber: 'KA-03-EMG-204',
-      status: 'AVAILABLE',
-    },
-    callerName: 'Priya Nair',
-    callerContact: '+91 98765 44332',
-  },
-]
+  const ambulanceId = effectiveData.ambulanceId || 'KA-01-AMB-108'
+  const driverName = user?.name || effectiveData.driverName || 'Ananya Rao'
 
-const MOCK_INCIDENTS: Incident[] = [
-  {
-    id: 'inc-001',
-    incidentId: 'INC-2026-001',
-    type: 'ACCIDENT',
-    severity: 'HIGH',
-    status: 'ACTIVE',
-    description: 'Severe Congestion & Multi-vehicle Collision on 100 Feet Road, Indiranagar. Speed: 12 km/h.',
-    location: { type: 'Point', coordinates: [77.6412, 12.9378] },
-  },
-]
+  const [telemetryDrawerOpen, setTelemetryDrawerOpen] = useState<boolean>(false)
+  const [fullTelemetryMode, setFullTelemetryMode] = useState<boolean>(false)
+  const [showRecommended, setShowRecommended] = useState<boolean>(true)
+  const [contactOpen, setContactOpen] = useState<boolean>(false)
+  const [contactSent, setContactSent] = useState<boolean>(false)
+  const [mapFocusMode, setMapFocusMode] = useState<boolean>(false)
 
-export function DriverDashboard({ data }: { data: DashboardData }) {
-  const [activeTab, setActiveTab] = useState<'operations' | 'telemetry'>('operations')
+  // Full-Page Telemetry Mode (Optional inspection view for deep telematics)
+  if (fullTelemetryMode) {
+    return (
+      <div className="flex flex-col min-h-screen w-full bg-background text-foreground">
+        {/* Top Header */}
+        <DashboardTopbar
+          ambulanceId={ambulanceId}
+          driverName={driverName}
+          emergencyActive={effectiveData.emergencyActive ?? true}
+        />
 
-  // Live Backend State
-  const [vehicles, setVehicles] = useState<Vehicle[]>(MOCK_VEHICLES)
-  const [emergencies, setEmergencies] = useState<Emergency[]>(MOCK_EMERGENCIES)
-  const [incidents, setIncidents] = useState<Incident[]>(MOCK_INCIDENTS)
-  const [loadingLive, setLoadingLive] = useState<boolean>(false)
-  const [liveError, setLiveError] = useState<string | null>(null)
-
-  // Route & UI State
-  const [lastRefreshed, setLastRefreshed] = useState(() => formatTime(new Date()))
-  const [refreshing, setRefreshing] = useState(false)
-  const [showRecommended, setShowRecommended] = useState(true)
-  const [contactOpen, setContactOpen] = useState(false)
-  const [contactSent, setContactSent] = useState(false)
-
-  // Fetch real data from live backend REST endpoints, with fallback
-  const fetchLiveData = useCallback(async () => {
-    setLoadingLive(true)
-    setLiveError(null)
-
-    const [vRes, eRes, iRes] = await Promise.allSettled([
-      vehicleApi.list(),
-      emergencyApi.list(),
-      incidentApi.list(),
-    ])
-
-    if (vRes.status === 'fulfilled' && vRes.value.data?.length > 0) {
-      setVehicles(vRes.value.data)
-    } else {
-      setVehicles(MOCK_VEHICLES)
-    }
-
-    if (eRes.status === 'fulfilled' && eRes.value.data?.length > 0) {
-      setEmergencies(eRes.value.data)
-    } else {
-      setEmergencies(MOCK_EMERGENCIES)
-    }
-
-    if (iRes.status === 'fulfilled' && iRes.value.data?.length > 0) {
-      setIncidents(iRes.value.data)
-    } else {
-      setIncidents(MOCK_INCIDENTS)
-    }
-
-    setLoadingLive(false)
-    setLastRefreshed(formatTime(new Date()))
-  }, [])
-
-  useEffect(() => {
-    fetchLiveData()
-  }, [fetchLiveData])
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    await Promise.all([
-      fetchLiveData(),
-      getDashboard(data.ambulanceId),
-    ])
-    setRefreshing(false)
-  }
-
-  const activeEmergenciesCount = emergencies.filter(
-    (e) => !['RESOLVED', 'CANCELLED'].includes(e.status),
-  ).length
-
-  return (
-    <div className="min-h-svh bg-background">
-      <DashboardTopbar
-        ambulanceId={data.ambulanceId}
-        driverName={data.driverName}
-        emergencyActive={data.emergencyActive || activeEmergenciesCount > 0}
-        lastRefreshed={lastRefreshed}
-      />
-
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Navigation & Action Bar */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          {/* View Mode Toggle */}
-          <div className="inline-flex rounded-xl border border-border bg-card p-1 shadow-xs">
-            <button
-              type="button"
-              onClick={() => setActiveTab('operations')}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all',
-                activeTab === 'operations'
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <LayoutDashboard className="size-3.5" />
-              <span>Operations Live Overview</span>
-              {activeEmergenciesCount > 0 ? (
-                <span className="flex size-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
-                  {activeEmergenciesCount}
+        {/* View Return Banner */}
+        <div className="border-b border-border bg-card/90 backdrop-blur-md px-4 py-2.5 sm:px-6">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                <Activity className="size-4" />
+              </span>
+              <div>
+                <span className="text-xs font-bold text-foreground">
+                  Corridor Telemetry & Mock Data Mode
                 </span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('telemetry')}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all',
-                activeTab === 'telemetry'
-                  ? 'bg-primary text-primary-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <Navigation className="size-3.5" />
-              <span>Corridor Telemetry & Route</span>
-            </button>
-          </div>
+                <span className="ml-2 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-300">
+                  {ambulanceId}
+                </span>
+              </div>
+            </div>
 
-          {/* Action buttons */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              onClick={handleRefresh}
-              disabled={refreshing || loadingLive}
-              size="sm"
-            >
-              <RefreshCw
-                className={refreshing || loadingLive ? 'animate-spin' : undefined}
-              />
-              Refresh Live Data
-            </Button>
-
-            {activeTab === 'telemetry' ? (
+            <div className="flex items-center gap-2.5">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRecommended((v) => !v)}
-                aria-pressed={showRecommended}
+                className="border-border bg-card text-xs text-foreground hover:bg-muted"
               >
-                {showRecommended ? <EyeOff /> : <Eye />}
-                View Alternative Route
+                {showRecommended ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                <span>{showRecommended ? 'Hide Alternative' : 'View Alternative'}</span>
               </Button>
-            ) : null}
 
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                setContactSent(false)
-                setContactOpen(true)
-              }}
-            >
-              <PhoneCall />
-              Contact Control Room
-            </Button>
-
-            <span className="text-xs text-muted-foreground">
-              Synced: {lastRefreshed}
-            </span>
+              <Button
+                size="sm"
+                onClick={() => setFullTelemetryMode(false)}
+                className="bg-cyan-600 text-xs font-bold text-white hover:bg-cyan-500 shadow-sm"
+              >
+                <Navigation className="size-3.5 mr-1" />
+                <span>Return to Live Cockpit</span>
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Global Live Error Banner */}
-        {liveError ? (
-          <div className="mb-6 flex items-start justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-700 dark:text-rose-400">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="size-4 shrink-0" />
-              <span>
-                <strong>Backend Sync Warning:</strong> {liveError}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={fetchLiveData}
-              className="ml-3 shrink-0 underline hover:no-underline font-semibold"
-            >
-              Retry
-            </button>
-          </div>
-        ) : null}
-
-        {/* TAB 1: OPERATIONS LIVE OVERVIEW */}
-        {activeTab === 'operations' ? (
-          <div className="space-y-6">
-            {/* Live Metrics Summary */}
-            <EmergencySummaryCards
-              emergencies={emergencies}
-              vehicles={vehicles}
-              incidents={incidents}
-              loading={loadingLive}
-            />
-
-            {/* Operations Grid */}
-            <div className="grid gap-6 lg:grid-cols-5">
-              {/* Left Column: Live Emergency Stream & Road Hazards */}
-              <div className="space-y-6 lg:col-span-3">
-                <ActiveEmergenciesPanel
-                  emergencies={emergencies}
-                  loading={loadingLive}
-                  error={liveError && emergencies.length === 0 ? liveError : null}
-                  onRetry={fetchLiveData}
-                />
-                <RoadIncidentsPanel
-                  incidents={incidents}
-                  loading={loadingLive}
-                  error={liveError && incidents.length === 0 ? liveError : null}
-                  onRetry={fetchLiveData}
-                />
+        {/* Full Telemetry Content */}
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 space-y-6">
+          <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-card to-card p-4 sm:p-5 shadow-lg">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  {effectiveData.isSimulated || effectiveData.dataSource === 'SIMULATED' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                      <span className="size-2 rounded-full bg-amber-500 dark:bg-amber-400" />
+                      SIMULATED TRANSIT (OFFLINE DEMO)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                      <span className="size-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+                      LIVE EMERGENCY TRANSIT
+                    </span>
+                  )}
+                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-mono font-medium text-foreground">
+                    Unit: {effectiveData.ambulanceId}
+                  </span>
+                  <span className="rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                    {effectiveData.routeStatusLabel}
+                  </span>
+                </div>
+                <h1 className="text-lg sm:text-xl font-bold font-display text-foreground">
+                  Officer {effectiveData.driverName} — {effectiveData.vehicle}
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">Pickup:</strong> {effectiveData.pickup} · <strong className="text-foreground">Base:</strong> {effectiveData.base}
+                </p>
               </div>
 
-              {/* Right Column: Fleet Unit Registry */}
-              <div className="space-y-6 lg:col-span-2">
-                <VehicleFleetPanel
-                  vehicles={vehicles}
-                  loading={loadingLive}
-                  error={liveError && vehicles.length === 0 ? liveError : null}
-                  onRetry={fetchLiveData}
-                />
+              <div className="flex items-center gap-3 rounded-xl bg-muted/60 border border-border p-3 sm:px-4">
+                <div className="text-right">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                    Recommended Corridor
+                  </p>
+                  <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                    {effectiveData.recommendedRoute}
+                  </p>
+                </div>
+                <div className="flex size-10 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold text-sm border border-emerald-500/30">
+                  -{effectiveData.timeSavedMin}m
+                </div>
               </div>
             </div>
           </div>
-        ) : (
-          /* TAB 2: CORRIDOR TELEMETRY & ROUTE (Preserved View) */
+
           <div className="grid gap-6 lg:grid-cols-5">
-            {/* Left column: ETA summary, large map, then timeline */}
             <div className="space-y-6 lg:col-span-3">
-              <EtaSummary data={data} />
-              <MapPlaceholder
-                markers={data.markers}
-                showRecommended={showRecommended}
-              />
-              <TimelinePanel events={data.timeline} />
+              <EtaSummary data={effectiveData} />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                  <span className="font-semibold text-foreground">Corridor Schematic Geometry</span>
+                  <span>{effectiveData.routeContext}</span>
+                </div>
+                <MapPlaceholder
+                  markers={effectiveData.markers}
+                  showRecommended={showRecommended}
+                  emergencies={DEMO_EMERGENCIES}
+                  vehicles={DEMO_VEHICLES}
+                  incidents={DEMO_INCIDENTS}
+                  height="440px"
+                />
+              </div>
+              <TimelinePanel events={effectiveData.timeline} />
             </div>
 
-            {/* Right column: deviation & benefit analysis */}
             <div className="space-y-6 lg:col-span-2">
-              <RouteStatusCards data={data} />
-              <GeoAgentCard explanation={data.explanation} />
+              <RouteStatusCards data={effectiveData} />
+              <GeoAgentCard explanation={effectiveData.explanation} />
             </div>
           </div>
-        )}
+        </main>
+      </div>
+    )
+  }
+
+  // Default Primary Experience: Focused, Full-Bleed Live Navigation Cockpit
+  return (
+    <div className="flex flex-col h-dvh w-full bg-background text-foreground overflow-hidden">
+      {/* 1. GLOBAL HEADER (Tier 1: DashboardTopbar) */}
+      {!mapFocusMode && (
+        <DashboardTopbar
+          ambulanceId={ambulanceId}
+          driverName={driverName}
+          emergencyActive={effectiveData.emergencyActive ?? true}
+          driverMode
+        />
+      )}
+
+      {/* 2. MISSION BAR & MAIN WORKSPACE (Tier 2 & 3: DriverNavigation) */}
+      <main className="flex-1 min-h-0 relative w-full overflow-hidden">
+        <DriverNavigation
+          ambulanceId={ambulanceId}
+          initialEmergency={
+            effectiveData.destination
+              ? {
+                  assignedHospital: effectiveData.destination,
+                  address: effectiveData.destinationFull || 'Bengaluru Corridor'
+                }
+              : undefined
+          }
+          onOpenPriorityRadio={() => {
+            setContactSent(false)
+            setContactOpen(true)
+          }}
+          onOpenTelemetry={() => setTelemetryDrawerOpen(true)}
+          onMapFocusChange={setMapFocusMode}
+        />
       </main>
 
-      {/* Priority Voice Modal */}
+      {/* 3. CORRIDOR TELEMETRY & AUDIT SLIDE-OVER DRAWER */}
+      {telemetryDrawerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="telemetry-drawer-title"
+        >
+          {/* Backdrop click to close */}
+          <div
+            className="absolute inset-0 cursor-pointer"
+            onClick={() => setTelemetryDrawerOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-full max-w-2xl h-full bg-background border-l border-border shadow-2xl flex flex-col z-10 overflow-hidden animate-in slide-in-from-right duration-300">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-card/95 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  <Activity className="size-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 id="telemetry-drawer-title" className="text-base font-bold font-display text-foreground">
+                      Corridor Telemetry & Audit
+                    </h2>
+                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-300 border border-emerald-500/30">
+                      {ambulanceId}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Deep telematics, sensor logs, and chronological dispatch audit
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setTelemetryDrawerOpen(false)
+                    setFullTelemetryMode(true)
+                  }}
+                  className="text-xs h-8 border-border hover:bg-muted"
+                >
+                  Full Page Mode
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setTelemetryDrawerOpen(false)}
+                  className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  aria-label="Close telemetry drawer"
+                >
+                  <X className="size-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Body (Scrollable) */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-6">
+              {/* ETA Summary Card */}
+              <EtaSummary data={effectiveData} />
+
+              {/* Deviation & Benefit Analysis Cards */}
+              <RouteStatusCards data={effectiveData} />
+
+              {/* GeoAgent AI Reasoning Card */}
+              <GeoAgentCard explanation={effectiveData.explanation} />
+
+              {/* Schematic Map */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                  <span className="font-semibold text-foreground">Corridor Schematic Geometry</span>
+                  <span>{effectiveData.routeContext}</span>
+                </div>
+                <MapPlaceholder
+                  markers={effectiveData.markers}
+                  showRecommended={showRecommended}
+                  emergencies={DEMO_EMERGENCIES}
+                  vehicles={DEMO_VEHICLES}
+                  incidents={DEMO_INCIDENTS}
+                  height="340px"
+                />
+              </div>
+
+              {/* Chronological Timeline Panel */}
+              <TimelinePanel events={effectiveData.timeline} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. PRIORITY VOICE RADIO MODAL */}
       <Modal
         open={contactOpen}
         onClose={() => setContactOpen(false)}
-        title={contactSent ? 'Control room notified' : 'Contact control room?'}
+        title={contactSent ? 'Central Control Room Notified' : 'Open Priority Radio Channel?'}
         description={
           contactSent
-            ? `A priority voice channel request for ${data.ambulanceId} has been queued with dispatcher.`
-            : `This will open an immediate priority radio/voice channel to the central control room for unit ${data.ambulanceId}.`
+            ? `Priority radio broadcast for unit ${ambulanceId} (${driverName}) has been acknowledged by Bengaluru central dispatch.`
+            : `This will open a high-priority two-way encrypted radio channel directly to the Bengaluru Emergency Control Room for unit ${ambulanceId}.`
         }
         footer={
           contactSent ? (
@@ -385,8 +328,8 @@ export function DriverDashboard({ data }: { data: DashboardData }) {
                 variant="destructive"
                 onClick={() => setContactSent(true)}
               >
-                <PhoneCall />
-                Confirm Priority Call
+                <PhoneCall className="size-4 mr-1" />
+                <span>Confirm Priority Call</span>
               </Button>
             </>
           )

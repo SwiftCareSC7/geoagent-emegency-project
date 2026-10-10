@@ -13,8 +13,26 @@
 
 import { ApiError } from './types'
 
-const BASE_URL: string =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api'
+function getBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const envUrl = process.env.NEXT_PUBLIC_API_URL
+    // If explicitly configured to an external valid HTTPS URL, use it
+    if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+      return envUrl.replace(/\/+$/, '')
+    }
+    // If on HTTPS or env is localhost / unset, use same-origin relative /api
+    if (window.location.protocol === 'https:' || !envUrl) {
+      return `${window.location.origin}/api`
+    }
+    return envUrl.replace(/\/+$/, '')
+  }
+  // Server-side (Node.js runtime or Next SSR)
+  const serverUrl = process.env.BACKEND_SERVICE_URL || process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL
+  if (serverUrl && !serverUrl.includes('localhost') && !serverUrl.includes('127.0.0.1')) {
+    return serverUrl.replace(/\/+$/, '')
+  }
+  return serverUrl || 'http://localhost:5001/api'
+}
 
 /**
  * Parse a fetch Response into typed JSON, or throw a normalized ApiError.
@@ -41,6 +59,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return body as T
 }
 
+const LOCAL_AUTH_PATH = /^\/(auth|admin\/users)(\/|$)/
+
 /**
  * Build a full URL with optional query parameters.
  */
@@ -48,7 +68,18 @@ function buildUrl(
   path: string,
   params?: Record<string, string | number | undefined>,
 ): string {
-  const url = new URL(`${BASE_URL}${path}`)
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+  // Auth + user management are Next route handlers (local SQLite). In the browser they must stay same-origin even when
+  // NEXT_PUBLIC_API_URL points at the Express origin, or login/register would bypass them.
+  const base =
+    typeof window !== 'undefined' && LOCAL_AUTH_PATH.test(normalizedPath)
+      ? `${window.location.origin}/api`
+      : getBaseUrl()
+  const fullBase =
+    base.endsWith('/api') && normalizedPath.startsWith('/api/')
+      ? base.slice(0, -4)
+      : base
+  const url = new URL(`${fullBase}${normalizedPath}`)
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null) {

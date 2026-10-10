@@ -72,7 +72,12 @@ export const getEmergencyDecisions = async (req, res, next) => {
 export const approveDecision = async (req, res, next) => {
   try {
     const { decisionId } = req.params;
-    const decision = await decisionService.approveDecision(decisionId, req.user._id);
+    const { candidateId } = req.body || {};
+    const decision = await decisionService.approveDecision(
+      decisionId,
+      req.user._id,
+      candidateId
+    );
 
     res.status(200).json({
       success: true,

@@ -1,13 +1,50 @@
 import Trajectory from './trajectory.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
+import Route from '../routes/route.model.js';
+import googleRoadsProvider from '../routes/providers/googleRoadsProvider.js';
 import realtimeService from '../realtime/realtime.service.js';
 import predictionService from '../analysis/prediction.service.js';
+import corridorGreenWaveService from '../routes/corridorGreenWave.service.js';
 import { formatVehicleLocationPayload } from '../realtime/realtime.events.js';
-import { calculateDistance } from '../../shared/services/geospatial.service.js';
+import { calculateDistance, validateCoordinates } from '../../shared/services/geospatial.service.js';
 
 // Cache for throttling live prediction calculations on incoming telemetry
 const vehicleLastPredictionTimes = new Map();
 const vehicleLastPredictionLocations = new Map();
+const MAX_ROUTE_MATCH_DISTANCE_METERS = 35;
+
+/**
+ * Project a raw GPS fix onto a known route only when the projection is nearby.
+ * Returns null for invalid geometry, failed projections, or likely deviations.
+ */
+export const matchTrajectoryToRoute = (location, routeGeometry) => {
+  if (
+    !location || !validateCoordinates(location.coordinates) ||
+    routeGeometry?.type !== 'LineString' || !Array.isArray(routeGeometry.coordinates) ||
+    routeGeometry.coordinates.length < 2
+  ) {
+    return null;
+  }
+
+  try {
+    const [match] = googleRoadsProvider.localTurfSnap([location], routeGeometry);
+    if (match?.source !== 'TURF_LOCAL_SNAPPED' || !validateCoordinates(match.location?.coordinates)) {
+      return null;
+    }
+
+    const distanceMeters = calculateDistance(location, match.location).meters;
+    if (!Number.isFinite(distanceMeters) || distanceMeters > MAX_ROUTE_MATCH_DISTANCE_METERS) {
+      return null;
+    }
+
+    return {
+      location: match.location,
+      distanceMeters
+    };
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Ingest a new GPS trajectory point with robust telemetry validation
@@ -109,10 +146,28 @@ export const createTrajectory = async (trajectoryData) => {
     }
   }
 
+  // Keep map matching local and supplemental: raw coordinates remain authoritative.
+  let mapMatch = null;
+  try {
+    const activeRoute = await Route.findOne({
+      vehicle: vehicle._id,
+      status: 'ACTIVE'
+    }).sort({ createdAt: -1 }).select('geometry');
+    if (activeRoute) {
+      mapMatch = matchTrajectoryToRoute(validLocation, activeRoute.geometry);
+    }
+  } catch (err) {
+    console.warn(`[TrajectoryService] Route map matching skipped: ${err.message}`);
+  }
+
   // 8. Create trajectory record
   const newTrajectory = new Trajectory({
     vehicle: vehicle._id,
     location: validLocation,
+    ...(mapMatch && {
+      mapMatchedLocation: mapMatch.location,
+      mapMatchDistanceMeters: mapMatch.distanceMeters
+    }),
     speed: Number(speed.toFixed(1)),
     heading: Number(heading.toFixed(1)),
     timestamp: parsedDate,
@@ -151,9 +206,12 @@ export const createTrajectory = async (trajectoryData) => {
   if (timeSinceLast >= 30000 || distMeters >= 100) {
     vehicleLastPredictionTimes.set(vehicle.vehicleId, now);
     vehicleLastPredictionLocations.set(vehicle.vehicleId, validLocation);
-    // Fire-and-forget background prediction refresh so ingestion stays fast (< 20ms)
+    // Fire-and-forget background prediction & V2X corridor refresh so ingestion stays fast (< 20ms)
     predictionService.predictForVehicle(vehicle.vehicleId).catch(() => {
       // Non-fatal if vehicle is not currently assigned to an active route
+    });
+    corridorGreenWaveService.analyzeCorridorForVehicle(vehicle.vehicleId).catch(() => {
+      // Non-fatal if vehicle is not currently assigned to an active corridor
     });
   }
 

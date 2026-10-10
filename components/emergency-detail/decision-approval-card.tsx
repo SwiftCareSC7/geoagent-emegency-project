@@ -29,6 +29,8 @@ export function DecisionApprovalCard({
   onDecisionUpdated
 }: DecisionApprovalCardProps) {
   const [isActing, setIsActing] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('Operator rejected recommendation; maintain current corridor');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Active decision state merges baseline with live socket push
@@ -37,36 +39,80 @@ export function DecisionApprovalCard({
   const action = liveDecision?.primaryAction || decision?.primaryAction || 'REROUTE';
   const severity = liveDecision?.severity || decision?.severity || 'WARNING';
   const reasonCodes = liveDecision?.reasonCodes || decision?.reasonCodes || ['CORRIDOR_CONGESTION_PENALTY', 'TRAFFIC_DELAY_EXCEEDS_THRESHOLD'];
+  const rerouteCandidate = decision?.rerouteCandidate;
+  const requiresRerouteCandidate = decision?.actions?.includes('REROUTE') || action === 'REROUTE';
 
   const handleApprove = async () => {
     if (!decisionId || decisionId === 'DEC-PENDING') return;
     setIsActing(true);
     setFeedback(null);
     try {
-      const res = await decisionApi.approve(decisionId, 'Operator approved corridor reroute via dispatch console');
-      setFeedback({ type: 'success', message: 'Decision approved! Route update dispatched to ambulance navigation system.' });
+      const res = await decisionApi.approve(
+        decisionId,
+        'Operator approved corridor reroute via dispatch console',
+        rerouteCandidate?.candidateId
+      );
+      setFeedback({ type: 'success', message: 'Decision approved! State transitioned to APPROVED in database.' });
       if (onDecisionUpdated && res.data) {
         onDecisionUpdated(res.data);
       }
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to approve decision' });
+      const isConflict = err?.status === 409 || err?.message?.includes('Invalid decision state transition');
+      setFeedback({
+        type: 'error',
+        message: isConflict
+          ? 'Concurrency Conflict: Another operator has already acted on this decision. State refreshed.'
+          : (err.message || 'Failed to approve decision')
+      });
     } finally {
       setIsActing(false);
     }
   };
 
-  const handleReject = async () => {
+  const handleConfirmReject = async () => {
     if (!decisionId || decisionId === 'DEC-PENDING') return;
     setIsActing(true);
     setFeedback(null);
     try {
-      const res = await decisionApi.reject(decisionId, 'Operator rejected recommendation; maintain current corridor');
+      const res = await decisionApi.reject(decisionId, rejectionReason);
       setFeedback({ type: 'success', message: 'Decision rejected. Vehicle will remain on existing route corridor.' });
+      setRejecting(false);
       if (onDecisionUpdated && res.data) {
         onDecisionUpdated(res.data);
       }
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to reject decision' });
+      const isConflict = err?.status === 409 || err?.message?.includes('Invalid decision state transition');
+      setFeedback({
+        type: 'error',
+        message: isConflict
+          ? 'Concurrency Conflict: Another operator has already acted on this decision. State refreshed.'
+          : (err.message || 'Failed to reject decision')
+      });
+    } finally {
+      setIsActing(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    if (!decisionId || decisionId === 'DEC-PENDING') return;
+    setIsActing(true);
+    setFeedback(null);
+    try {
+      const res = await decisionApi.execute(decisionId);
+      if (!res.success || !res.data) {
+        throw new Error('Decision execution did not complete successfully');
+      }
+      setFeedback({
+        type: 'success',
+        message: res.data.executionSummary?.includes('REROUTE:activated')
+          ? 'Approved reroute candidate activated.'
+          : 'Decision executed successfully.'
+      });
+      if (onDecisionUpdated && res.data) {
+        onDecisionUpdated(res.data);
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to execute decision' });
     } finally {
       setIsActing(false);
     }
@@ -87,26 +133,26 @@ export function DecisionApprovalCard({
   };
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-6 backdrop-blur-md shadow-xl">
+    <div className="rounded-2xl border-2 border-border bg-card p-6 shadow-md hover:shadow-lg transition-all text-card-foreground">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
             <ShieldAlert className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-zinc-100">Authoritative Decision Engine</h3>
+              <h3 className="font-bold text-zinc-900 dark:text-zinc-100">Authoritative Decision Engine</h3>
               <span className="text-xs font-mono text-zinc-500">{decisionId}</span>
             </div>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
               Deterministic safety rules + Human-in-the-loop operational authorization
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-semibold uppercase px-2.5 py-1 rounded-full border ${getStatusBadge(currentStatus)}`}>
+          <span className={`text-xs font-bold uppercase px-3 py-1 rounded-full border shadow-sm ${getStatusBadge(currentStatus)}`}>
             {currentStatus.replace(/_/g, ' ')}
           </span>
         </div>
@@ -114,39 +160,39 @@ export function DecisionApprovalCard({
 
       {/* Decision Summary */}
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/50 p-3">
-          <div className="text-xs font-medium text-zinc-400">Proposed Action</div>
-          <div className="mt-1 text-base font-bold text-amber-400">{action}</div>
-          <div className="text-[11px] text-zinc-500">Corridor redirection</div>
+        <div className="rounded-xl border border-border bg-muted/30 p-3.5 shadow-sm">
+          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Proposed Action</div>
+          <div className="mt-1 text-base font-bold text-amber-600 dark:text-amber-400">{action}</div>
+          <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Corridor redirection</div>
         </div>
 
-        <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/50 p-3">
-          <div className="text-xs font-medium text-zinc-400">Operational Severity</div>
-          <div className="mt-1 text-base font-bold text-zinc-200">{severity}</div>
-          <div className="text-[11px] text-zinc-500">Policy tier</div>
+        <div className="rounded-xl border border-border bg-muted/30 p-3.5 shadow-sm">
+          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Operational Severity</div>
+          <div className="mt-1 text-base font-bold text-zinc-900 dark:text-zinc-100">{severity}</div>
+          <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Policy tier</div>
         </div>
 
-        <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/50 p-3">
-          <div className="text-xs font-medium text-zinc-400">Operator Mandate</div>
-          <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
-            <Lock className="h-3.5 w-3.5 text-emerald-400" />
-            <span>Approval Required</span>
+        <div className="rounded-xl border border-border bg-muted/30 p-3.5 shadow-sm">
+          <div className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Operator Mandate</div>
+          <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-zinc-900 dark:text-zinc-100">
+            <Lock className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>{currentStatus === 'PENDING_OPERATOR_ACTION' ? 'Approval Required' : 'Authorization Recorded'}</span>
           </div>
-          <div className="text-[11px] text-zinc-500">Safety state machine rule</div>
+          <div className="text-[11px] text-zinc-500 dark:text-zinc-400">State machine transition</div>
         </div>
       </div>
 
       {/* Reason Codes */}
       {reasonCodes && reasonCodes.length > 0 && (
         <div className="mt-4">
-          <div className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+          <div className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 mb-2">
             Safety Trigger Reason Codes
           </div>
           <div className="flex flex-wrap gap-1.5">
             {reasonCodes.map((code, idx) => (
               <span
                 key={idx}
-                className="rounded-md border border-zinc-800 bg-zinc-950/70 px-2 py-0.5 text-[11px] font-mono text-zinc-300"
+                className="rounded-md border border-border bg-muted/60 px-2.5 py-1 text-[11px] font-mono text-foreground font-medium"
               >
                 {code}
               </span>
@@ -155,53 +201,159 @@ export function DecisionApprovalCard({
         </div>
       )}
 
+      {rerouteCandidate && (
+        <details open className="mt-4 rounded-xl border border-blue-500/30 bg-blue-500/5 p-3.5">
+          <summary className="cursor-pointer text-xs font-bold text-foreground">
+            Reviewed reroute candidate · {rerouteCandidate.provider || 'Routing provider'}
+          </summary>
+          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+            <p>{rerouteCandidate.description || 'Alternative route'} · {Math.round(rerouteCandidate.distanceMeters)} m · {Math.ceil(rerouteCandidate.durationSeconds / 60)} min</p>
+            <p className="font-mono text-[10px] break-all">Candidate {rerouteCandidate.candidateId}</p>
+            <p>{rerouteCandidate.geometry.coordinates.length} geometry points · {rerouteCandidate.steps?.length || 0} navigation steps</p>
+            {rerouteCandidate.steps && rerouteCandidate.steps.length > 0 && (
+              <ol className="list-decimal space-y-1 pl-5 pt-1">
+                {rerouteCandidate.steps.map((step, index) => (
+                  <li key={`${index}-${step.instruction}`}>{step.instruction}</li>
+                ))}
+              </ol>
+            )}
+            <details className="pt-1">
+              <summary className="cursor-pointer">Inspect route coordinates</summary>
+              <ol className="mt-1 max-h-36 overflow-auto list-decimal pl-5 font-mono text-[10px]">
+                {rerouteCandidate.geometry.coordinates.map(([longitude, latitude], index) => (
+                  <li key={`${index}-${longitude}-${latitude}`}>
+                    {longitude.toFixed(6)}, {latitude.toFixed(6)}
+                  </li>
+                ))}
+              </ol>
+            </details>
+          </div>
+        </details>
+      )}
+
       {/* Feedback Alert */}
       {feedback && (
         <div
-          className={`mt-4 rounded-lg border p-3 text-xs flex items-center gap-2 ${
+          className={`mt-4 rounded-xl border p-3.5 text-xs flex items-center gap-2 font-medium shadow-sm ${
             feedback.type === 'success'
-              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-              : 'border-red-500/30 bg-red-500/10 text-red-300'
+              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+              : 'border-red-500/40 bg-red-500/10 text-red-800 dark:text-red-300'
           }`}
         >
           {feedback.type === 'success' ? (
-            <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+            <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           ) : (
-            <AlertOctagon className="h-4 w-4 text-red-400 shrink-0" />
+            <AlertOctagon className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
           )}
           <span>{feedback.message}</span>
         </div>
       )}
 
+      {/* Rejection Prompt Form (when rejecting is active) */}
+      {rejecting && currentStatus === 'PENDING_OPERATOR_ACTION' && (
+        <div className="mt-4 p-4 rounded-xl border border-red-500/40 bg-red-500/10 space-y-3">
+          <div className="text-xs font-bold text-red-700 dark:text-red-300">
+            Operator Rejection Rationale (Audit Trail)
+          </div>
+          <input
+            type="text"
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="Enter reason for rejecting this proposal..."
+            className="w-full text-xs rounded-md border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setRejecting(false)}
+              disabled={isActing}
+              className="px-3.5 py-1.5 text-xs rounded-md border border-border bg-muted text-foreground hover:bg-muted/80 font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmReject}
+              disabled={isActing}
+              className="px-4 py-1.5 text-xs rounded-md bg-red-600 font-bold text-white hover:bg-red-700 disabled:opacity-50 shadow-sm"
+            >
+              {isActing ? 'Rejecting...' : 'Confirm Rejection'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Operator Action Buttons */}
-      {currentStatus === 'PENDING_OPERATOR_ACTION' ? (
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800/60 pt-4">
-          <div className="text-xs text-zinc-500 flex items-center gap-1.5">
+      {currentStatus === 'PENDING_OPERATOR_ACTION' && !rejecting && (
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
             <FileCheck2 className="h-4 w-4 text-zinc-400" />
             <span>Awaiting manual confirmation by Control Room dispatcher</span>
           </div>
           <div className="flex items-center gap-2.5">
             <button
-              onClick={handleReject}
+              onClick={() => setRejecting(true)}
               disabled={isActing}
-              className="rounded-lg border border-zinc-700 bg-zinc-800/80 px-3.5 py-1.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-700 hover:text-white transition-all disabled:opacity-50"
+              className="rounded-lg border border-border bg-muted px-4 py-2 text-xs font-bold text-foreground hover:bg-muted/80 transition-all disabled:opacity-50 shadow-sm"
             >
               Reject Proposal
             </button>
             <button
               onClick={handleApprove}
-              disabled={isActing}
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/50 bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500 transition-all disabled:opacity-50"
+              disabled={isActing || (requiresRerouteCandidate && !rerouteCandidate?.candidateId)}
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-all disabled:opacity-50"
             >
-              <CheckCircle className="h-3.5 w-3.5" />
-              <span>Approve & Dispatch Reroute</span>
+              <CheckCircle className="h-4 w-4" />
+              <span>{isActing ? 'Approving...' : 'Approve Proposal'}</span>
             </button>
           </div>
         </div>
-      ) : (
-        <div className="mt-4 pt-3 border-t border-zinc-800/60 flex items-center justify-between text-xs text-zinc-500">
-          <span>Decision status transitioned to <strong className="text-zinc-300">{currentStatus}</strong></span>
-          <span className="text-[11px]">Audit log recorded</span>
+      )}
+
+      {/* Approved state: Execution available */}
+      {currentStatus === 'APPROVED' && (
+        <div className="mt-5 border-t border-border pt-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
+              <CheckCircle className="h-4 w-4" />
+              <span>Decision approved. Ready for controlled action execution.</span>
+            </div>
+            <button
+              onClick={handleExecute}
+              disabled={isActing}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-5 py-2 text-xs font-bold text-white shadow-md transition-all disabled:opacity-50"
+            >
+              <Send className="h-4 w-4" />
+              <span>{isActing ? 'Executing...' : 'Execute Decision'}</span>
+            </button>
+          </div>
+          <p className="text-[11px] text-zinc-500 leading-relaxed">
+            Operational Note: Decision execution records the authoritative state transition and triggers internal routing updates. It does not physically override vehicle navigation hardware unless an external vehicle hardware integration exists.
+          </p>
+        </div>
+      )}
+
+      {/* Executed state */}
+      {currentStatus === 'EXECUTED' && (
+        <div className="mt-4 pt-3 border-t border-zinc-800/60 text-xs text-zinc-400 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-blue-400 font-semibold">Decision Executed</span>
+            <span className="text-[11px] font-mono text-zinc-500">State: EXECUTED</span>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Authoritative state transition finalized in database and broadcasted to all control room channels.
+          </p>
+        </div>
+      )}
+
+      {/* Rejected state */}
+      {currentStatus === 'REJECTED' && (
+        <div className="mt-4 pt-3 border-t border-zinc-800/60 text-xs text-zinc-400 space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-red-400 font-semibold">Decision Rejected</span>
+            <span className="text-[11px] font-mono text-zinc-500">State: REJECTED</span>
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Proposal rejected by operator. Vehicle maintains current corridor trajectory.
+          </p>
         </div>
       )}
     </div>

@@ -20,9 +20,15 @@ router.use(requireRole('ADMIN'));
 router.get('/stats', adminController.getStats);
 router.get('/health', adminController.getHealth);
 router.get('/providers', adminController.getProviders);
+router.get('/prediction-analytics', adminController.getPredictionAnalytics);
 
-// Approved Operational Records (Paginated & Sanitized)
+// Approved Operational Records & User Administration
 router.get('/users', adminController.getUsers);
+router.patch('/users/:id/status', adminController.updateUserStatus);
+router.patch('/users/:id/role', adminController.updateUserRole);
+router.patch('/users/:id/approve', adminController.approveUser);
+router.patch('/users/:id/reject', adminController.rejectUser);
+router.patch('/users/:id/suspend', adminController.suspendUser);
 router.get('/vehicles', adminController.getVehicles);
 router.get('/emergencies', adminController.getEmergencies);
 router.get('/incidents', adminController.getIncidents);
@@ -30,5 +36,10 @@ router.get('/routes', adminController.getRoutes);
 router.get('/trajectories', adminController.getTrajectories);
 router.get('/predictions', adminController.getPredictions);
 router.get('/decisions', adminController.getDecisions);
+
+// Demonstration Scenarios & Data Management
+router.get('/demo/scenarios', adminController.getDemoScenarios);
+router.post('/demo/seed', adminController.seedDemoScenarios);
+router.post('/demo/reset', adminController.resetDemoData);
 
 export default router;

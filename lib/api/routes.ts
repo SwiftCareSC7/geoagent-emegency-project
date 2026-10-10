@@ -87,4 +87,38 @@ export const routeApi = {
   compare(routeId: string): Promise<{ success: true; message: string; data: any }> {
     return get<{ success: true; message: string; data: any }>(`/routes/${encodeURIComponent(routeId)}/compare`)
   },
+
+  /** Get V2X green-wave corridor and traffic signal preemption status for a route */
+  getCorridorV2X(routeId: string): Promise<{ success: true; message: string; data: any }> {
+    return get<{ success: true; message: string; data: any }>(`/routes/${encodeURIComponent(routeId)}/corridor-v2x`)
+  },
+
+  /** Calculate turn-by-turn route plan with fastest vs shortest options */
+  calculateRoutePlan(payload: {
+    origin: { type: 'Point'; coordinates: [number, number] }
+    destination: { type: 'Point'; coordinates: [number, number] }
+    preference?: 'FASTEST' | 'SHORTEST'
+    computeAlternatives?: boolean
+  }): Promise<{ success: true; message: string; data: any }> {
+    return post<{ success: true; message: string; data: any }>('/routes/calculate', payload)
+  },
+
+  /** Accept and activate recommended reroute */
+  acceptReroute(
+    routeId: string,
+    payload: {
+      geometry?: { type: 'LineString'; coordinates: [number, number][] }
+      distanceMeters?: number
+      durationSeconds?: number
+      preference?: 'FASTEST' | 'SHORTEST'
+      steps?: any[]
+      reason?: string
+      acceptedBy?: string
+    },
+  ): Promise<{ success: true; message: string; data: Route }> {
+    return post<{ success: true; message: string; data: Route }>(
+      `/routes/${encodeURIComponent(routeId)}/accept-reroute`,
+      payload,
+    )
+  },
 }

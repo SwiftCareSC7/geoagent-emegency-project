@@ -31,6 +31,7 @@ Decision ──────────────────┴────�
 All schemas below are verified directly against backend source code in `server/modules/`.
 
 ### 2.1 `users`
+
 **Model**: `server/modules/auth/user.model.js`  
 Represents dispatchers, supervisors, and administrative personnel.
 
@@ -41,21 +42,44 @@ Represents dispatchers, supervisors, and administrative personnel.
   password: { type: String, required: true }, // bcrypt hash (salt rounds: 12)
   role: {
     type: String,
-    enum: ['CONTROL_ROOM', 'ADMIN'],
+    enum: ['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'],
     default: 'CONTROL_ROOM'
   },
+  requestedRole: {
+    type: String,
+    enum: ['CONTROL_ROOM', 'DRIVER', 'PARAMEDIC', 'ADMIN'],
+    default: 'CONTROL_ROOM'
+  },
+  requestedWorkspaces: { type: [String], default: ['CONTROL_ROOM'] },
+  permittedWorkspaces: {
+    type: [String],
+    enum: ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'],
+    default: []
+  },
+  status: {
+    type: String,
+    enum: ['PENDING', 'APPROVED', 'SUSPENDED'],
+    default: 'PENDING'
+  },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  approvedAt: { type: Date, default: null },
+  assignedVehicleId: { type: String, default: null, trim: true },
   createdAt: Date,
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ email: 1 }` (unique)
   - `{ role: 1, createdAt: -1 }` (administrative listing & role filtering)
+  - `{ status: 1, role: 1 }` (admin quarantine queue & approval listing)
+  - `{ assignedVehicleId: 1 }` (vehicle ownership lookup)
 - **Security Rule**: The `password` hash is excluded by default via `.select('-password')` and stripped in `.toSafeObject()`.
 
 ---
 
 ### 2.2 `vehicles`
+
 **Model**: `server/modules/vehicles/vehicle.model.js`  
 Represents emergency response vehicles (ambulances, fire engines, police units).
 
@@ -91,6 +115,7 @@ Represents emergency response vehicles (ambulances, fire engines, police units).
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ vehicleId: 1 }` (unique)
   - `{ registrationNumber: 1 }` (unique)
@@ -100,6 +125,7 @@ Represents emergency response vehicles (ambulances, fire engines, police units).
 ---
 
 ### 2.3 `emergencies`
+
 **Model**: `server/modules/emergencies/emergency.model.js`  
 Represents emergency response missions.
 
@@ -139,6 +165,7 @@ Represents emergency response missions.
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ location: '2dsphere' }` (spatial proximity)
   - `{ destination: '2dsphere' }`
@@ -149,6 +176,7 @@ Represents emergency response missions.
 ---
 
 ### 2.4 `incidents`
+
 **Model**: `server/modules/incidents/incident.model.js`  
 Represents reported road obstructions, accidents, or hazards.
 
@@ -182,6 +210,7 @@ Represents reported road obstructions, accidents, or hazards.
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ location: '2dsphere' }` (spatial proximity to routes)
   - `{ emergency: 1, isDeleted: 1 }`
@@ -191,6 +220,7 @@ Represents reported road obstructions, accidents, or hazards.
 ---
 
 ### 2.5 `trajectories`
+
 **Model**: `server/modules/trajectories/trajectory.model.js`  
 High-frequency GPS tracking points logged per vehicle.
 
@@ -206,21 +236,24 @@ High-frequency GPS tracking points logged per vehicle.
   timestamp: { type: Date, required: true },
   source: {
     type: String,
-    enum: ['SIMULATOR', 'DEVICE', 'API'],
+    enum: ['SIMULATOR', 'DEVICE', 'API', 'AUDIT'],
     default: 'SIMULATOR'
   },
   createdAt: Date,
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ vehicle: 1, timestamp: -1 }` (compound index for fast retrieval of latest fixes and windowed slices)
   - `{ location: '2dsphere' }`
-- **Performance Note**: Trajectories represent high-frequency time-series data. The Admin API uses `estimatedDocumentCount()` for $O(1)$ fast volume estimation to prevent full collection table scans.
+  - `{ timestamp: 1 }` (TTL retention index expiring breadcrumbs older than `TELEMETRY_RETENTION_DAYS` with `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }`)
+- **Performance Note**: Trajectories represent high-frequency time-series data. The Admin API uses `estimatedDocumentCount()` for $O(1)$ fast volume estimation to prevent full collection table scans. Automated TTL pruning prevents database volume bloat while preserving clinical emergency records.
 
 ---
 
 ### 2.6 `routes`
+
 **Model**: `server/modules/routes/route.model.js`  
 Planned and alternative navigation paths for emergencies.
 
@@ -263,6 +296,7 @@ Planned and alternative navigation paths for emergencies.
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ routeId: 1 }` (unique)
   - `{ emergency: 1, routeType: 1 }`
@@ -275,8 +309,9 @@ Planned and alternative navigation paths for emergencies.
 ---
 
 ### 2.7 `decisions`
+
 **Model**: `server/modules/decisions/decision.model.js`  
-Authoritative operational decisions produced by the deterministic Decision Engine, reconciled with Gemini advisory recommendations.
+Authoritative operational decisions produced by the deterministic Decision Engine, reconciled with GeoAgent AI advisory recommendations.
 
 ```javascript
 {
@@ -328,6 +363,7 @@ Authoritative operational decisions produced by the deterministic Decision Engin
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ emergency: 1, createdAt: -1 }`
   - `{ emergency: 1, situationHash: 1 }`
@@ -336,6 +372,7 @@ Authoritative operational decisions produced by the deterministic Decision Engin
 ---
 
 ### 2.8 `predictions`
+
 **Model**: `server/modules/analysis/prediction.model.js`  
 Quantitative ETA and delay prediction snapshots produced by the prediction engine for post-incident review and operational transparency.
 
@@ -382,16 +419,20 @@ Quantitative ETA and delay prediction snapshots produced by the prediction engin
     }
   }],
   inputsSummary: { type: mongoose.Schema.Types.Mixed },
-  modelVersion: { type: String, default: 'v1.2-exponential-traffic-blend' },
+  modelVersion: { type: String, default: 'v1.3-exponential-traffic-blend' },
   trafficSource: { type: String, default: 'UNKNOWN' },
   createdAt: Date,
   updatedAt: Date
 }
 ```
+
 - **Indexes**:
   - `{ vehicle: 1, createdAt: -1 }`
   - `{ emergency: 1, createdAt: -1 }`
   - `{ delayRisk: 1 }`
+- **Ground-Truth Validation**:
+  Prediction accuracy is evaluated against completed emergency records (`status: 'RESOLVED'` or `status: 'AT_SCENE'`).
+  Ground truth arrival timestamps from `emergency.updatedAt` / `trajectories.timestamp` are compared against `predictedEta` to compute MAE, Median Absolute Error, tolerance buckets, and severe-delay miss counts with explicit sample size $N$ protection ($N \ge 5$ required for certified claims).
 
 ---
 
@@ -419,8 +460,17 @@ During local development, developers who need direct database access can use **M
 
 ---
 
-## 5. Data Retention & Scaling Considerations
+## 5. Data Retention & Scaling Policies
 
-- **Trajectories Growth**: High-frequency vehicle GPS fixes generate high volume over time. In production, consider a rolling TTL index on `trajectories.timestamp` (e.g., 30–90 days retention) or moving expired trajectories to a cold archive.
+- **Trajectories Growth**: High-frequency vehicle GPS fixes generate high volume over time. The system enforces an active MongoDB TTL index on `trajectories.timestamp` (configurable via `TELEMETRY_RETENTION_DAYS`, default 30 days) with `partialFilterExpression: { source: { $in: ['SIMULATOR', 'DEVICE', 'API'] } }`, automatically pruning simulated and device telemetry while permanently retaining clinical audit trails.
 - **Predictions**: Prediction snapshots are captured for explainability and should be pruned after emergency resolution or retained for 30 days.
 - **Operational Records**: Emergencies, Vehicles, Incidents, and Decisions are mission-critical audit trails and must never be deleted automatically by TTL. Soft-deletion (`isDeleted: true`) is enforced.
+
+---
+
+## 6. Database Safety Guard (`server/shared/utils/dbSafety.js`)
+
+To prevent accidental data loss in shared development, staging, or production environments:
+
+- All destructive seed and reset scripts (`seed-demo-scenario.js`, `seed-demo-scenarios.js`, `demo.service.js`) validate the database connection URI using `assertSafeDatabaseTarget()`.
+- Resets are immediately aborted on any production-like target (MongoDB Atlas `mongodb+srv://`, non-local hostnames, or databases whose names do not contain `test` or `dev`) unless `ALLOW_PRODUCTION_RESET=true` is explicitly set in the execution environment.

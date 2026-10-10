@@ -5,6 +5,8 @@ import {
   AlertCircle,
   ArrowRight,
   Clock,
+  ChevronDown,
+  ChevronUp,
   Flame,
   HeartPulse,
   MapPin,
@@ -99,6 +101,7 @@ export function ActiveEmergenciesPanel({
   onRetry,
 }: ActiveEmergenciesPanelProps) {
   const [selectedPriority, setSelectedPriority] = useState<string>('ALL')
+  const [showAllEmergencies, setShowAllEmergencies] = useState(false)
 
   const filterOptions = [
     { key: 'ALL', label: 'All Emergencies' },
@@ -113,8 +116,24 @@ export function ActiveEmergenciesPanel({
     return e.priority === selectedPriority
   })
 
+  const priorityRank: Record<string, number> = {
+    CRITICAL: 0,
+    HIGH: 1,
+    MEDIUM: 2,
+    LOW: 3,
+  }
+  const prioritizedEmergencies = [...filteredEmergencies].sort((a, b) => {
+    const priorityDifference = (priorityRank[a.priority] ?? 4) - (priorityRank[b.priority] ?? 4)
+    if (priorityDifference !== 0) return priorityDifference
+    const aUpdatedAt = Date.parse(a.updatedAt || a.createdAt || '') || 0
+    const bUpdatedAt = Date.parse(b.updatedAt || b.createdAt || '') || 0
+    return bUpdatedAt - aUpdatedAt
+  })
+  const visibleEmergencies = prioritizedEmergencies.slice(0, 3)
+  const remainingCount = filteredEmergencies.length - (showAllEmergencies ? filteredEmergencies.length : visibleEmergencies.length)
+
   return (
-    <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
+    <div className="flex flex-col rounded-2xl border-2 border-border bg-card p-6 shadow-md hover:shadow-lg transition-all text-card-foreground">
       {/* Panel Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -142,7 +161,10 @@ export function ActiveEmergenciesPanel({
           <button
             key={opt.key}
             type="button"
-            onClick={() => setSelectedPriority(opt.key)}
+            onClick={() => {
+              setSelectedPriority(opt.key)
+              setShowAllEmergencies(false)
+            }}
             className={cn(
               'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
               selectedPriority === opt.key
@@ -200,8 +222,12 @@ export function ActiveEmergenciesPanel({
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredEmergencies.map((e) => {
+          <>
+          <div className={cn(
+            'space-y-3',
+            showAllEmergencies && 'max-h-[min(65vh,40rem)] overflow-y-auto',
+          )}>
+            {prioritizedEmergencies.map((e, index) => {
               const Icon = typeIcons[e.type] || Siren
               const priority = priorityBadges[e.priority] || {
                 label: e.priority,
@@ -223,7 +249,7 @@ export function ActiveEmergenciesPanel({
                   ? e.assignedVehicle
                   : assignedVehicle?.vehicleId
 
-              return (
+              const card = (
                 <article
                   key={e.id || e.emergencyId}
                   className="flex flex-col rounded-xl border border-border/80 bg-background/50 p-4 transition-all hover:border-primary/40 hover:bg-background"
@@ -251,6 +277,11 @@ export function ActiveEmergenciesPanel({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                      {((e as any).isSimulated || e.emergencyId.startsWith('E-DEMO-')) && (
+                        <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          SIMULATED
+                        </span>
+                      )}
                       <span
                         className={cn(
                           'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-semibold',
@@ -268,6 +299,20 @@ export function ActiveEmergenciesPanel({
                       >
                         {status.label}
                       </span>
+                      {e.communication?.lastSmsStatus && e.communication.lastSmsStatus !== 'READY' && (
+                        <span
+                          className={cn(
+                            'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-mono font-bold',
+                            e.communication.lastSmsStatus === 'SUBMITTED' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+                            e.communication.lastSmsStatus === 'DELIVERED' && 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
+                            e.communication.lastSmsStatus === 'FAILED' && 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
+                            e.communication.lastSmsStatus === 'SENDING' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                          )}
+                        >
+                          <Phone className="size-3" />
+                          <span>STATUS SMS: {e.communication.lastSmsStatus}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -344,8 +389,34 @@ export function ActiveEmergenciesPanel({
                   </div>
                 </article>
               )
+              if (index < 3) return card
+              return (
+                <div
+                  key={e.id || e.emergencyId}
+                  aria-hidden={!showAllEmergencies}
+                  inert={!showAllEmergencies}
+                  className={cn(
+                    'overflow-hidden transition-[max-height,opacity,margin] duration-200 ease-out motion-reduce:transition-none',
+                    showAllEmergencies ? 'mt-3 max-h-96 opacity-100' : '!mt-0 max-h-0 opacity-0',
+                  )}
+                >
+                  {card}
+                </div>
+              )
             })}
           </div>
+          {filteredEmergencies.length > 3 && (
+            <button
+              type="button"
+              aria-expanded={showAllEmergencies}
+              onClick={() => setShowAllEmergencies((expanded) => !expanded)}
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/40 px-4 text-sm font-semibold text-primary transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              {showAllEmergencies ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+              {showAllEmergencies ? 'Show fewer' : `Show ${remainingCount} more incidents`}
+            </button>
+          )}
+          </>
         )}
       </div>
     </div>

@@ -55,6 +55,8 @@ export interface DashboardData {
   arriveBy: string
   timeline: TimelineEvent[]
   markers: MapMarker[]
+  isSimulated?: boolean
+  dataSource?: 'OBSERVED' | 'SIMULATED' | 'OFFLINE_FALLBACK'
 }
 
 /** Static demo contact details for the Bengaluru operation. */
@@ -146,4 +148,6 @@ export const AMB_01_DASHBOARD: DashboardData = {
       label: 'Manipal Hospital · HAL Old Airport Road',
     },
   ],
+  isSimulated: true,
+  dataSource: 'SIMULATED',
 }

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Web Request: Redis Cache Miss → PostgreSQL",
+    "output": "docs/diagrams/web-request-cache-miss.html",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    { "id": "browser", "type": "frontend", "label": "Browser", "sublabel": "client app" },
+    { "id": "api", "type": "backend", "label": "API", "sublabel": "request handler" },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "cache layer" },
+    { "id": "postgres", "type": "database", "label": "PostgreSQL", "sublabel": "source of truth" }
+  ],
+  "segments": [
+    { "from": 150, "to": 230, "label": "Request + cache lookup" },
+    { "from": 242, "to": 290, "label": "Cache miss fallback" },
+    { "from": 300, "to": 350, "label": "Fill cache + respond" }
+  ],
+  "messages": [
+    { "id": "page-fetch", "from": "browser", "to": "api", "y": 160, "label": "GET /api/incidents/:id", "variant": "emphasis" },
+    { "id": "cache-read", "from": "api", "to": "redis", "y": 190, "label": "GET incidents:42", "variant": "default" },
+    { "id": "cache-miss", "from": "redis", "to": "api", "y": 218, "label": "miss (nil)", "variant": "return" },
+    { "id": "db-query", "from": "api", "to": "postgres", "y": 252, "label": "SELECT incidents WHERE id = 42", "variant": "emphasis" },
+    { "id": "db-rows", "from": "postgres", "to": "api", "y": 280, "label": "1 row", "variant": "return" },
+    { "id": "cache-fill", "from": "api", "to": "redis", "y": 310, "label": "SET incidents:42 EX 300", "variant": "dashed" },
+    { "id": "json-response", "from": "api", "to": "browser", "y": 340, "label": "200 JSON", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "api", "from": 185, "to": 348, "type": "backend" },
+    { "participant": "redis", "from": 185, "to": 226, "type": "database" },
+    { "participant": "redis", "from": 305, "to": 318, "type": "database" },
+    { "participant": "postgres", "from": 247, "to": 288, "type": "database" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Cache hit path",
+      "items": [
+        "On a hit, Redis answers directly and PostgreSQL is never reached",
+        "The API returns 200 JSON straight from the cache"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Cache miss fallback",
+      "items": [
+        "A miss triggers a PostgreSQL query for the source-of-truth row",
+        "The response row is written back to Redis with a 300s TTL",
+        "The fill is dashed so it never blocks the response path"
+      ]
+    }
+  ]
+}

@@ -15,7 +15,7 @@
  *   GET /api/admin/decisions      — Paginated decision lifecycle audit trail
  */
 
-import { get } from './client'
+import { get, post, patch } from './client'
 import type {
   AdminSystemStats,
   AdminDatabaseHealth,
@@ -23,6 +23,9 @@ import type {
   AdminPaginatedResponse,
   AdminQueryParams,
   User,
+  UserRole,
+  UserStatus,
+  Workspace,
   Vehicle,
   Emergency,
   Incident,
@@ -50,6 +53,31 @@ export const adminApi = {
   /** List users (sanitized, password hashes never returned) */
   getUsers(params?: AdminQueryParams): Promise<AdminPaginatedResponse<User>> {
     return get<AdminPaginatedResponse<User>>('/admin/users', params)
+  },
+
+  /** Update user status (APPROVED, SUSPENDED, PENDING) */
+  updateUserStatus(userId: string, status: UserStatus): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/status`, { status })
+  },
+
+  /** Update user role and optional vehicle assignment */
+  updateUserRole(userId: string, data: { role?: UserRole; permittedWorkspaces?: Workspace[]; assignedVehicleId?: string }): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/role`, data)
+  },
+
+  /** Approve pending user registration with optional role and workspace assignments */
+  approveUser(userId: string, data?: { role?: UserRole; permittedWorkspaces?: Workspace[]; assignedVehicleId?: string }): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/approve`, data || {})
+  },
+
+  /** Reject user registration */
+  rejectUser(userId: string): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/reject`)
+  },
+
+  /** Suspend user account */
+  suspendUser(userId: string): Promise<{ success: boolean; message: string; data: User }> {
+    return patch<{ success: boolean; message: string; data: User }>(`/admin/users/${userId}/suspend`)
   },
 
   /** List vehicles with pagination & filtering */
@@ -85,5 +113,25 @@ export const adminApi = {
   /** List operational decision lifecycle audit records */
   getDecisions(params?: AdminQueryParams): Promise<AdminPaginatedResponse<Decision>> {
     return get<AdminPaginatedResponse<Decision>>('/admin/decisions', params)
+  },
+
+  /** Retrieve prediction validation analytics and model governance metrics */
+  getPredictionAnalytics(): Promise<{ success: boolean; data: any }> {
+    return get<{ success: boolean; data: any }>('/admin/prediction-analytics')
+  },
+
+  /** Get list of 5 canonical demo scenarios */
+  getDemoScenarios(): Promise<{ success: boolean; data: any[] }> {
+    return get<{ success: boolean; data: any[] }>('/admin/demo/scenarios')
+  },
+
+  /** Seed database with 5 canonical demo scenarios */
+  seedDemoScenarios(): Promise<{ success: boolean; message: string; data: any }> {
+    return post<{ success: boolean; message: string; data: any }>('/admin/demo/seed', {})
+  },
+
+  /** Reset database demo records */
+  resetDemoScenarios(): Promise<{ success: boolean; message: string; data: any }> {
+    return post<{ success: boolean; message: string; data: any }>('/admin/demo/reset', {})
   }
 }

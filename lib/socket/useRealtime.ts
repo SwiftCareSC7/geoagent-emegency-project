@@ -56,6 +56,16 @@ export interface RealtimePredictionUpdate {
   predictedDurationSeconds?: number;
   modelVersion?: string;
   trafficSource?: string;
+  trafficFreshness?: 'FRESH' | 'STALE' | 'UNAVAILABLE' | 'UNKNOWN';
+  routeDegradationSignal?: {
+    status: 'CLEAR' | 'PENDING' | 'SUSTAINED' | 'RECOVERING' | 'RECOVERED';
+    active: boolean;
+    confirmed: boolean;
+    reasonCodes: string[];
+    observations: number;
+    shouldReevaluate: boolean;
+    decisionRequestPending?: boolean;
+  };
   predictedAt: string;
 }
 
@@ -63,11 +73,67 @@ export interface RealtimeDecisionUpdate {
   decisionId: string;
   emergencyId?: string;
   vehicleId?: string;
-  primaryAction: string;
-  severity: string;
+  primaryAction?: string;
+  action?: string;
+  severity?: string;
   status: string;
   reasonCodes?: string[];
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  executedAt?: string;
+  executionSummary?: string;
+  timestamp?: string;
   updatedAt?: string;
+}
+
+export interface RealtimeGreenWaveUpdate {
+  vehicleId: string;
+  routeId?: string;
+  corridorHealth: 'OPTIMAL_FLOW' | 'PREEMPTION_ACTIVE' | 'CONGESTED_FLOW' | 'IMPEDED_FLOW' | string;
+  preemptedCount: number;
+  totalSignals: number;
+  civilianAlertedCount: number;
+  timeSavedMinutes: number;
+  signals?: Array<{
+    id: string;
+    name: string;
+    coordinates?: [number, number];
+    distanceMeters?: number;
+    state: string;
+    preemptionActive?: boolean;
+    clearanceSec?: number;
+    civilianVehiclesYielding?: number;
+  }>;
+  timestamp: string;
+}
+
+export interface PredictionChangeDelta {
+  previousEtaIso?: string;
+  newEtaIso: string;
+  previousDurationMinutes?: number;
+  newDurationMinutes: number;
+  durationDeltaMinutes: number;
+  previousDelayMinutes?: number;
+  newDelayMinutes: number;
+  delayDeltaMinutes: number;
+  previousDelayRisk?: string;
+  newDelayRisk: string;
+  previousRouteRisk?: string;
+  newRouteRisk: string;
+  reasons: string[];
+}
+
+export interface LiveTimelineEvent {
+  id: string;
+  type: string;
+  label: string;
+  detail: string;
+  time: string;
+  timestamp: Date;
+  severity: 'info' | 'warning' | 'critical' | 'success';
 }
 
 /**
@@ -76,6 +142,8 @@ export interface RealtimeDecisionUpdate {
 export function useSocketStatus() {
   const [isConnected, setIsConnected] = useState(false);
   const [status, setStatus] = useState<'CONNECTED' | 'CONNECTING' | 'DISCONNECTED'>('CONNECTING');
+  const [reconnected, setReconnected] = useState(false);
+  const wasConnectedRef = useRef(false);
 
   useEffect(() => {
     const socket = getSocket();
@@ -87,11 +155,16 @@ export function useSocketStatus() {
     const onConnect = () => {
       setIsConnected(true);
       setStatus('CONNECTED');
+      if (wasConnectedRef.current) {
+        setReconnected(true);
+      }
+      wasConnectedRef.current = true;
     };
 
     const onDisconnect = () => {
       setIsConnected(false);
       setStatus('DISCONNECTED');
+      setReconnected(false);
     };
 
     const onError = () => {
@@ -101,6 +174,7 @@ export function useSocketStatus() {
     if (socket.connected) {
       setIsConnected(true);
       setStatus('CONNECTED');
+      wasConnectedRef.current = true;
     }
 
     socket.on('connect', onConnect);
@@ -114,21 +188,31 @@ export function useSocketStatus() {
     };
   }, []);
 
-  return { isConnected, status };
+  const acknowledgeReconnect = useCallback(() => {
+    setReconnected(false);
+  }, []);
+
+  return { isConnected, status, reconnected, acknowledgeReconnect };
 }
 
 /**
  * Hook to monitor an active emergency corridor in real-time
  */
 export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
-  const { isConnected, status: connectionStatus } = useSocketStatus();
+  const { isConnected, status: connectionStatus, reconnected, acknowledgeReconnect } = useSocketStatus();
 
   const [liveLocation, setLiveLocation] = useState<RealtimeLocationUpdate | null>(null);
   const [liveDeviation, setLiveDeviation] = useState<RealtimeDeviationUpdate | null>(null);
   const [livePrediction, setLivePrediction] = useState<RealtimePredictionUpdate | null>(null);
+  const [predictionDelta, setPredictionDelta] = useState<PredictionChangeDelta | null>(null);
   const [liveDecision, setLiveDecision] = useState<RealtimeDecisionUpdate | null>(null);
+  const [liveGreenWave, setLiveGreenWave] = useState<RealtimeGreenWaveUpdate | null>(null);
+  const [liveClearance, setLiveClearance] = useState<any | null>(null);
+  const [liveEvents, setLiveEvents] = useState<LiveTimelineEvent[]>([]);
   const [lastEventTime, setLastEventTime] = useState<Date | null>(null);
   const [freshness, setFreshness] = useState<DataFreshness>('UNKNOWN');
+
+  const prevPredictionRef = useRef<RealtimePredictionUpdate | null>(null);
 
   const emergencyRoom = emergencyId ? `emergency:${emergencyId}` : null;
   const vehicleRoom = vehicleId ? `vehicle:${vehicleId}` : null;
@@ -147,6 +231,14 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
     };
   }, [isConnected, emergencyRoom, vehicleRoom]);
 
+  const addTimelineEvent = useCallback((event: LiveTimelineEvent) => {
+    setLiveEvents((prev) => {
+      // Deduplicate by id
+      if (prev.some((e) => e.id === event.id)) return prev;
+      return [event, ...prev].slice(0, 50);
+    });
+  }, []);
+
   // Subscribe to real-time events
   useEffect(() => {
     const unsubLocation = subscribeEvent<RealtimeLocationUpdate>(
@@ -154,7 +246,17 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       (data) => {
         if (!vehicleId || data.vehicleId === vehicleId) {
           setLiveLocation(data);
-          setLastEventTime(new Date());
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `loc-${now.getTime()}`,
+            type: 'TELEMETRY_UPDATE',
+            label: 'Telemetry Received',
+            detail: `Position fix: [${data.location?.coordinates?.[0]?.toFixed(4)}, ${data.location?.coordinates?.[1]?.toFixed(4)}], Speed: ${data.speed} km/h, Heading: ${data.heading}°`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: 'info'
+          });
         }
       }
     );
@@ -164,7 +266,18 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       (data) => {
         if (!vehicleId || data.vehicleId === vehicleId) {
           setLiveDeviation(data);
-          setLastEventTime(new Date());
+          const now = new Date();
+          setLastEventTime(now);
+          const isDeviated = data.status === 'DEVIATED' || data.status === 'CRITICAL_DEVIATION';
+          addTimelineEvent({
+            id: `dev-${now.getTime()}`,
+            type: 'DEVIATION_DETECTED',
+            label: isDeviated ? 'Route Deviation Detected' : 'Deviation Analysis Updated',
+            detail: `Cross-track distance: ${Math.round(data.crossTrackDistanceMeters || 0)}m (${data.status}), Stability: ${data.stability || 'STABLE'}`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: isDeviated ? 'warning' : 'info'
+          });
         }
       }
     );
@@ -173,8 +286,59 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       REALTIME_EVENTS.PREDICTION_UPDATED,
       (data) => {
         if (!emergencyId || !data.emergencyId || data.emergencyId === emergencyId) {
+          const now = new Date();
           setLivePrediction(data);
-          setLastEventTime(new Date());
+          setLastEventTime(now);
+
+          // Calculate change delta if previous prediction exists
+          const prev = prevPredictionRef.current;
+          if (prev) {
+            const prevMinutes = prev.predictedDurationMinutes ?? Math.round(prev.predictedDelaySeconds / 60);
+            const newMinutes = data.predictedDurationMinutes ?? Math.round(data.predictedDelaySeconds / 60);
+            const prevDelay = prev.predictedDelayMinutes ?? 0;
+            const newDelay = data.predictedDelayMinutes ?? 0;
+
+            const reasons: string[] = [];
+            if (newDelay > prevDelay) {
+              reasons.push(`Corridor delay increased by +${Number((newDelay - prevDelay).toFixed(1))} min`);
+            } else if (newDelay < prevDelay) {
+              reasons.push(`Corridor delay decreased by -${Number((prevDelay - newDelay).toFixed(1))} min`);
+            }
+            if (prev.delayRisk !== data.delayRisk) {
+              reasons.push(`Delay risk shifted from ${prev.delayRisk} to ${data.delayRisk}`);
+            }
+            if (prev.routeRisk !== data.routeRisk) {
+              reasons.push(`Route risk shifted from ${prev.routeRisk} to ${data.routeRisk}`);
+            }
+
+            setPredictionDelta({
+              previousEtaIso: prev.predictedEta,
+              newEtaIso: data.predictedEta,
+              previousDurationMinutes: prevMinutes,
+              newDurationMinutes: newMinutes,
+              durationDeltaMinutes: Number((newMinutes - prevMinutes).toFixed(1)),
+              previousDelayMinutes: prevDelay,
+              newDelayMinutes: newDelay,
+              delayDeltaMinutes: Number((newDelay - prevDelay).toFixed(1)),
+              previousDelayRisk: prev.delayRisk,
+              newDelayRisk: data.delayRisk,
+              previousRouteRisk: prev.routeRisk,
+              newRouteRisk: data.routeRisk,
+              reasons: reasons.length > 0 ? reasons : ['Periodic model recalculation from fresh GPS fixes']
+            });
+          }
+
+          prevPredictionRef.current = data;
+
+          addTimelineEvent({
+            id: `pred-${now.getTime()}`,
+            type: 'PREDICTION_UPDATED',
+            label: 'Prediction Updated',
+            detail: `Predicted arrival duration: ${data.predictedDurationMinutes ?? Math.round(data.predictedDurationSeconds ? data.predictedDurationSeconds / 60 : 0)} min (delay: +${data.predictedDelayMinutes} min, risk: ${data.delayRisk})`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: data.delayRisk === 'CRITICAL' || data.delayRisk === 'HIGH' ? 'critical' : (data.delayRisk === 'MEDIUM' ? 'warning' : 'info')
+          });
         }
       }
     );
@@ -184,7 +348,17 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       (data) => {
         if (!emergencyId || !data.emergencyId || data.emergencyId === emergencyId) {
           setLiveDecision(data);
-          setLastEventTime(new Date());
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `dec-created-${data.decisionId || now.getTime()}`,
+            type: 'DECISION_PROPOSED',
+            label: 'Decision Proposal Generated',
+            detail: `Action: ${data.primaryAction}, Severity: ${data.severity}, Status: ${data.status || 'PENDING_OPERATOR_ACTION'}`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: data.severity === 'CRITICAL' ? 'critical' : 'warning'
+          });
         }
       }
     );
@@ -194,7 +368,17 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       (data) => {
         if (!emergencyId || !data.emergencyId || data.emergencyId === emergencyId) {
           setLiveDecision((prev) => (prev ? { ...prev, status: 'APPROVED' } : data));
-          setLastEventTime(new Date());
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `dec-app-${data.decisionId || now.getTime()}`,
+            type: 'OPERATOR_APPROVED',
+            label: 'Decision Approved by Operator',
+            detail: `Proposal ${data.decisionId || ''} approved for action: ${data.primaryAction}`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: 'success'
+          });
         }
       }
     );
@@ -204,7 +388,77 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       (data) => {
         if (!emergencyId || !data.emergencyId || data.emergencyId === emergencyId) {
           setLiveDecision((prev) => (prev ? { ...prev, status: 'REJECTED' } : data));
-          setLastEventTime(new Date());
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `dec-rej-${data.decisionId || now.getTime()}`,
+            type: 'OPERATOR_REJECTED',
+            label: 'Decision Rejected by Operator',
+            detail: `Proposal ${data.decisionId || ''} rejected. ${data.rejectionReason ? `Rationale: ${data.rejectionReason}` : ''}`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: 'warning'
+          });
+        }
+      }
+    );
+
+    const unsubDecisionExecuted = subscribeEvent<RealtimeDecisionUpdate>(
+      REALTIME_EVENTS.DECISION_EXECUTED,
+      (data) => {
+        if (!emergencyId || !data.emergencyId || data.emergencyId === emergencyId) {
+          setLiveDecision((prev) => (prev ? { ...prev, status: 'EXECUTED' } : data));
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `dec-exec-${data.decisionId || now.getTime()}`,
+            type: 'DECISION_EXECUTED',
+            label: 'Decision Executed',
+            detail: `State transitioned to EXECUTED. ${data.executionSummary || ''}`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: 'success'
+          });
+        }
+      }
+    );
+
+    const unsubGreenWave = subscribeEvent<RealtimeGreenWaveUpdate>(
+      REALTIME_EVENTS.V2X_GREEN_WAVE_UPDATED,
+      (data) => {
+        if (!vehicleId || data.vehicleId === vehicleId) {
+          setLiveGreenWave(data);
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `v2x-${now.getTime()}`,
+            type: 'V2X_GREEN_WAVE_UPDATED',
+            label: 'V2X Green-Wave Corridor Active',
+            detail: `${data.preemptedCount}/${data.totalSignals} signals preempted (${data.corridorHealth}), saving -${data.timeSavedMinutes} min (${data.civilianAlertedCount} civilian yields)`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: data.corridorHealth === 'OPTIMAL_FLOW' || data.corridorHealth === 'PREEMPTION_ACTIVE' ? 'success' : 'info'
+          });
+        }
+      }
+    );
+
+    const unsubClearance = subscribeEvent<any>(
+      REALTIME_EVENTS.CLEARANCE_STATUS_UPDATED,
+      (data) => {
+        if (!vehicleId || data.vehicleId === vehicleId) {
+          setLiveClearance(data);
+          const now = new Date();
+          setLastEventTime(now);
+          addTimelineEvent({
+            id: `clearance-${now.getTime()}`,
+            type: 'CLEARANCE_STATUS_UPDATED',
+            label: 'Emergency Clearance Updated',
+            detail: `${data.summary?.totalCleared || 0}/${data.connectedVehicles?.length || 3} vehicles cleared path (Simulated V2X)`,
+            time: now.toLocaleTimeString(),
+            timestamp: now,
+            severity: 'success'
+          });
         }
       }
     );
@@ -216,8 +470,11 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
       unsubDecisionCreated();
       unsubDecisionApproved();
       unsubDecisionRejected();
+      unsubDecisionExecuted();
+      unsubGreenWave();
+      unsubClearance();
     };
-  }, [emergencyId, vehicleId]);
+  }, [emergencyId, vehicleId, addTimelineEvent]);
 
   // Periodic freshness evaluation (every 5 seconds)
   useEffect(() => {
@@ -253,10 +510,16 @@ export function useRealtimeEmergency(emergencyId: string, vehicleId?: string) {
   return {
     isConnected,
     connectionStatus,
+    reconnected,
+    acknowledgeReconnect,
     liveLocation,
     liveDeviation,
     livePrediction,
+    predictionDelta,
     liveDecision,
+    liveGreenWave,
+    liveClearance,
+    liveEvents,
     lastEventTime,
     freshness,
     getAgeString

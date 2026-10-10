@@ -29,7 +29,7 @@ export function RouteStatusCards({ data }: { data: DashboardData }) {
         label="Route Status"
         value={data.routeStatusLabel}
         hint={`En route to ${data.destination}`}
-        tone="warning"
+        tone="planned"
       />
       <StatCard
         icon={TriangleAlert}
@@ -39,23 +39,24 @@ export function RouteStatusCards({ data }: { data: DashboardData }) {
       />
       <StatCard
         icon={Timer}
-        label="Original ETA"
+        label="Original ETA (Planned Corridor)"
         value={`${data.originalEtaMin} min`}
-        hint="Estimated"
+        hint="Planned Corridor Baseline"
+        tone="planned"
       />
       <StatCard
         icon={TrafficCone}
         label="Current Route ETA"
         value={`${data.currentRouteEtaMin} min`}
-        hint="Estimated"
+        hint={`+${data.currentRouteEtaMin - data.originalEtaMin} min congestion penalty`}
         tone="warning"
       />
       <StatCard
         icon={TimerReset}
         label="Alternative Route B ETA"
         value={`${data.newEtaMin} min`}
-        hint="Estimated"
-        tone="success"
+        hint="AI Recommended Detour"
+        tone="recommended"
       />
       <StatCard
         icon={TrendingDown}
@@ -71,7 +72,7 @@ export function RouteStatusCards({ data }: { data: DashboardData }) {
       />
       <StatCard
         icon={Route}
-        label="Recommendation"
+        label="AI Recommendation"
         value={data.recommendation}
         tone="recommended"
       />

@@ -7,7 +7,7 @@ info:
     and evaluating authoritative operational decisions.
   version: 1.0.0
 servers:
-  - url: http://localhost:5000/api
+  - url: http://localhost:5001/api
     description: Local Development Server
 
 paths:
@@ -583,6 +583,45 @@ paths:
                       evaluatedAt: { type: string, format: date-time }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /routes/{routeId}/corridor-v2x:
+    get:
+      summary: Get live V2X traffic signal preemption and green-wave status for a route corridor
+      tags: [Routes]
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: string }
+          description: Route identifier
+      responses:
+        '200':
+          description: V2X Green-Wave preemption analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      corridorSummary:
+                        type: object
+                        properties:
+                          corridorHealth: { type: string, example: PREEMPTION_ACTIVE }
+                          preemptedCount: { type: integer, example: 3 }
+                          totalSignals: { type: integer, example: 4 }
+                          civilianAlertedCount: { type: integer, example: 112 }
+                          timeSavedMinutes: { type: number, example: 3.5 }
+                      v2xSignals:
+                        type: array
+                        items:
+                          type: object
+        '404': { $ref: '#/components/responses/NotFound' }
+
   # --- DEVIATION & SITUATION ANALYSIS ---
   /deviation/vehicle/{vehicleId}:
     get:
@@ -896,7 +935,7 @@ paths:
           schema: { type: integer, default: 20, maximum: 100 }
         - name: role
           in: query
-          schema: { type: string, enum: [CONTROL_ROOM, ADMIN] }
+          schema: { type: string, enum: [ADMIN, CONTROL_ROOM, DRIVER, PARAMEDIC] }
         - name: search
           in: query
           schema: { type: string }
@@ -1083,6 +1122,42 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+
+  # --- SYSTEM HEALTH & OBSERVABILITY ---
+  /health:
+    get:
+      summary: Backend server liveness and operational health check
+      tags: [Health]
+      responses:
+        '200':
+          description: Server is online and operational
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  message: { type: string, example: GeoAgentic backend is running }
+
+  /health/providers:
+    get:
+      summary: Multi-provider availability and integration status grid
+      tags: [Health]
+      responses:
+        '200':
+          description: Health evaluation across all 6 core providers (MongoDB, Google Routes, Google Roads, Gemini, Python/V2X, Socket.IO)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+                  data:
+                    type: object
+                    properties:
+                      database: { type: object }
+                      providers: { type: object }
+                      checkedAt: { type: string, format: date-time }
 
 components:
   securitySchemes:
