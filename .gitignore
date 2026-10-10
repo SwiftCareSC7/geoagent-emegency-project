@@ -37,6 +37,7 @@ __pycache__/
 .vscode/
 .idea/
 .commandcode/
+.claude/
 
 
 # Secrets & Credentials
