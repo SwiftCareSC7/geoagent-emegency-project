@@ -14,6 +14,8 @@ import mongoose from 'mongoose';
 
 async function testPhase2Reroute() {
   console.log('🧪 Testing Phase 2: Dynamic Re-Routing\n');
+  const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geoagent-emergency-test';
+  await mongoose.connect(mongoUri);
 
   // Create test vehicle
   console.log('Test 1: Create test vehicle');
@@ -148,11 +150,13 @@ async function testPhase2Reroute() {
   await Vehicle.deleteOne({ vehicleId: 'TEST-VEH-001' });
   console.log('✅ Test data cleaned up\n');
 
+  await mongoose.disconnect();
   console.log('🎉 Phase 2 re-routing tests completed');
 }
 
 // Run tests
-testPhase2Reroute().catch(err => {
+testPhase2Reroute().catch(async (err) => {
   console.error('Fatal error:', err);
+  await mongoose.disconnect().catch(() => {});
   process.exit(1);
 });
