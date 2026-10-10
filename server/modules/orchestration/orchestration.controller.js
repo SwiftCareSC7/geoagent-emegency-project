@@ -1,5 +1,5 @@
 import orchestrationService from './orchestration.service.js';
-import geoAgentService from '../geoagents/geoagent.service.js';
+import geoAgentService from '../geoagents/geoAgent.service.js';
 
 /**
  * Orchestration Controller

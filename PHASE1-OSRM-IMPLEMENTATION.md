@@ -104,7 +104,6 @@ npm run dev
 # Create a test route (example coordinates)
 curl -X POST http://localhost:5000/api/routes \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "emergencyId": "EMG-0001",
     "vehicleId": "AMB-01",
