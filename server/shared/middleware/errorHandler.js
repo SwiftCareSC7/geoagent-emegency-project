@@ -3,8 +3,10 @@
  * Catches all unhandled errors and returns a safe JSON response.
  */
 const errorHandler = (err, req, res, next) => {
-  // Log the error securely on the server-side for debugging
-  console.error(`[Error] ${err.name}: ${err.message}`);
+  // Log the error securely on the server-side for debugging.
+  // Expected client errors (404 etc.) are warnings; only 5xx are real errors.
+  const logStatus = err.status || err.statusCode;
+  (logStatus && logStatus < 500 ? console.warn : console.error)(`[${logStatus && logStatus < 500 ? 'Warn' : 'Error'}] ${err.name}: ${err.message}`);
   
   if (process.env.NODE_ENV === 'development') {
     // Only in development we might log the stack, but we STILL don't send it to the client

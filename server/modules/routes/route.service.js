@@ -173,14 +173,16 @@ class RouteService {
       const em = await Emergency.findOne(
         isEmergencyObjectId ? { _id: filters.emergencyId } : { emergencyId: filters.emergencyId }
       );
-      query.emergency = em ? em._id : filters.emergencyId;
+      if (!em) return { data: [], meta: { total: 0, page: safePage, limit: safeLimit, totalPages: 0 } };
+      query.emergency = em._id;
     }
     if (filters.vehicleId) {
       const isVehicleObjectId = typeof filters.vehicleId === 'string' && filters.vehicleId.match(/^[0-9a-fA-F]{24}$/);
       const veh = await Vehicle.findOne(
         isVehicleObjectId ? { _id: filters.vehicleId } : { vehicleId: filters.vehicleId }
       );
-      query.vehicle = veh ? veh._id : filters.vehicleId;
+      if (!veh) return { data: [], meta: { total: 0, page: safePage, limit: safeLimit, totalPages: 0 } };
+      query.vehicle = veh._id;
     }
     if (filters.routeType) query.routeType = filters.routeType;
     if (filters.status) query.status = filters.status;
