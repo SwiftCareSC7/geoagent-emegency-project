@@ -37,6 +37,7 @@ const errorHandler = (err, req, res, next) => {
 const notFoundHandler = (req, res, next) => {
   res.status(404);
   const error = new Error(`Route not found - ${req.originalUrl}`);
+  error.status = 404;
   error.isOperational = true; // Mark as an operational error
   next(error);
 };
