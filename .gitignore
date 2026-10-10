@@ -33,9 +33,12 @@ __pycache__/
 .pytest_cache/
 .coverage
 
-# IDE / Editor
+# IDE / Editor / Local tooling
 .vscode/
 .idea/
+.commandcode/
+.claude/launch.json
+.vercel/
 
 # Secrets & Credentials
 service-account*.json
