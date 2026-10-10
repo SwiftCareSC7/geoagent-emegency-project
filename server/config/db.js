@@ -12,9 +12,8 @@ export const resolveMongoUri = (raw) => {
     const hint = /^["']/.test(uri) ? ' (value is wrapped in quotes; remove them)' : '';
     throw new Error(`MONGO_URI must start with mongodb:// or mongodb+srv://${hint}`);
   }
-  if (/[<>]/.test(uri) || /\s/.test(uri)) {
-    throw new Error('MONGO_URI contains a placeholder (<...>) or whitespace inside the value');
-  }
+  if (/[<>]/.test(uri)) throw new Error('MONGO_URI contains < or > (placeholder brackets left around the password?)');
+  if (/\s/.test(uri)) throw new Error('MONGO_URI contains whitespace or a newline inside the value');
   return uri;
 };
 
