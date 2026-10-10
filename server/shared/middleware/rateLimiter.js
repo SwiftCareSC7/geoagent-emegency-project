@@ -1,7 +1,7 @@
 /**
  * SwiftCare Lightweight In-Memory Sliding-Window Rate Limiter
  *
- * Enforces request throttling for state mutations and AI analysis
+ * Enforces request throttling for authentication, state mutations, and AI analysis
  * while preserving high-throughput channels for real-time emergency telemetry.
  */
 
@@ -62,6 +62,13 @@ export function createRateLimiter(options = {}) {
     next();
   };
 }
+
+// 1. Auth rate limiter (login / register brute-force prevention: 20 per 15 min)
+export const authRateLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: 'Too many authentication attempts. Please try again after 15 minutes.'
+});
 
 // 2. High-cost AI GeoAgent analysis limiter (30 per min)
 export const aiAnalysisRateLimiter = createRateLimiter({

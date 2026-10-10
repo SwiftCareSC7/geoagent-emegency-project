@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { AMB_01_DASHBOARD, type DashboardData } from '@/lib/mock-data'
 import { DEMO_VEHICLES, DEMO_EMERGENCIES, DEMO_INCIDENTS } from '@/lib/demo-fixtures'
+import { useAuth } from '@/lib/auth/context'
 import { cn } from '@/lib/utils'
 
 interface DriverDashboardProps {
@@ -34,10 +35,11 @@ interface DriverDashboardProps {
 }
 
 export function DriverDashboard({ data }: DriverDashboardProps) {
+  const { user } = useAuth()
   const effectiveData = data || AMB_01_DASHBOARD
 
   const ambulanceId = effectiveData.ambulanceId || 'KA-01-AMB-108'
-  const driverName = effectiveData.driverName || 'Ananya Rao'
+  const driverName = user?.name || effectiveData.driverName || 'Ananya Rao'
 
   const [telemetryDrawerOpen, setTelemetryDrawerOpen] = useState<boolean>(false)
   const [fullTelemetryMode, setFullTelemetryMode] = useState<boolean>(false)

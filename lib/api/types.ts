@@ -28,6 +28,43 @@ export interface GeoJSONLineString {
 // Auth
 // ---------------------------------------------------------------------------
 
+export type UserRole = 'ADMIN' | 'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'
+export type UserStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'REJECTED'
+export type Workspace = 'ADMIN' | 'CONTROL_ROOM' | 'DRIVER' | 'PARAMEDIC'
+
+/** Safe user object (password never returned by backend) */
+export interface User {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  status?: UserStatus
+  approvedBy?: string | null
+  approvedAt?: string | null
+  assignedVehicleId?: string | null
+  requestedRole?: UserRole
+  requestedWorkspaces?: Workspace[]
+  permittedWorkspaces?: Workspace[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface RegisterPayload {
+  name: string
+  email: string
+  password: string
+  role?: UserRole
+  assignedVehicleId?: string
+  requestedRole?: UserRole
+  requestedWorkspaces?: Workspace[]
+  permittedWorkspaces?: Workspace[]
+}
+
+export interface LoginPayload {
+  email: string
+  password: string
+}
+
 // ---------------------------------------------------------------------------
 // Vehicles
 // ---------------------------------------------------------------------------
@@ -577,6 +614,7 @@ export interface OrchestrationWorkflowResult {
 export interface ApiSuccessResponse<T = unknown> {
   success: true
   data?: T
+  user?: User
   message?: string
 }
 
@@ -659,6 +697,7 @@ export class ApiError extends Error {
 // ---------------------------------------------------------------------------
 
 export interface AdminSystemCounts {
+  users: number
   vehicles: number
   activeVehicles: number
   emergencies: number

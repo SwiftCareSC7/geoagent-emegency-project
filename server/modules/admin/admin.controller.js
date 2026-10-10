@@ -18,6 +18,8 @@ function auditLog(req, resource, durationMs, statusCode = 200) {
       event: 'ADMIN_OPERATIONAL_READ',
       endpoint: req.originalUrl,
       method: req.method,
+      userId: req.user?.id || req.user?._id?.toString() || 'unknown',
+      userEmail: req.user?.email || 'unknown',
       resource,
       durationMs,
       statusCode
@@ -85,6 +87,127 @@ class AdminController {
       });
     } catch (error) {
       auditLog(req, 'prediction-analytics', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
+  async getUsers(req, res, next) {
+    const start = Date.now();
+    try {
+      const validation = validatePaginationAndSort(req.query, 'users');
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid query parameters',
+          errors: validation.errors
+        });
+      }
+
+      const result = await adminService.getUsers({
+        page: validation.page,
+        limit: validation.limit,
+        skip: validation.skip,
+        sortOptions: validation.sortOptions,
+        role: req.query.role,
+        status: req.query.status,
+        search: sanitizeSearchString(req.query.search)
+      });
+
+      auditLog(req, 'users', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        data: result.items,
+        pagination: result.pagination
+      });
+    } catch (error) {
+      auditLog(req, 'users', Date.now() - start, 500);
+      next(error);
+    }
+  }
+
+  async updateUserStatus(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const updatedUser = await adminService.updateUserStatus(id, status, req.user._id, req.body);
+      auditLog(req, 'update-user-status', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: `User status updated to ${status}`,
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'update-user-status', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async updateUserRole(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const { role, permittedWorkspaces, assignedVehicleId } = req.body;
+      const updatedUser = await adminService.updateUserRole(id, { role, permittedWorkspaces, assignedVehicleId }, req.user._id);
+      auditLog(req, 'update-user-role', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User role, permitted workspaces, and assignments updated',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'update-user-role', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async approveUser(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const updatedUser = await adminService.updateUserStatus(id, 'APPROVED', req.user._id, req.body);
+      auditLog(req, 'approve-user', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User registration approved successfully',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'approve-user', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async rejectUser(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const updatedUser = await adminService.updateUserStatus(id, 'REJECTED', req.user._id);
+      auditLog(req, 'reject-user', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User registration rejected',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'reject-user', Date.now() - start, error.status || 500);
+      next(error);
+    }
+  }
+
+  async suspendUser(req, res, next) {
+    const start = Date.now();
+    try {
+      const { id } = req.params;
+      const updatedUser = await adminService.updateUserStatus(id, 'SUSPENDED', req.user._id);
+      auditLog(req, 'suspend-user', Date.now() - start, 200);
+      return res.status(200).json({
+        success: true,
+        message: 'User account suspended',
+        data: updatedUser
+      });
+    } catch (error) {
+      auditLog(req, 'suspend-user', Date.now() - start, error.status || 500);
       next(error);
     }
   }

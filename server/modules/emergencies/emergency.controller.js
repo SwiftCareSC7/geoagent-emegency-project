@@ -6,7 +6,7 @@ import communicationService from '../communication/communication.service.js';
  */
 export const createEmergency = async (req, res, next) => {
   try {
-    const emergency = await emergencyService.createEmergency(req.body);
+    const emergency = await emergencyService.createEmergency(req.body, req.user._id);
     
     res.status(201).json({
       success: true,
@@ -121,11 +121,12 @@ export const sendEmergencyStatusSms = async (req, res, next) => {
 
     const result = await communicationService.sendEmergencyStatusSms(
       emergencyId,
+      req.user,
       { recipientMobile }
     );
 
     // Audit log
-    console.log(`[Audit] ACTION=send_status_sms EMERGENCY=${emergencyId} STATUS=${result.status} DURATION=${Date.now() - start}ms`);
+    console.log(`[Audit] USER=${req.user._id || req.user.id} ROLE=${req.user.role} ACTION=send_status_sms EMERGENCY=${emergencyId} STATUS=${result.status} DURATION=${Date.now() - start}ms`);
 
     res.status(200).json({
       success: true,
@@ -137,7 +138,7 @@ export const sendEmergencyStatusSms = async (req, res, next) => {
       data: result.data
     });
   } catch (error) {
-    console.error(`[Audit] ACTION=send_status_sms_failed EMERGENCY=${req.params.emergencyId} ERROR="${error.message}" DURATION=${Date.now() - start}ms`);
+    console.error(`[Audit] USER=${req.user?._id || req.user?.id} ROLE=${req.user?.role} ACTION=send_status_sms_failed EMERGENCY=${req.params.emergencyId} ERROR="${error.message}" DURATION=${Date.now() - start}ms`);
     next(error);
   }
 };

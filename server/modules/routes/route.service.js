@@ -23,9 +23,10 @@ class RouteService {
   /**
    * Creates a new route by calling the external routing provider and saving to DB
    * @param {Object} routeData Origin, destination, emergency, vehicle, etc.
+   * @param {String} userId ID of user creating the route
    * @returns {Promise<Object>} Created route
    */
-  async createRoute(routeData) {
+  async createRoute(routeData, userId) {
     const { emergencyId, vehicleId, origin, destination, routeType = 'PLANNED' } = routeData;
 
     // 1. Validate Emergency
@@ -75,6 +76,7 @@ class RouteService {
       routeType,
       preference,
       steps: generatedRoute.steps || [],
+      createdBy: userId
     });
 
     await route.save();

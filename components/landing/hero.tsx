@@ -56,10 +56,10 @@ export function Hero() {
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
-              href="/control-room"
+              href="/login"
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm sm:text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-[0.98]"
             >
-              <span>Enter Dashboard</span>
+              <span>Personnel Sign In</span>
               <ArrowRight className="size-4" />
             </Link>
             <Link

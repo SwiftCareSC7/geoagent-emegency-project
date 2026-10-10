@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import {
+  Users,
   Ambulance,
   Activity,
   AlertTriangle,
@@ -26,6 +27,7 @@ import type { AdminPagination, AdminQueryParams } from '@/lib/api/types'
 import { Button } from '@/components/ui/button'
 
 type CollectionTab =
+  | 'users'
   | 'vehicles'
   | 'emergencies'
   | 'incidents'
@@ -42,6 +44,7 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
+  { id: 'users', label: 'Users', icon: Users, description: 'Operators & Administrators (Passwords strictly omitted)' },
   { id: 'vehicles', label: 'Vehicles', icon: Ambulance, description: 'Emergency Fleet & Operational Status' },
   { id: 'emergencies', label: 'Emergencies', icon: Activity, description: 'Active Response Missions & Assigned Units' },
   { id: 'incidents', label: 'Incidents', icon: AlertTriangle, description: 'Road Hazards & Congestion Obstacles' },
@@ -96,6 +99,9 @@ export function AdminDatabaseExplorer() {
         let res: any
 
         switch (activeTab) {
+          case 'users':
+            res = await adminApi.getUsers(query)
+            break
           case 'vehicles':
             res = await adminApi.getVehicles(query)
             break
@@ -217,6 +223,19 @@ export function AdminDatabaseExplorer() {
 
         {/* Filter controls */}
         <div className="flex flex-wrap items-center gap-2">
+          {activeTab === 'users' && (
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && fetchCollectionData(1)}
+                className="h-8 w-44 rounded-lg border border-border/60 bg-background/50 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          )}
 
           {activeTab === 'vehicles' && (
             <select
@@ -330,6 +349,15 @@ export function AdminDatabaseExplorer() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border/50 bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {activeTab === 'users' && (
+                  <tr>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3">Created</th>
+                    <th className="px-4 py-3 text-right">Inspect</th>
+                  </tr>
+                )}
                 {activeTab === 'vehicles' && (
                   <tr>
                     <th className="px-4 py-3">Vehicle ID</th>
@@ -411,6 +439,16 @@ export function AdminDatabaseExplorer() {
               <tbody className="divide-y divide-border/40 font-mono text-xs">
                 {items.map((row) => (
                   <tr key={row.id} className="hover:bg-muted/20 transition-colors">
+                    {activeTab === 'users' && (
+                      <>
+                        <td className="px-4 py-3 font-sans font-medium text-foreground">{row.name}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{row.email}</td>
+                        <td className="px-4 py-3">{renderStatusBadge(row.role)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}
+                        </td>
+                      </>
+                    )}
                     {activeTab === 'vehicles' && (
                       <>
                         <td className="px-4 py-3 font-bold text-foreground">{row.vehicleId}</td>

@@ -2,7 +2,7 @@
  * End-to-End Test Suite: Admin Database Administration & System Observability
  *
  * Validates:
- * 1. Open access (no authentication): requests without credentials succeed
+ * 1. Authentication & RBAC (401 for unauthenticated, 403 for CONTROL_ROOM, 200 for ADMIN)
  * 2. Real System Stats across all 8 models
  * 3. Database Ping & Health (latency, connection state, zero credential leaks)
  * 4. Sensitive Field Exclusion (passwords, tokens, URIs never exposed)
@@ -22,6 +22,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config();
 
+import User from './modules/auth/user.model.js';
 import Vehicle from './modules/vehicles/vehicle.model.js';
 import Emergency from './modules/emergencies/emergency.model.js';
 import Incident from './modules/incidents/incident.model.js';
@@ -29,6 +30,7 @@ import Trajectory from './modules/trajectories/trajectory.model.js';
 import Route from './modules/routes/route.model.js';
 import Decision from './modules/decisions/decision.model.js';
 import Prediction from './modules/analysis/prediction.model.js';
+import { generateToken } from './modules/auth/jwt.utils.js';
 
 const BASE_URL = `http://localhost:${process.env.PORT || 5001}`;
 
@@ -97,12 +99,62 @@ async function runTests() {
 
   console.log('[Setup] Connected directly to MongoDB for test fixture verification');
 
-  const adminHeaders = { 'Content-Type': 'application/json' };
+  // Ensure an Admin user exists
+  let adminUser = await User.findOne({ email: 'admin_test@geoagent.local' });
+  if (!adminUser) {
+    adminUser = await User.create({
+      name: 'System Admin',
+      email: 'admin_test@geoagent.local',
+      password: 'hashed_password_for_testing_only',
+      role: 'ADMIN',
+      status: 'APPROVED'
+    });
+  } else {
+    adminUser.status = 'APPROVED';
+    await adminUser.save();
+  }
 
-  console.log('\n[1] Open Access (no login):');
+  // Ensure a Control Room operator exists
+  let operatorUser = await User.findOne({ email: 'operator_test@geoagent.local' });
+  if (!operatorUser) {
+    operatorUser = await User.create({
+      name: 'Dispatch Operator',
+      email: 'operator_test@geoagent.local',
+      password: 'hashed_password_for_testing_only',
+      role: 'CONTROL_ROOM',
+      status: 'APPROVED'
+    });
+  } else {
+    operatorUser.status = 'APPROVED';
+    await operatorUser.save();
+  }
 
-  const adminRes = await makeRequest('/api/admin/stats');
-  assert(adminRes.status === 200, 'Request without credentials to /api/admin/stats returns 200');
+  const adminToken = generateToken(adminUser._id);
+  const operatorToken = generateToken(operatorUser._id);
+
+  const adminHeaders = {
+    Authorization: `Bearer ${adminToken}`,
+    'Content-Type': 'application/json'
+  };
+
+  const operatorHeaders = {
+    Authorization: `Bearer ${operatorToken}`,
+    'Content-Type': 'application/json'
+  };
+
+  console.log('\n[1] Authentication & Authorization Boundaries:');
+
+  // Test 1.1: Unauthenticated request rejected
+  const unauthRes = await makeRequest('/api/admin/stats');
+  assert(unauthRes.status === 401, 'Unauthenticated request to /api/admin/stats returns 401 Unauthorized');
+
+  // Test 1.2: CONTROL_ROOM role rejected
+  const opRes = await makeRequest('/api/admin/stats', { headers: operatorHeaders });
+  assert(opRes.status === 403, 'CONTROL_ROOM role rejected with 403 Forbidden: Insufficient privileges');
+
+  // Test 1.3: ADMIN role accepted
+  const adminRes = await makeRequest('/api/admin/stats', { headers: adminHeaders });
+  assert(adminRes.status === 200, 'ADMIN role accepted with 200 OK');
 
   console.log('\n[2] Real System Statistics Verification:');
 
@@ -111,6 +163,7 @@ async function runTests() {
   assert(stats !== undefined, 'Stats data payload exists');
   assert(stats?.databaseConnected === true, 'Stats reports databaseConnected: true');
   assert(stats?.connectionState === 'CONNECTED', 'Stats reports connectionState: CONNECTED');
+  assert(typeof stats?.counts?.users === 'number' && stats.counts.users >= 2, `Real user count returned (${stats?.counts?.users})`);
   assert(typeof stats?.counts?.vehicles === 'number', `Real vehicle count returned (${stats?.counts?.vehicles})`);
   assert(typeof stats?.counts?.emergencies === 'number', `Real emergency count returned (${stats?.counts?.emergencies})`);
   assert(typeof stats?.counts?.trajectories === 'number', `Real trajectory count returned via estimatedDocumentCount (${stats?.counts?.trajectories})`);
@@ -145,8 +198,17 @@ async function runTests() {
 
   console.log('\n[5] Data Sanitization & Projection Rules:');
 
-  const removedUsers = await makeRequest('/api/admin/users');
-  assert(removedUsers.status === 404, 'User administration endpoint removed (404)');
+  // Test 5.1: Users endpoint strictly excludes passwords
+  const usersRes = await makeRequest('/api/admin/users', { headers: adminHeaders });
+  assert(usersRes.status === 200, 'GET /api/admin/users returns 200 OK');
+  const usersList = usersRes.data?.data;
+  assert(Array.isArray(usersList) && usersList.length > 0, `Users array returned (${usersList?.length} users)`);
+  
+  let hasPasswordLeaked = false;
+  for (const u of usersList) {
+    if (u.password || u.passwordHash) hasPasswordLeaked = true;
+  }
+  assert(!hasPasswordLeaked, 'Zero user records contain password or passwordHash field');
 
   console.log('\n[6] Query Boundary Hardening & Validation:');
 

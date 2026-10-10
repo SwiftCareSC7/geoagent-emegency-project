@@ -8,6 +8,7 @@
  */
 
 import mongoose from 'mongoose';
+import User from '../auth/user.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Incident from '../incidents/incident.model.js';
@@ -32,6 +33,7 @@ class AdminService {
         databaseConnected: false,
         connectionState: this._getConnectionStateString(mongoose.connection.readyState),
         counts: {
+          users: 0,
           vehicles: 0,
           activeVehicles: 0,
           emergencies: 0,
@@ -57,7 +59,8 @@ class AdminService {
 
     // Run parallel queries efficiently
     const [
-            vehicleCount,
+      userCount,
+      vehicleCount,
       activeVehicleCount,
       emergencyCount,
       activeEmergencyCount,
@@ -72,6 +75,7 @@ class AdminService {
       decisionsLast24h,
       incidentsLast24h
     ] = await Promise.all([
+      User.countDocuments(),
       Vehicle.countDocuments({ isDeleted: false }),
       Vehicle.countDocuments({ isDeleted: false, status: { $in: ['AVAILABLE', 'DISPATCHED', 'EN_ROUTE', 'AT_SCENE', 'RETURNING'] } }),
       Emergency.countDocuments({ isDeleted: false }),
@@ -93,6 +97,7 @@ class AdminService {
       databaseConnected: true,
       connectionState: 'CONNECTED',
       counts: {
+        users: userCount,
         vehicles: vehicleCount,
         activeVehicles: activeVehicleCount,
         emergencies: emergencyCount,
@@ -198,6 +203,232 @@ class AdminService {
   // =========================================================================
 
   /**
+   * Users listing (Sanitized: strictly excludes password hash)
+   */
+  async getUsers({ page, limit, skip, sortOptions, role, status, search }) {
+    const filter = {};
+    if (role && ['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(role)) {
+      filter.role = role;
+    }
+    if (status) {
+      if (status === 'APPROVED') {
+        filter.$or = [{ status: 'APPROVED' }, { status: { $exists: false } }, { status: null }];
+      } else if (['PENDING', 'SUSPENDED', 'REJECTED'].includes(status)) {
+        filter.status = status;
+      }
+    }
+    if (search) {
+      const searchCondition = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+      if (filter.$or) {
+        filter.$and = [{ $or: filter.$or }, { $or: searchCondition }];
+        delete filter.$or;
+      } else {
+        filter.$or = searchCondition;
+      }
+    }
+
+    const [total, users] = await Promise.all([
+      User.countDocuments(filter),
+      User.find(filter)
+        .select('-password -__v')
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limit)
+        .lean()
+    ]);
+
+    const formatted = users.map(u => {
+      const uStatus = u.status || 'APPROVED';
+      let permitted = [];
+      if (uStatus === 'APPROVED') {
+        if (u.permittedWorkspaces && u.permittedWorkspaces.length > 0) {
+          permitted = u.permittedWorkspaces;
+        } else if (u.role === 'ADMIN') {
+          permitted = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        } else if (u.role === 'CONTROL_ROOM') {
+          permitted = ['CONTROL_ROOM'];
+        } else if (u.role === 'DRIVER') {
+          permitted = ['DRIVER'];
+        } else if (u.role === 'PARAMEDIC') {
+          permitted = ['PARAMEDIC'];
+        } else {
+          permitted = ['CONTROL_ROOM'];
+        }
+      }
+
+      return {
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: uStatus,
+        requestedRole: u.requestedRole || u.role,
+        requestedWorkspaces: u.requestedWorkspaces && u.requestedWorkspaces.length > 0 ? u.requestedWorkspaces : [u.role],
+        permittedWorkspaces: permitted,
+        approvedBy: u.approvedBy ? u.approvedBy.toString() : null,
+        approvedAt: u.approvedAt || null,
+        assignedVehicleId: u.assignedVehicleId || null,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt
+      };
+    });
+
+    return {
+      items: formatted,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1
+      }
+    };
+  }
+
+  /**
+   * Update user registration/account status (APPROVED, SUSPENDED, PENDING, REJECTED)
+   */
+  async updateUserStatus(userId, status, adminId, approvalData = {}) {
+    if (!['PENDING', 'APPROVED', 'SUSPENDED', 'REJECTED'].includes(status)) {
+      const error = new Error('Invalid status. Allowed: PENDING, APPROVED, SUSPENDED, REJECTED');
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+
+    // A user cannot approve, reject, or suspend their own registration
+    if (adminId && userId && String(userId) === String(adminId)) {
+      const error = new Error('Forbidden: Administrators cannot approve, reject, or modify their own registration status');
+      error.status = 403;
+      error.isOperational = true;
+      throw error;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    user.status = status;
+
+    if (status === 'APPROVED') {
+      user.approvedBy = adminId;
+      user.approvedAt = new Date();
+
+      // Role determination upon approval:
+      // If admin explicitly specified an approved role in approvalData, use it.
+      // Otherwise, keep user's existing role, ensuring that a previous unverified ADMIN request is NEVER activated!
+      if (approvalData.role) {
+        if (!['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(approvalData.role)) {
+          const error = new Error('Invalid approved role. Allowed: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC');
+          error.status = 400;
+          error.isOperational = true;
+          throw error;
+        }
+        user.role = approvalData.role;
+      } else {
+        if (user.role === 'ADMIN') {
+          // Defense-in-depth: If an ordinary approval is invoked on an account that had an unverified ADMIN request,
+          // it must never activate as ADMIN unless explicitly granted by admin above.
+          user.role = 'CONTROL_ROOM';
+        }
+      }
+
+      // Permitted workspaces determination upon approval:
+      // Approval must save only the workspaces that the administrator actually approved.
+      // It must not blindly copy every requested permission into granted permissions.
+      if (approvalData.permittedWorkspaces && Array.isArray(approvalData.permittedWorkspaces)) {
+        const valid = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        const explicitlyApproved = approvalData.permittedWorkspaces.filter(w => valid.includes(w));
+        // Non-admin cannot receive ADMIN workspace
+        const filtered = user.role === 'ADMIN' ? explicitlyApproved : explicitlyApproved.filter(w => w !== 'ADMIN');
+        if (user.role !== 'ADMIN' && !filtered.includes(user.role)) {
+          filtered.push(user.role);
+        }
+        user.permittedWorkspaces = Array.from(new Set(filtered));
+      } else {
+        // Default to granting ONLY the approved role's workspace
+        if (user.role === 'ADMIN') {
+          user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+        } else if (user.role === 'CONTROL_ROOM') {
+          user.permittedWorkspaces = ['CONTROL_ROOM'];
+        } else if (user.role === 'DRIVER') {
+          user.permittedWorkspaces = ['DRIVER'];
+        } else if (user.role === 'PARAMEDIC') {
+          user.permittedWorkspaces = ['PARAMEDIC'];
+        } else {
+          user.permittedWorkspaces = ['CONTROL_ROOM'];
+        }
+      }
+
+      if (approvalData.assignedVehicleId !== undefined) {
+        user.assignedVehicleId = approvalData.assignedVehicleId ? approvalData.assignedVehicleId.trim() : null;
+      }
+    } else if (status === 'REJECTED') {
+      user.permittedWorkspaces = [];
+      user.approvedBy = adminId;
+      user.approvedAt = new Date();
+    } else if (status === 'SUSPENDED') {
+      user.permittedWorkspaces = [];
+    } else if (status === 'PENDING') {
+      user.permittedWorkspaces = [];
+    }
+
+    await user.save();
+    return user.toSafeObject();
+  }
+
+  /**
+   * Update user role and permitted workspaces assignment
+   */
+  async updateUserRole(userId, { role, permittedWorkspaces, assignedVehicleId }, adminId) {
+    if (role && !['CONTROL_ROOM', 'ADMIN', 'DRIVER', 'PARAMEDIC'].includes(role)) {
+      const error = new Error('Invalid role. Allowed: CONTROL_ROOM, ADMIN, DRIVER, PARAMEDIC');
+      error.status = 400;
+      error.isOperational = true;
+      throw error;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      const error = new Error('User not found');
+      error.status = 404;
+      error.isOperational = true;
+      throw error;
+    }
+
+    if (role) {
+      user.role = role;
+    }
+    if (permittedWorkspaces && Array.isArray(permittedWorkspaces)) {
+      const valid = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+      const sanitized = permittedWorkspaces.filter(w => valid.includes(w));
+      const filtered = user.role === 'ADMIN' ? sanitized : sanitized.filter(w => w !== 'ADMIN');
+      if (user.role !== 'ADMIN' && !filtered.includes(user.role)) {
+        filtered.push(user.role);
+      }
+      user.permittedWorkspaces = Array.from(new Set(filtered));
+    } else if (role) {
+      if (role === 'ADMIN') user.permittedWorkspaces = ['ADMIN', 'CONTROL_ROOM', 'DRIVER', 'PARAMEDIC'];
+      else if (role === 'CONTROL_ROOM') user.permittedWorkspaces = ['CONTROL_ROOM'];
+      else if (role === 'DRIVER') user.permittedWorkspaces = ['DRIVER'];
+      else if (role === 'PARAMEDIC') user.permittedWorkspaces = ['PARAMEDIC'];
+    }
+
+    if (assignedVehicleId !== undefined) {
+      user.assignedVehicleId = assignedVehicleId ? assignedVehicleId.trim() : null;
+    }
+
+    await user.save();
+    return user.toSafeObject();
+  }
+
+  /**
    * Vehicles listing
    */
   async getVehicles({ page, limit, skip, sortOptions, status, type }) {
@@ -257,6 +488,7 @@ class AdminService {
       Emergency.find(filter)
         .select('-__v')
         .populate('assignedVehicle', 'vehicleId registrationNumber type status driverName')
+        .populate('createdBy', 'name email role')
         .sort(sortOptions)
         .skip(skip)
         .limit(limit)
@@ -282,6 +514,14 @@ class AdminService {
             type: e.assignedVehicle.type,
             status: e.assignedVehicle.status,
             driverName: e.assignedVehicle.driverName
+          }
+        : null,
+      createdBy: e.createdBy
+        ? {
+            id: e.createdBy._id.toString(),
+            name: e.createdBy.name,
+            email: e.createdBy.email,
+            role: e.createdBy.role
           }
         : null,
       createdAt: e.createdAt,
@@ -315,6 +555,7 @@ class AdminService {
       Incident.countDocuments(filter),
       Incident.find(filter)
         .select('-__v')
+        .populate('reportedBy', 'name email role')
         .populate('emergency', 'emergencyId type priority status')
         .sort(sortOptions)
         .skip(skip)
@@ -337,6 +578,14 @@ class AdminService {
             type: inc.emergency.type,
             priority: inc.emergency.priority,
             status: inc.emergency.status
+          }
+        : null,
+      reportedBy: inc.reportedBy
+        ? {
+            id: inc.reportedBy._id.toString(),
+            name: inc.reportedBy.name,
+            email: inc.reportedBy.email,
+            role: inc.reportedBy.role
           }
         : null,
       createdAt: inc.createdAt,
@@ -375,6 +624,7 @@ class AdminService {
         .select('-__v')
         .populate('emergency', 'emergencyId type priority status')
         .populate('vehicle', 'vehicleId registrationNumber type status')
+        .populate('createdBy', 'name email role')
         .sort(sortOptions)
         .skip(skip)
         .limit(limit)
@@ -410,6 +660,13 @@ class AdminService {
       routeType: r.routeType,
       status: r.status,
       coordinatesCount: r.geometry?.coordinates?.length || 0,
+      createdBy: r.createdBy
+        ? {
+            id: r.createdBy._id.toString(),
+            name: r.createdBy.name,
+            email: r.createdBy.email
+          }
+        : null,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt
     }));
@@ -585,6 +842,8 @@ class AdminService {
         .populate('emergency', 'emergencyId type priority status')
         .populate('vehicle', 'vehicleId registrationNumber type status')
         .populate('route', 'routeId distance duration provider')
+        .populate('approvedBy', 'name email role')
+        .populate('rejectedBy', 'name email role')
         .sort(sortOptions)
         .skip(skip)
         .limit(limit)

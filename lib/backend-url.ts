@@ -16,3 +16,10 @@ export function getBackendUrl(): string | null {
 
 /** Upper bound for any BFF → Express call so a hung backend fails closed (503) instead of hanging the request. */
 export const BACKEND_TIMEOUT_MS = 10_000
+
+/** Forward the browser's session cookie so Express can authenticate and authorize the BFF call. */
+export async function backendAuthHeaders(): Promise<Record<string, string>> {
+  const { headers } = await import('next/headers')
+  const cookie = (await headers()).get('cookie')
+  return cookie ? { cookie } : {}
+}

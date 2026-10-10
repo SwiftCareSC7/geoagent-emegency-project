@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getBackendUrl, BACKEND_TIMEOUT_MS } from '@/lib/backend-url'
+import { getBackendUrl, BACKEND_TIMEOUT_MS, backendAuthHeaders } from '@/lib/backend-url'
 
 /** Forward one request to the Express backend and relay its status and JSON body (real status, no fake success). */
 export async function proxyToBackend(method: 'GET' | 'POST', path: string, body?: unknown, timeoutMs = BACKEND_TIMEOUT_MS) {
@@ -8,7 +8,7 @@ export async function proxyToBackend(method: 'GET' | 'POST', path: string, body?
   try {
     const res = await fetch(`${backend}${path}`, {
       method,
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(await backendAuthHeaders()) },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal: AbortSignal.timeout(timeoutMs),
       next: { revalidate: 0 },

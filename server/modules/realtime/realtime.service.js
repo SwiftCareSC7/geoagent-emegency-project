@@ -1,7 +1,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { REALTIME_EVENTS, REALTIME_ROOMS } from './realtime.constants.js';
 import { createEventEnvelope } from './realtime.events.js';
-import { registerSocketHandlers } from './realtime.handlers.js';
+import { socketAuthMiddleware, registerSocketHandlers } from './realtime.handlers.js';
 
 class RealtimeService {
   constructor() {
@@ -22,17 +22,16 @@ class RealtimeService {
     const allowedOrigins = Array.from(new Set([
       clientUrl,
       'http://localhost:3000',
-      'http://localhost:5173'
+      'http://localhost:5173',
+      // Canonical production frontend (matches Express CORS config)
+      'https://geoagent-emegency-project-livid.vercel.app'
     ].filter(Boolean)));
-
-    // Also allow any *.vercel.app subdomain (matches Express CORS config)
-    const vercelPattern = /^https:\/\/.*\.vercel\.app$/;
 
     this.io = new SocketIOServer(httpServer, {
       cors: {
         origin: (origin, callback) => {
           if (!origin) return callback(null, true);
-          const isAllowed = allowedOrigins.includes(origin) || vercelPattern.test(origin);
+          const isAllowed = allowedOrigins.includes(origin);
           return callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
         },
         credentials: true,
@@ -41,6 +40,9 @@ class RealtimeService {
       pingTimeout: 20000,
       pingInterval: 25000
     });
+
+    // 1. Handshake Authentication Middleware
+    this.io.use(socketAuthMiddleware);
 
     // 2. Connection event
     this.io.on('connection', (socket) => {

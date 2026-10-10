@@ -5,7 +5,7 @@
  * 1. MongoDB Database Integrity (16 Vehicles, 25 Emergencies, 20 Incidents, 26 Routes, 115 Trajectories, 4 Clearance Sessions, 8 Decisions)
  * 2. Multi-Leg Route Integrity (Leg 1: Current -> Emergency, Leg 2: Emergency -> Hospital)
  * 3. Connected Vehicles (10 Simulated V2X vehicles CV-001 to CV-010)
- * 4. Open API access (no login)
+ * 4. Authentication & RBAC (Operator Login -> JWT Token)
  * 5. Clearance API Endpoints (GET vehicle clearance, POST advance cycle)
  * 6. Reroute Acceptance Persistence (POST /api/routes/:id/reroute/accept)
  * 7. Security verification (No leaked secrets)
@@ -97,13 +97,32 @@ async function run() {
   });
   console.log('✓ PASS: Simulated Connected Vehicles verified near emergency corridor.\n');
 
-  // 4. No login: the API is open
-  console.log('[4/6] Skipped: authentication removed (API is open)\n');
+  // 4. API Authentication & Token Acquisition
+  console.log('[4/6] Testing Authentication & RBAC...');
+  const loginRes = await fetch(`${API_BASE}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'operator@swiftcare.local',
+      password: process.env.OPERATOR_PASSWORD
+    })
+  });
 
-  // 5. Clearance API Tests (no credentials)
-  console.log('[5/6] Testing Clearance API Endpoints without login...');
+  const loginJson = await loginRes.json();
+  const setCookie = loginRes.headers.get('set-cookie') || '';
+  const tokenMatch = setCookie.match(/token=([^;]+)/);
+  const token = tokenMatch ? tokenMatch[1] : null;
+
+  if (!loginJson.success || !token) {
+    throw new Error(`Login failed or token missing: ${JSON.stringify(loginJson)}`);
+  }
+
+  console.log(`✓ PASS: Operator authenticated successfully. User: ${loginJson.user.name}, Role: ${loginJson.user.role}\n`);
+
+  // 5. Authenticated Clearance API Tests
+  console.log('[5/6] Testing Authenticated Clearance API Endpoints...');
   const clearanceGetRes = await fetch(`${API_BASE}/clearance/vehicle/AMB-01`, {
-    headers: {}
+    headers: { Authorization: `Bearer ${token}` }
   });
   const clearanceGetJson = await clearanceGetRes.json();
   console.log(`GET /clearance/vehicle/AMB-01 status: ${clearanceGetRes.status}, success: ${clearanceGetJson.success}`);
@@ -111,6 +130,7 @@ async function run() {
   const advanceRes = await fetch(`${API_BASE}/clearance/vehicle/AMB-01/cycle`, {
     method: 'POST',
     headers: {
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ stepCount: 1 })
@@ -125,6 +145,7 @@ async function run() {
   const rerouteRes = await fetch(`${API_BASE}/routes/${demo001Route.routeId}/accept-reroute`, {
     method: 'POST',
     headers: {
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({

@@ -26,13 +26,14 @@ const generateEmergencyId = async () => {
 /**
  * Create a new emergency
  */
-export const createEmergency = async (emergencyData) => {
+export const createEmergency = async (emergencyData, userId) => {
   const emergencyId = await generateEmergencyId();
 
   // Enforce server-side control
   const newEmergency = new Emergency({
     ...emergencyData,
     emergencyId,
+    createdBy: userId,
     status: 'PENDING',
     isDeleted: false
   });
@@ -75,7 +76,8 @@ export const getEmergencies = async (filters = {}) => {
  */
 export const getEmergencyById = async (emergencyId) => {
   const emergency = await Emergency.findOne({ emergencyId, isDeleted: false })
-    .populate('assignedVehicle', 'vehicleId registrationNumber status');
+    .populate('assignedVehicle', 'vehicleId registrationNumber status')
+    .populate('createdBy', 'name email');
     
   if (!emergency) {
     const error = new Error('Emergency not found');

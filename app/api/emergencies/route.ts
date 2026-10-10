@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { DEMO_EMERGENCIES } from '@/lib/demo-fixtures'
+import { backendAuthHeaders } from '@/lib/backend-url'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,7 +11,9 @@ export async function GET(request: NextRequest) {
       const { searchParams } = new URL(request.url)
       const res = await fetch(`${backendUrl}/api/emergencies?${searchParams.toString()}`, {
         next: { revalidate: 0 },
+        headers: await backendAuthHeaders(),
       })
+      if (res.status === 401 || res.status === 403) return NextResponse.json(await res.json().catch(() => ({ success: false })), { status: res.status })
       if (res.ok) {
         const data = await res.json()
         return NextResponse.json(data)
@@ -42,9 +45,10 @@ export async function POST(request: NextRequest) {
     try {
       const res = await fetch(`${backendUrl}/api/emergencies`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await backendAuthHeaders()) },
         body: JSON.stringify(body),
       })
+      if (res.status === 401 || res.status === 403) return NextResponse.json(await res.json().catch(() => ({ success: false })), { status: res.status })
       if (res.ok) {
         const data = await res.json()
         return NextResponse.json(data, { status: 201 })

@@ -1,4 +1,6 @@
 import express from 'express';
+import { protect } from '../auth/auth.middleware.js';
+import { requireRole } from '../../shared/middleware/roleMiddleware.js';
 import {
   validateAnalyzeRequest,
   validateDecisionIdParam,
@@ -14,6 +16,9 @@ import {
 
 const router = express.Router();
 
+// All decision routes require authentication + operational role
+router.use(protect);
+router.use(requireRole('CONTROL_ROOM', 'ADMIN'));
 
 /**
  * @route POST /api/decisions/analyze

@@ -3,6 +3,7 @@ import test, { after, afterEach, before, beforeEach } from 'node:test';
 import express from 'express';
 import { createServer } from 'node:http';
 import mongoose from 'mongoose';
+import { generateToken } from './modules/auth/jwt.utils.js';
 import Decision from './modules/decisions/decision.model.js';
 import decisionService from './modules/decisions/decision.service.js';
 import decisionRoutes from './modules/decisions/decision.routes.js';
@@ -13,11 +14,13 @@ import {
 import Emergency from './modules/emergencies/emergency.model.js';
 import Route from './modules/routes/route.model.js';
 import routeRoutes from './modules/routes/route.routes.js';
+import User from './modules/auth/user.model.js';
 import Vehicle from './modules/vehicles/vehicle.model.js';
 import { errorHandler } from './shared/middleware/errorHandler.js';
 
 const TEST_DATABASE = 'geoagent-route-activation-integration-test';
 const TEST_MONGO_URI = process.env.MONGO_URI;
+process.env.JWT_SECRET ||= 'isolated-route-activation-integration-test-secret';
 let fixture;
 
 const newCandidate = () => createRerouteCandidate({
@@ -63,9 +66,22 @@ after(async () => {
 });
 
 beforeEach(async () => {
-  fixture = { vehicles: [], emergencies: [], routes: [], decisions: [] };
+  fixture = { vehicles: [], emergencies: [], routes: [], decisions: [], users: [] };
   const actorId = new mongoose.Types.ObjectId();
   const suffix = new mongoose.Types.ObjectId().toString();
+  const operator = await User.create({
+    name: 'Route Activation Operator',
+    email: `operator-${suffix}@route-activation.test`,
+    password: 'integration-test-password',
+    role: 'CONTROL_ROOM'
+  });
+  const driver = await User.create({
+    name: 'Route Activation Driver',
+    email: `driver-${suffix}@route-activation.test`,
+    password: 'integration-test-password',
+    role: 'DRIVER'
+  });
+  fixture.users.push(operator, driver);
   const vehicle = await Vehicle.create({
     vehicleId: `AMB-RA-${suffix}`,
     registrationNumber: `RA-${suffix.slice(-8)}`,
@@ -136,7 +152,8 @@ beforeEach(async () => {
     }
   });
 
-  fixture.actorId = actorId; // operator identity is optional now that there is no login
+  fixture.actorId = operator._id;
+  fixture.driverId = driver._id;
   fixture.vehicle = vehicle;
   fixture.emergency = emergency;
   fixture.route = route;
@@ -150,6 +167,7 @@ afterEach(async () => {
   for (const route of fixture.routes) await Route.deleteOne({ _id: route._id });
   for (const emergency of fixture.emergencies) await Emergency.deleteOne({ _id: emergency._id });
   for (const vehicle of fixture.vehicles) await Vehicle.deleteOne({ _id: vehicle._id });
+  for (const user of fixture.users) await User.deleteOne({ _id: user._id });
   fixture = null;
 });
 
@@ -351,7 +369,7 @@ test('does not retry partial activation with changed approved candidate contents
   assert.equal(stillApprovedDecision.status, 'APPROVED');
 });
 
-test('HTTP approval and activation work without login', async (t) => {
+test('restricts HTTP approval and activation to authorized operators', async (t) => {
   const app = express();
   app.use(express.json());
   app.use('/api/routes', routeRoutes);
@@ -365,9 +383,21 @@ test('HTTP approval and activation work without login', async (t) => {
 
   const baseUrl = `http://127.0.0.1:${server.address().port}/api`;
   const approvalUrl = `${baseUrl}/decisions/${fixture.decision.decisionId}/approve`;
+  const driverResponse = await fetch(approvalUrl, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${generateToken(fixture.driverId, 'DRIVER')}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ candidateId: fixture.decision.rerouteCandidate.candidateId })
+  });
+  assert.equal(driverResponse.status, 403);
+  assert.equal((await Decision.findById(fixture.decision._id)).status, 'PENDING_OPERATOR_ACTION');
+
   const operatorResponse = await fetch(approvalUrl, {
     method: 'PATCH',
     headers: {
+      Authorization: `Bearer ${generateToken(fixture.actorId, 'CONTROL_ROOM')}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ candidateId: fixture.decision.rerouteCandidate.candidateId })
@@ -380,6 +410,7 @@ test('HTTP approval and activation work without login', async (t) => {
     {
       method: 'POST',
       headers: {
+        Authorization: `Bearer ${generateToken(fixture.actorId, 'CONTROL_ROOM')}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ decisionId: fixture.decision.decisionId })

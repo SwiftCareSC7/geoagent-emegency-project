@@ -4,6 +4,7 @@
 
 export * from './types'
 export * from './client'
+export * from './auth'
 export * from './vehicles'
 export * from './emergencies'
 export * from './incidents'

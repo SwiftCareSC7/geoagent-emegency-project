@@ -438,6 +438,8 @@ class DecisionService {
    */
   async getDecisionById(decisionId) {
     const decision = await Decision.findOne({ decisionId })
+      .populate('approvedBy', 'name email role')
+      .populate('rejectedBy', 'name email role')
       .populate('emergency', 'emergencyId priority status')
       .populate('vehicle', 'vehicleId status')
       .populate('route', 'routeId status');

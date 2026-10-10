@@ -44,6 +44,7 @@ import {
 import Link from 'next/link'
 
 import { DashboardTopbar } from '@/components/dashboard/dashboard-topbar'
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { MissionAssessmentHUD } from '@/components/assessment/mission-assessment-hud'
 import { MapPlaceholder } from '@/components/dashboard/map-placeholder'
 import { Button } from '@/components/ui/button'
@@ -467,7 +468,7 @@ export default function EmergencyLabPage() {
   }
 
   return (
-    <>
+    <ProtectedRoute allowedRoles={['CONTROL_ROOM', 'ADMIN']}>
       <div className="min-h-svh bg-background text-foreground">
       <DashboardTopbar
         ambulanceId={selectedScenario.vehicleId}
@@ -736,6 +737,6 @@ export default function EmergencyLabPage() {
         </div>
       </main>
     </div>
-    </>
+    </ProtectedRoute>
   )
 }

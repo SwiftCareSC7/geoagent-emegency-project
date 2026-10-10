@@ -46,7 +46,8 @@ const incidentSchema = new mongoose.Schema(
     },
     reportedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      default: null // no user accounts; kept for legacy records
+      ref: 'User',
+      required: true
     },
     emergency: {
       type: mongoose.Schema.Types.ObjectId,

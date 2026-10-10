@@ -140,6 +140,7 @@ export function AdminOverview() {
   }
 
   const counts = stats?.counts || {
+    users: 0,
     vehicles: 0,
     activeVehicles: 0,
     emergencies: 0,
@@ -333,6 +334,14 @@ export function AdminOverview() {
 
       {/* Primary Verified Operational Counters */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        {/* Users */}
+        <div className="rounded-2xl border border-border/40 bg-card/60 p-4 backdrop-blur-sm">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
+            <Users className="size-4" />
+          </div>
+          <p className="mt-3 text-2xl font-bold tracking-tight text-foreground font-mono">{counts.users}</p>
+          <p className="text-xs font-medium text-muted-foreground">Users</p>
+        </div>
 
         {/* Vehicles */}
         <div className="rounded-2xl border border-border/40 bg-card/60 p-4 backdrop-blur-sm">

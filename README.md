@@ -2,8 +2,6 @@
 
 The **SwiftCare GeoAgentic Emergency Response System** is an intelligent decision-support and dispatch platform designed to monitor emergency vehicle GPS trajectories, detect route deviations, identify spatial causes (such as traffic bottlenecks or road incidents), predict delays, evaluate V2X green-wave corridor clearances, run advisory free-model LLM reasoning (OpenRouter / OpenCode), and evaluate authoritative operational decisions in real time.
 
-> **No authentication.** The app has no login, signup or user accounts: `/` opens the Control Room dashboard and every API route and Socket.IO room is open. Deploy the backend only where open access is acceptable. Status tables further down describe earlier milestones and may still mention the removed auth system.
-
 **Repository**: [github.com/SwiftCareSC7/geoagent-emegency-project](https://github.com/SwiftCareSC7/geoagent-emegency-project)
 
 ---
@@ -440,6 +438,7 @@ PORT=5001
 NODE_ENV=development
 MONGO_URI=mongodb://127.0.0.1:27017/geoagent-emergency
 CLIENT_URL=http://localhost:3000
+JWT_SECRET=your_long_random_jwt_secret_key_here
 AI_PROVIDER=auto            # auto | openrouter | opencode
 OPENROUTER_API_KEY=         # backend-only, never NEXT_PUBLIC_
 OPENROUTER_MODEL=           # optional; must be a free model
@@ -509,6 +508,9 @@ node server/demo-telemetry-player.js --all
 # Or run with timed delay between stages for live presentation:
 node server/demo-telemetry-player.js --all --interval 3000
 
+# Demo Accounts (provisioned securely via server/scripts/provision-users.js or environment variables):
+# Operator: operator@swiftcare.local (configured via OPERATOR_PASSWORD)
+# Admin:    admin@swiftcare.local    (configured via ADMIN_PASSWORD)
 ```
 
 ### Health & Provider Check
@@ -544,8 +546,10 @@ node test-part10-control-room-map.js   # Interactive Leaflet GIS map, layer isol
 node test-v2x-corridor-pipeline.js    # 10-tier V2X corridor green-wave preemption & Python bridge
 node test-intelligence-pipeline.js    # Real-time intelligence pipeline, What-If projection, epistemic factors
 node test-control-room-e2e.js         # Control room workflow, concurrency safety, double-action prevention
-node test-admin-e2e.js                # Admin system statistics, database ping latency, explorer
-node test-no-auth.js                  # Open access: removed auth routes 404, REST + Socket.IO work without login
+node test-admin-e2e.js                # Admin RBAC, real system statistics, database ping latency, explorer
+node test-auth-e2e.js                 # Authentication contract, registration, login, cookies, persistence
+node test-auth-rbac-complete.js       # Complete Multi-Workspace registration, Admin approval, and RBAC matrix (46/46 passed)
+node test-targeted-rbac-socket.js     # Vehicle ownership validation, Socket.IO authorization & suspension disconnection (23/23 passed)
 node test-db-safety.js                # Database safety guard preventing accidental resets of remote/production DBs
 node test-telemetry-retention.js      # Trajectory TTL retention index verification
 ```
@@ -574,26 +578,45 @@ Complete API, database, and event documentation is available in the `docs/` dire
 
 For developers connecting the frontend dashboard to the backend:
 
-### 1. Calling REST Endpoints
+### 1. Authentication
 
-There is no authentication; call endpoints directly:
+Send credentials to `POST /api/auth/login`. The server returns an HTTP-only `token` cookie (`SameSite=Strict`, 7 days) and user profile:
+
+```javascript
+const res = await fetch('http://localhost:5001/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({ email: 'operator@swiftcare.local', password: 'SecurePassword123!' })
+});
+const { user } = await res.json();
+// Subsequent requests automatically include the HTTP-only cookie via credentials: 'include'
+```
+
+### 2. Calling REST Endpoints
+
+Pass `credentials: 'include'` for cookie auth or `Authorization: Bearer <token>`:
 
 ```javascript
 // Trigger full end-to-end situation analysis for an emergency
 const analysisRes = await fetch('http://localhost:5001/api/orchestration/emergencies/EMG-0001/analyze', {
-  method: 'POST'
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${token}` }
 });
 const { data } = await analysisRes.json();
 ```
 
-### 2. Subscribing to Real-Time Push Events
+### 3. Subscribing to Real-Time Push Events
 
 Connect to Socket.IO and join the control room:
 
 ```javascript
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:5001', { transports: ['websocket'] });
+const socket = io('http://localhost:5001', {
+  auth: { token },
+  transports: ['websocket']
+});
 
 socket.on('connect', () => {
   socket.emit('room:join', { room: 'control-room' });
@@ -667,3 +690,16 @@ socket.on('decision.created', (payload) => console.log('New Decision Action:', p
 See [docs/deployment.md](docs/deployment.md) and [docs/deployment-checklist.md](docs/deployment-checklist.md) for full guides.
 
 > **Current sprint focus**: Multi-call metropolitan control room overview.
+
+## 13. Authentication & Roles
+
+Frontend: `https://geoagent-emegency-project-livid.vercel.app` · Backend: `https://geoagent-emegency-project.onrender.com`
+
+- Pages: `/login`, `/register` (also `/signup`, `/registration`). Accounts live in MongoDB (`users`), passwords are bcrypt(12) hashed, sessions are an HttpOnly `token` JWT cookie set on the frontend origin by the Next BFF; every BFF call forwards it to Express, which re-checks the user and role on each request. Socket.IO gets the same token via same-origin `/api/auth/socket-token`.
+- Access matrix (enforced by `ProtectedRoute` and Express `requireRole`): **Admin** all pages · **Control Room** all operational pages except Admin · **Driver** `/driver/dashboard` only · **Paramedic** `/paramedic` only.
+- Public registration accepts Driver, Paramedic or Control Room only and always creates a `PENDING` account that cannot sign in until an admin approves it in `/admin`. Requests for `ADMIN` are rejected (400).
+- First admin (one time, from a trusted shell; refuses if any admin exists):
+  ```bash
+  MONGO_URI='<atlas uri>' ADMIN_BOOTSTRAP_EMAIL='you@example.com' ADMIN_BOOTSTRAP_PASSWORD='<12+ chars, Aa1>' node server/scripts/bootstrap-admin.js
+  ```
+- Render needs `JWT_SECRET` (server refuses to start in production without it), `MONGO_URI`, and `CLIENT_URL=https://geoagent-emegency-project-livid.vercel.app`.

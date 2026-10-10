@@ -62,7 +62,8 @@ const emergencySchema = new mongoose.Schema(
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
-      default: null // no user accounts; kept for legacy records
+      ref: 'User',
+      required: true
     },
     communication: {
       lastSmsStatus: {
