@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getBackendUrl, BACKEND_TIMEOUT_MS } from '@/lib/backend-url'
 
 /** Forward one request to the Express backend and relay its status and JSON body (real status, no fake success). */
-export async function proxyToBackend(method: 'GET' | 'POST', path: string, body?: unknown) {
+export async function proxyToBackend(method: 'GET' | 'POST', path: string, body?: unknown, timeoutMs = BACKEND_TIMEOUT_MS) {
   const backend = getBackendUrl()
   if (!backend) return NextResponse.json({ success: false, message: 'Backend is not configured' }, { status: 503 })
   try {
@@ -10,7 +10,7 @@ export async function proxyToBackend(method: 'GET' | 'POST', path: string, body?
       method,
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
       next: { revalidate: 0 },
     })
     const data = await res.json().catch(() => ({ success: false, message: 'Invalid backend response' }))
