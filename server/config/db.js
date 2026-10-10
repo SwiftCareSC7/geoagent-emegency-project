@@ -1,13 +1,31 @@
 import mongoose from 'mongoose';
 
 /**
+ * Normalise and validate a MongoDB URI without ever echoing it.
+ * Dashboards often paste a stray leading/trailing space or newline; that is trimmed.
+ * Anything else malformed (quotes, placeholder, wrong scheme) is rejected with a sanitized message.
+ */
+export const resolveMongoUri = (raw) => {
+  if (typeof raw !== 'string' || raw.trim() === '') throw new Error('MONGO_URI is empty or not set');
+  const uri = raw.trim();
+  if (!/^mongodb(\+srv)?:\/\//.test(uri)) {
+    const hint = /^["']/.test(uri) ? ' (value is wrapped in quotes; remove them)' : '';
+    throw new Error(`MONGO_URI must start with mongodb:// or mongodb+srv://${hint}`);
+  }
+  if (/[<>]/.test(uri) || /\s/.test(uri)) {
+    throw new Error('MONGO_URI contains a placeholder (<...>) or whitespace inside the value');
+  }
+  return uri;
+};
+
+/**
  * Establish a connection to MongoDB using Mongoose.
  * Validates the presence of MONGO_URI and handles connection errors securely.
  */
 const connectDB = async () => {
   try {
-    const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geoagent';
     const isProduction = process.env.NODE_ENV === 'production';
+    const mongoUri = resolveMongoUri(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/geoagent');
 
     // Never log the full URI — it may contain credentials
     const redacted = mongoUri.includes('@')
