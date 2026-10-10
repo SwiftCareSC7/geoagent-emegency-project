@@ -13,7 +13,14 @@ export const resolveMongoUri = (raw) => {
     throw new Error(`MONGO_URI must start with mongodb:// or mongodb+srv://${hint}`);
   }
   if (/[<>]/.test(uri)) throw new Error('MONGO_URI contains < or > (placeholder brackets left around the password?)');
-  if (/\s/.test(uri)) throw new Error('MONGO_URI contains whitespace or a newline inside the value');
+  const ws = uri.match(/\s/);
+  if (ws) {
+    // Report only the kind and the section (never the value) so the fix is findable.
+    const at = ws.index;
+    const section = at < uri.indexOf('@') ? 'username/password section' : at < uri.indexOf('?') || !uri.includes('?') ? 'host/database section' : 'options (?...) section';
+    const kind = ws[0] === '\n' || ws[0] === '\r' ? 'a line break' : ws[0] === '\t' ? 'a tab' : 'a space';
+    throw new Error(`MONGO_URI contains ${kind} in the ${section}`);
+  }
   return uri;
 };
 
