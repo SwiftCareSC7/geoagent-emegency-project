@@ -112,6 +112,11 @@ app.use(express.json());
 
 const startedAt = new Date().toISOString();
 
+// Render, uptime monitors and browsers hit the bare backend URL; answer instead of logging a 404.
+app.get('/', (req, res) => {
+  res.status(200).json({ success: true, message: 'GeoAgentic backend', health: '/api/health' });
+});
+
 /**
  * Basic health endpoint with safe version info
  * Returns application metadata without leaking secrets.
