@@ -807,10 +807,19 @@ npm run build         # runs: next build
 npm run test:e2e      # e2e/ specs
 npm run test          # lib/ unit tests
 
-# Node test runner suites (no server needed)
-node --test tests/
+# GeoAgent AI & Provider unit test suite (25/25 pass, no external server needed)
+node --test tests/geoagent*.test.mjs
 
-# Backend tests (requires running MongoDB + backend server)
+# Coordinate conversion & polyline safety tests (5/5 pass)
+node server/test-coordinate-conversions.js
+
+# V2X Clearance & Reroute state machine tests (100% pass)
+node server/test-clearance-v2x.js
+
+# 10-Tier Operational Intelligence Pipeline test suite (11/11 pass)
+node server/test-v2x-corridor-pipeline.js
+
+# Backend integration tests (requires running MongoDB + backend server)
 cd server
 node test-db-safety.js
 node test-telemetry-retention.js
@@ -954,6 +963,10 @@ This repository does not currently declare a specific open-source license. All r
 
 | Document | Description |
 |---|---|
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | High-level system architecture, dual-engine safety, and data flow |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local development setup, scripts, seeding, and troubleshooting |
+| [docs/API.md](docs/API.md) | Verified REST endpoints, RBAC matrix, and Socket.IO real-time protocol |
+| [docs/SECURITY.md](docs/SECURITY.md) | Secrets management, AI guardrails, db safety, and input sanitization |
 | [docs/openapi.yaml](docs/openapi.yaml) | OpenAPI 3.0 specification (40+ endpoints) |
 | [docs/socket-events.md](docs/socket-events.md) | Socket.IO event reference |
 | [docs/database.md](docs/database.md) | Database schemas, indexes, relationships |
