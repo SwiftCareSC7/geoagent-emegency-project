@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getBackendUrl, BACKEND_TIMEOUT_MS, backendAuthHeaders } from '@/lib/backend-url'
 
 /** Forward one request to the Express backend and relay its status and JSON body (real status, no fake success). */
-export async function proxyToBackend(method: 'GET' | 'POST', path: string, body?: unknown, timeoutMs = BACKEND_TIMEOUT_MS) {
+export async function proxyToBackend(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown, timeoutMs = BACKEND_TIMEOUT_MS) {
   const backend = getBackendUrl()
   if (!backend) return NextResponse.json({ success: false, message: 'Backend is not configured' }, { status: 503 })
   try {

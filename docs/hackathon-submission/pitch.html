@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwiftCare GeoAgent — Hackathon Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* Slides: A4 landscape, one section per page, numbering drawn inside each slide. */
+  @page { size: A4 landscape; margin: 0; @bottom-left { content: none; } @bottom-right { content: none; } }
+  body { counter-reset: slide; font-size: 12.6pt; }
+  .slide li { font-size: 12.4pt; margin-bottom: 2mm; }
+  .slide .chip { font-size: 8.2pt; padding: .7mm 2mm; }
+  .slide .kicker { font-size: 9pt; }
+  .slide .card .eyebrow { font-size: 8pt; }
+  .slide .callout h4 { font-size: 13pt; }
+  .slide { counter-increment: slide; width: 297mm; height: 210mm; padding: 13mm 16mm 12mm; position: relative; overflow: hidden; break-after: page; display: flex; flex-direction: column; background: var(--paper); }
+  .slide:last-child { break-after: auto; }
+  .slide::after { content: counter(slide, decimal-leading-zero); position: absolute; right: 16mm; bottom: 7mm; font: 500 8pt "IBM Plex Mono", monospace; color: var(--faint); }
+  .slide .foot { position: absolute; left: 16mm; bottom: 7mm; font: 500 7.5pt "IBM Plex Mono", monospace; color: var(--faint); letter-spacing: .1em; text-transform: uppercase; }
+  .slide h2 { font-size: 30pt; margin-bottom: 2mm; }
+  .slide .lede { font-size: 14.5pt; max-width: 230mm; margin-bottom: 6mm; }
+  .slide .body { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .slide.dark { background: var(--navy); color: #fff; }
+  .slide.dark h2 { color: #fff; }
+  .slide.dark .lede { color: #c3cddc; }
+  .slide.dark::after, .slide.dark .foot { color: #8fa0b8; }
+  .big { font: 600 40pt/1 "IBM Plex Sans Condensed", sans-serif; color: var(--navy); }
+  .say { margin-top: 4mm; font-size: 11.4pt; color: var(--teal); border-top: .3mm solid var(--rule); padding-top: 2.5mm; }
+  .say b { font: 600 7.5pt "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; margin-right: 2mm; }
+  .card p { font-size: 11.4pt; line-height: 1.45; }
+  .card h4 { font-size: 13.5pt; margin-bottom: 2mm; }
+  table { font-size: 11.6pt; } thead th { font-size: 8.6pt; } tbody td { padding: 2.4mm 2mm; }
+  .steps { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3mm; counter-reset: st; }
+  .steps .card { border-top: .9mm solid var(--teal); }
+  .steps .card::before { counter-increment: st; content: "0" counter(st); font: 600 8pt "IBM Plex Mono", monospace; color: var(--teal); display: block; margin-bottom: 1mm; }
+  .scover { padding: 0; }
+  .scover .inner { padding: 14mm 16mm 0; display: grid; grid-template-columns: 1.15fr 1fr; gap: 10mm; flex: 1; }
+  .scover h1 { color: #fff; font-size: 46pt; line-height: .98; margin: 7mm 0 4mm; }
+  .scover .sub { color: #c3cddc; font-size: 13pt; line-height: 1.45; }
+  .scover .brand { font: 600 8.5pt "IBM Plex Mono", monospace; letter-spacing: .2em; color: var(--teal-2); text-transform: uppercase; }
+  .scover .fields { align-self: center; }
+  .scover .fields .v { font-size: 11pt; }
+  .scover svg { margin: auto 0 13mm; }
+  .scr { background: #fff; border: .3mm solid var(--rule); border-top: .9mm solid var(--navy); padding: 4mm 5mm; display: flex; flex-direction: column; }
+  .scr .route { font: 600 8.6pt "IBM Plex Mono", monospace; color: var(--teal); letter-spacing: .04em; }
+  .scr h3 { margin: 1mm 0 2mm; font-size: 18pt; }
+  .scr h4 { font: 600 7.8pt "IBM Plex Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 2.5mm 0 1mm; }
+  .scr ul { margin: 0; padding-left: 4.5mm; }
+  .slide .scr li { font-size: 12.2pt; margin-bottom: 1.6mm; line-height: 1.4; }
+  .scr .sayline { margin-top: auto; padding-top: 2.5mm; border-top: .3mm solid var(--rule); font-size: 11.6pt; color: var(--teal); }
+  .scr .sayline b { font: 600 7.4pt "IBM Plex Mono", monospace; letter-spacing: .12em; margin-right: 1.5mm; }
+  .slide.walk { padding-top: 10mm; }
+  .slide.walk h2 { font-size: 24pt; }
+  .slide .qa li { font-size: 12.6pt; margin-bottom: 3mm; }
+  .slide .qa b { color: var(--navy); }
+  table.script td { font-size: 11pt; padding: 2mm 2mm; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c3559"/></marker>
+    <marker id="art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f7c84"/></marker>
+    <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a94a2"/></marker>
+  </defs>
+</svg>
+
+<!-- 01 Cover -->
+<section class="slide dark scover">
+  <div class="inner">
+    <div>
+      <div class="brand">Hackathon pitch · October 2026</div>
+      <h1>SwiftCare<br>GeoAgent</h1>
+      <div class="sub">Live route monitoring and decision support for ambulances. The system spots drift and delay, recommends what to do, and waits for a person to approve it.</div>
+    </div>
+    <div class="fields">
+      <div class="row"><div class="k">Team name</div><div class="v">{{TEAM_NAME}}</div></div>
+      <div class="row"><div class="k">Members</div><div class="v">1. {{MEMBER_1}}<br>2. {{MEMBER_2}}<br>3. {{MEMBER_3}}<br>4. {{MEMBER_4}}</div></div>
+      <div class="row"><div class="k">Website</div><div class="v">{{WEBSITE_URL}}</div></div>
+      <div class="row"><div class="k">Demo video</div><div class="v">{{VIDEO_URL}}</div></div>
+      <div class="row"><div class="k">Source</div><div class="v"><a href="https://github.com/SwiftCareSC7/geoagent-emegency-project">github.com/SwiftCareSC7/geoagent-emegency-project</a></div></div>
+    </div>
+  </div>
+  <svg viewBox="0 0 1120 150" role="img" aria-label="Planned corridor, a GPS trail drifting off it, and an approved reroute to the hospital">
+    <g opacity=".14" stroke="#7f95b5"><path d="M0 30 H1120 M0 75 H1120 M0 120 H1120 M140 0 V150 M320 0 V150 M520 0 V150 M720 0 V150 M920 0 V150"/></g>
+    <path d="M40 120 C240 120 300 75 470 75 S760 40 900 40 L1080 40" fill="none" stroke="#5f7aa0" stroke-width="12" stroke-linecap="round" opacity=".35"/>
+    <path d="M40 120 C240 120 300 75 470 75 S760 40 900 40 L1080 40" fill="none" stroke="#9fb2cc" stroke-width="2" stroke-dasharray="7 7"/>
+    <path d="M470 75 C540 82 590 112 650 128" fill="none" stroke="#e05a63" stroke-width="2.6"/>
+    <g fill="#e05a63"><circle cx="510" cy="79" r="3.4"/><circle cx="560" cy="94" r="3.4"/><circle cx="605" cy="112" r="3.4"/><circle cx="645" cy="126" r="5"/></g>
+    <path d="M645 126 C760 136 830 90 900 62 S1020 42 1080 40" fill="none" stroke="#13a0a8" stroke-width="3.4"/>
+    <circle cx="40" cy="120" r="7" fill="#fff"/><rect x="1072" y="28" width="20" height="24" rx="2" fill="#fff"/><path d="M1082 33 v14 M1075 40 h14" stroke="#0f2340" stroke-width="2.6"/>
+  </svg>
+  <div class="foot">Prototype · Bengaluru demo corridors · no real patients or signals</div>
+</section>
+
+<!-- 02 Problem -->
+<section class="slide">
+  <div class="kicker"><span class="num">02</span> The problem</div>
+  <h2>The route is planned once. The road keeps changing.</h2>
+  <p class="lede">After dispatch, nobody has time to watch every GPS trace. Problems are visible in the data minutes before anyone acts on them.</p>
+  <div class="body">
+    <div class="grid3">
+      <div class="card"><div class="eyebrow">Drift</div><h4>Off the planned road</h4><p>A missed turn or forced detour. The dispatcher finds out when the crew calls in, or when the ETA quietly slips.</p></div>
+      <div class="card"><div class="eyebrow">Delay</div><h4>Congestion and incidents</h4><p>A crash ahead can add minutes. The report exists somewhere, but it is not linked to the vehicle it affects.</p></div>
+      <div class="card"><div class="eyebrow">Escalation</div><h4>Backup decided late</h4><p>Should a closer unit also go? That call is made under pressure, without arrival times side by side.</p></div>
+    </div>
+  </div>
+  <div class="say"><b>Say</b>For cardiac arrest, stroke and trauma, minutes matter. We are not claiming a clinical result; we built the part that notices the problem early and makes the next decision easy and safe.</div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 03 Solution / how it works -->
+<section class="slide">
+  <div class="kicker"><span class="num">03</span> Our solution</div>
+  <h2>A loop that watches every mission</h2>
+  <p class="lede">Each GPS point goes through the same six steps. The software recommends; a control-room operator decides.</p>
+  <div class="body">
+    <div class="steps">
+      <div class="card"><h4>Position</h4><p>GPS point stored and snapped to the planned road.</p></div>
+      <div class="card"><h4>Corridor</h4><p>Distance and heading give on-route, warning, deviated or critical.</p></div>
+      <div class="card"><h4>Forecast</h4><p>ETA and delay updated, each input labelled observed, derived, inferred or unknown.</p></div>
+      <div class="card"><h4>Rules</h4><p>Fixed rules pick continue, reroute, consider backup or alert, with reason codes.</p></div>
+      <div class="card"><h4>Explain</h4><p>GeoAgent AI reads the facts and explains them. It cannot change the result.</p></div>
+      <div class="card"><h4>Approve</h4><p>Operator approves or rejects. Stale approvals are refused.</p></div>
+    </div>
+  </div>
+  <div class="say"><b>Say</b>The AI is in the passenger seat. The rules are readable code, and a person signs off every change to a mission.</div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">04</span> The website at a glance</div>
+  <h2>Ten screens, four roles</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><table class="tight">
+  <thead><tr><th style="width:52mm">Screen</th><th style="width:48mm">Address</th><th style="width:50mm">Who uses it</th><th>One line</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Home</strong></td><td class="m">/</td><td>Everyone</td><td>What the system does, and the way in</td></tr>
+    <tr><td><strong>Sign in, register</strong></td><td class="m">/login · /register</td><td>Everyone</td><td>Real accounts; new staff wait for admin approval</td></tr>
+    <tr><td><strong>Control Room</strong></td><td class="m">/control-room</td><td>Dispatchers, admin</td><td>Every unit, call and hazard on one live map</td></tr>
+    <tr><td><strong>Multi-Mission Overview</strong></td><td class="m">/control-room/overview</td><td>Dispatchers, admin</td><td>All open calls as cards; log a new intake call</td></tr>
+    <tr><td><strong>Emergency detail</strong></td><td class="m">/emergencies/[id]</td><td>Dispatchers, admin</td><td>One mission's evidence: route, deviation, ETA, decision</td></tr>
+    <tr><td><strong>Emergency Lab</strong></td><td class="m">/emergency-lab</td><td>Dispatchers, admin</td><td>Scripted Bengaluru scenarios to show the approval moment</td></tr>
+    <tr><td><strong>What-If Simulator</strong></td><td class="m">/diff</td><td>Dispatchers, admin</td><td>Planned route against the alternative, on a timeline</td></tr>
+    <tr><td><strong>Driver</strong></td><td class="m">/driver/dashboard</td><td>Drivers, dispatchers, admin</td><td>Turn-by-turn cockpit on real roads</td></tr>
+    <tr><td><strong>Paramedic</strong></td><td class="m">/paramedic</td><td>Paramedics, dispatchers, admin</td><td>Patient intake and hospital pre-alert view</td></tr>
+    <tr><td><strong>Admin</strong></td><td class="m">/admin</td><td>Administrators</td><td>Approvals, roles, system health, database explorer</td></tr>
+  </tbody>
+</table>
+<p class="small" style="margin-top:2mm">Each role lands on its own screen after sign-in, and the server checks the role again on every request. Admin can open everything.</p></div>
+  <div class="foot">SwiftCare GeoAgent · website walkthrough</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">05</span> Website walkthrough</div>
+  <h2>Home, sign in and registration</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><div class="grid2" style="gap:6mm;flex:1"><div class="scr"><div class="route">/ · /login · /register — everyone</div><h3>Home, sign in and registration</h3><h4>What you see</h4><ul><li>Headline “Every second matters. We get you there faster.” and three cards: real-time monitoring, delay prediction, smart rerouting.</li><li>Personnel Sign In, View Driver Dashboard, a Help guide for the roles, and a contact section.</li><li>Registration asks for a role (control room, driver or paramedic) and workspaces. Admin can never be requested.</li></ul><h4>How it works</h4><ul><li>New accounts are <b>Pending</b> until an admin approves; pending, suspended or rejected users get a clear message.</li><li>Login and registration are rate-limited (30 tries per 15 minutes).</li></ul><div class="sayline"><b>SAY</b>In an emergency system, who can approve a reroute matters. Access is earned, not self-assigned.</div></div><div class="scr" style="border-top-color:var(--teal)"><div class="route">what happens on sign-in</div><h3>From password to workspace</h3><h4>Steps</h4><ul><li>The browser posts to <code>/api/auth/login</code> on our own site.</li><li>The website forwards it to the Express backend, which checks the bcrypt password hash and the account status.</li><li>The backend signs a session token; it is stored as an HttpOnly cookie (7 days) that page scripts cannot read.</li><li>The user lands on their role’s screen: admin → /admin, dispatcher → /control-room, driver → /driver/dashboard.</li><li>If the backend is unreachable, production login fails closed instead of using any local fallback.</li></ul></div></div></div>
+  <div class="foot">SwiftCare GeoAgent · website walkthrough</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">06</span> Website walkthrough</div>
+  <h2>Control Room</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><div class="grid2" style="gap:6mm;flex:1"><div class="scr"><div class="route">/control-room — dispatchers, admin</div><h3>Control Room</h3><h4>What you see</h4><ul><li>Five live counters: <b>Active Calls, Critical Calls, Deployed Units, Fleet Ready, Road Hazards</b>.</li><li>A Leaflet map of Bengaluru with every ambulance, emergency, incident and route corridor.</li><li>A stream badge: <i>Control stream live</i> (sockets), <i>Polling live API</i> (fallback) or <i>Simulated</i>.</li><li>The mission assessment panel: deviation, ETA, the recommended action and its reasons.</li><li>Side panels: corridor clearance (simulated connected vehicles), fleet units, road incidents.</li><li>Buttons: Refresh Live Data, Broadcast Alert, Audit History, Push-to-Talk, Task Routing, Manual Override, Assign Unit, What-If Simulator.</li></ul></div><div class="scr"><div class="route">under the hood</div><h3>How it works</h3><h4>Data and live updates</h4><ul><li>First load is fetched on the server; then Socket.IO pushes positions, incidents, ETA, predictions and decisions as they happen. If the socket drops, it polls.</li><li>Operators join the <code>control-room</code> room automatically, so they see every mission; drivers never do.</li><li>Audit History reads the stored decisions for the selected emergency.</li><li><b>Honest notes:</b> Broadcast Alert and Push-to-Talk only show a confirmation (no message or audio is sent). Approve, Override, Assign and Task Routing work on the backend but are not yet wired through on the live site.</li></ul><div class="sayline"><b>SAY</b>One screen tells a dispatcher where every unit is, which calls are critical and what is in the way, and it updates without a refresh.</div></div></div></div>
+  <div class="foot">SwiftCare GeoAgent · website walkthrough</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">07</span> Website walkthrough</div>
+  <h2>Overview and emergency detail</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><div class="grid2" style="gap:6mm;flex:1"><div class="scr"><div class="route">/control-room/overview — dispatchers</div><h3>Multi-Mission Overview</h3><h4>What you see</h4><ul><li>Every open emergency as a card: cardiac arrest, traffic collision, severe trauma, respiratory distress, fire hazard, obstetric emergency and more.</li><li>Priority filter, search by ID, description or caller, Corridor Map View and Corridor Analysis links.</li><li><b>New Intake Call</b>: caller name and phone, location, description.</li></ul><h4>How it works</h4><ul><li>Cards come from the emergencies API and stay live over the socket (“Dispatch stream live”).</li><li>New Intake Call creates a real emergency record (Pending) that the backend validates.</li></ul><div class="sayline"><b>SAY</b>With 40 calls open, this is how a dispatcher decides where to look first.</div></div><div class="scr"><div class="route">/emergencies/[id] — dispatchers</div><h3>Emergency detail</h3><h4>What you see</h4><ul><li>Assigned unit, scene and destination hospital.</li><li>Corridor deviation: cross-track error in metres, bearing divergence, GPS stability.</li><li>ETA and delay prediction: predicted arrival, delay, model confidence, risk tier.</li><li>Route comparison and the decision engine card: proposed action, severity, reasons.</li></ul><h4>How it works</h4><ul><li>Reads route, latest GPS fix, deviation, prediction and comparison from the backend; live feed over sockets or REST refresh.</li><li>Figures are labelled observed, derived or inferred, so nothing looks more certain than it is.</li></ul><div class="sayline"><b>SAY</b>Every recommendation shows its evidence. A dispatcher can see exactly why the system said what it said.</div></div></div></div>
+  <div class="foot">SwiftCare GeoAgent · website walkthrough</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">08</span> Website walkthrough</div>
+  <h2>Emergency Lab and What-If Simulator</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><div class="grid2" style="gap:6mm;flex:1"><div class="scr"><div class="route">/emergency-lab — dispatchers</div><h3>Emergency Lab <span class="chip sim">scripted</span></h3><h4>What you see</h4><ul><li>Built-in Bengaluru scenarios, e.g. “Koramangala to Manipal Hospital: heavy traffic and an accident ahead, Indiranagar reroute saves 6 min”.</li><li>Step Forward and Reset play the mission; the assessment panel updates at each stage.</li><li><b>Approve</b>, <b>Reject</b> and <b>Execute</b> for the recommended reroute.</li></ul><h4>How it works</h4><ul><li>Runs on demo data inside the page, so it always works in a live demo; nothing is written to the database.</li><li>Uses the same assessment panel as the Control Room, so judges see the real interface.</li></ul><div class="sayline"><b>SAY</b>This is the human-in-the-loop moment. The system proposes, the rules give reasons, a person decides.</div></div><div class="scr"><div class="route">/diff — dispatchers</div><h3>What-If Simulator <span class="chip sim">scripted</span></h3><h4>What you see</h4><ul><li>A mission replayed on a timeline: the planned corridor against the alternative, side by side on the map.</li><li>Distance, time and risk for both routes at each milestone.</li></ul><h4>How it works</h4><ul><li>A local scenario engine replays scripted milestones; it is a review tool, not live data.</li></ul><div class="sayline"><b>SAY</b>Before anyone approves a reroute, they can see what it would have changed.</div></div></div></div>
+  <div class="foot">SwiftCare GeoAgent · website walkthrough</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">09</span> Website walkthrough</div>
+  <h2>Driver cockpit</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><div class="grid2" style="gap:6mm;flex:1"><div class="scr"><div class="route">/driver/dashboard — drivers</div><h3>Driver cockpit</h3><h4>What you see</h4><ul><li>Next manoeuvre, distance, speed and ETA in large type, with the route on a map.</li><li>Mission header and journey status: to the scene, then to the hospital.</li><li>View / Hide Alternative to compare a recommended reroute; a reroute alert when one is offered.</li><li>Report Incident, send a status SMS to the caller, and Confirm Priority Call.</li><li>A scenario selector with the Bengaluru demo missions.</li></ul></div><div class="scr"><div class="route">under the hood</div><h3>How it works</h3><h4>Routing and safety</h4><ul><li>Routes are real road geometry from OSRM (OpenStreetMap) via the route-preview endpoint; turn steps are normalised by the navigation engine (11 unit tests).</li><li>The phone’s GPS places the vehicle on the map. It is shown on screen, not yet uploaded as telemetry.</li><li>Crews only see their own vehicle; the server enforces this with an ownership check.</li><li><b>Honest notes:</b> Confirm Priority Call shows a confirmation only; Report Incident is not yet wired through on the live site; SMS is built but the provider is not verified live.</li></ul><div class="sayline"><b>SAY</b>The driver gets one clear instruction at a time on real roads. No distractions at 60 km/h.</div></div></div></div>
+  <div class="foot">SwiftCare GeoAgent · website walkthrough</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">10</span> Website walkthrough</div>
+  <h2>Paramedic and Admin</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><div class="grid2" style="gap:6mm;flex:1"><div class="scr"><div class="route">/paramedic — paramedics</div><h3>Paramedic <span class="chip sim">demo values</span></h3><h4>What you see</h4><ul><li>Patient intake: caller, emergency type, scene description.</li><li>Vitals: heart rate, blood pressure, GCS score.</li><li>Hospital readiness: CT suite, O-negative blood bank, Pre-alerted status, predicted corridor ETA, socket status.</li><li>Simulate pre-arrival packet.</li></ul><h4>How it works</h4><ul><li>Vitals and hospital readiness are demo values on the page; no device or hospital system is connected.</li><li>The ETA panel reads the backend prediction where the role allows it and falls back otherwise.</li></ul><div class="sayline"><b>SAY</b>The idea: the hospital is ready before the ambulance arrives, because it knows the real ETA.</div></div><div class="scr"><div class="route">/admin — administrators</div><h3>Admin console</h3><h4>What you see</h4><ul><li>System Overview: database and provider health (MongoDB, routing, AI, V2X engine).</li><li>Personnel &amp; Access: approve, reject, suspend users and change roles.</li><li>Database Explorer: read-only views of vehicles, emergencies, incidents, routes, trajectories, predictions, decisions.</li><li>System Observability.</li></ul><h4>How it works</h4><ul><li>Admin-only on the server; every list is read-only.</li><li>Provider health shows what is live and what falls back: OSRM, mock traffic, the AI fallback.</li></ul><div class="sayline"><b>SAY</b>Operations are auditable: every decision, prediction and user action can be inspected.</div></div></div></div>
+  <div class="foot">SwiftCare GeoAgent · website walkthrough</div>
+</section>
+
+<!-- 04 Features -->
+<section class="slide">
+  <div class="kicker"><span class="num">11</span> What is built</div>
+  <h2>Major features and how far each is proven</h2>
+  <div class="body">
+    <div class="grid2" style="gap:8mm">
+      <table class="tight">
+        <thead><tr><th>Feature</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>Login, admin approval, 4 roles</td><td><span class="chip tested">Tested · live</span></td></tr>
+          <tr><td>Road routing (OSRM), two-leg missions</td><td><span class="chip tested">Tested · live</span></td></tr>
+          <tr><td>Deviation detection, 50 / 100 / 250 m</td><td><span class="chip tested">Tested · live</span></td></tr>
+          <tr><td>Delay prediction with evidence labels</td><td><span class="chip built">Built · live</span></td></tr>
+          <tr><td>Decision engine and approval lifecycle</td><td><span class="chip tested">Tested · backend</span></td></tr>
+          <tr><td>GeoAgent AI (free models, fallback)</td><td><span class="chip tested">Tested · fallback live</span></td></tr>
+          <tr><td>Live updates over Socket.IO</td><td><span class="chip tested">Tested · live</span></td></tr>
+          <tr><td>Admin console, database explorer</td><td><span class="chip built">Built · live</span></td></tr>
+        </tbody>
+      </table>
+      <table class="tight">
+        <thead><tr><th>Feature</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>V2X green-wave corridor, clearance</td><td><span class="chip sim">Simulated</span></td></tr>
+          <tr><td>Push-to-talk voice</td><td><span class="chip sim">UI only</span></td></tr>
+          <tr><td>Approve / reject / execute in the web app</td><td><span class="chip partial">Backend only</span></td></tr>
+          <tr><td>Override, assign, driver reroute</td><td><span class="chip partial">Backend only</span></td></tr>
+          <tr><td>Task-routing recommendations</td><td><span class="chip partial">Backend only</span></td></tr>
+          <tr><td>Driver incident report</td><td><span class="chip partial">Backend only</span></td></tr>
+          <tr><td>Status SMS (MSG91)</td><td><span class="chip off">Not verified live</span></td></tr>
+          <tr><td>Live traffic feed</td><td><span class="chip off">Mock in demo</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="say"><b>Say</b>"Backend only" means the server side works and is tested, but the deployed web app is missing the small forwarding routes for those buttons. That is our first fix.</div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 05 Architecture -->
+<section class="slide">
+  <div class="kicker"><span class="num">12</span> Architecture</div>
+  <h2>Three services, one data path</h2>
+  <div class="body">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="Browser to Vercel Next.js to Render Express to MongoDB Atlas, with Socket.IO and external providers">
+      <rect x="10" y="40" width="170" height="110" rx="5" class="box"/><text x="95" y="72" text-anchor="middle" class="tb">Browser</text><text x="95" y="94" text-anchor="middle" class="ts">React 19 · Leaflet</text><text x="95" y="112" text-anchor="middle" class="ts">4 role workspaces</text><text x="95" y="130" text-anchor="middle" class="ts">Socket.IO client</text>
+      <rect x="250" y="30" width="230" height="130" rx="5" class="box-teal"/><text x="365" y="62" text-anchor="middle" class="tb">Vercel · Next.js 16.4</text><text x="365" y="86" text-anchor="middle" class="ts">13 pages</text><text x="365" y="104" text-anchor="middle" class="ts">35 same-origin API routes</text><text x="365" y="122" text-anchor="middle" class="ts">HttpOnly session cookie</text><text x="365" y="140" text-anchor="middle" class="ts">backend address kept private</text>
+      <rect x="550" y="20" width="250" height="180" rx="5" class="box-navy"/><text x="675" y="52" text-anchor="middle" class="tb tw">Render · Express · Node 22</text><text x="675" y="78" text-anchor="middle" class="ts" style="fill:#c3cddc">17 modules · 80 endpoints</text><text x="675" y="98" text-anchor="middle" class="ts" style="fill:#c3cddc">auth, roles, rate limits</text><text x="675" y="118" text-anchor="middle" class="ts" style="fill:#c3cddc">routing, deviation, prediction</text><text x="675" y="138" text-anchor="middle" class="ts" style="fill:#c3cddc">decision engine, GeoAgent</text><text x="675" y="158" text-anchor="middle" class="ts" style="fill:#c3cddc">clearance (simulated), SMS</text><text x="675" y="178" text-anchor="middle" class="ts" style="fill:#c3cddc">Socket.IO gateway</text>
+      <rect x="850" y="40" width="140" height="80" rx="5" class="box"/><text x="920" y="72" text-anchor="middle" class="tb">MongoDB</text><text x="920" y="90" text-anchor="middle" class="tb">Atlas</text><text x="920" y="108" text-anchor="middle" class="ts">9 collections</text>
+      <rect x="850" y="160" width="140" height="120" rx="5" class="zone"/><text x="864" y="182" class="tm">PROVIDERS</text>
+      <text x="864" y="204" class="t" style="fill:#2c7a4b">● OSRM (live)</text><text x="864" y="224" class="t" style="fill:#5d6877">○ Google Routes</text><text x="864" y="244" class="t" style="fill:#5d6877">○ OpenRouter AI</text><text x="864" y="264" class="t" style="fill:#5d6877">○ MSG91 SMS</text>
+      <path d="M180 95 H248" class="ln" marker-end="url(#ar)"/><path d="M480 95 H548" class="ln" marker-end="url(#ar)"/><path d="M800 80 H848" class="ln" marker-end="url(#ar)"/><path d="M800 180 H848" class="ln-dash" marker-end="url(#arg)"/>
+      <path d="M95 150 V240 H675 V202" class="ln-teal" marker-end="url(#art)" marker-start="url(#art)"/><text x="230" y="232" class="tm" style="fill:#0f7c84">Socket.IO live updates, rooms per emergency and per vehicle</text>
+    </svg>
+  </div>
+  <div class="say"><b>Say</b>Everything runs on free tiers. Every external dependency has a fallback: Google to OSRM, AI to rules, Python to JavaScript.</div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 06 GeoAgent -->
+<section class="slide">
+  <div class="kicker"><span class="num">13</span> GeoAgent AI</div>
+  <h2>An assistant that can only read</h2>
+  <div class="body">
+    <div class="grid2" style="gap:9mm; align-items:start">
+      <div>
+        <ul>
+          <li><strong>12 read-only tools:</strong> emergency, vehicle, trail, route, alternatives, traffic, prediction, incidents, decision history, situation, nearby units, green-wave status.</li>
+          <li><strong>Bounded:</strong> at most 6 rounds, 3 calls per round, 8 calls in total, 8 s per tool. Repeated calls are de-duplicated.</li>
+          <li><strong>Free models only:</strong> OpenRouter, then OpenCode. Each model is checked against the live free catalog right before it is called.</li>
+          <li><strong>Honest:</strong> anything it could not fetch stays "unknown"; confidence below 0.5 is flagged for review.</li>
+          <li><strong>No model? Still works:</strong> a rule-based answer marked <code>fallback: true</code>.</li>
+        </ul>
+      </div>
+      <svg viewBox="0 0 440 280" role="img" aria-label="Model asks for tools, tools read data, answer goes to the decision engine as an opinion">
+        <rect x="140" y="10" width="160" height="50" rx="5" class="box-violet"/><text x="220" y="40" text-anchor="middle" class="tb">Free LLM</text>
+        <rect x="140" y="115" width="160" height="50" rx="5" class="box-teal"/><text x="220" y="137" text-anchor="middle" class="tb">12 read tools</text><text x="220" y="153" text-anchor="middle" class="ts">no write path</text>
+        <rect x="10" y="210" width="160" height="50" rx="5" class="box-soft"/><text x="90" y="240" text-anchor="middle" class="tb">Mission data</text>
+        <rect x="270" y="210" width="160" height="50" rx="5" class="box-navy"/><text x="350" y="232" text-anchor="middle" class="tb tw">Decision rules</text><text x="350" y="248" text-anchor="middle" class="ts" style="fill:#c3cddc">decide</text>
+        <path d="M200 60 V113" class="ln" marker-end="url(#ar)"/><path d="M240 113 V62" class="ln-teal" marker-end="url(#art)"/>
+        <path d="M170 160 L110 208" class="ln-dash" marker-end="url(#arg)"/>
+        <path d="M300 35 C400 35 380 150 350 208" class="ln-dash" marker-end="url(#arg)"/><text x="360" y="100" class="tm">opinion only</text>
+      </svg>
+    </div>
+  </div>
+  <div class="say"><b>Say</b>If the AI disagrees with the rules, the decision records an AI-conflict reason code for the operator. It never flips the outcome. Today no model key is configured live, so the demo shows the fallback.</div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 07 Routing, ETA, telemetry -->
+<section class="slide">
+  <div class="kicker"><span class="num">14</span> Routing, ETA and telemetry</div>
+  <h2>From a GPS point to a deviation state</h2>
+  <div class="body">
+    <svg viewBox="0 0 1000 120" role="img" aria-label="Deviation bands: on route under 50 metres, warning 50 to 100, deviated 100 to 250, critical above 250">
+      <rect x="20" y="30" width="150" height="46" fill="#e1f0e6"/><rect x="170" y="30" width="150" height="46" fill="#fbefd8"/><rect x="320" y="30" width="450" height="46" fill="#f6d7c4"/><rect x="770" y="30" width="210" height="46" fill="#f8e2e3"/>
+      <text x="95" y="58" text-anchor="middle" class="tb" style="fill:#2c7a4b">ON ROUTE</text><text x="245" y="58" text-anchor="middle" class="tb" style="fill:#a66a10">WARNING</text><text x="545" y="58" text-anchor="middle" class="tb" style="fill:#a6461c">DEVIATED</text><text x="875" y="58" text-anchor="middle" class="tb" style="fill:#b0262f">CRITICAL</text>
+      <g class="tm"><text x="20" y="96">0 m</text><text x="160" y="96">50 m</text><text x="306" y="96">100 m</text><text x="752" y="96">250 m</text></g>
+      <text x="20" y="18" class="ts">Drawn to scale (3 px = 1 m). Heading 30° off warns, 60° off counts as deviation. Three consistent fixes are needed before DEVIATED.</text>
+    </svg>
+    <div class="grid3" style="margin-top:6mm">
+      <div class="card"><div class="eyebrow">Routing</div><h4>Real roads</h4><p>OSRM (OpenStreetMap) live; Google when a key is set. Straight-line or broken geometry is rejected.</p></div>
+      <div class="card"><div class="eyebrow">ETA</div><h4>Forecast with evidence</h4><p>Predicted ETA, delay and risk after each point, every factor labelled observed, derived, inferred or unknown.</p></div>
+      <div class="card"><div class="eyebrow">Telemetry</div><h4>Fast ingestion</h4><p>Points are saved and broadcast at once; prediction runs in the background. Demo telemetry is seeded and played back.</p></div>
+    </div>
+  </div>
+  <div class="say"><b>Say</b>Phone GPS jumps 20 to 60 metres near flyovers, so we wait for three agreeing fixes. Above 250 metres we report immediately. Traffic in the demo is mock data, and we label it that way.</div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 08 Decisions -->
+<section class="slide">
+  <div class="kicker"><span class="num">15</span> Decisions and approval</div>
+  <h2>Readable rules, recorded reasons, human sign-off</h2>
+  <div class="body">
+    <div class="grid2" style="gap:9mm; align-items:start">
+      <table class="tight">
+        <thead><tr><th>When</th><th>Recommendation</th></tr></thead>
+        <tbody>
+          <tr><td>Data missing</td><td>Alert control room (never guess)</td></tr>
+          <tr><td>Deviated, heavy traffic, critical incident or blocked corridor, and a route saves ≥ 2 min</td><td>Reroute</td></tr>
+          <tr><td>Same, but no route saves time</td><td>Alert control room</td></tr>
+          <tr><td>High priority, ETA &gt; 15 min or delay &gt; 8 min, a unit ≥ 5 min faster within 10 km</td><td>Consider backup (recorded, not dispatched)</td></tr>
+          <tr><td>Otherwise</td><td>Continue</td></tr>
+        </tbody>
+      </table>
+      <svg viewBox="0 0 440 230" role="img" aria-label="Pending operator action goes to approved or rejected; approved goes to executed; both can be cancelled">
+        <rect x="10" y="90" width="150" height="50" rx="5" class="box-amber"/><text x="85" y="112" text-anchor="middle" class="tb">PENDING</text><text x="85" y="128" text-anchor="middle" class="ts">operator action</text>
+        <rect x="250" y="20" width="130" height="44" rx="5" class="box-teal"/><text x="315" y="47" text-anchor="middle" class="tb">APPROVED</text>
+        <rect x="250" y="166" width="130" height="44" rx="5" class="box-red"/><text x="315" y="193" text-anchor="middle" class="tb" style="fill:#b0262f">REJECTED</text>
+        <rect x="250" y="93" width="130" height="44" rx="5" class="box-green"/><text x="315" y="120" text-anchor="middle" class="tb">EXECUTED</text>
+        <path d="M160 105 C200 95 210 45 248 42" class="ln" marker-end="url(#ar)"/><path d="M160 125 C200 135 210 185 248 188" class="ln" marker-end="url(#ar)"/>
+        <path d="M380 42 C420 50 420 110 382 115" class="ln-teal" marker-end="url(#art)"/>
+        <text x="395" y="80" class="tm">re-check</text><text x="395" y="93" class="tm">candidate</text>
+      </svg>
+    </div>
+  </div>
+  <div class="say"><b>Say</b>Sixteen reason codes explain every outcome, and each decision stores a snapshot of its inputs. If the approved route has changed by the time someone executes it, the server refuses and asks for a fresh analysis.</div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 09 Safety -->
+<section class="slide">
+  <div class="kicker"><span class="num">16</span> Safety and responsible operation</div>
+  <h2>Designed so a mistake is hard to make</h2>
+  <div class="body">
+    <div class="grid3">
+      <div class="card"><div class="eyebrow">Access</div><h4>Earned, not self-assigned</h4><p>New accounts wait for admin approval. Every endpoint checks role on the server; crews see only their own vehicle, over HTTP and sockets. 86/86 access checks pass.</p></div>
+      <div class="card"><div class="eyebrow">AI boundary</div><h4>Explains, never acts</h4><p>Read-only tools, bounded loop, free models only, disagreement recorded. The system works with no AI at all.</p></div>
+      <div class="card"><div class="eyebrow">Actions</div><h4>Nothing changes by itself</h4><p>Approval required; stale approvals refused; backup units are recommended, never auto-dispatched; duplicate decisions within 30 s are merged.</p></div>
+      <div class="card"><div class="eyebrow">Secrets</div><h4>Out of the code</h4><p>Gitleaks scans every push and the full history. Session cookie is HttpOnly. Database open only to an IP allow list.</p></div>
+      <div class="card"><div class="eyebrow">Data</div><h4>No real patients</h4><p>Demo data only. Telemetry expires after 90 days. Destructive resets are blocked against production.</p></div>
+      <div class="card"><div class="eyebrow">Honesty</div><h4>Simulated means labelled</h4><p>Traffic is mock, the signal corridor and voice are simulated, and clearance sessions carry an <code>isSimulated</code> flag.</p></div>
+    </div>
+  </div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 10 Tech stack -->
+<section class="slide">
+  <div class="kicker"><span class="num">17</span> Technology</div>
+  <h2>Technology stack</h2>
+  <div class="body">
+    <div class="grid4">
+      <div class="card"><div class="eyebrow">Frontend</div><h4>Next.js 16.4 · React 19</h4><p>TypeScript 5.9, Tailwind CSS 4, Leaflet 1.9, Socket.IO client 4.8</p></div>
+      <div class="card"><div class="eyebrow">Backend</div><h4>Express 4 · Node 22</h4><p>Mongoose 8, Socket.IO 4.8, Turf.js 7, helmet, JWT, bcrypt</p></div>
+      <div class="card"><div class="eyebrow">Data</div><h4>MongoDB Atlas</h4><p>9 collections, GeoJSON with 2dsphere indexes, TTL retention</p></div>
+      <div class="card"><div class="eyebrow">Geo and AI</div><h4>OSRM · free LLMs</h4><p>Google Routes/Roads optional; OpenRouter / OpenCode free models; Python V2X engine with JS twin</p></div>
+      <div class="card"><div class="eyebrow">Hosting</div><h4>Vercel + Render</h4><p>Frontend on Vercel, backend on Render, both deploy from <code>main</code></p></div>
+      <div class="card"><div class="eyebrow">CI</div><h4>GitHub Actions</h4><p>Secret scan, typecheck, build, backend suites with MongoDB 7, Docker build</p></div>
+      <div class="card"><div class="eyebrow">Testing</div><h4>Node + Playwright</h4><p>43 backend test scripts, AI unit tests, navigation tests, 2 e2e specs</p></div>
+      <div class="card"><div class="eyebrow">History</div><h4>358 commits</h4><p>Since 23 August 2026, merged to <code>main</code> on 10 October</p></div>
+    </div>
+  </div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 11 Demonstrated -->
+<section class="slide">
+  <div class="kicker"><span class="num">18</span> Demonstrated implementation</div>
+  <h2>What we verified on 10 October 2026</h2>
+  <div class="body">
+    <div class="grid2" style="gap:9mm; align-items:start">
+      <table class="tight">
+        <thead><tr><th>Check</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>GitHub CI on the merged commit</td><td><span class="chip tested">Success</span></td></tr>
+          <tr><td>Typecheck and production build</td><td><span class="chip tested">Pass</span></td></tr>
+          <tr><td>Access control: HTTP / sockets / fail-closed</td><td><span class="chip tested">46 · 22 · 18 pass</span></td></tr>
+          <tr><td>Routing, navigation, real-time, reroute</td><td><span class="chip tested">Pass</span></td></tr>
+          <tr><td>Clearance and V2X pipeline</td><td><span class="chip tested">Pass · 11/11</span></td></tr>
+          <tr><td>AI and navigation unit tests</td><td><span class="chip partial">25/26 · 11/11</span></td></tr>
+          <tr><td>Phase 3–5 integration test</td><td><span class="chip fail">Fixture bug</span></td></tr>
+        </tbody>
+      </table>
+      <table class="tight">
+        <thead><tr><th>Live service</th><th>State</th></tr></thead>
+        <tbody>
+          <tr><td>Web app (Vercel)</td><td><span class="chip live">Up</span></td></tr>
+          <tr><td>API (Render), database connected</td><td><span class="chip live">Ready</span></td></tr>
+          <tr><td>Road routing</td><td>OSRM</td></tr>
+          <tr><td>Traffic</td><td>Mock</td></tr>
+          <tr><td>AI model</td><td>Not configured → rules</td></tr>
+          <tr><td>V2X engine</td><td>JavaScript fallback</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="say"><b>Say</b>Demo path: sign in as an operator, open the control room, pick a seeded Bengaluru mission, show the deviation and route comparison, then the decision with its reasons.</div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 12 Limitations -->
+<section class="slide">
+  <div class="kicker"><span class="num">19</span> Limitations and current status</div>
+  <h2>What is not done yet</h2>
+  <div class="body">
+    <div class="grid2" style="gap:9mm">
+      <div class="callout risk" style="margin:0">
+        <h4>Gaps in the deployed app</h4>
+        <ul>
+          <li>Approve, reject and execute buttons cannot reach the backend yet (missing proxy routes). Same for run-analysis, override, assign, driver reroute and incident reports.</li>
+          <li>The new phase 3–5 integration test has a fixture bug.</li>
+          <li>One log message in the database-safety guard is not redacted.</li>
+        </ul>
+      </div>
+      <div class="callout warn" style="margin:0">
+        <h4>Prototype boundaries</h4>
+        <ul>
+          <li>Traffic is mock; signals, connected vehicles and voice are simulated.</li>
+          <li>No live AI model configured in the deployment.</li>
+          <li>Thresholds are prototype values, not validated with emergency services.</li>
+          <li>Free hosting sleeps when idle; the first request can take a minute.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+<!-- 13 Roadmap -->
+<section class="slide">
+  <div class="kicker"><span class="num">20</span> Roadmap</div>
+  <h2>Next steps, in order</h2>
+  <div class="body">
+    <div class="grid4">
+      <div class="card" style="border-top:.9mm solid var(--red)"><div class="eyebrow">Now</div><h4>Close the gaps</h4><p>Add the missing proxy routes and a CI check for them; wire task-routing buttons; fix the test fixture; redact the log message.</p></div>
+      <div class="card" style="border-top:.9mm solid var(--amber)"><div class="eyebrow">Next</div><h4>Real inputs</h4><p>Upload driver GPS as telemetry; enable live traffic and a free model key; show data age on every panel.</p></div>
+      <div class="card" style="border-top:.9mm solid var(--teal)"><div class="eyebrow">Then</div><h4>Reliability</h4><p>Always-on backend, self-hosted OSRM for Indian roads, Python engine shipped in the image.</p></div>
+      <div class="card" style="border-top:.9mm solid var(--navy)"><div class="eyebrow">Later</div><h4>Field evidence</h4><p>WebRTC voice, hospital readiness feed, and a pilot on recorded missions to tune thresholds with practitioners.</p></div>
+    </div>
+  </div>
+  <div class="foot">SwiftCare GeoAgent</div>
+</section>
+
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">21</span> Live versus simulated</div>
+  <h2>What is real today</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><table class="tight">
+  <thead><tr><th style="width:70mm">Part</th><th style="width:85mm">Today</th><th>To go fully live</th></tr></thead>
+  <tbody>
+    <tr><td>Website, backend, database</td><td><span class="chip live">Live</span> Vercel, Render, MongoDB Atlas</td><td>Already live</td></tr>
+    <tr><td>Login, roles, admin approval</td><td><span class="chip live">Live</span></td><td>Already live</td></tr>
+    <tr><td>Real-time updates (Socket.IO)</td><td><span class="chip live">Live</span></td><td>Already live</td></tr>
+    <tr><td>Road routing</td><td><span class="chip live">Live</span> OSRM (OpenStreetMap)</td><td>Google key for traffic-aware routes</td></tr>
+    <tr><td>Deviation, prediction, decision rules</td><td><span class="chip live">Live logic</span> on seeded demo GPS tracks</td><td>Real ambulance GPS</td></tr>
+    <tr><td>Approving decisions in the web app</td><td><span class="chip partial">Backend only</span></td><td>Add the missing website routes (small fix)</td></tr>
+    <tr><td>GeoAgent AI</td><td><span class="chip off">Rule fallback</span> no model key set</td><td>An OpenRouter or OpenCode key</td></tr>
+    <tr><td>Traffic</td><td><span class="chip sim">Mock</span></td><td>A live traffic API</td></tr>
+    <tr><td>V2X signals, connected vehicles</td><td><span class="chip sim">Simulated</span></td><td>Real signal and vehicle data</td></tr>
+    <tr><td>Patient vitals, hospital readiness, voice</td><td><span class="chip sim">Simulated</span></td><td>Device, hospital and WebRTC integrations</td></tr>
+    <tr><td>Status SMS (MSG91)</td><td><span class="chip off">Built, not verified</span></td><td>An MSG91 account</td></tr>
+  </tbody>
+</table></div>
+  <div class="foot">SwiftCare GeoAgent · live vs simulated</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">22</span> Demo script</div>
+  <h2>Five minutes, screen by screen</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><p style="margin:0 0 2mm">Sign in as admin first so every screen opens. Open the site two minutes early: the free backend sleeps and the first request can take about a minute.</p>
+<table class="tight script">
+  <thead><tr><th style="width:18mm">Time</th><th style="width:38mm">Screen</th><th style="width:60mm">Do</th><th>Say</th></tr></thead>
+  <tbody>
+    <tr><td class="m">0:00</td><td>Home</td><td>Nothing</td><td>“Control rooms find out about a wrong turn or a jam too late. We built a system that notices first.”</td></tr>
+    <tr><td class="m">0:40</td><td>Control Room</td><td>Read the five counters aloud, zoom the map</td><td>“Live missions on real Bengaluru roads. This updates over sockets, no refresh.”</td></tr>
+    <tr><td class="m">1:30</td><td>Overview</td><td>Filter to critical</td><td>“With dozens of open calls, the critical ones come first.”</td></tr>
+    <tr><td class="m">2:00</td><td>Emergency detail</td><td>Open a mission, point at deviation and ETA</td><td>“Here is the evidence: metres off the corridor, predicted delay, and the proposed action with reasons.”</td></tr>
+    <tr><td class="m">2:50</td><td>Emergency Lab</td><td>Pick Demo 001, Step Forward, then Approve and Execute</td><td>“This scenario is scripted. The AI never acts alone: the rules decide, a person approves, and it is logged.”</td></tr>
+    <tr><td class="m">3:40</td><td>Driver</td><td>View Alternative</td><td>“The driver gets the new route as one clear instruction on real roads.”</td></tr>
+    <tr><td class="m">4:10</td><td>Paramedic</td><td>Show readiness and ETA</td><td>“The hospital view: pre-alert with the corridor ETA. Vitals here are demo values.”</td></tr>
+    <tr><td class="m">4:30</td><td>Admin</td><td>Provider health, database explorer</td><td>“Everything is auditable, and the health page shows what is live and what is falling back.”</td></tr>
+  </tbody>
+</table>
+<p class="small" style="margin-top:1.5mm">Until the missing website routes are added, do not press Approve on the live Control Room; use the Emergency Lab for that moment.</p></div>
+  <div class="foot">SwiftCare GeoAgent · demo script</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">23</span> Judge Q&amp;A</div>
+  <h2>Questions we expect (1/2)</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><ul class="qa">
+  <li><b>What if the AI is wrong?</b> It cannot act. Fixed rules make the recommendation, the AI only explains, and a person approves. If it disagrees with the rules, that is recorded as a reason code. With no AI at all, the rules still run.</li>
+  <li><b>How do you avoid false alarms from bad GPS?</b> Three distance bands (50 / 100 / 250 m) plus heading, and three consistent fixes before we call a deviation. Above 250 m we report at once.</li>
+  <li><b>Is any of this real?</b> The platform is deployed and works end to end: accounts, database, routing on real roads, live updates, the rules. Missions are seeded demo data; traffic, V2X and vitals are simulated, and we label them.</li>
+  <li><b>Why not just use Google Maps?</b> Google gives a route. We watch the mission against that route, notice when it goes wrong, compare recovery options and put a reasoned choice in front of the control room.</li>
+  <li><b>Why do some live buttons not work?</b> The backend for approval, override and assign is built and tested. The website is missing the small routes that pass those calls through. It is our first fix; the Emergency Lab shows the flow meanwhile.</li>
+</ul></div>
+  <div class="foot">SwiftCare GeoAgent · Q&amp;A</div>
+</section>
+
+<section class="slide walk">
+  <div class="kicker"><span class="num">24</span> Judge Q&amp;A</div>
+  <h2>Questions we expect (2/2)</h2>
+  <div class="body" style="justify-content:flex-start;margin-top:3mm"><ul class="qa">
+  <li><b>How does it scale?</b> State lives in MongoDB, each screen subscribes only to the rooms it needs, and the backend is a normal Node service. The free hosting tier is today’s limit, not the design.</li>
+  <li><b>What about security and privacy?</b> Admin-approved accounts, server-side role and vehicle-ownership checks on HTTP and sockets (86/86 tests pass), HttpOnly sessions, secret scanning in CI, the database open only to an IP allow list. No real patient data.</li>
+  <li><b>Which AI model do you use?</b> Free models only, chosen at call time from OpenRouter or OpenCode, with a bounded tool loop. No paid key is needed, and the demo runs on the rule-based fallback.</li>
+  <li><b>How did you test it?</b> CI runs secret scanning, typecheck, build, backend suites against MongoDB and a Docker build, and it passed on our final commit. Access control alone has 86 automated checks.</li>
+  <li><b>What is next?</b> Wire the remaining buttons, upload driver GPS, live traffic and a model key, then a pilot on recorded missions to tune the thresholds with practitioners.</li>
+</ul></div>
+  <div class="foot">SwiftCare GeoAgent · Q&amp;A</div>
+</section>
+
+<!-- 14 Links -->
+<section class="slide dark">
+  <div class="kicker" style="color:var(--teal-2)"><span class="num" style="color:#fff">25</span> Thank you</div>
+  <h2>SwiftCare GeoAgent</h2>
+  <p class="lede">Rules decide, AI explains, people approve.</p>
+  <div class="body">
+    <div class="fields" style="max-width:220mm">
+      <div class="row"><div class="k">Team name</div><div class="v">{{TEAM_NAME}}</div></div>
+      <div class="row"><div class="k">Members</div><div class="v">{{MEMBER_1}} · {{MEMBER_2}}<br>{{MEMBER_3}} · {{MEMBER_4}}</div></div>
+      <div class="row"><div class="k">Project website</div><div class="v">{{WEBSITE_URL}}</div></div>
+      <div class="row"><div class="k">Demo video (Google Drive)</div><div class="v">{{VIDEO_URL}}</div></div>
+      <div class="row"><div class="k">Source repository</div><div class="v"><a href="https://github.com/SwiftCareSC7/geoagent-emegency-project">https://github.com/SwiftCareSC7/geoagent-emegency-project</a></div></div>
+      <div class="row"><div class="k">Live application</div><div class="v"><a href="https://geoagent-emegency-project-livid.vercel.app">https://geoagent-emegency-project-livid.vercel.app</a></div></div>
+    </div>
+  </div>
+  <div class="foot">Full details: SwiftCare-GeoAgent-Technical-Report.pdf</div>
+</section>
+
+</body>
+</html>

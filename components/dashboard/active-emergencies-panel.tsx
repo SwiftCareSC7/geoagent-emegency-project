@@ -397,7 +397,7 @@ export function ActiveEmergenciesPanel({
                   inert={!showAllEmergencies}
                   className={cn(
                     'overflow-hidden transition-[max-height,opacity,margin] duration-200 ease-out motion-reduce:transition-none',
-                    showAllEmergencies ? 'mt-3 max-h-96 opacity-100' : '!mt-0 max-h-0 opacity-0',
+                    showAllEmergencies ? 'mt-3 max-h-96 opacity-100' : 'mt-0! max-h-0 opacity-0',
                   )}
                 >
                   {card}

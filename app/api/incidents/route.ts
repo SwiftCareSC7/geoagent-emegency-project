@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { DEMO_INCIDENTS } from '@/lib/demo-fixtures'
 import { backendAuthHeaders } from '@/lib/backend-url'
+import { proxyToBackend } from '@/lib/bff-proxy'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,4 +29,8 @@ export async function GET(request: NextRequest) {
     count: DEMO_INCIDENTS.length,
     data: DEMO_INCIDENTS,
   })
+}
+
+export async function POST(request: NextRequest) {
+  return proxyToBackend('POST', '/api/incidents', await request.json().catch(() => ({})))
 }

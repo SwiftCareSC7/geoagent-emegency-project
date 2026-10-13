@@ -3,8 +3,12 @@
 # Multi-stage build for minimal image size
 # ─────────────────────────────────────────────────────────
 
+# Base image can be overridden via --build-arg NODE_IMAGE=...
+# Useful for mirror fallbacks (e.g. AWS ECR Public) during transient Docker Hub outages (502 Bad Gateway)
+ARG NODE_IMAGE=node:22-slim
+
 # Stage 1: Install dependencies
-FROM node:22-slim AS builder
+FROM ${NODE_IMAGE} AS builder
 
 WORKDIR /app
 
@@ -16,7 +20,7 @@ RUN npm ci --omit=dev --ignore-scripts
 
 # ─────────────────────────────────────────────────────────
 # Stage 2: Production runtime
-FROM node:22-slim AS runner
+FROM ${NODE_IMAGE} AS runner
 
 # Security: run as non-root user
 USER node

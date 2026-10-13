@@ -1,0 +1,1353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwiftCare GeoAgent — Technical Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>
+  @page { @top-right { content: "Technical Report"; font: 500 7.5pt "IBM Plex Mono", monospace; color: #8a94a2; letter-spacing: .08em; text-transform: uppercase; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1c3559"/></marker>
+    <marker id="art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f7c84"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b0262f"/></marker>
+    <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8a94a2"/></marker>
+  </defs>
+</svg>
+
+<!-- ============================ COVER ============================ -->
+<section class="cover">
+  <div class="brand">Hackathon project submission · Technical report</div>
+  <h1>SwiftCare<br>GeoAgent</h1>
+  <div class="sub">Ambulance route monitoring and decision support: live corridor tracking, delay prediction and rule-based recommendations that a human operator approves before anything changes.</div>
+  <div class="doc">Version 1.0 · 10 October 2026 · built from commit d516074 on main</div>
+
+  <div class="visual">
+    <svg viewBox="0 0 800 210" role="img" aria-label="A planned ambulance corridor, a GPS trace drifting away from it, and an approved alternative route reaching the hospital">
+      <g opacity=".16" stroke="#7f95b5" stroke-width="1">
+        <path d="M0 40 H800 M0 90 H800 M0 140 H800 M0 190 H800 M80 0 V210 M200 0 V210 M330 0 V210 M470 0 V210 M600 0 V210 M720 0 V210"/>
+      </g>
+      <path d="M40 160 C160 160 210 110 330 110 S520 70 640 70 L750 70" fill="none" stroke="#5f7aa0" stroke-width="10" stroke-linecap="round" opacity=".35"/>
+      <path d="M40 160 C160 160 210 110 330 110 S520 70 640 70 L750 70" fill="none" stroke="#9fb2cc" stroke-width="2" stroke-dasharray="6 6"/>
+      <path d="M330 110 C380 118 420 150 470 168" fill="none" stroke="#e05a63" stroke-width="2.5"/>
+      <g fill="#e05a63"><circle cx="360" cy="114" r="3.2"/><circle cx="395" cy="128" r="3.2"/><circle cx="430" cy="148" r="3.2"/><circle cx="462" cy="165" r="4.5"/></g>
+      <path d="M462 165 C540 175 600 130 650 104 S720 76 750 70" fill="none" stroke="#13a0a8" stroke-width="3.2"/>
+      <circle cx="40" cy="160" r="6" fill="#fff"/><text x="40" y="188" text-anchor="middle" class="tm" style="fill:#b9c4d6">BASE</text>
+      <rect x="742" y="60" width="18" height="20" rx="2" fill="#fff"/><path d="M751 64 v12 M745 70 h12" stroke="#0f2340" stroke-width="2.4"/>
+      <text x="751" y="100" text-anchor="middle" class="tm" style="fill:#b9c4d6">HOSPITAL</text>
+      <text x="470" y="196" class="tm" style="fill:#f0a3a8">deviation 100 m+ → decision raised</text>
+      <text x="560" y="150" class="tm" style="fill:#7fd3d8">operator-approved reroute</text>
+    </svg>
+  </div>
+
+  <div class="fields">
+    <div class="row"><div class="k">Project</div><div class="v"><strong>SwiftCare GeoAgent</strong></div></div>
+    <div class="row"><div class="k">Team name</div><div class="v">{{TEAM_NAME}}</div></div>
+    <div class="row"><div class="k">Team members</div><div class="v">1. {{MEMBER_1}}<br>2. {{MEMBER_2}}<br>3. {{MEMBER_3}}<br>4. {{MEMBER_4}}</div></div>
+    <div class="row"><div class="k">Project website</div><div class="v">{{WEBSITE_URL}}</div></div>
+    <div class="row"><div class="k">Demo video (Drive)</div><div class="v">{{VIDEO_URL}}</div></div>
+    <div class="row"><div class="k">Source code</div><div class="v"><a href="https://github.com/SwiftCareSC7/geoagent-emegency-project">github.com/SwiftCareSC7/geoagent-emegency-project</a></div></div>
+  </div>
+  <div class="foot"><span>Prototype · no real patients, dispatch systems or traffic signals are connected</span><span>Bengaluru demo corridors</span></div>
+</section>
+
+<!-- ============================ SUBMISSION DETAILS ============================ -->
+<section class="chapter">
+  <!--MK:submission-->
+  <div class="kicker"><span class="num">00</span> Submission details</div>
+  <h2>Team and submission information</h2>
+  <div class="rule"></div>
+
+  <div class="fields" style="margin-bottom:6mm">
+    <div class="row"><div class="k">Project name</div><div class="v"><strong>SwiftCare GeoAgent</strong></div></div>
+    <div class="row"><div class="k">Team name</div><div class="v">{{TEAM_NAME}}</div></div>
+    <div class="row"><div class="k">Member 1</div><div class="v">{{MEMBER_1}}</div></div>
+    <div class="row"><div class="k">Member 2</div><div class="v">{{MEMBER_2}}</div></div>
+    <div class="row"><div class="k">Member 3</div><div class="v">{{MEMBER_3}}</div></div>
+    <div class="row"><div class="k">Member 4</div><div class="v">{{MEMBER_4}}</div></div>
+  </div>
+
+  <h3>Project links</h3>
+  <div class="fields" style="margin-bottom:3mm">
+    <div class="row"><div class="k">Project website</div><div class="v">{{WEBSITE_URL}}</div></div>
+    <div class="row"><div class="k">Demo video — Google Drive</div><div class="v">{{VIDEO_URL}}</div></div>
+    <div class="row"><div class="k">Source repository</div><div class="v"><a href="https://github.com/SwiftCareSC7/geoagent-emegency-project">https://github.com/SwiftCareSC7/geoagent-emegency-project</a></div></div>
+    <div class="row"><div class="k">Live application</div><div class="v"><a href="https://geoagent-emegency-project-livid.vercel.app">https://geoagent-emegency-project-livid.vercel.app</a> <span class="chip live">verified 10 Oct</span></div></div>
+    <div class="row"><div class="k">Backend API</div><div class="v"><a href="https://geoagent-emegency-project.onrender.com/api/health">https://geoagent-emegency-project.onrender.com/api/health</a></div></div>
+  </div>
+  <p class="small">The source repository holds the code. The live application is the deployed frontend on Vercel; it talks to the backend on Render. The free Render plan sleeps when idle, so the first request after a quiet period can take close to a minute.</p>
+
+  <h3>How to read this report</h3>
+  <p>Every capability is labelled with how far it has been proven. The labels are used the same way in the pitch deck.</p>
+  <table class="tight">
+    <thead><tr><th style="width:30mm">Label</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip tested">Tested</span></td><td>An automated test exercises it and passed during this audit or in CI on commit <code>d516074</code>.</td></tr>
+      <tr><td><span class="chip built">Built</span></td><td>Code exists and is wired end to end, but no dedicated passing test was found.</td></tr>
+      <tr><td><span class="chip partial">Partial</span></td><td>Some layers work (usually the backend) but another layer is missing, so it does not work in the deployed app.</td></tr>
+      <tr><td><span class="chip sim">Simulated</span></td><td>Runs on demo or mock data on purpose. It shows the workflow, not a real integration.</td></tr>
+      <tr><td><span class="chip off">Not configured</span></td><td>Supported in code but switched off in the live deployment (for example, no API key).</td></tr>
+    </tbody>
+  </table>
+  <div class="callout note">
+    <h4>Sources of truth</h4>
+    <p>Facts in this report come from the source code on <code>main</code>, the test runs listed in Section 21, the GitHub Actions history, and the live health endpoints. Older project documents were used only where the code confirmed them. The full evidence list is in <code>docs/hackathon-submission/project-summary.md</code>.</p>
+  </div>
+</section>
+
+<!-- ============================ CONTENTS ============================ -->
+<section class="chapter">
+  <div class="kicker">Contents</div>
+  <h2>Contents</h2>
+  <div class="rule"></div>
+  <nav class="toc">
+    <div class="part"><h4>Part I · Overview</h4>
+      <a href="#c01"><span class="n">01</span><span class="ti">Executive summary and abstract</span><span class="pg">{{PG:c01}}</span></a>
+      <a href="#c02"><span class="n">02</span><span class="ti">The problem and why it matters</span><span class="pg">{{PG:c02}}</span></a>
+      <a href="#c03"><span class="n">03</span><span class="ti">Solution, users and scope</span><span class="pg">{{PG:c03}}</span></a>
+      <a href="#c04"><span class="n">04</span><span class="ti">Feature overview</span><span class="pg">{{PG:c04}}</span></a>
+    </div>
+    <div class="part"><h4>Part II · Product and functionality</h4>
+      <a href="#c05"><span class="n">05</span><span class="ti">User journey and emergency lifecycle</span><span class="pg">{{PG:c05}}</span></a>
+      <a href="#c06"><span class="n">06</span><span class="ti">Control room, emergencies, vehicles, incidents</span><span class="pg">{{PG:c06}}</span></a>
+      <a href="#c07"><span class="n">07</span><span class="ti">Routing, ETA, traffic and deviation</span><span class="pg">{{PG:c07}}</span></a>
+      <a href="#c08"><span class="n">08</span><span class="ti">GeoAgent AI assistance</span><span class="pg">{{PG:c08}}</span></a>
+      <a href="#c09"><span class="n">09</span><span class="ti">Decisions and operator approval</span><span class="pg">{{PG:c09}}</span></a>
+      <a href="#c10"><span class="n">10</span><span class="ti">Driver, paramedic, admin, voice, degraded states</span><span class="pg">{{PG:c10}}</span></a>
+    </div>
+    <div class="part"><h4>Part III · System architecture</h4>
+      <a href="#c11"><span class="n">11</span><span class="ti">High-level architecture</span><span class="pg">{{PG:c11}}</span></a>
+      <a href="#c12"><span class="n">12</span><span class="ti">Modules and database</span><span class="pg">{{PG:c12}}</span></a>
+      <a href="#c13"><span class="n">13</span><span class="ti">APIs, real-time, providers, Python and V2X</span><span class="pg">{{PG:c13}}</span></a>
+      <a href="#c14"><span class="n">14</span><span class="ti">Deployment architecture</span><span class="pg">{{PG:c14}}</span></a>
+    </div>
+    <div class="part"><h4>Part IV · Core technical workflows</h4>
+      <a href="#c15"><span class="n">15</span><span class="ti">Mission, telemetry and failover flows</span><span class="pg">{{PG:c15}}</span></a>
+    </div>
+    <div class="part"><h4>Part V · Technology and implementation</h4>
+      <a href="#c16"><span class="n">16</span><span class="ti">Technology stack and versions</span><span class="pg">{{PG:c16}}</span></a>
+      <a href="#c17"><span class="n">17</span><span class="ti">Data models</span><span class="pg">{{PG:c17}}</span></a>
+      <a href="#c18"><span class="n">18</span><span class="ti">API endpoint reference</span><span class="pg">{{PG:c18}}</span></a>
+      <a href="#c19"><span class="n">19</span><span class="ti">Events, configuration, validation, logging</span><span class="pg">{{PG:c19}}</span></a>
+    </div>
+    <div class="part"><h4>Part VI · Safety, security and reliability</h4>
+      <a href="#c20"><span class="n">20</span><span class="ti">Security, safeguards and failure modes</span><span class="pg">{{PG:c20}}</span></a>
+    </div>
+    <div class="part"><h4>Part VII · Testing and deployment</h4>
+      <a href="#c21"><span class="n">21</span><span class="ti">Testing and verified results</span><span class="pg">{{PG:c21}}</span></a>
+      <a href="#c22"><span class="n">22</span><span class="ti">CI, deployment and troubleshooting</span><span class="pg">{{PG:c22}}</span></a>
+    </div>
+    <div class="part"><h4>Part VIII · Evaluation and future scope</h4>
+      <a href="#c23"><span class="n">23</span><span class="ti">Status, limitations and roadmap</span><span class="pg">{{PG:c23}}</span></a>
+      <a href="#c24"><span class="n">24</span><span class="ti">References and technical appendix</span><span class="pg">{{PG:c24}}</span></a>
+    </div>
+  </nav>
+
+  <h3 style="margin-top:6mm">List of figures</h3>
+  <table class="tight">
+    <tbody>
+      <tr><td class="m">Fig. 1</td><td>Emergency lifecycle and route legs</td><td class="m">Fig. 7</td><td>Decision lifecycle and approval</td></tr>
+      <tr><td class="m">Fig. 2</td><td>Who does what, by role</td><td class="m">Fig. 8</td><td>High-level architecture</td></tr>
+      <tr><td class="m">Fig. 3</td><td>Routing, ETA and deviation pipeline</td><td class="m">Fig. 9</td><td>Database entities</td></tr>
+      <tr><td class="m">Fig. 4</td><td>Deviation bands drawn to scale</td><td class="m">Fig. 10</td><td>Socket.IO rooms and events</td></tr>
+      <tr><td class="m">Fig. 5</td><td>GeoAgent reasoning and tool loop</td><td class="m">Fig. 11</td><td>Deployment architecture</td></tr>
+      <tr><td class="m">Fig. 6</td><td>Free-model selection and failover</td><td class="m">Fig. 12</td><td>One telemetry point, end to end</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================ PART I ============================ -->
+<section class="chapter" id="c01">
+  <!--MK:c01-->
+  <div class="partbanner"><b>Part I</b><span>Project overview</span></div>
+  <div class="kicker"><span class="num">01</span> Executive summary</div>
+  <h2>A second pair of eyes on every ambulance run</h2>
+  <div class="rule"></div>
+  <p class="lede">SwiftCare GeoAgent watches an ambulance's GPS trail against the road corridor it was sent on. When the vehicle drifts, slows or runs into a reported incident, the system works out what that means for arrival time, compares the alternatives, and puts a clear recommendation in front of a control-room operator. The operator approves or rejects it. The software never changes a mission on its own.</p>
+
+  <div class="grid4" style="margin:5mm 0 6mm">
+    <div class="stat"><b>80</b><span>backend endpoints, all role-checked except health and route preview</span></div>
+    <div class="stat"><b>12</b><span>read-only tools the AI assistant can call</span></div>
+    <div class="stat"><b>16</b><span>auditable reason codes behind every decision</span></div>
+    <div class="stat"><b>86/86</b><span>auth and access-control checks passing</span></div>
+  </div>
+
+  <h3>What exists today</h3>
+  <ul>
+    <li>A deployed web application (Next.js on Vercel) with separate workspaces for control-room operators, ambulance drivers, paramedics and administrators, behind real login and admin approval, and live updates over Socket.IO.</li>
+    <li>An Express and MongoDB backend on Render with 17 modules covering vehicles, emergencies, incidents, routes, telemetry, deviation, traffic, prediction, decisions, AI orchestration, corridor clearance, SMS and administration.</li>
+    <li>Road-following routes from OSRM (the OpenStreetMap routing engine), deviation bands at 50, 100 and 250 metres, and a delay model that labels each input as observed, derived, inferred or unknown.</li>
+    <li>A deterministic decision engine that produces one of five actions with reason codes, stores a full input snapshot, and requires operator approval before execution. The engine and approval lifecycle are tested on the backend; in the deployed web app the approve, reject and execute buttons cannot reach it yet because their proxy routes are missing (Section 06).</li>
+    <li>GeoAgent, an optional AI layer that may only read data through 12 tools, uses free models only, and falls back to a rule-based answer when no model is available. In the live deployment no model key is configured, so the fallback is what runs.</li>
+  </ul>
+
+  <h3>Abstract</h3>
+  <p>Ambulance crews and dispatchers lose minutes to wrong turns, unreported congestion and late decisions about sending a second unit. SwiftCare GeoAgent is a prototype decision-support system that turns raw position updates into corridor deviation states, delay forecasts and route comparisons, then applies a fixed, readable rule set to recommend continuing, rerouting, considering a backup unit or alerting the control room. An optional language-model assistant explains the situation using read-only tools but cannot override the rules, and mission-changing actions pass through an audited approval step. The system is deployed as a Next.js frontend on Vercel and an Express/MongoDB backend on Render, and is demonstrated on seeded Bengaluru scenarios with mock traffic and a simulated V2X (vehicle-to-everything) signal corridor.</p>
+
+</section>
+
+<section class="chapter" id="c02">
+  <!--MK:c02-->
+  <div class="kicker"><span class="num">02</span> Problem statement</div>
+  <h2>The problem and why it matters</h2>
+  <div class="rule"></div>
+  <p class="lede">In an emergency the route plan is made once, at dispatch. After that, the road changes and the plan does not. (This prototype is not connected to any real emergency service, signal controller or patient record; see Section 03 for scope.)</p>
+
+  <h3>What goes wrong on a typical run</h3>
+  <div class="grid3">
+    <div class="card"><div class="eyebrow">Drift</div><h4>Off the planned road</h4><p>A missed turn or a forced detour puts the ambulance on a road the plan never considered. The dispatcher only finds out when the crew calls in, or when the ETA quietly slips.</p></div>
+    <div class="card"><div class="eyebrow">Delay</div><h4>Congestion and incidents</h4><p>A crash or road closure ahead can add several minutes. The information often exists somewhere, but it is not tied to the specific vehicle and route that it affects.</p></div>
+    <div class="card"><div class="eyebrow">Escalation</div><h4>Backup decided too late</h4><p>Deciding whether a closer unit should also go is a judgement call made under pressure, usually without a side-by-side comparison of arrival times.</p></div>
+  </div>
+
+  <h3>Why it matters</h3>
+  <p>For time-critical conditions such as cardiac arrest, stroke and major trauma, minutes of delay are widely recognised as affecting outcomes. This project does not claim a measured clinical benefit; it has not been evaluated with real crews. The engineering goal is narrower and testable: notice a problem on the road as soon as the data shows it, explain it, and give a person a safe, auditable choice.</p>
+
+  <h3>Project objectives</h3>
+  <table>
+    <thead><tr><th style="width:8mm">#</th><th>Objective</th><th style="width:44mm">How it is met in code</th></tr></thead>
+    <tbody>
+      <tr><td class="m">O1</td><td>Detect when an ambulance leaves its corridor, without false alarms from GPS jitter.</td><td>Distance and bearing bands with a 3-fix stability window (<code>deviation.service.js</code>)</td></tr>
+      <tr><td class="m">O2</td><td>Estimate delay and say how confident the estimate is.</td><td>Prediction factors tagged OBSERVED / DERIVED / INFERRED / UNKNOWN</td></tr>
+      <tr><td class="m">O3</td><td>Compare alternative routes and backup units with explicit thresholds.</td><td>Route scoring and backup rules in <code>decision.rules.js</code></td></tr>
+      <tr><td class="m">O4</td><td>Keep a human in control of every mission change.</td><td>Approval state machine; execution re-checks the approved candidate</td></tr>
+      <tr><td class="m">O5</td><td>Use AI to explain, never to act, and keep working with no AI at all.</td><td>Read-only tools, free models only, deterministic fallback</td></tr>
+      <tr><td class="m">O6</td><td>Show live state to every role without page reloads.</td><td>Socket.IO rooms per emergency and per vehicle</td></tr>
+      <tr><td class="m">O7</td><td>Restrict data by role and by assigned vehicle.</td><td><code>protect</code>, <code>requireRole</code>, ownership middleware</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="chapter" id="c03">
+  <!--MK:c03-->
+  <div class="kicker"><span class="num">03</span> Proposed solution</div>
+  <h2>Solution, users and scope</h2>
+  <div class="rule"></div>
+  <p class="lede">The system runs a short loop for every active mission: take a position, compare it with the corridor, update the delay forecast, apply the rules, and ask a human when an action is needed.</p>
+
+  <h3>The core loop</h3>
+  <ol>
+    <li><strong>Position in.</strong> A GPS point is stored as a trajectory record (source: device, simulator or API) and snapped to the planned route geometry.</li>
+    <li><strong>Corridor check.</strong> Distance and heading from the route give a deviation state: on route, warning, deviated or critical.</li>
+    <li><strong>Forecast.</strong> A background job updates predicted ETA and delay for that vehicle, with each factor's evidence type recorded.</li>
+    <li><strong>Rules.</strong> When analysis is requested, the decision engine combines deviation, traffic, delay, incidents, alternative routes and available backups into one recommended action.</li>
+    <li><strong>Explain.</strong> GeoAgent (if configured) gathers the same facts through read-only tools and writes a short explanation. Disagreement with the rules is flagged, not acted on.</li>
+    <li><strong>Approve.</strong> The operator approves or rejects. Only an approved decision can be executed, and a reroute is executed only if the approved candidate route has not changed since.</li>
+  </ol>
+
+  <h3>Intended users</h3>
+  <table>
+    <thead><tr><th style="width:34mm">Role</th><th>What they use the system for</th><th style="width:38mm">Landing page</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Control-room operator</strong></td><td>Watch all active missions on a map, review decisions, approve or reject reroutes, create incidents, open mission detail.</td><td><code>/control-room</code></td></tr>
+      <tr><td><strong>Ambulance driver</strong></td><td>Turn-by-turn navigation for the assigned vehicle, route status and reroute prompts.</td><td><code>/driver/dashboard</code></td></tr>
+      <tr><td><strong>Paramedic</strong></td><td>Mission and vehicle status for the assigned unit, patient-handoff screen (no clinical integration).</td><td><code>/paramedic</code></td></tr>
+      <tr><td><strong>Administrator</strong></td><td>Approve new accounts, change roles, view provider health and statistics, browse the database read-only.</td><td><code>/admin</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Scope and boundaries</h3>
+  <div class="grid2">
+    <div class="card"><div class="eyebrow">In scope</div>
+      <ul><li>Monitoring missions that already exist in the system</li><li>Road routing, deviation, delay forecast, route comparison</li><li>Rule-based recommendations with approval and audit</li><li>Role-based access and live dashboards</li><li>Simulated corridor clearance to show the V2X idea</li></ul></div>
+    <div class="card"><div class="eyebrow">Out of scope</div>
+      <ul><li>Receiving real emergency calls or dispatching real vehicles</li><li>Medical triage or diagnosis</li><li>Controlling real traffic signals</li><li>Live commercial traffic feeds (supported in code, not enabled)</li><li>Voice transmission between crews</li></ul></div>
+  </div>
+
+  <h3>Key differentiators</h3>
+  <ul>
+    <li><strong>Rules decide, AI explains.</strong> The language model cannot write data or change the outcome. If it disagrees, the decision carries an <code>AI_RECOMMENDATION_CONFLICT</code> reason code for the operator to see.</li>
+    <li><strong>Honest about uncertainty.</strong> Prediction factors and agent facts carry an evidence type. Missing data produces <code>INSUFFICIENT_DATA</code> and an alert, never a guess.</li>
+    <li><strong>Approval that cannot go stale.</strong> Executing a reroute re-checks that the approved candidate is unchanged; otherwise it returns HTTP 409 and asks for fresh analysis.</li>
+    <li><strong>Works with zero paid services.</strong> OSRM routing, mock traffic, free-only model selection and a JavaScript fallback for the Python engine.</li>
+  </ul>
+</section>
+
+<section class="chapter cont" id="c04">
+  <!--MK:c04-->
+  <div class="kicker"><span class="num">04</span> Feature overview</div>
+  <h2>Feature overview and implementation status</h2>
+  <div class="rule"></div>
+  <p>This matrix is the reference for both documents. "Deployed" means it is reachable in the live Vercel + Render deployment as of 10 October 2026.</p>
+  <table class="tight">
+    <thead><tr><th>Feature</th><th style="width:22mm">Status</th><th style="width:16mm">Deployed</th><th>Evidence and notes</th></tr></thead>
+    <tbody>
+      <tr><td>Login, registration, admin approval, four roles</td><td><span class="chip tested">Tested</span></td><td>Yes</td><td>RBAC 46/46, socket RBAC 22/22, auth fallback 18/18</td></tr>
+      <tr><td>Page access by role</td><td><span class="chip built">Built</span></td><td>Yes</td><td><code>ProtectedRoute</code> + role map in <code>lib/auth/roles.ts</code></td></tr>
+      <tr><td>Vehicle, emergency and incident records</td><td><span class="chip tested">Tested</span></td><td>Yes</td><td>CRUD with role checks; delete is admin-only</td></tr>
+      <tr><td>Road routing (OSRM)</td><td><span class="chip tested">Tested</span></td><td>Yes</td><td>Google selected but no key, so OSRM runs live</td></tr>
+      <tr><td>Two-leg missions (scene, then hospital)</td><td><span class="chip built">Built</span></td><td>Yes</td><td>Route legs <code>TO_EMERGENCY</code>, <code>TO_HOSPITAL</code></td></tr>
+      <tr><td>Deviation detection</td><td><span class="chip tested">Tested</span></td><td>Yes</td><td>Covered by navigation and phase-2 reroute tests</td></tr>
+      <tr><td>Delay prediction with evidence types</td><td><span class="chip built">Built</span></td><td>Yes</td><td>Runs after each telemetry point, in the background</td></tr>
+      <tr><td>Route comparison</td><td><span class="chip built">Built</span></td><td>Yes</td><td>12–15 s on the backend; proxy allows 50 s</td></tr>
+      <tr><td>Decision engine, records and approval lifecycle (backend)</td><td><span class="chip tested">Tested</span></td><td>Backend</td><td>Rules, snapshot, state machine; exercised in CI suites</td></tr>
+      <tr><td>Approve, reject and execute from the UI</td><td><span class="chip partial">Partial</span></td><td>No</td><td>No Vercel proxy for <code>/decisions/:id/approve|reject|execute</code>; buttons get 404</td></tr>
+      <tr><td>Run analysis from the mission page</td><td><span class="chip partial">Partial</span></td><td>No</td><td>No proxy for <code>/orchestration/.../analyze</code></td></tr>
+      <tr><td>GeoAgent AI assistant</td><td><span class="chip tested">Tested</span></td><td><span class="chip off">Fallback</span></td><td>25 unit tests pass; no model key live, so rule-based fallback answers</td></tr>
+      <tr><td>Live updates (Socket.IO)</td><td><span class="chip tested">Tested</span></td><td>Yes</td><td>Realtime suite and socket RBAC suite</td></tr>
+      <tr><td>V2X green-wave corridor and clearance</td><td><span class="chip sim">Simulated</span></td><td>Yes</td><td>4 fixed demo signals; sessions flagged <code>isSimulated</code>; 11/11 pipeline tests</td></tr>
+      <tr><td>Control-room audit history</td><td><span class="chip built">Built</span></td><td>Yes</td><td>Uses the existing decisions proxy</td></tr>
+      <tr><td>Manual route override</td><td><span class="chip partial">Partial</span></td><td>No</td><td>Backend works; no Vercel proxy route, so the button gets 404</td></tr>
+      <tr><td>Assign / reassign unit</td><td><span class="chip partial">Partial</span></td><td>No</td><td>Same: backend only</td></tr>
+      <tr><td>Driver "reroute from here"</td><td><span class="chip partial">Partial</span></td><td>No</td><td>Same: backend only</td></tr>
+      <tr><td>Task-routing recommendations panel</td><td><span class="chip partial">Partial</span></td><td>No</td><td>Backend only; Approve/Dismiss buttons are not wired</td></tr>
+      <tr><td>Driver incident report</td><td><span class="chip partial">Partial</span></td><td>No</td><td>Proxy for <code>/api/incidents</code> has GET only; POST gets 405</td></tr>
+      <tr><td>Full trail on mission detail page</td><td><span class="chip partial">Partial</span></td><td>No</td><td>Latest and recent points work; full history path has no proxy</td></tr>
+      <tr><td>Push-to-talk voice</td><td><span class="chip sim">Simulated</span></td><td>UI only</td><td>Microphone permission and timer; no audio leaves the browser</td></tr>
+      <tr><td>Status SMS (MSG91)</td><td><span class="chip built">Built</span></td><td>Unverified</td><td>Mock mode in code; live keys not confirmed</td></tr>
+      <tr><td>Admin console and database explorer</td><td><span class="chip built">Built</span></td><td>Yes</td><td>Admin-only; read-only lists of 7 collections plus prediction analytics</td></tr>
+      <tr><td>Emergency lab and before/after scenario page</td><td><span class="chip sim">Simulated</span></td><td>Yes</td><td>Scripted scenarios for demonstration</td></tr>
+      <tr><td>Telemetry retention (90-day TTL)</td><td><span class="chip tested">Tested</span></td><td>Yes</td><td>TTL index verified</td></tr>
+      <tr><td>Production database safety guards</td><td><span class="chip tested">Tested</span></td><td>Yes</td><td>Destructive resets blocked unless explicitly allowed</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================ PART II ============================ -->
+<section class="chapter" id="c05">
+  <!--MK:c05-->
+  <div class="partbanner"><b>Part II</b><span>Product and functionality</span></div>
+  <div class="kicker"><span class="num">05</span> User journey</div>
+  <h2>From a new emergency to a resolved mission</h2>
+  <div class="rule"></div>
+  <p>An emergency record moves through six states. A vehicle is assigned, a two-leg route is built (to the scene, then to the hospital), and telemetry drives everything after that.</p>
+
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 250" role="img" aria-label="Emergency status flow from pending to resolved, with cancelled possible from any active state, and route legs under the dispatched and in-progress states">
+        <g>
+          <rect x="10" y="30" width="96" height="46" rx="4" class="box-soft"/><text x="58" y="51" text-anchor="middle" class="tb">PENDING</text><text x="58" y="66" text-anchor="middle" class="ts">record created</text>
+          <rect x="128" y="30" width="104" height="46" rx="4" class="box"/><text x="180" y="51" text-anchor="middle" class="tb">DISPATCHED</text><text x="180" y="66" text-anchor="middle" class="ts">vehicle assigned</text>
+          <rect x="254" y="30" width="110" height="46" rx="4" class="box-teal"/><text x="309" y="51" text-anchor="middle" class="tb">IN_PROGRESS</text><text x="309" y="66" text-anchor="middle" class="ts">driving to scene</text>
+          <rect x="386" y="30" width="96" height="46" rx="4" class="box"/><text x="434" y="51" text-anchor="middle" class="tb">AT_SCENE</text><text x="434" y="66" text-anchor="middle" class="ts">crew on site</text>
+          <rect x="504" y="30" width="96" height="46" rx="4" class="box-green"/><text x="552" y="51" text-anchor="middle" class="tb">RESOLVED</text><text x="552" y="66" text-anchor="middle" class="ts">mission closed</text>
+          <path d="M106 53 H126" class="ln" marker-end="url(#ar)"/><path d="M232 53 H252" class="ln" marker-end="url(#ar)"/><path d="M364 53 H384" class="ln" marker-end="url(#ar)"/><path d="M482 53 H502" class="ln" marker-end="url(#ar)"/>
+          <rect x="560" y="120" width="104" height="38" rx="4" class="box-red"/><text x="612" y="144" text-anchor="middle" class="tb" style="fill:#b0262f">CANCELLED</text>
+          <path d="M58 76 V100 H612 V118" class="ln-dash" marker-end="url(#arg)"/>
+          <text x="300" y="96" class="tm">any active state can be cancelled</text>
+        </g>
+        <g>
+          <rect x="128" y="170" width="236" height="56" rx="4" class="zone"/>
+          <text x="140" y="188" class="tm">ROUTE LEG 1 · TO_EMERGENCY</text>
+          <path d="M140 210 C190 196 250 222 352 204" class="ln-teal" marker-end="url(#art)"/>
+          <rect x="386" y="170" width="214" height="56" rx="4" class="zone"/>
+          <text x="398" y="188" class="tm">ROUTE LEG 2 · TO_HOSPITAL</text>
+          <path d="M398 210 C450 222 520 196 588 206" class="ln-teal" marker-end="url(#art)"/>
+          <path d="M309 76 V168" class="ln-dash"/><path d="M434 76 V168" class="ln-dash"/>
+          <text x="10" y="200" class="ts">Telemetry, deviation,</text><text x="10" y="214" class="ts">ETA and decisions run</text><text x="10" y="228" class="ts">on the active leg</text>
+        </g>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 1</b>Emergency status values come from <code>emergency.model.js</code>; route legs from <code>route.model.js</code>. Vehicle status runs in parallel: AVAILABLE, DISPATCHED, EN_ROUTE, AT_SCENE, RETURNING, OFFLINE, MAINTENANCE.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 230" role="img" aria-label="Swimlanes for administrator, control room, driver and system showing who performs each step">
+        <g class="lanes">
+          <rect x="0" y="0" width="680" height="52" fill="#f3f1ec"/><rect x="0" y="52" width="680" height="58" fill="#fff"/><rect x="0" y="110" width="680" height="58" fill="#f3f1ec"/><rect x="0" y="168" width="680" height="62" fill="#fff"/>
+          <text x="10" y="30" class="tm">ADMIN</text><text x="10" y="85" class="tm">CONTROL ROOM</text><text x="10" y="143" class="tm">DRIVER</text><text x="10" y="203" class="tm">SYSTEM</text>
+        </g>
+        <rect x="100" y="12" width="120" height="30" rx="4" class="box"/><text x="160" y="31" text-anchor="middle" class="t">Approves accounts</text>
+        <rect x="160" y="66" width="120" height="30" rx="4" class="box"/><text x="220" y="85" text-anchor="middle" class="t">Opens mission</text>
+        <rect x="230" y="124" width="120" height="30" rx="4" class="box"/><text x="290" y="143" text-anchor="middle" class="t">Drives the route</text>
+        <rect x="300" y="182" width="150" height="30" rx="4" class="box-teal"/><text x="375" y="201" text-anchor="middle" class="t">Deviation · ETA · rules</text>
+        <rect x="430" y="66" width="120" height="30" rx="4" class="box-amber"/><text x="490" y="85" text-anchor="middle" class="t">Approves / rejects</text>
+        <rect x="540" y="124" width="126" height="30" rx="4" class="box-green"/><text x="603" y="143" text-anchor="middle" class="t">Sees new route</text>
+        <path d="M220 42 V64" class="ln-dash" marker-end="url(#arg)"/>
+        <path d="M280 81 C300 81 290 110 290 122" class="ln" marker-end="url(#ar)"/>
+        <path d="M350 139 C370 139 375 160 375 180" class="ln" marker-end="url(#ar)"/>
+        <path d="M450 197 C480 197 490 120 490 98" class="ln" marker-end="url(#ar)"/>
+        <path d="M550 81 C590 81 603 100 603 122" class="ln-teal" marker-end="url(#art)"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 2</b>Who does what. Paramedics follow the driver's mission view for their assigned unit. The system lane never crosses straight to the driver lane: every change goes through the control room.</figcaption>
+  </figure>
+</section>
+
+<section class="chapter" id="c06">
+  <!--MK:c06-->
+  <div class="kicker"><span class="num">06</span> Control room</div>
+  <h2>Control room, emergencies, vehicles and incidents</h2>
+  <div class="rule"></div>
+  <p>The control-room dashboard (<code>components/dashboard/control-room-dashboard.tsx</code>) is the main working screen. It shows every active mission on a Leaflet map, with a side panel for the selected emergency, its vehicle, its route and its pending decisions.</p>
+
+  <h3>Control-room functionality</h3>
+  <table>
+    <thead><tr><th style="width:38mm">Function</th><th>What it does and how</th><th style="width:22mm">Status</th></tr></thead>
+    <tbody>
+      <tr><td>Live mission map</td><td>Plots vehicles, emergencies, incidents and route lines. Initial data is loaded server-side from the backend; updates arrive over Socket.IO.</td><td><span class="chip built">Built</span></td></tr>
+      <tr><td>Decision review</td><td>Lists decisions awaiting action with severity, reasons and the proposed route. Approve, reject and execute call the decision endpoints. The backend side is tested; in the deployed app these calls currently get 404 (see below).</td><td><span class="chip partial">Partial</span></td></tr>
+      <tr><td>Audit history</td><td>Shows past decisions for the selected emergency: ID, status, action, time and reasoning.</td><td><span class="chip built">Built</span></td></tr>
+      <tr><td>Route comparison</td><td>Shows the current route next to alternatives with ETA and traffic, and why a route changed.</td><td><span class="chip built">Built</span></td></tr>
+      <tr><td>Manual override</td><td>Replace a route with operator-supplied geometry; a reason is required; recorded as <code>MANUAL_OVERRIDE</code>.</td><td><span class="chip partial">Partial</span></td></tr>
+      <tr><td>Assign unit</td><td>Pick an AVAILABLE vehicle and assign it to the emergency.</td><td><span class="chip partial">Partial</span></td></tr>
+      <tr><td>Task routing</td><td>Asks GeoAgent for structured recommendations (action, confidence, reason, priority) for review.</td><td><span class="chip partial">Partial</span></td></tr>
+      <tr><td>Corridor clearance</td><td>Shows the simulated connected-vehicle alert cycle along the corridor and lets the operator advance or reset it.</td><td><span class="chip sim">Simulated</span></td></tr>
+    </tbody>
+  </table>
+  <div class="callout risk">
+    <h4>Known gap in the deployed app</h4>
+    <p>The browser only calls same-origin routes under <code>app/api/</code>, which forward to Express. Several backend endpoints that the UI uses have no such forwarding route yet, so in the deployed app they answer 404 or 405 even though the backend behind them works and is protected:</p>
+    <ul>
+      <li>decision approve, reject and execute;</li>
+      <li>run analysis (orchestration) and task-routing recommendations;</li>
+      <li>manual override, assign unit and driver reroute;</li>
+      <li>driver incident report (POST) and full trail history.</li>
+    </ul>
+    <p>This was confirmed by probing the live site on 10 October 2026. Each fix is a small file using the existing <code>proxyToBackend</code> helper, and it is the top item on the roadmap.</p>
+  </div>
+
+  <h3>Emergency management</h3>
+  <p>An emergency has a type (MEDICAL, ACCIDENT, FIRE, POLICE, OTHER), a priority (CRITICAL, HIGH, MEDIUM, LOW), a GeoJSON location with a geospatial index, an optional destination hospital and an assigned vehicle. Control-room users and admins create and update emergencies; only admins can delete, and deletes are soft (<code>isDeleted</code>). Drivers and paramedics can read them. Each emergency also keeps a communication block for the status-SMS feature.</p>
+
+  <h3>Vehicle tracking and status</h3>
+  <p>Vehicles carry an ID, registration, type, status, crew and hospital details. Drivers and paramedics may only read or update the vehicle assigned to them; this is enforced on the server by <code>requireVehicleOwnership</code>, not only hidden in the interface. The most recent trajectory point and the recent trail are fetched for the map and for deviation checks.</p>
+
+  <h3>Incident management</h3>
+  <p>Incidents (accident, road closure, road work, traffic jam, heavy traffic, breakdown, lane blockage and others) have a severity, a status (ACTIVE, RESOLVED, DISMISSED) and a location with a geospatial index. Any signed-in role can report one. An ACTIVE CRITICAL incident correlated with a vehicle's corridor makes the decision engine treat the road as blocked.</p>
+  <div class="example"><span class="tag">Illustrative example</span>A driver reports a lane blockage near a flyover. The incident is saved with its coordinates and broadcast to the control room. On the next analysis for the ambulance using that road, the rules add <code>CRITICAL_INCIDENT</code> and <code>ROAD_BLOCKED</code>, look for an alternative that saves at least two minutes, and raise a REROUTE decision for the operator, or an alert if no alternative qualifies.</div>
+</section>
+
+<section class="chapter" id="c07">
+  <!--MK:c07-->
+  <div class="kicker"><span class="num">07</span> Routing and monitoring</div>
+  <h2>Routing, ETA, traffic and deviation</h2>
+  <div class="rule"></div>
+  <p>This is the data path that turns a GPS point into a decision input. Each stage says where its data comes from.</p>
+
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 270" role="img" aria-label="Pipeline from route provider and GPS point through snapping, deviation, traffic and prediction into the decision context">
+        <rect x="10" y="20" width="130" height="58" rx="4" class="box"/><text x="75" y="42" text-anchor="middle" class="tb">Route provider</text><text x="75" y="58" text-anchor="middle" class="ts">OSRM live</text><text x="75" y="71" text-anchor="middle" class="ts">Google · mock</text>
+        <rect x="10" y="150" width="130" height="58" rx="4" class="box"/><text x="75" y="172" text-anchor="middle" class="tb">GPS point</text><text x="75" y="188" text-anchor="middle" class="ts">device · simulator · API</text><text x="75" y="201" text-anchor="middle" class="ts">POST /api/trajectories</text>
+        <rect x="180" y="85" width="130" height="58" rx="4" class="box-teal"/><text x="245" y="107" text-anchor="middle" class="tb">Snap to route</text><text x="245" y="123" text-anchor="middle" class="ts">Turf.js (Google Roads</text><text x="245" y="136" text-anchor="middle" class="ts">if configured)</text>
+        <rect x="350" y="20" width="130" height="58" rx="4" class="box-teal"/><text x="415" y="42" text-anchor="middle" class="tb">Deviation</text><text x="415" y="58" text-anchor="middle" class="ts">distance + bearing</text><text x="415" y="71" text-anchor="middle" class="ts">3-fix stability</text>
+        <rect x="350" y="105" width="130" height="58" rx="4" class="box-soft"/><text x="415" y="127" text-anchor="middle" class="tb">Traffic</text><text x="415" y="143" text-anchor="middle" class="ts">mock provider live</text><text x="415" y="156" text-anchor="middle" class="ts">Google if keyed</text>
+        <rect x="350" y="190" width="130" height="58" rx="4" class="box-teal"/><text x="415" y="212" text-anchor="middle" class="tb">Prediction</text><text x="415" y="228" text-anchor="middle" class="ts">ETA, delay, risk,</text><text x="415" y="241" text-anchor="middle" class="ts">evidence per factor</text>
+        <rect x="530" y="85" width="140" height="78" rx="4" class="box-navy"/><text x="600" y="113" text-anchor="middle" class="tb tw">Decision context</text><text x="600" y="131" text-anchor="middle" class="ts" style="fill:#c3cddc">+ incidents, alternatives,</text><text x="600" y="145" text-anchor="middle" class="ts" style="fill:#c3cddc">backups, V2X status</text>
+        <path d="M140 49 C165 49 160 100 178 108" class="ln" marker-end="url(#ar)"/>
+        <path d="M140 179 C165 179 160 128 178 122" class="ln" marker-end="url(#ar)"/>
+        <path d="M310 105 C330 100 330 55 348 50" class="ln" marker-end="url(#ar)"/>
+        <path d="M310 125 C330 125 330 210 348 216" class="ln" marker-end="url(#ar)"/>
+        <path d="M480 49 C510 49 505 100 528 108" class="ln" marker-end="url(#ar)"/>
+        <path d="M480 134 H528" class="ln" marker-end="url(#ar)"/>
+        <path d="M480 219 C510 219 505 160 528 150" class="ln" marker-end="url(#ar)"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 3</b>Teal boxes are calculated inside the backend. Grey means the live input is mock. The route provider chosen by <code>ROUTING_PROVIDER</code> falls back to OSRM when a Google or Mapbox key is missing.</figcaption>
+  </figure>
+
+  <h3>Route planning</h3>
+  <p><code>routing.service.js</code> picks the provider at request time. Every returned route is validated before use: it must be a GeoJSON LineString with at least two coordinates and numeric distance and duration, which rejects straight-line placeholders. Routes are stored with their provider (MOCK, GOOGLE, MAPBOX, OSRM) and a type (PLANNED, ALTERNATIVE, CURRENT, RECOMMENDED, HISTORICAL), so the history of a mission's routing is kept.</p>
+
+  <h3>ETA and traffic analysis</h3>
+  <p>The prediction service produces predicted and baseline ETA, delay in seconds and minutes, a delay risk and a route risk (LOW to CRITICAL), a confidence level, and whether a reroute is advised with an urgency from NONE to IMMEDIATE. Each contributing factor is tagged OBSERVED (measured), DERIVED (calculated from measurements), INFERRED (estimated) or UNKNOWN, and the traffic source is recorded. With the mock traffic provider live, traffic-based factors in the deployed demo are not real-world measurements.</p>
+
+  <h3>Route-deviation detection</h3>
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 150" role="img" aria-label="Distance from route on a 0 to 300 metre scale, with bands on route under 50, warning 50 to 100, deviated 100 to 250, critical above 250">
+        <rect x="20" y="40" width="100" height="40" fill="#e1f0e6"/><rect x="120" y="40" width="100" height="40" fill="#fbefd8"/><rect x="220" y="40" width="300" height="40" fill="#f6d7c4"/><rect x="520" y="40" width="140" height="40" fill="#f8e2e3"/>
+        <text x="70" y="65" text-anchor="middle" class="tb" style="fill:#2c7a4b">ON_ROUTE</text><text x="170" y="65" text-anchor="middle" class="tb" style="fill:#a66a10">WARNING</text><text x="370" y="65" text-anchor="middle" class="tb" style="fill:#a6461c">DEVIATED</text><text x="590" y="65" text-anchor="middle" class="tb" style="fill:#b0262f">CRITICAL</text>
+        <g class="tm"><text x="20" y="100">0 m</text><text x="112" y="100">50</text><text x="210" y="100">100</text><text x="508" y="100">250</text><text x="640" y="100">300+</text></g>
+        <path d="M20 84 V92 M120 84 V92 M220 84 V92 M520 84 V92 M660 84 V92" stroke="#8a94a2"/>
+        <text x="20" y="28" class="ts">Scale: 2 px = 1 m. Bearing adds a second signal: 30° off the route heading warns, 60° counts as deviation.</text>
+        <text x="20" y="128" class="ts">A point beyond 100 m becomes DEVIATED only when the last 3 fixes agree or the heading points away; noisy fixes stay at WARNING.</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 4</b>Thresholds from <code>deviation.config.js</code>; all are environment-tunable. A 30-second cooldown stops repeated reroute suggestions. The stability window exists because phone GPS often jumps 20–60 m near flyovers; the cost is a few updates of delay before a real deviation is confirmed, while the critical band is reported at once.</figcaption>
+  </figure>
+</section>
+
+<section class="chapter" id="c08">
+  <!--MK:c08-->
+  <div class="kicker"><span class="num">08</span> GeoAgent AI</div>
+  <h2>GeoAgent: an assistant that can only read</h2>
+  <div class="rule"></div>
+  <p class="lede">GeoAgent writes a plain-language situation summary and a suggested action for the operator. It gathers facts by calling tools that read the database; none of its tools can write.</p>
+
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 300" role="img" aria-label="GeoAgent loop: prompt to model, model requests tools, tool executor reads application state, results return to the model, final answer validated, then passed to the decision engine as an opinion only">
+        <rect x="10" y="20" width="140" height="56" rx="4" class="box"/><text x="80" y="43" text-anchor="middle" class="tb">Analysis request</text><text x="80" y="60" text-anchor="middle" class="ts">emergency or vehicle</text>
+        <rect x="200" y="20" width="160" height="56" rx="4" class="box-violet"/><text x="280" y="43" text-anchor="middle" class="tb">Free LLM</text><text x="280" y="60" text-anchor="middle" class="ts">OpenRouter → OpenCode</text>
+        <rect x="200" y="130" width="160" height="66" rx="4" class="box-teal"/><text x="280" y="152" text-anchor="middle" class="tb">Tool executor</text><text x="280" y="169" text-anchor="middle" class="ts">12 read-only tools</text><text x="280" y="184" text-anchor="middle" class="ts">8 s timeout · de-duplicated</text>
+        <rect x="410" y="130" width="120" height="66" rx="4" class="box-soft"/><text x="470" y="158" text-anchor="middle" class="tb">MongoDB +</text><text x="470" y="175" text-anchor="middle" class="tb">services</text>
+        <rect x="410" y="20" width="120" height="56" rx="4" class="box"/><text x="470" y="43" text-anchor="middle" class="tb">Validate</text><text x="470" y="60" text-anchor="middle" class="ts">schema · confidence</text>
+        <rect x="560" y="20" width="110" height="56" rx="4" class="box-navy"/><text x="615" y="43" text-anchor="middle" class="tb tw">Decision</text><text x="615" y="60" text-anchor="middle" class="ts" style="fill:#c3cddc">engine</text>
+        <rect x="10" y="230" width="190" height="56" rx="4" class="box-amber"/><text x="105" y="252" text-anchor="middle" class="tb">Deterministic fallback</text><text x="105" y="269" text-anchor="middle" class="ts">no key or all models fail</text>
+        <path d="M150 48 H198" class="ln" marker-end="url(#ar)"/>
+        <path d="M262 76 V128" class="ln" marker-end="url(#ar)"/><text x="212" y="108" class="tm">tool_calls</text>
+        <path d="M298 128 V78" class="ln-teal" marker-end="url(#art)"/><text x="304" y="108" class="tm" style="fill:#0f7c84">results</text>
+        <path d="M360 163 H408" class="ln-dash" marker-end="url(#arg)"/><text x="366" y="156" class="tm">read</text>
+        <path d="M360 48 H408" class="ln" marker-end="url(#ar)"/><text x="364" y="40" class="tm">answer</text>
+        <path d="M530 48 H558" class="ln" marker-end="url(#ar)"/>
+        <path d="M80 76 V228" class="ln-dash" marker-end="url(#arg)"/>
+        <path d="M200 258 H615 V78" class="ln-dash" marker-end="url(#arg)"/>
+        <text x="560" y="100" class="tm">opinion only:</text><text x="560" y="114" class="tm">conflict is flagged,</text><text x="560" y="128" class="tm">never applied</text>
+        <text x="380" y="250" class="ts">Loop limits: 6 rounds · 3 calls per round · 8 calls total.</text>
+        <text x="380" y="266" class="ts">Last round offers no tools, so the model must answer.</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 5</b>From <code>geoagent.agent.js</code>, <code>geoagent.provider.js</code> and <code>geoagent.constants.js</code>.</figcaption>
+  </figure>
+
+  <div class="grid2">
+    <div>
+      <h3 style="margin-top:0">The 12 tools</h3>
+      <table class="tight">
+        <tbody>
+          <tr><td class="m">getEmergencyState</td><td class="m">getTrafficAnalysis</td></tr>
+          <tr><td class="m">getVehicleState</td><td class="m">getPrediction</td></tr>
+          <tr><td class="m">getRecentTrajectory</td><td class="m">getNearbyIncidents</td></tr>
+          <tr><td class="m">getCurrentRoute</td><td class="m">getDecisionHistory</td></tr>
+          <tr><td class="m">getRouteAlternatives</td><td class="m">getVehicleSituation</td></tr>
+          <tr><td class="m">getNearbyAvailableVehicles</td><td class="m">getCorridorGreenWaveStatus</td></tr>
+        </tbody>
+      </table>
+      <p class="small">Each call is scoped to the emergency or vehicle under analysis, with caps such as 100 trajectory points, 5 km incident radius, 10 km backup radius and 50 decision records.</p>
+    </div>
+    <div>
+      <h3 style="margin-top:0">How uncertainty is handled</h3>
+      <ul>
+        <li>The agent keeps a record of what it knows; each fact is OBSERVED or DERIVED, and anything it could not fetch stays UNKNOWN rather than being filled in.</li>
+        <li>Answers with confidence below 0.5 are marked as needing operator review.</li>
+        <li>A route is called materially better only if it saves at least 2 minutes, calculated in code, not by the model.</li>
+        <li>A repeated identical tool call returns the cached result instead of running again.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Provider selection and failover</h3>
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 150" role="img" aria-label="Model selection: read live catalog, keep only free tool-capable models, try up to three per provider, up to four attempts total, cool down failures, fall back to rules">
+        <rect x="10" y="40" width="120" height="58" rx="4" class="box"/><text x="70" y="64" text-anchor="middle" class="tb">Live catalog</text><text x="70" y="80" text-anchor="middle" class="ts">per provider</text>
+        <rect x="160" y="40" width="130" height="58" rx="4" class="box-teal"/><text x="225" y="64" text-anchor="middle" class="tb">Free only</text><text x="225" y="80" text-anchor="middle" class="ts">price 0 or "-free" id</text>
+        <rect x="320" y="40" width="140" height="58" rx="4" class="box"/><text x="390" y="64" text-anchor="middle" class="tb">Try models</text><text x="390" y="80" text-anchor="middle" class="ts">≤3 per provider · ≤4 total</text>
+        <rect x="490" y="10" width="180" height="46" rx="4" class="box-green"/><text x="580" y="38" text-anchor="middle" class="tb">Answer (model recorded)</text>
+        <rect x="490" y="84" width="180" height="46" rx="4" class="box-amber"/><text x="580" y="105" text-anchor="middle" class="tb">Rule-based fallback</text><text x="580" y="120" text-anchor="middle" class="ts">fallback: true</text>
+        <path d="M130 69 H158" class="ln" marker-end="url(#ar)"/><path d="M290 69 H318" class="ln" marker-end="url(#ar)"/>
+        <path d="M460 60 C475 50 475 35 488 33" class="ln-teal" marker-end="url(#art)"/><path d="M460 80 C475 90 475 105 488 107" class="ln-dash" marker-end="url(#arg)"/>
+        <text x="320" y="122" class="tm">failure: model cooled 60 s;</text><text x="320" y="136" class="tm">bad key: provider cooled 10 min</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 6</b>A model is re-checked against the free catalog immediately before each call, so a configured model that is not free is never used. Requests time out after 60 s.</figcaption>
+  </figure>
+  <div class="callout note"><p><strong>Live status:</strong> no OpenRouter or OpenCode key is set on Render, so every GeoAgent request in the deployed app returns the deterministic fallback, clearly marked as such. The model path is covered by 25 passing unit tests with mocked providers; it was not exercised against a live model during this audit.</p></div>
+</section>
+
+<section class="chapter" id="c09">
+  <!--MK:c09-->
+  <div class="kicker"><span class="num">09</span> Decisions</div>
+  <h2>Decision recommendations and operator approval</h2>
+  <div class="rule"></div>
+  <p class="lede">A decision is a stored record: the recommended actions, the reasons, a snapshot of every input, and who did what to it and when. Recommending and executing are separate steps owned by different parties.</p>
+
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 220" role="img" aria-label="Decision states: analysis creates pending operator action; operator approves or rejects; pending can be cancelled; approved can be executed or cancelled">
+        <rect x="10" y="80" width="110" height="50" rx="4" class="box-soft"/><text x="65" y="102" text-anchor="middle" class="tb">Analysis</text><text x="65" y="118" text-anchor="middle" class="ts">rules + snapshot</text>
+        <rect x="160" y="80" width="170" height="50" rx="4" class="box-amber"/><text x="245" y="102" text-anchor="middle" class="tb">PENDING_OPERATOR</text><text x="245" y="118" text-anchor="middle" class="tb">_ACTION</text>
+        <rect x="380" y="20" width="120" height="46" rx="4" class="box-teal"/><text x="440" y="48" text-anchor="middle" class="tb">APPROVED</text>
+        <rect x="380" y="150" width="120" height="46" rx="4" class="box-red"/><text x="440" y="178" text-anchor="middle" class="tb" style="fill:#b0262f">REJECTED</text>
+        <rect x="550" y="20" width="120" height="46" rx="4" class="box-green"/><text x="610" y="48" text-anchor="middle" class="tb">EXECUTED</text>
+        <rect x="550" y="100" width="120" height="46" rx="4" class="box-soft"/><text x="610" y="128" text-anchor="middle" class="tb">CANCELLED</text>
+        <path d="M120 105 H158" class="ln" marker-end="url(#ar)"/>
+        <path d="M330 95 C355 90 355 50 378 45" class="ln" marker-end="url(#ar)"/><text x="336" y="66" class="tm">approve</text>
+        <path d="M330 115 C355 120 355 168 378 172" class="ln" marker-end="url(#ar)"/><text x="336" y="160" class="tm">reject + reason</text>
+        <path d="M500 43 H548" class="ln-teal" marker-end="url(#art)"/><text x="506" y="36" class="tm">execute</text>
+        <path d="M500 55 C525 70 525 105 548 115" class="ln-dash" marker-end="url(#arg)"/>
+        <path d="M245 130 V205 H610 V148" class="ln-dash" marker-end="url(#arg)"/><text x="400" y="216" class="tm">cancel</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 7</b>Only CONTROL_ROOM and ADMIN can approve, reject or execute. Any other transition is refused by <code>_assertTransition</code>. Re-analysing an unchanged situation within 30 seconds returns the existing decision instead of creating a duplicate.</figcaption>
+  </figure>
+
+  <h3>The rules, in order</h3>
+  <table class="tight">
+    <thead><tr><th style="width:6mm">#</th><th>Condition</th><th style="width:52mm">Effect</th></tr></thead>
+    <tbody>
+      <tr><td class="m">1</td><td>Emergency or vehicle missing</td><td>ALERT_CONTROL_ROOM, CRITICAL, <code>INSUFFICIENT_DATA</code></td></tr>
+      <tr><td class="m">2</td><td>Vehicle not operational / route not ACTIVE</td><td>Alert; CRITICAL / WARNING</td></tr>
+      <tr><td class="m">3</td><td>DEVIATED or CRITICAL_DEVIATION; HEAVY or SEVERE traffic; ACTIVE CRITICAL incident on corridor; V2X corridor blocked</td><td>Marks "needs reroute" with reason codes</td></tr>
+      <tr><td class="m">4</td><td>Score each alternative: ETA + traffic weight (0–4) + incident weight (0–3)</td><td>Lowest score that saves ≥ 2 min wins</td></tr>
+      <tr><td class="m">5</td><td>Needs reroute and a viable alternative exists</td><td>REROUTE, <code>ALTERNATIVE_ROUTE_AVAILABLE</code></td></tr>
+      <tr><td class="m">6</td><td>Needs reroute, no viable alternative</td><td>ALERT_CONTROL_ROOM, <code>ROAD_BLOCKED</code> (no invented route)</td></tr>
+      <tr><td class="m">7</td><td>HIGH/CRITICAL priority and (ETA &gt; 15 min or delay &gt; 8 min) and a backup ≥ 5 min faster within 10 km</td><td>CONSIDER_BACKUP</td></tr>
+      <tr><td class="m">8</td><td>None of the above</td><td>CONTINUE, <code>OPERATIONAL_BASELINE</code></td></tr>
+      <tr><td class="m">9</td><td>GeoAgent suggests something else</td><td>Adds <code>AI_RECOMMENDATION_CONFLICT</code>; result unchanged</td></tr>
+    </tbody>
+  </table>
+  <p>When several actions apply, the primary one follows a fixed order: ALERT_CONTROL_ROOM, then REROUTE, CONSIDER_BACKUP, CONTINUE, NO_ACTION. Thresholds are prototype policy values and are documented in code as not medically validated.</p>
+
+  <h3>What "execute" actually does</h3>
+  <table class="tight">
+    <thead><tr><th style="width:38mm">Action</th><th>Side effect on execution</th></tr></thead>
+    <tbody>
+      <tr><td class="m">ALERT_CONTROL_ROOM</td><td>Emits a decision event to the control room.</td></tr>
+      <tr><td class="m">REROUTE</td><td>Activates the approved candidate route, but only if the approved candidate ID matches and its content is unchanged; otherwise HTTP 409 "reanalyze and approve again".</td></tr>
+      <tr><td class="m">CONSIDER_BACKUP</td><td>Records the recommendation. It does <strong>not</strong> dispatch a second vehicle.</td></tr>
+      <tr><td class="m">CONTINUE / NO_ACTION</td><td>No side effect; the outcome is logged.</td></tr>
+    </tbody>
+  </table>
+  <div class="callout risk"><p><strong>Deployment status:</strong> everything in this section runs and is tested on the backend. The deployed control room cannot call approve, reject or execute yet, because the Vercel proxy routes for those three endpoints were never added. Until they are, approval can only be demonstrated against the backend directly or on a local setup.</p></div>
+</section>
+
+<section class="chapter" id="c10">
+  <!--MK:c10-->
+  <div class="kicker"><span class="num">10</span> Other workflows</div>
+  <h2>Driver, paramedic, admin, voice and degraded states</h2>
+  <div class="rule"></div>
+
+  <h3>Driver workflow</h3>
+  <p>The driver dashboard is a navigation display for the assigned vehicle: the active route leg, the next manoeuvre, distance remaining and route status. Route steps are normalised by the navigation engine in <code>lib/navigation</code> (11 unit tests). The phone's own GPS (browser geolocation) positions the driver on the map. In the current build that position is used on screen only; it is not uploaded as telemetry. Telemetry in the deployed demo comes from seeded trajectories and the playback script. The "reroute from current position" action and the driver's incident-report form both call backend endpoints that are not yet proxied (Section 06).</p>
+
+  <h3>Paramedic workflow</h3>
+  <p>The paramedic page shows the assigned unit's mission, destination and status in a layout aimed at patient handoff. It reads the same mission data as the driver view. No patient data, vitals feed or hospital system is connected.</p>
+
+  <h3>Admin and access control</h3>
+  <p>New users register with a requested role and workspaces and start as PENDING. An administrator approves, rejects or suspends them and can change roles. The admin console also shows system statistics, provider health, prediction analytics, and a read-only database explorer for vehicles, emergencies, incidents, routes, trajectories, predictions, decisions and prediction analytics. Demo-data seed and reset endpoints are admin-only, and reset is blocked in production unless explicitly allowed.</p>
+
+  <h3>Voice</h3>
+  <p>The control room has a push-to-talk dialog: press and hold to record, with microphone-permission handling (granted, denied, prompt, unavailable) and a duration timer. No audio is sent anywhere; the dialog says so. Real voice would need WebRTC signalling and STUN/TURN servers. <span class="chip sim">Simulated</span></p>
+
+  <h3>Error handling and degraded states</h3>
+  <table class="tight">
+    <thead><tr><th style="width:44mm">Situation</th><th>What the system does</th></tr></thead>
+    <tbody>
+      <tr><td>Backend unreachable from Vercel</td><td>Proxy returns 503 with a readable message; login fails closed in production.</td></tr>
+      <tr><td>Unknown emergency or vehicle ID in a filter</td><td>Returns an empty list instead of a database cast error.</td></tr>
+      <tr><td>Route provider key missing</td><td>Falls back to OSRM with a logged warning.</td></tr>
+      <tr><td>No AI key, or all free models fail</td><td>Deterministic fallback answer marked <code>fallback: true</code>.</td></tr>
+      <tr><td>Python not available</td><td>JavaScript V2X engine with the same maths; health shows DEGRADED.</td></tr>
+      <tr><td>Insufficient mission data</td><td>Decision = alert with <code>INSUFFICIENT_DATA</code>.</td></tr>
+      <tr><td>Approved reroute changed since approval</td><td>Execution refused with HTTP 409.</td></tr>
+      <tr><td>Socket disconnect</td><td>Socket.IO reconnects; dashboards can reload state over HTTP.</td></tr>
+      <tr><td>Malformed database URI at start-up</td><td>Fails with a message naming the problem and section, never the value.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================ PART III ============================ -->
+<section class="chapter" id="c11">
+  <!--MK:c11-->
+  <div class="partbanner"><b>Part III</b><span>System architecture</span></div>
+  <div class="kicker"><span class="num">11</span> Architecture</div>
+  <h2>High-level architecture</h2>
+  <div class="rule"></div>
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 330" role="img" aria-label="Browser to Vercel Next.js proxy to Render Express backend to MongoDB Atlas, with Socket.IO direct to Render and external providers beside the backend">
+        <rect x="10" y="20" width="140" height="90" rx="4" class="box"/><text x="80" y="46" text-anchor="middle" class="tb">Browser</text><text x="80" y="64" text-anchor="middle" class="ts">React 19 UI</text><text x="80" y="79" text-anchor="middle" class="ts">Leaflet maps</text><text x="80" y="94" text-anchor="middle" class="ts">Socket.IO client</text>
+        <rect x="200" y="10" width="190" height="110" rx="4" class="box-teal"/><text x="295" y="34" text-anchor="middle" class="tb">Vercel · Next.js 16.4</text><text x="295" y="54" text-anchor="middle" class="ts">13 pages (App Router)</text><text x="295" y="70" text-anchor="middle" class="ts">35 same-origin /api routes</text><text x="295" y="86" text-anchor="middle" class="ts">HttpOnly session cookie</text><text x="295" y="102" text-anchor="middle" class="ts">server-only BACKEND_URL</text>
+        <rect x="440" y="10" width="230" height="170" rx="4" class="box-navy"/><text x="555" y="34" text-anchor="middle" class="tb tw">Render · Express 4 · Node 22</text>
+        <text x="458" y="58" class="ts" style="fill:#c3cddc">17 modules · 80 endpoints</text><text x="458" y="76" class="ts" style="fill:#c3cddc">auth · RBAC · rate limits</text><text x="458" y="94" class="ts" style="fill:#c3cddc">routing · deviation · prediction</text><text x="458" y="112" class="ts" style="fill:#c3cddc">decision engine · GeoAgent</text><text x="458" y="130" class="ts" style="fill:#c3cddc">clearance (V2X sim) · SMS</text><text x="458" y="148" class="ts" style="fill:#c3cddc">Socket.IO gateway</text><text x="458" y="166" class="ts" style="fill:#c3cddc">health · readiness · providers</text>
+        <rect x="440" y="230" width="230" height="64" rx="4" class="box"/><text x="555" y="254" text-anchor="middle" class="tb">MongoDB Atlas</text><text x="555" y="272" text-anchor="middle" class="ts">9 collections · geo indexes · TTL</text>
+        <rect x="10" y="200" width="380" height="110" rx="4" class="zone"/><text x="24" y="220" class="tm">EXTERNAL SERVICES (called by backend)</text>
+        <rect x="24" y="232" width="110" height="30" rx="3" class="box-green"/><text x="79" y="251" text-anchor="middle" class="t">OSRM routing</text>
+        <rect x="144" y="232" width="110" height="30" rx="3" class="box-soft"/><text x="199" y="251" text-anchor="middle" class="t">Google Routes</text>
+        <rect x="264" y="232" width="112" height="30" rx="3" class="box-soft"/><text x="320" y="251" text-anchor="middle" class="t">Google Roads</text>
+        <rect x="24" y="270" width="170" height="30" rx="3" class="box-soft"/><text x="109" y="289" text-anchor="middle" class="t">OpenRouter / OpenCode</text>
+        <rect x="204" y="270" width="172" height="30" rx="3" class="box-soft"/><text x="290" y="289" text-anchor="middle" class="t">MSG91 SMS</text>
+        <path d="M150 65 H198" class="ln" marker-end="url(#ar)"/><text x="154" y="58" class="tm">HTTPS</text>
+        <path d="M390 65 H438" class="ln" marker-end="url(#ar)"/><text x="394" y="58" class="tm">proxy</text>
+        <path d="M80 110 V140 H555 V178" class="ln-teal" marker-end="url(#art)" marker-start="url(#art)"/><text x="200" y="134" class="tm" style="fill:#0f7c84">Socket.IO (token from /api/auth/socket-token)</text>
+        <path d="M555 180 V228" class="ln" marker-end="url(#ar)"/>
+        <path d="M440 170 C410 190 400 220 392 240" class="ln-dash" marker-end="url(#arg)"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 8</b>Green external service is live; grey ones are supported in code but not configured in the deployment.</figcaption>
+  </figure>
+
+  <h3>Frontend architecture</h3>
+  <p>The frontend is a Next.js 16.4 App Router application in TypeScript with React 19, Tailwind CSS 4 and shadcn-style components. Pages are protected with a client-side <code>ProtectedRoute</code> that reads the session and a role-to-page map. All data calls go to same-origin routes under <code>/api/*</code>. This backend-for-frontend (BFF) layer forwards to the Express backend using <code>proxyToBackend</code>, adds the user's credentials, applies a timeout, and keeps the backend address on the server. Because the browser only talks to its own origin, the session cookie can stay HttpOnly and there is no cross-site cookie to manage for normal requests.</p>
+
+  <h3>Backend architecture</h3>
+  <p>The backend is an Express 4 application in ES modules. Each domain lives in <code>server/modules/&lt;name&gt;</code> with the same files: routes, controller, service, validation and, where needed, a Mongoose model. Routes attach <code>protect</code> (verify the JWT) and <code>requireRole</code>; controllers handle HTTP; services hold logic and talk to models; a shared error handler turns operational errors into JSON with the right status code. Cross-module behaviour (telemetry → prediction, decision → reroute) goes through service calls, and real-time output goes through one <code>realtimeService</code>.</p>
+</section>
+
+<section class="chapter" id="c12">
+  <!--MK:c12-->
+  <div class="kicker"><span class="num">12</span> Modules and data</div>
+  <h2>Service responsibilities and database</h2>
+  <div class="rule"></div>
+  <table class="tight">
+    <thead><tr><th style="width:30mm">Module</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td class="m">auth</td><td>Register, login, logout, current user; JWT cookie; password hashing; ownership middleware</td></tr>
+      <tr><td class="m">vehicles</td><td>Vehicle records and status; ownership-scoped access for crews</td></tr>
+      <tr><td class="m">emergencies</td><td>Emergency records, assignment, routes and decisions per emergency, status SMS</td></tr>
+      <tr><td class="m">incidents</td><td>Road incidents with geospatial search</td></tr>
+      <tr><td class="m">trajectories</td><td>GPS ingestion, snapping, history; triggers background prediction</td></tr>
+      <tr><td class="m">routes</td><td>Provider selection, validation, comparison, reroute, override, V2X corridor view, Python bridge</td></tr>
+      <tr><td class="m">deviation</td><td>Corridor deviation state per vehicle</td></tr>
+      <tr><td class="m">traffic</td><td>Traffic level at a location (mock or Google)</td></tr>
+      <tr><td class="m">analysis</td><td>Vehicle situation and delay prediction</td></tr>
+      <tr><td class="m">geoagents</td><td>AI assistant: provider adapter, tool loop, tools, prompts, validation</td></tr>
+      <tr><td class="m">decisions</td><td>Rules, decision records, approval state machine, execution</td></tr>
+      <tr><td class="m">orchestration</td><td>One call that runs situation → AI → decision for an emergency; task recommendations</td></tr>
+      <tr><td class="m">clearance</td><td>Simulated connected-vehicle clearance sessions along the corridor</td></tr>
+      <tr><td class="m">communication</td><td>MSG91 SMS client with mock mode</td></tr>
+      <tr><td class="m">realtime</td><td>Socket.IO setup, authentication, rooms, event emitters</td></tr>
+      <tr><td class="m">admin</td><td>Users, stats, health, providers, database explorer, demo data</td></tr>
+      <tr><td class="m">health</td><td>Liveness, readiness and provider status</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Database architecture</h3>
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 270" role="img" aria-label="Entity relationships between users, vehicles, emergencies, routes, trajectories, incidents, predictions, decisions and clearance sessions">
+        <rect x="270" y="10" width="140" height="44" rx="4" class="box-navy"/><text x="340" y="30" text-anchor="middle" class="tb tw">Emergency</text><text x="340" y="45" text-anchor="middle" class="tm" style="fill:#c3cddc">2dsphere</text>
+        <rect x="40" y="110" width="130" height="44" rx="4" class="box"/><text x="105" y="130" text-anchor="middle" class="tb">Vehicle</text><text x="105" y="145" text-anchor="middle" class="tm">status index</text>
+        <rect x="275" y="110" width="130" height="44" rx="4" class="box"/><text x="340" y="130" text-anchor="middle" class="tb">Route</text><text x="340" y="145" text-anchor="middle" class="tm">legs · provider</text>
+        <rect x="510" y="110" width="140" height="44" rx="4" class="box"/><text x="580" y="130" text-anchor="middle" class="tb">Decision</text><text x="580" y="145" text-anchor="middle" class="tm">snapshot · audit</text>
+        <rect x="510" y="10" width="140" height="44" rx="4" class="box"/><text x="580" y="30" text-anchor="middle" class="tb">Incident</text><text x="580" y="45" text-anchor="middle" class="tm">2dsphere</text>
+        <rect x="40" y="10" width="130" height="44" rx="4" class="box-soft"/><text x="105" y="30" text-anchor="middle" class="tb">User</text><text x="105" y="45" text-anchor="middle" class="tm">role · status</text>
+        <rect x="10" y="210" width="150" height="44" rx="4" class="box"/><text x="85" y="230" text-anchor="middle" class="tb">Trajectory</text><text x="85" y="245" text-anchor="middle" class="tm">2dsphere · TTL 90 d</text>
+        <rect x="190" y="210" width="140" height="44" rx="4" class="box"/><text x="260" y="230" text-anchor="middle" class="tb">Prediction</text><text x="260" y="245" text-anchor="middle" class="tm">factors · evidence</text>
+        <rect x="360" y="210" width="160" height="44" rx="4" class="box-violet"/><text x="440" y="230" text-anchor="middle" class="tb">ClearanceSession</text><text x="440" y="245" text-anchor="middle" class="tm">isSimulated</text>
+        <g class="ln"><path d="M270 40 L170 120" /><path d="M340 54 V108"/><path d="M410 40 L510 120"/><path d="M410 30 H508"/><path d="M405 132 H508"/><path d="M170 132 H273"/><path d="M105 154 V208"/><path d="M120 154 L250 208"/><path d="M340 154 L430 208"/><path d="M105 54 V108"/></g>
+        <g class="tm"><text x="196" y="72">assignedVehicle</text><text x="346" y="86">emergency</text><text x="440" y="70">emergency</text><text x="430" y="24">emergency</text><text x="420" y="126">route</text><text x="190" y="126">vehicle</text><text x="20" y="186">vehicle</text><text x="168" y="186">vehicle · route</text><text x="390" y="186">emergency · route</text><text x="112" y="86">assignedVehicleId</text></g>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 9</b>Nine Mongoose models. Records also carry human-readable IDs (for example <code>E-DEMO-001</code>, <code>AMB-01</code>) used in URLs. Emergencies, incidents and vehicles are soft-deleted.</figcaption>
+  </figure>
+  <p>MongoDB was chosen because mission data is document-shaped (a route with its legs, steps and geometry; a decision with its full input snapshot) and because GeoJSON with <code>2dsphere</code> indexes gives "what is near this point" queries without a separate GIS database.</p>
+</section>
+
+<section class="chapter" id="c13">
+  <!--MK:c13-->
+  <div class="kicker"><span class="num">13</span> Interfaces</div>
+  <h2>APIs, real-time, providers, Python and V2X</h2>
+  <div class="rule"></div>
+
+  <h3>API architecture</h3>
+  <p>The backend exposes 80 method-and-path combinations under 14 <code>/api</code> routers, plus four health routes and a root probe. Every data router requires a valid session and a role; the exceptions are health checks, login/register, and <code>POST /api/routes/calculate</code>, which is public so the landing page can preview a route. Validation middleware checks IDs and payloads before controllers run. The Vercel layer exposes 35 proxy routes for the endpoints the UI uses. The full list is in Section 18.</p>
+
+  <h3>Real-time communication</h3>
+  <p>Socket.IO keeps a live connection between each dashboard and the backend, so a new position, decision or incident appears without reloading. The browser first asks the Vercel app for a short-lived socket token, then connects directly to Render. The server verifies the token, checks the role and joins the socket to rooms.</p>
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 200" role="img" aria-label="Server events flow into control-room, emergency and vehicle rooms; operators join control-room automatically, crews join only their vehicle room">
+        <rect x="10" y="70" width="150" height="60" rx="4" class="box-navy"/><text x="85" y="96" text-anchor="middle" class="tb tw">realtimeService</text><text x="85" y="113" text-anchor="middle" class="ts" style="fill:#c3cddc">21 event types emitted</text>
+        <rect x="230" y="10" width="170" height="44" rx="4" class="box-teal"/><text x="315" y="37" text-anchor="middle" class="tb">control-room</text>
+        <rect x="230" y="78" width="170" height="44" rx="4" class="box-teal"/><text x="315" y="105" text-anchor="middle" class="tb">emergency:&lt;id&gt;</text>
+        <rect x="230" y="146" width="170" height="44" rx="4" class="box-teal"/><text x="315" y="173" text-anchor="middle" class="tb">vehicle:&lt;id&gt;</text>
+        <rect x="480" y="10" width="190" height="44" rx="4" class="box"/><text x="575" y="30" text-anchor="middle" class="t">Operators, admins</text><text x="575" y="45" text-anchor="middle" class="ts">auto-joined on connect</text>
+        <rect x="480" y="78" width="190" height="44" rx="4" class="box"/><text x="575" y="98" text-anchor="middle" class="t">Mission detail viewers</text><text x="575" y="113" text-anchor="middle" class="ts">join.emergency</text>
+        <rect x="480" y="146" width="190" height="44" rx="4" class="box"/><text x="575" y="166" text-anchor="middle" class="t">Driver, paramedic</text><text x="575" y="181" text-anchor="middle" class="ts">own vehicle only</text>
+        <path d="M160 90 C195 80 200 35 228 32" class="ln" marker-end="url(#ar)"/><path d="M160 100 H228" class="ln" marker-end="url(#ar)"/><path d="M160 110 C195 120 200 165 228 168" class="ln" marker-end="url(#ar)"/>
+        <path d="M400 32 H478" class="ln-teal" marker-end="url(#art)"/><path d="M400 100 H478" class="ln-teal" marker-end="url(#art)"/><path d="M400 168 H478" class="ln-teal" marker-end="url(#art)"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 10</b>Room join requests are re-checked against the user's workspaces; a driver asking to join another vehicle's room is refused (22/22 socket access tests).</figcaption>
+  </figure>
+
+  <h3>External provider integrations</h3>
+  <table class="tight">
+    <thead><tr><th>Provider</th><th>Used for</th><th style="width:30mm">Live state</th></tr></thead>
+    <tbody>
+      <tr><td>OSRM (OpenStreetMap)</td><td>Road routes and durations; default fallback</td><td><span class="chip live">Active</span></td></tr>
+      <tr><td>Google Routes / Roads</td><td>Traffic-aware routes; snapping GPS to roads</td><td><span class="chip off">No key</span></td></tr>
+      <tr><td>OpenRouter, OpenCode</td><td>Free language models for GeoAgent</td><td><span class="chip off">No key</span></td></tr>
+      <tr><td>MSG91</td><td>Status SMS to the caller</td><td><span class="chip off">Unverified</span></td></tr>
+      <tr><td>CARTO basemap</td><td>Dark map tiles</td><td><span class="chip off">No key</span></td></tr>
+      <tr><td>MongoDB Atlas</td><td>Primary database</td><td><span class="chip live">Active</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Python routing engine and V2X</h3>
+  <p>The <code>routing-engine/</code> folder holds the Python modules (Section 16). The backend calls the bridge with <code>spawnSync</code> (1.5 s timeout) to compute green-wave status for four demo signals on Bengaluru corridors (Mayo Hall junction, 100 ft Road, HAL 2nd Stage, Airport Road). If the script or Python is missing, an in-process JavaScript engine gives the same result. On Render the backend starts inside <code>server/</code>, so the script is not found and the JavaScript engine runs; the health endpoint reports this as DEGRADED. Corridor clearance sessions (simulated vehicles moving from DETECTED to CLEARED) are stored with <code>isSimulated</code>; nothing is sent to real vehicles or signals.</p>
+</section>
+
+<section class="chapter" id="c14">
+  <!--MK:c14-->
+  <div class="kicker"><span class="num">14</span> Deployment</div>
+  <h2>Deployment architecture</h2>
+  <div class="rule"></div>
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 260" role="img" aria-label="GitHub main branch triggers GitHub Actions CI, Vercel build for the frontend and Render build for the backend; both connect to MongoDB Atlas over an IP allow list">
+        <rect x="10" y="100" width="130" height="60" rx="4" class="box-navy"/><text x="75" y="125" text-anchor="middle" class="tb tw">GitHub · main</text><text x="75" y="142" text-anchor="middle" class="ts" style="fill:#c3cddc">push / merge</text>
+        <rect x="200" y="10" width="200" height="60" rx="4" class="box"/><text x="300" y="34" text-anchor="middle" class="tb">GitHub Actions CI</text><text x="300" y="51" text-anchor="middle" class="ts">gitleaks · tsc · build · tests · Docker</text>
+        <rect x="200" y="100" width="200" height="60" rx="4" class="box-teal"/><text x="300" y="124" text-anchor="middle" class="tb">Vercel (frontend)</text><text x="300" y="141" text-anchor="middle" class="ts">next build · production alias</text>
+        <rect x="200" y="190" width="200" height="60" rx="4" class="box-teal"/><text x="300" y="214" text-anchor="middle" class="tb">Render (backend)</text><text x="300" y="231" text-anchor="middle" class="ts">cd server &amp;&amp; npm ci · node server.js</text>
+        <rect x="470" y="190" width="200" height="60" rx="4" class="box"/><text x="570" y="214" text-anchor="middle" class="tb">MongoDB Atlas</text><text x="570" y="231" text-anchor="middle" class="ts">IP allow list (no 0.0.0.0/0)</text>
+        <rect x="470" y="100" width="200" height="60" rx="4" class="box-soft"/><text x="570" y="124" text-anchor="middle" class="tb">Cloud Run workflow</text><text x="570" y="141" text-anchor="middle" class="ts">commented out · inactive</text>
+        <path d="M140 120 C170 110 170 45 198 40" class="ln" marker-end="url(#ar)"/><path d="M140 130 H198" class="ln" marker-end="url(#ar)"/><path d="M140 140 C170 150 170 215 198 220" class="ln" marker-end="url(#ar)"/>
+        <path d="M400 220 H468" class="ln" marker-end="url(#ar)"/><path d="M400 130 C430 130 430 190 400 192" class="ln-teal"/><text x="410" y="166" class="tm" style="fill:#0f7c84">BACKEND_URL</text>
+        <path d="M400 40 C440 40 450 100 470 110" class="ln-dash"/>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 11</b>Health check path on Render: <code>/api/health/ready</code>. Secrets (<code>MONGO_URI</code>, <code>JWT_SECRET</code>) are set in the Render dashboard and never committed.</figcaption>
+  </figure>
+  <table class="tight">
+    <thead><tr><th style="width:34mm">Component</th><th>Configuration (verified)</th></tr></thead>
+    <tbody>
+      <tr><td>Frontend</td><td>Vercel project <code>geoagent-emegency-project</code>; production alias <code>…-livid.vercel.app</code>; server-only <code>BACKEND_URL</code>; public <code>NEXT_PUBLIC_SOCKET_URL</code></td></tr>
+      <tr><td>Backend</td><td>Render web service, Oregon, free plan; <code>NODE_VERSION=22</code>; <code>ROUTING_PROVIDER=google</code> (falls back to OSRM); <code>TRAFFIC_PROVIDER=mock</code>; blueprint in <code>render.yaml</code></td></tr>
+      <tr><td>Database</td><td>MongoDB Atlas cluster; app user limited to read/write; network access restricted to the owner's IP and Render's outbound ranges</td></tr>
+      <tr><td>Container</td><td><code>server/Dockerfile</code> is built in CI to keep the image working; it is not the live deployment path</td></tr>
+      <tr><td>Deployment protection</td><td>Per-deployment Vercel URLs require a Vercel login; share the production alias</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================ PART IV ============================ -->
+<section class="chapter" id="c15">
+  <!--MK:c15-->
+  <div class="partbanner"><b>Part IV</b><span>Core technical workflows</span></div>
+  <div class="kicker"><span class="num">15</span> Workflows</div>
+  <h2>How the main flows run</h2>
+  <div class="rule"></div>
+
+  <figure>
+    <div class="frame">
+      <svg viewBox="0 0 680 300" role="img" aria-label="Sequence of one telemetry point from the source through the backend, database, prediction, socket rooms and dashboards">
+        <g class="tm"><text x="40" y="18" text-anchor="middle">Source</text><text x="170" y="18" text-anchor="middle">Express</text><text x="300" y="18" text-anchor="middle">MongoDB</text><text x="430" y="18" text-anchor="middle">Prediction</text><text x="560" y="18" text-anchor="middle">Dashboards</text></g>
+        <g class="ln-dash"><path d="M40 26 V290"/><path d="M170 26 V290"/><path d="M300 26 V290"/><path d="M430 26 V290"/><path d="M560 26 V290"/></g>
+        <path d="M40 50 H166" class="ln" marker-end="url(#ar)"/><text x="48" y="44" class="ts">POST /api/trajectories</text>
+        <rect x="160" y="62" width="20" height="40" fill="#e2f1f1" stroke="#0f7c84"/><text x="186" y="80" class="ts">auth, ownership,</text><text x="186" y="93" class="ts">validate, snap</text>
+        <path d="M180 120 H296" class="ln" marker-end="url(#ar)"/><text x="186" y="114" class="ts">save point</text>
+        <path d="M180 150 H556" class="ln-teal" marker-end="url(#art)"/><text x="300" y="144" class="ts">vehicle.location.updated, trajectory.created</text>
+        <path d="M170 170 H40" class="ln" marker-end="url(#ar)"/><text x="58" y="164" class="ts">201 (fast)</text>
+        <path d="M180 196 H426" class="ln-dash" marker-end="url(#arg)"/><text x="186" y="190" class="ts">background, throttled</text>
+        <path d="M430 220 H304" class="ln" marker-end="url(#ar)"/><text x="320" y="214" class="ts">read route, traffic, history</text>
+        <path d="M434 250 H556" class="ln-teal" marker-end="url(#art)"/><text x="440" y="244" class="ts">prediction.updated / eta.updated</text>
+        <text x="20" y="284" class="ts">Decisions are not created here. They are created when an operator or the orchestration endpoint asks for analysis.</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 12</b>Ingestion stays quick because prediction and V2X refresh run in the background after the response is sent.</figcaption>
+  </figure>
+
+  <div class="grid2">
+    <div>
+      <h3 style="margin-top:0">Emergency lifecycle, end to end</h3>
+      <ol>
+        <li>Operator creates an emergency (PENDING).</li>
+        <li>A vehicle is assigned (DISPATCHED); a route is calculated and stored with legs.</li>
+        <li>Telemetry arrives; deviation and prediction update; dashboards follow live.</li>
+        <li>Operator or orchestration requests analysis; the engine stores a decision.</li>
+        <li>Operator approves or rejects; an approved reroute is executed and broadcast as <code>route.updated</code>.</li>
+        <li>Vehicle reaches the scene (AT_SCENE), then the hospital leg; the emergency is RESOLVED.</li>
+      </ol>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Orchestrated analysis</h3>
+      <p><code>POST /api/orchestration/emergencies/:id/analyze</code> runs the whole chain in one call: gather the situation, run GeoAgent (or its fallback), evaluate the rules, store the decision and emit <code>geoagent.analysis.created</code> and <code>decision.created</code>. The response tells the operator what was observed, what was inferred, and what is waiting for approval.</p>
+    </div>
+  </div>
+
+  <h3>Failure recovery and fallback behaviour</h3>
+  <table class="tight">
+    <thead><tr><th style="width:34mm">Layer</th><th>Primary</th><th>Fallback</th><th style="width:30mm">Visible where</th></tr></thead>
+    <tbody>
+      <tr><td>Routing</td><td>Google (if keyed)</td><td>OSRM; mock only if chosen</td><td>route <code>provider</code> field</td></tr>
+      <tr><td>Traffic</td><td>Google traffic</td><td>mock provider</td><td><code>trafficSource</code></td></tr>
+      <tr><td>AI</td><td>OpenRouter free models</td><td>OpenCode free; then rules</td><td><code>fallback: true</code></td></tr>
+      <tr><td>V2X</td><td>Python bridge</td><td>JavaScript engine</td><td>health: DEGRADED</td></tr>
+      <tr><td>Auth on Vercel</td><td>Express backend</td><td>none in production (fail closed)</td><td>503 message</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================ PART V ============================ -->
+<section class="chapter" id="c16">
+  <!--MK:c16-->
+  <div class="partbanner"><b>Part V</b><span>Technology and implementation</span></div>
+  <div class="kicker"><span class="num">16</span> Stack</div>
+  <h2>Technology stack and verified versions</h2>
+  <div class="rule"></div>
+  <p>Versions are the ones installed in <code>node_modules</code> on 10 October 2026.</p>
+  <div class="grid2">
+    <table class="tight">
+      <thead><tr><th>Frontend</th><th>Version</th></tr></thead>
+      <tbody>
+        <tr><td>Next.js (App Router)</td><td class="m">16.4.0</td></tr>
+        <tr><td>React</td><td class="m">19.2.8</td></tr>
+        <tr><td>TypeScript</td><td class="m">5.9.3</td></tr>
+        <tr><td>Tailwind CSS</td><td class="m">4.3.3</td></tr>
+        <tr><td>Leaflet</td><td class="m">1.9.4</td></tr>
+        <tr><td>Socket.IO client</td><td class="m">4.8.3</td></tr>
+        <tr><td>lucide-react (icons)</td><td class="m">0.475.0</td></tr>
+        <tr><td>Playwright (tests)</td><td class="m">1.63.0</td></tr>
+      </tbody>
+    </table>
+    <table class="tight">
+      <thead><tr><th>Backend</th><th>Version</th></tr></thead>
+      <tbody>
+        <tr><td>Node.js (Render)</td><td class="m">22</td></tr>
+        <tr><td>Express</td><td class="m">4.22.3</td></tr>
+        <tr><td>Mongoose</td><td class="m">8.24.4</td></tr>
+        <tr><td>Socket.IO</td><td class="m">4.8.3</td></tr>
+        <tr><td>Turf.js</td><td class="m">7.4.0</td></tr>
+        <tr><td>helmet</td><td class="m">7.2.0</td></tr>
+        <tr><td>jsonwebtoken</td><td class="m">9.0.3</td></tr>
+        <tr><td>bcryptjs</td><td class="m">3.0.3</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Library responsibilities</h3>
+  <table class="tight">
+    <thead><tr><th style="width:34mm">Library</th><th>Why it is used here</th></tr></thead>
+    <tbody>
+      <tr><td>Next.js</td><td>Pages, server-side data loading for the control room, and the same-origin API proxy layer</td></tr>
+      <tr><td>Leaflet</td><td>Interactive maps for missions, routes, incidents and the scenario pages</td></tr>
+      <tr><td>Turf.js</td><td>Distance to a line, bearing, nearest point on route, buffers; used for snapping and deviation</td></tr>
+      <tr><td>Mongoose</td><td>Schemas with enums and validation, geospatial and TTL indexes</td></tr>
+      <tr><td>Socket.IO</td><td>Rooms, reconnection and authentication for live updates</td></tr>
+      <tr><td>helmet, cors</td><td>Security headers and an explicit allowed-origin list</td></tr>
+      <tr><td>jsonwebtoken, bcryptjs</td><td>Signed session tokens and password hashing</td></tr>
+      <tr><td>node:sqlite (built-in)</td><td>Local development login store only; never used in production</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Python modules</h3>
+  <table class="tight">
+    <thead><tr><th style="width:52mm">File</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td class="m">geo_utils.py</td><td>Distance, bearing and projection helpers</td></tr>
+      <tr><td class="m">routes_engine.py</td><td>Route and trajectory calculations for the routing work stream</td></tr>
+      <tr><td class="m">simulate_telemetry_stream.py</td><td>Generates a live-looking telemetry and incident stream for demos</td></tr>
+      <tr><td class="m">v2x_corridor_bridge.py</td><td>Green-wave corridor analysis called by the backend bridge</td></tr>
+      <tr><td class="m">demo_member2.py</td><td>Demonstration and verification script for the above</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Important implementation decisions</h3>
+  <ul>
+    <li><strong>Same-origin proxy instead of calling Render from the browser:</strong> keeps the session cookie HttpOnly and the backend address private, at the cost of one proxy file per endpoint. Missing files are the cause of every deployed 404 listed in Section 06.</li>
+    <li><strong>Rules in plain code, not in the model:</strong> every outcome can be traced to a line in <code>decision.rules.js</code> and a reason code.</li>
+    <li><strong>Free models only, checked at call time:</strong> no surprise bills and no dependency on a paid key for the demo.</li>
+    <li><strong>Background prediction after ingestion:</strong> keeps telemetry writes fast; predictions arrive over sockets shortly after.</li>
+    <li><strong>JavaScript twin for the Python engine:</strong> the backend works on any Node host.</li>
+  </ul>
+</section>
+
+<section class="chapter cont" id="c17">
+  <!--MK:c17-->
+  <div class="kicker"><span class="num">17</span> Data models</div>
+  <h2>Database models and relationships</h2>
+  <div class="rule"></div>
+  <table class="tight">
+    <thead><tr><th style="width:28mm">Model</th><th>Key fields</th><th style="width:40mm">Indexes / rules</th></tr></thead>
+    <tbody>
+      <tr><td class="m">User</td><td>name, email, password (hashed), role, requestedRole, requested/permitted workspaces, status (PENDING, APPROVED, SUSPENDED, REJECTED), approvedBy/At, assignedVehicleId</td><td>role+createdAt; status+role</td></tr>
+      <tr><td class="m">Vehicle</td><td>vehicleId, registrationNumber, type (AMBULANCE, FIRE_ENGINE, POLICE), status (7 values), driver, hospital, capacity (required)</td><td>status+isDeleted; soft delete</td></tr>
+      <tr><td class="m">Emergency</td><td>emergencyId, type, priority, status (6 values), caller, description, location, destination, assignedVehicle, createdBy, communication (SMS state)</td><td>2dsphere on location</td></tr>
+      <tr><td class="m">Incident</td><td>incidentId, type, severity, status (ACTIVE, RESOLVED, DISMISSED), location, reportedBy, emergency</td><td>2dsphere; emergency+isDeleted</td></tr>
+      <tr><td class="m">Route</td><td>routeId, emergency, vehicle, origin/destination, legs (TO_EMERGENCY, TO_HOSPITAL) with geometry, distance, duration, steps; provider; type; traffic delay</td><td>provider and type enums</td></tr>
+      <tr><td class="m">Trajectory</td><td>vehicle, location, map-matched location and distance, speed (≤ 250 km/h), heading (0–360), timestamp, source (SIMULATOR, DEVICE, API)</td><td>vehicle+timestamp; 2dsphere; TTL 90 days</td></tr>
+      <tr><td class="m">Prediction</td><td>predicted/baseline ETA and duration, delay, delay and route risk, confidence, rerouteAdvised, urgency, factors with evidence type, inputs summary, model version, traffic source</td><td>vehicle+createdAt</td></tr>
+      <tr><td class="m">Decision</td><td>decisionId, emergency, vehicle, route, rerouteCandidate, approvedCandidateId, severity, actions, primaryAction, backup, reasonCodes, geoAgentRecommendation, inputSnapshot, situationHash, status, approval/rejection/execution audit</td><td>status enum; 30 s idempotency by hash</td></tr>
+      <tr><td class="m">ClearanceSession</td><td>clearanceId, emergency, vehicle, route, isSimulated, corridor, connected vehicles with per-vehicle status, session status, summary</td><td>vehicleId+createdAt</td></tr>
+    </tbody>
+  </table>
+  <div class="callout note"><p><strong>Why both ObjectIds and readable IDs:</strong> relations use MongoDB references, while URLs and the UI use readable IDs such as <code>E-DEMO-001</code>. Filters with an unknown readable ID return an empty result instead of a database error (regression test <code>test-routes-unknown-ids.js</code>).</p></div>
+</section>
+
+<section class="chapter" id="c18">
+  <!--MK:c18-->
+  <div class="kicker"><span class="num">18</span> API reference</div>
+  <h2>API endpoint reference</h2>
+  <div class="rule"></div>
+  <p>Read from the route files on <code>main</code>. "Roles" is enforced on the backend. "BFF" means a Vercel proxy route exists for the deployed UI. Abbreviations: CR = CONTROL_ROOM, AD = ADMIN, DR = DRIVER, PM = PARAMEDIC; "own" = ownership check on the assigned vehicle.</p>
+  <table class="tight endpoint" style="table-layout:fixed">
+    <colgroup><col style="width:17mm"><col style="width:66mm"><col><col style="width:22mm"><col style="width:9mm"></colgroup>
+    <thead><tr><th>Method</th><th>Path</th><th>Purpose</th><th>Roles</th><th>BFF</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td>/api/health, /live, /ready</td><td>Status, liveness, readiness (database)</td><td>public</td><td>✓</td></tr>
+      <tr><td>GET</td><td>/api/health/providers</td><td>Provider configuration and state</td><td>public</td><td>✓</td></tr>
+      <tr><td>POST</td><td>/api/auth/register · /login · /logout</td><td>Account and session (rate-limited)</td><td>public</td><td>✓</td></tr>
+      <tr><td>GET</td><td>/api/auth/me</td><td>Current user</td><td>signed in</td><td>✓</td></tr>
+      <tr><td>GET POST</td><td>/api/vehicles</td><td>List · create</td><td>all · AD</td><td>✓</td></tr>
+      <tr><td>GET PATCH DEL</td><td>/api/vehicles/:vehicleId</td><td>Read · update · delete</td><td>all+own · AD</td><td>–</td></tr>
+      <tr><td>GET POST</td><td>/api/emergencies</td><td>List · create</td><td>all · CR AD</td><td>✓</td></tr>
+      <tr><td>GET PATCH DEL</td><td>/api/emergencies/:id</td><td>Read · update · delete</td><td>all · CR AD · AD</td><td>✓*</td></tr>
+      <tr><td>PATCH</td><td>/api/emergencies/:id/assign</td><td>Assign vehicle</td><td>CR AD</td><td>✗</td></tr>
+      <tr><td>GET</td><td>/api/emergencies/:id/routes</td><td>Routes for emergency</td><td>all</td><td>✓</td></tr>
+      <tr><td>GET</td><td>/api/emergencies/:id/decisions</td><td>Decision history</td><td>CR AD</td><td>✓</td></tr>
+      <tr><td>GET POST</td><td>/api/emergencies/:id/send-status-sms</td><td>SMS status · send</td><td>all</td><td>✓</td></tr>
+      <tr><td>GET POST</td><td>/api/incidents</td><td>List · report</td><td>all</td><td>✓*</td></tr>
+      <tr><td>GET PATCH DEL</td><td>/api/incidents/:incidentId</td><td>Read · update · delete</td><td>all · CR AD · AD</td><td>–</td></tr>
+      <tr><td>POST</td><td>/api/trajectories</td><td>Ingest GPS point</td><td>all+own</td><td>–</td></tr>
+      <tr><td>GET</td><td>/api/trajectories/:vehicleId[/latest|/recent]</td><td>History, latest, recent</td><td>all+own</td><td>✓*</td></tr>
+      <tr><td>POST</td><td>/api/routes/calculate</td><td>Route preview</td><td>public</td><td>✓</td></tr>
+      <tr><td>GET POST</td><td>/api/routes</td><td>List · create</td><td>all</td><td>✓</td></tr>
+      <tr><td>GET</td><td>/api/routes/:routeId[/analysis|/compare|/corridor-v2x]</td><td>Route, analysis, comparison, V2X view</td><td>all</td><td>✓*</td></tr>
+      <tr><td>POST</td><td>/api/routes/:routeId/accept-reroute</td><td>Activate reroute</td><td>CR AD</td><td>✓</td></tr>
+      <tr><td>POST</td><td>/api/routes/:routeId/reroute</td><td>Recalculate from current position</td><td>all</td><td>✗</td></tr>
+      <tr><td>POST</td><td>/api/routes/:routeId/override</td><td>Manual override</td><td>CR AD</td><td>✗</td></tr>
+      <tr><td>GET</td><td>/api/deviation/vehicle/:vehicleId</td><td>Deviation state</td><td>CR AD</td><td>✓</td></tr>
+      <tr><td>GET</td><td>/api/traffic/location</td><td>Traffic at a point</td><td>CR AD</td><td>–</td></tr>
+      <tr><td>GET</td><td>/api/analysis/vehicle/:vehicleId[/prediction]</td><td>Situation, prediction</td><td>CR AD</td><td>✓</td></tr>
+      <tr><td>POST</td><td>/api/geoagent/analyze[/vehicle/:vehicleId]</td><td>AI analysis (rate-limited)</td><td>CR AD</td><td>–</td></tr>
+      <tr><td>POST</td><td>/api/decisions/analyze</td><td>Run rules, store decision</td><td>CR AD</td><td>–</td></tr>
+      <tr><td>GET</td><td>/api/decisions/:decisionId</td><td>Read decision</td><td>CR AD</td><td>–</td></tr>
+      <tr><td>PATCH</td><td>/api/decisions/:id/approve · /reject</td><td>Approve · reject (reason required)</td><td>CR AD</td><td>✗</td></tr>
+      <tr><td>PATCH POST</td><td>/api/decisions/:id/execute</td><td>Execute approved decision</td><td>CR AD</td><td>✗</td></tr>
+      <tr><td>POST</td><td>/api/orchestration/emergencies/:id/analyze</td><td>Full situation → AI → decision</td><td>CR AD</td><td>✗</td></tr>
+      <tr><td>POST</td><td>/api/orchestration/emergencies/:id/recommendations</td><td>Task-routing recommendations</td><td>CR AD</td><td>✗</td></tr>
+      <tr><td>GET POST</td><td>/api/clearance/vehicle/:vehicleId[/cycle|/reset]</td><td>Simulated clearance session</td><td>all</td><td>✓</td></tr>
+      <tr><td>GET</td><td>/api/admin/stats · /health · /providers · /prediction-analytics</td><td>Admin dashboards</td><td>AD</td><td>✓</td></tr>
+      <tr><td>GET PATCH</td><td>/api/admin/users[/:id/status|role|approve|reject|suspend]</td><td>User management</td><td>AD</td><td>✓</td></tr>
+      <tr><td>GET</td><td>/api/admin/{vehicles,emergencies,incidents,routes,trajectories,predictions,decisions}</td><td>Database explorer</td><td>AD</td><td>✓</td></tr>
+      <tr><td>GET POST</td><td>/api/admin/demo/scenarios · /seed · /reset</td><td>Demo data</td><td>AD</td><td>–</td></tr>
+    </tbody>
+  </table>
+  <p class="small">✓ proxy exists · ✓* partly (some methods or sub-paths only) · ✗ used by the UI but no proxy (404/405 when deployed) · – not used by the UI. Checked by requesting each path on the live site without a session: a proxied path answers 401, a missing one 404 or 405.</p>
+</section>
+
+<section class="chapter" id="c19">
+  <!--MK:c19-->
+  <div class="kicker"><span class="num">19</span> Events and configuration</div>
+  <h2>Events, configuration, validation and logging</h2>
+  <div class="rule"></div>
+  <h3>Socket.IO events</h3>
+  <table class="tight">
+    <thead><tr><th style="width:30mm">Group</th><th>Event names (server → client)</th></tr></thead>
+    <tbody>
+      <tr><td>Vehicles</td><td class="m">vehicle.location.updated · vehicle.status.updated · trajectory.created</td></tr>
+      <tr><td>Missions</td><td class="m">emergency.created · emergency.updated · incident.created · incident.updated</td></tr>
+      <tr><td>Routing</td><td class="m">route.updated · route.deviation.detected · traffic.updated · eta.updated · prediction.updated</td></tr>
+      <tr><td>Decisions</td><td class="m">geoagent.analysis.created · decision.created · decision.approved · decision.rejected · decision.executed</td></tr>
+      <tr><td>Clearance</td><td class="m">clearance.status_updated</td></tr>
+      <tr><td>SMS</td><td class="m">sms.submitted · sms.delivered · sms.failed</td></tr>
+      <tr><td>Client commands</td><td class="m">join./leave.control_room · join./leave.emergency · join./leave.vehicle</td></tr>
+    </tbody>
+  </table>
+  <p class="small">Three more clearance event names (detected, alert_sent, cleared) are defined but not emitted; status changes are carried by <code>clearance.status_updated</code>.</p>
+
+  <h3>Configuration reference</h3>
+  <p>Names only. Values are never stored in the repository.</p>
+  <table class="tight">
+    <thead><tr><th style="width:30mm">Area</th><th>Variables</th></tr></thead>
+    <tbody>
+      <tr><td>Core (backend)</td><td class="m">NODE_ENV PORT MONGO_URI JWT_SECRET JWT_EXPIRES_IN CLIENT_URL COMMIT_SHA</td></tr>
+      <tr><td>Frontend</td><td class="m">BACKEND_URL NEXT_PUBLIC_SOCKET_URL NEXT_PUBLIC_CARTO_API_KEY AUTH_DB_PATH (dev only)</td></tr>
+      <tr><td>Providers</td><td class="m">ROUTING_PROVIDER TRAFFIC_PROVIDER GOOGLE_MAPS_API_KEY MAPBOX_ACCESS_TOKEN OSRM_API_URL PYTHON_BIN</td></tr>
+      <tr><td>AI</td><td class="m">AI_PROVIDER OPENROUTER_API_KEY OPENCODE_API_KEY OPENCODE_BASE_URL</td></tr>
+      <tr><td>SMS</td><td class="m">MSG91_PROVIDER MSG91_AUTH_KEY MSG91_FLOW_ID MSG91_SENDER_ID MSG91_API_URL</td></tr>
+      <tr><td>Deviation</td><td class="m">ROUTE_WARNING/DEVIATION/CRITICAL_DISTANCE_METERS BEARING_WARNING/DEVIATION_DEGREES GPS_STABILITY_WINDOW REROUTE_COOLDOWN_SECONDS</td></tr>
+      <tr><td>Decisions</td><td class="m">CRITICAL_ETA_THRESHOLD_MINUTES MAX_ACCEPTABLE_DELAY_MINUTES BACKUP_TIME_ADVANTAGE_MINUTES BACKUP_SEARCH_RADIUS_KM MAX_ALTERNATIVE_ROUTES</td></tr>
+      <tr><td>Operations</td><td class="m">TELEMETRY_RETENTION_DAYS DISABLE_RATE_LIMITS (tests) ALLOW_PRODUCTION_RESET</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Validation and error handling</h3>
+  <p>Each module has a validation file that checks IDs, coordinates, enums and payload shape before the controller runs. Mongoose schemas add a second layer (for example speed ≤ 250 km/h, heading 0–360). Operational errors carry a status code and are returned as JSON; unexpected errors become 500 without stack traces in production. 4xx responses are logged as warnings, 5xx as errors.</p>
+
+  <h3>Logging and observability</h3>
+  <ul>
+    <li>Health endpoints for liveness, readiness (database ping) and provider state, used by Render's health check.</li>
+    <li>Tagged console logs per subsystem (for example <code>[GeoAgent AI]</code>, <code>[RoutingService]</code>), with database URIs redacted.</li>
+    <li>Decisions store an input snapshot, so a past recommendation can be explained after the fact.</li>
+  </ul>
+</section>
+
+<!-- ============================ PART VI ============================ -->
+<section class="chapter" id="c20">
+  <!--MK:c20-->
+  <div class="partbanner"><b>Part VI</b><span>Safety, security and reliability</span></div>
+  <div class="kicker"><span class="num">20</span> Safety and security</div>
+  <h2>Security, safeguards and failure modes</h2>
+  <div class="rule"></div>
+
+  <div class="grid2">
+    <div>
+      <h3 style="margin-top:0">Authentication and authorisation</h3>
+      <ul>
+        <li>Passwords hashed with bcrypt; JWT sessions (7 days by default) in an HttpOnly cookie, <code>SameSite=None; Secure</code> in production.</li>
+        <li>New accounts are PENDING until an admin approves; suspended or rejected users cannot sign in.</li>
+        <li>Every data route checks role on the server; crews are limited to their assigned vehicle by ownership middleware.</li>
+        <li>Socket connections are authenticated and room joins re-checked.</li>
+        <li>Rate limits: login/register 30 per 15 min, AI analysis 30 per min, writes 120 per min.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-top:0">Secrets management</h3>
+      <ul>
+        <li>Secrets live only in the Vercel and Render dashboards; <code>.env</code> files are git-ignored.</li>
+        <li>Gitleaks scans the working tree and the full history on every CI run.</li>
+        <li>At start-up the database URI is validated and redacted before logging; error messages name the problem, never the value. One exception was found: the production-reset guard in <code>dbSafety.js</code> writes the full URI into its refusal message (see Section 22).</li>
+        <li>The backend address is server-only on Vercel.</li>
+        <li>Atlas network access is an allow list, not open to every address.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>AI advisory boundaries and deterministic safeguards</h3>
+  <table class="tight">
+    <thead><tr><th style="width:52mm">Safeguard</th><th>How it is enforced</th></tr></thead>
+    <tbody>
+      <tr><td>AI cannot write data</td><td>All 12 tools are read functions; the tool executor has no write path</td></tr>
+      <tr><td>AI cannot change the outcome</td><td>Rules run independently; AI disagreement only adds a reason code</td></tr>
+      <tr><td>Bounded AI work</td><td>Round, call and time limits; final round without tools</td></tr>
+      <tr><td>No action without approval</td><td>Execution requires APPROVED status; approval requires CR/AD role</td></tr>
+      <tr><td>No stale approvals</td><td>Reroute execution re-checks the approved candidate (HTTP 409 if changed)</td></tr>
+      <tr><td>No duplicate decisions</td><td>Same situation hash within 30 s returns the existing record</td></tr>
+      <tr><td>No guessing</td><td>Missing data → <code>INSUFFICIENT_DATA</code> alert; unknown facts stay UNKNOWN</td></tr>
+      <tr><td>No automatic dispatch</td><td>CONSIDER_BACKUP is recorded only</td></tr>
+      <tr><td>Production data protection</td><td>Destructive demo reset blocked in production unless explicitly allowed</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Uncertain and stale data</h3>
+  <p>Telemetry freshness matters: a vehicle whose last fix is old should not be judged on it. Predictions record their inputs and evidence types, the deviation check needs consistent recent fixes, and the AI agent marks anything it could not fetch as unknown. What the system does not yet do is show an explicit "data is N minutes old" warning on every panel; that is on the roadmap.</p>
+
+  <h3>Simulated versus live</h3>
+  <table class="tight">
+    <thead><tr><th>Live and real</th><th>Simulated or mock</th></tr></thead>
+    <tbody><tr>
+      <td>Accounts, roles and approvals · MongoDB data · OSRM road geometry and durations · deviation maths · decision engine and audit · Socket.IO updates</td>
+      <td>Traffic levels (mock) · V2X signals and connected vehicles · telemetry in the demo (seeded and played back) · push-to-talk · emergency lab and scenario pages · AI answers (rule-based fallback live)</td>
+    </tr></tbody>
+  </table>
+
+  <h3>Privacy considerations</h3>
+  <p>The demo holds no real patient data. Emergency records can hold a caller name and phone number for the SMS feature, so production use would need consent handling, retention rules for those fields and encryption at rest beyond Atlas defaults. Telemetry already expires after 90 days through a TTL index.</p>
+
+  <h3>Operational risks</h3>
+  <div class="callout risk">
+    <ul>
+      <li>Thresholds (50/100/250 m, 15 min, 8 min, 5 min) are prototype values, not validated with emergency services.</li>
+      <li>Mock traffic means delay predictions in the demo do not reflect real roads.</li>
+      <li>The free Render instance sleeps; a cold start can delay the first request by about a minute, which is unacceptable for real operations.</li>
+      <li>OSRM's public server has no service guarantee; production would need a self-hosted instance or a paid provider.</li>
+      <li><code>POST /api/routes/calculate</code> is public and not rate-limited separately.</li>
+      <li>If a destructive demo reset is attempted against the production database, the refusal message logged by <code>dbSafety.js</code> includes the full connection string. It should be redacted the same way as start-up logging.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================ PART VII ============================ -->
+<section class="chapter" id="c21">
+  <!--MK:c21-->
+  <div class="partbanner"><b>Part VII</b><span>Testing and deployment</span></div>
+  <div class="kicker"><span class="num">21</span> Testing</div>
+  <h2>Testing strategy and verified results</h2>
+  <div class="rule"></div>
+  <p>Testing has three layers: TypeScript checking and a production build for the frontend; Node unit tests for the AI agent and navigation; and backend integration scripts that run against a real MongoDB and, for access control, a running server. CI runs the same backend suites against a MongoDB 7 service container. The results below were produced on 10 October 2026 on a throwaway local database; no production data was touched.</p>
+
+  <table class="tight">
+    <thead><tr><th>Check</th><th style="width:30mm">Result</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>npx tsc --noEmit</code></td><td><span class="chip tested">Pass</span></td><td>Whole frontend</td></tr>
+      <tr><td><code>npm run build</code></td><td><span class="chip tested">Pass</span></td><td>Next.js production build</td></tr>
+      <tr><td>Navigation unit tests</td><td><span class="chip tested">11 / 11</span></td><td>Playwright test runner</td></tr>
+      <tr><td>GeoAgent and scenario unit tests</td><td><span class="chip partial">25 / 26</span></td><td>Scenario test file cannot load an extension-less <code>.ts</code> import under plain Node</td></tr>
+      <tr><td>Access control (RBAC) suite</td><td><span class="chip tested">46 / 46</span></td><td>Against a local server, as in CI</td></tr>
+      <tr><td>Socket access control</td><td><span class="chip tested">22 / 22</span></td><td>Room joins per role</td></tr>
+      <tr><td>Auth fail-closed checks</td><td><span class="chip tested">18 / 18</span></td><td>No fallback login in production</td></tr>
+      <tr><td>Real-time (part 9)</td><td><span class="chip tested">Pass</span></td><td>Events and rooms</td></tr>
+      <tr><td>Road routing (Google/OSRM)</td><td><span class="chip tested">Pass</span></td><td>Geometry validation and fallback</td></tr>
+      <tr><td>Navigation engine</td><td><span class="chip tested">Pass</span></td><td>Backend navigation logic</td></tr>
+      <tr><td>Phase 2 reroute</td><td><span class="chip tested">Pass</span></td><td>Reroute from current position</td></tr>
+      <tr><td>Clearance and V2X</td><td><span class="chip tested">Pass</span></td><td>Clearance 100%; corridor pipeline 11 / 11</td></tr>
+      <tr><td>Database safety, retention, URI validation, unknown IDs</td><td><span class="chip tested">Pass</span></td><td>Four suites</td></tr>
+      <tr><td>Polyline decoding, coordinate conversion</td><td><span class="chip tested">Pass</span></td><td>5 / 5 conversions</td></tr>
+      <tr><td><code>test-phase3-4-5.js</code></td><td><span class="chip fail">Fails</span></td><td>Its test vehicle omits the required <code>capacity</code> field; a fixture bug, not in CI</td></tr>
+      <tr><td>Playwright e2e specs (2)</td><td><span class="chip off">Not run</span></td><td>Need a full local stack with browsers; not run in this audit</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What the tests do not cover</h3>
+  <ul>
+    <li>A live language model (only mocked providers are tested).</li>
+    <li>Real traffic data and real GPS devices.</li>
+    <li>The UI controls that lack a proxy route. Their backend endpoints are exercised; the deployed buttons are not, and no end-to-end test caught the gap.</li>
+    <li>Load and soak behaviour.</li>
+  </ul>
+</section>
+
+<section class="chapter" id="c22">
+  <!--MK:c22-->
+  <div class="kicker"><span class="num">22</span> Operations</div>
+  <h2>CI, deployment and troubleshooting</h2>
+  <div class="rule"></div>
+  <h3>CI pipeline</h3>
+  <p>The CI workflow runs on every push and pull request. On commit <code>d516074</code> (the merge of the phase 3–5 work into <code>main</code>) it <strong>succeeded</strong>.</p>
+  <ol>
+    <li>Secret scanning with Gitleaks 8.30.1 (working tree, then history against a baseline).</li>
+    <li>Typecheck and Next.js build.</li>
+    <li>Backend suites with a MongoDB 7 service: database safety and retention; auth and RBAC against a started server with per-run random passwords; routing, navigation and real-time.</li>
+    <li>Docker build of the backend image.</li>
+  </ol>
+  <div class="callout warn"><p>A second workflow, <code>deploy.yml</code>, reports <strong>failure</strong> on every push. Its Cloud Run job is entirely commented out, so GitHub sees a workflow with no jobs. It does not affect Vercel or Render. Deleting or disabling the file removes the red mark.</p></div>
+
+  <h3>Deployment process</h3>
+  <ol>
+    <li>Merge to <code>main</code>. Vercel builds the frontend and moves the production alias when the build passes; a failed build leaves the previous version live.</li>
+    <li>Render rebuilds the backend (<code>cd server &amp;&amp; npm ci</code>) and starts it (<code>node server.js</code>); traffic switches when <code>/api/health/ready</code> returns 200.</li>
+    <li>Check <code>/api/health/ready</code> on Render and <code>/api/health</code> on Vercel (should report <code>backend: ready</code>).</li>
+  </ol>
+
+  <h3>Health and readiness</h3>
+  <table class="tight">
+    <thead><tr><th style="width:52mm">Endpoint</th><th>Answers</th><th style="width:34mm">10 Oct 2026</th></tr></thead>
+    <tbody>
+      <tr><td class="m">GET /api/health/live</td><td>Is the process up?</td><td>200</td></tr>
+      <tr><td class="m">GET /api/health/ready</td><td>Can it reach the database?</td><td>ready, connected</td></tr>
+      <tr><td class="m">GET /api/health/providers</td><td>Which providers are configured and active</td><td>see Section 13</td></tr>
+      <tr><td class="m">GET /api/health (Vercel)</td><td>Can the frontend reach the backend?</td><td>backend: ready</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Troubleshooting guide</h3>
+  <table class="tight">
+    <thead><tr><th style="width:50mm">Symptom</th><th>Likely cause and fix</th></tr></thead>
+    <tbody>
+      <tr><td>Backend exits: <code>MONGO_URI</code> invalid</td><td>The message names the problem: quotes, leftover <code>&lt;&gt;</code>, a space or line break, or a special character in the password. Re-paste the value; prefer a letters-and-digits password.</td></tr>
+      <tr><td>Backend exits: missing <code>JWT_SECRET</code></td><td>Add a long random secret in Render's environment settings.</td></tr>
+      <tr><td>Database connection refused on Render</td><td>Render's outbound IP ranges must be in the Atlas network access list.</td></tr>
+      <tr><td>First page load very slow</td><td>Render free instance waking up; wait and retry.</td></tr>
+      <tr><td>Blank page on a <code>…-xxxxxx.vercel.app</code> link</td><td>Per-deployment links require a Vercel login; use the production alias.</td></tr>
+      <tr><td>A control-room or driver button returns 404 or 405</td><td>Missing proxy route (Section 06).</td></tr>
+      <tr><td>Route comparison times out</td><td>Backend comparison takes 12–15 s on a cold OSRM path; proxy allows 50 s.</td></tr>
+      <tr><td>New user cannot sign in</td><td>Account still PENDING; an admin must approve it.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Known defects and unresolved issues</h3>
+  <ol>
+    <li>No proxy route for decision approve/reject/execute, orchestration analyze and recommendations, override, assign, driver reroute, incident POST and trail history (404/405 in the deployed app).</li>
+    <li>Task-routing Approve/Dismiss buttons are not connected.</li>
+    <li><code>test-phase3-4-5.js</code> fixture missing <code>capacity</code>.</li>
+    <li>Scenario unit test cannot run under plain Node.</li>
+    <li><code>deploy.yml</code> fails on every push.</li>
+    <li>Python V2X engine never runs on Render (script path).</li>
+    <li>Driver GPS is not uploaded as telemetry.</li>
+    <li>Security: <code>assertSafeDatabaseTarget</code> in <code>server/shared/utils/dbSafety.js</code> puts the unredacted database URI in its error message and log.</li>
+  </ol>
+</section>
+
+<!-- ============================ PART VIII ============================ -->
+<section class="chapter" id="c23">
+  <!--MK:c23-->
+  <div class="partbanner"><b>Part VIII</b><span>Evaluation and future scope</span></div>
+  <div class="kicker"><span class="num">23</span> Evaluation</div>
+  <h2>Status, limitations and roadmap</h2>
+  <div class="rule"></div>
+
+  <h3>Current implementation status</h3>
+  <div class="grid4" style="margin-bottom:5mm">
+    <div class="stat"><b>13</b><span>features working in the deployed app</span></div>
+    <div class="stat"><b>8</b><span>features working on the backend only</span></div>
+    <div class="stat"><b>3</b><span>features simulated by design</span></div>
+    <div class="stat"><b>358</b><span>commits since 23 Aug 2026</span></div>
+  </div>
+
+  <h3>Major engineering achievements</h3>
+  <ul>
+    <li>A complete approval-gated decision pipeline on the backend, with reason codes, input snapshots, idempotency and a stale-approval check.</li>
+    <li>An AI agent that is bounded, read-only, free-model-only and still useful when no model is available.</li>
+    <li>Role and ownership enforcement on HTTP and on sockets, with 86 automated access checks passing.</li>
+    <li>A production deployment across Vercel, Render and Atlas with health, readiness and provider reporting.</li>
+    <li>Graceful fallback on every external dependency: routing, snapping, traffic, AI, Python.</li>
+  </ul>
+
+  <h3>What makes it distinctive</h3>
+  <p>Most route-assistance demos either stop at drawing a route or hand control to a model. This one keeps the model in an advisory seat, puts readable rules in charge, and treats the operator's approval as a first-class, audited step. It also says plainly which inputs are real, which are mock and which are unknown.</p>
+
+  <h3>Limitations</h3>
+  <ul>
+    <li>Mock traffic, simulated V2X, simulated voice; no live LLM in the deployment.</li>
+    <li>Eight UI actions, including decision approval, cannot reach the backend in the deployed app yet.</li>
+    <li>Not evaluated with real crews, dispatch data or clinical outcomes.</li>
+    <li>Free-tier hosting with cold starts.</li>
+  </ul>
+
+  <h3>Prioritised roadmap</h3>
+  <table class="tight">
+    <thead><tr><th style="width:16mm">Priority</th><th>Work item</th><th style="width:34mm">Why</th></tr></thead>
+    <tbody>
+      <tr><td class="m">P0</td><td>Add the missing proxy routes (decisions, orchestration, override, assign, reroute, incident POST, trail); add a CI check that every UI API path has a proxy; wire task-routing Approve/Dismiss; fix the phase 3–5 test fixture</td><td>Makes approval and the merged features usable when deployed</td></tr>
+      <tr><td class="m">P0</td><td>Upload driver GPS as telemetry with ownership checks</td><td>Real data into the loop</td></tr>
+      <tr><td class="m">P1</td><td>Enable a live traffic provider and a free model key; show data age on every panel</td><td>Real inputs, visible staleness</td></tr>
+      <tr><td class="m">P1</td><td>Redact the URI in the DB-safety message; rate-limit public route preview; remove or fix <code>deploy.yml</code>; paid always-on backend</td><td>Reliability and abuse</td></tr>
+      <tr><td class="m">P2</td><td>Self-hosted OSRM with an Indian road extract; ship the Python engine in the backend image</td><td>Control and latency</td></tr>
+      <tr><td class="m">P2</td><td>WebRTC push-to-talk; hospital readiness feed</td><td>Crew coordination</td></tr>
+      <tr><td class="m">P3</td><td>Pilot with recorded real missions to tune thresholds with practitioners</td><td>Evidence for the policy values</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Conclusion</h3>
+  <p>SwiftCare GeoAgent shows that continuous route monitoring and decision support for ambulances can be built from open components, with the AI kept in an explanatory role and a person in charge of every change. The tracking, deviation, prediction and rules stages are implemented, deployed and tested. The core loop is implemented and tested on the backend; the deployed app still needs the missing proxy routes before an operator can approve a decision from the browser. That fix, followed by live traffic data, is the clearest next step.</p>
+</section>
+
+<section class="chapter cont" id="c24">
+  <!--MK:c24-->
+  <div class="kicker"><span class="num">24</span> References</div>
+  <h2>References, links and technical appendix</h2>
+  <div class="rule"></div>
+  <h3>Project links</h3>
+  <div class="fields" style="margin-bottom:5mm">
+    <div class="row"><div class="k">Project website</div><div class="v">{{WEBSITE_URL}}</div></div>
+    <div class="row"><div class="k">Demo video — Google Drive</div><div class="v">{{VIDEO_URL}}</div></div>
+    <div class="row"><div class="k">Source repository</div><div class="v"><a href="https://github.com/SwiftCareSC7/geoagent-emegency-project">https://github.com/SwiftCareSC7/geoagent-emegency-project</a></div></div>
+    <div class="row"><div class="k">Live application</div><div class="v"><a href="https://geoagent-emegency-project-livid.vercel.app">https://geoagent-emegency-project-livid.vercel.app</a></div></div>
+  </div>
+
+  <h3>Technical references</h3>
+  <table class="tight">
+    <tbody>
+      <tr><td>Next.js</td><td><a href="https://nextjs.org/docs">nextjs.org/docs</a></td><td>Express</td><td><a href="https://expressjs.com">expressjs.com</a></td></tr>
+      <tr><td>MongoDB geospatial queries</td><td><a href="https://www.mongodb.com/docs/manual/geospatial-queries/">mongodb.com/docs/manual/geospatial-queries</a></td><td>Socket.IO rooms</td><td><a href="https://socket.io/docs/v4/rooms/">socket.io/docs/v4/rooms</a></td></tr>
+      <tr><td>OSRM</td><td><a href="https://project-osrm.org">project-osrm.org</a></td><td>Turf.js</td><td><a href="https://turfjs.org">turfjs.org</a></td></tr>
+      <tr><td>OpenRouter models</td><td><a href="https://openrouter.ai/models">openrouter.ai/models</a></td><td>Leaflet</td><td><a href="https://leafletjs.com">leafletjs.com</a></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Appendix A — Decision reason codes</h3>
+  <table class="tight">
+    <tbody>
+      <tr><td class="m">ROUTE_DEVIATION</td><td class="m">HIGH_DELAY</td><td class="m">HEAVY_TRAFFIC</td><td class="m">CRITICAL_INCIDENT</td></tr>
+      <tr><td class="m">ROAD_BLOCKED</td><td class="m">ALTERNATIVE_ROUTE_AVAILABLE</td><td class="m">CRITICAL_EMERGENCY</td><td class="m">HIGH_PRIORITY_EMERGENCY</td></tr>
+      <tr><td class="m">BACKUP_AVAILABLE</td><td class="m">BACKUP_FASTER</td><td class="m">INSUFFICIENT_DATA</td><td class="m">AI_RECOMMENDATION_CONFLICT</td></tr>
+      <tr><td class="m">OPERATIONAL_BASELINE</td><td class="m">VEHICLE_STATUS_ABNORMAL</td><td class="m">GREEN_WAVE_PREEMPTION_ACTIVE</td><td class="m">CORRIDOR_BLOCKED</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Appendix B — Default thresholds</h3>
+  <table class="tight">
+    <thead><tr><th>Setting</th><th>Default</th><th>Setting</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td>Warning / deviation / critical distance</td><td class="m">50 / 100 / 250 m</td><td>Critical ETA</td><td class="m">15 min</td></tr>
+      <tr><td>Bearing warning / deviation</td><td class="m">30° / 60°</td><td>Max acceptable delay</td><td class="m">8 min</td></tr>
+      <tr><td>GPS stability window</td><td class="m">3 fixes</td><td>Backup time advantage</td><td class="m">5 min</td></tr>
+      <tr><td>Reroute cooldown</td><td class="m">30 s</td><td>Backup search radius</td><td class="m">10 km</td></tr>
+      <tr><td>Min. route time saving</td><td class="m">2 min</td><td>Max alternative routes</td><td class="m">3</td></tr>
+      <tr><td>Decision idempotency window</td><td class="m">30 s</td><td>Telemetry retention</td><td class="m">90 days</td></tr>
+      <tr><td>AI rounds / calls per round / total</td><td class="m">6 / 3 / 8</td><td>AI tool / request timeout</td><td class="m">8 s / 60 s</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Appendix C — Glossary</h3>
+  <table class="tight">
+    <tbody>
+      <tr><td><strong>BFF</strong></td><td>Backend for frontend: server routes in the Next.js app that forward requests to the real backend.</td></tr>
+      <tr><td><strong>ETA</strong></td><td>Estimated time of arrival.</td></tr>
+      <tr><td><strong>OSRM</strong></td><td>Open Source Routing Machine, a road router using OpenStreetMap data.</td></tr>
+      <tr><td><strong>RBAC</strong></td><td>Role-based access control.</td></tr>
+      <tr><td><strong>TTL index</strong></td><td>A MongoDB index that deletes documents after a set age.</td></tr>
+      <tr><td><strong>V2X</strong></td><td>Vehicle-to-everything communication, for example a vehicle talking to traffic signals or other cars.</td></tr>
+      <tr><td><strong>Green wave</strong></td><td>Consecutive signals turned green ahead of an emergency vehicle.</td></tr>
+      <tr><td><strong>2dsphere</strong></td><td>MongoDB index type for queries on Earth-like geometry.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</body>
+</html>

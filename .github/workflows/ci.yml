@@ -145,4 +145,24 @@ jobs:
 
       - name: Verify Backend Docker Build
         working-directory: server
-        run: docker build -t geoagent-backend-ci-test .
+        run: |
+          # Multi-attempt build with backoff and mirror fallback to withstand transient Docker Hub auth/network outages (502 Bad Gateway)
+          BUILD_SUCCESS=false
+          for attempt in 1 2 3; do
+            echo "Building Docker image (attempt $attempt/3)..."
+            if docker build -t geoagent-backend-ci-test .; then
+              BUILD_SUCCESS=true
+              echo "✅ Docker build succeeded on attempt $attempt"
+              break
+            fi
+            echo "⚠️ Docker build attempt $attempt failed. Retrying in 10s..."
+            sleep 10
+          done
+
+          if [ "$BUILD_SUCCESS" != "true" ]; then
+            echo "⚠️ Docker Hub unavailable (502 Bad Gateway / rate limit). Retrying with official public.ecr.aws mirror..."
+            docker build \
+              --build-arg NODE_IMAGE=public.ecr.aws/docker/library/node:22-slim \
+              -t geoagent-backend-ci-test .
+            echo "✅ Docker build succeeded via fallback mirror"
+          fi

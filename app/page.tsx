@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { SiteHeader } from '@/components/landing/site-header'
 import { Hero } from '@/components/landing/hero'
 import { FeatureCards } from '@/components/landing/feature-cards'
+import { UseCaseCoverage } from '@/components/landing/use-case-coverage'
 import { ContactSection } from '@/components/landing/contact-section'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -25,13 +26,14 @@ export default function LandingPage() {
       <main className="flex-1">
         <Hero />
         <FeatureCards />
+        <UseCaseCoverage />
         <ContactSection />
       </main>
 
       {/* Footer */}
       <footer className="border-t border-border bg-card/40 py-6">
         <div className="mx-auto max-w-7xl px-4 text-center text-xs font-mono text-muted-foreground sm:px-6 lg:px-8">
-          SwiftCare GeoAgent — Prototype UI. No real medical data, GPS, or accounts are used.
+          SwiftCare GeoAgent — Hackathon prototype on Bengaluru demo corridors. No real patients, dispatch systems or traffic signals are connected.
         </div>
       </footer>
 
