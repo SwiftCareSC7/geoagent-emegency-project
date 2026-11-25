@@ -454,13 +454,13 @@ export function DriverNavigation({
     setRouteError(null)
 
     try {
-      // Fetch real drivable road networks for Leg 1 and Leg 2 in parallel
+      // Fetch real drivable road networks + live alternatives for Leg 1 and Leg 2 in parallel
       const [leg1Res, leg2Res] = await Promise.all([
         routeApi.calculateRoutePlan({
           origin: { type: 'Point', coordinates: sc.originCoordinates },
           destination: { type: 'Point', coordinates: sc.emergencyCoordinates },
           preference: 'FASTEST',
-          computeAlternatives: sc.hasAutoReroute || sc.hasDeviation || sc.expectedTimeSavedMinutes > 0
+          computeAlternatives: true
         }).catch((err) => {
           console.warn('[DriverNav] Leg 1 calculation error:', err)
           return null
@@ -468,7 +468,8 @@ export function DriverNavigation({
         routeApi.calculateRoutePlan({
           origin: { type: 'Point', coordinates: sc.emergencyCoordinates },
           destination: { type: 'Point', coordinates: sc.destinationCoordinates },
-          preference: 'FASTEST'
+          preference: 'FASTEST',
+          computeAlternatives: true
         }).catch((err) => {
           console.warn('[DriverNav] Leg 2 calculation error:', err)
           return null
@@ -498,7 +499,8 @@ export function DriverNavigation({
       setLeg2Coordinates(leg2Coords)
 
       const fullLine: [number, number][] = [...leg1Coords, ...leg2Coords.slice(1)]
-      setOriginalRouteCoordinates(fullLine)
+      // Clear previous reroute ghost line until a reroute is actually accepted
+      setOriginalRouteCoordinates([])
 
       const dist1 = leg1Plan?.distanceMeters || 2800
       const dist2 = leg2Plan?.distanceMeters || 5200
@@ -1302,8 +1304,8 @@ export function DriverNavigation({
         {/* RIGHT COLUMN: Map Viewport */}
         <div className="absolute inset-0 z-10 h-full w-full min-h-0">
           
-          {/* Top Floating Map Controls */}
-          <div className="absolute right-2 top-44 z-[500] flex max-w-[calc(100%-1rem)] flex-wrap items-center justify-end gap-1.5 pointer-events-auto md:right-4 md:top-3">
+          {/* Compact Top-Right Floating Map Controls */}
+          <div className="pointer-events-auto absolute right-3 top-3 z-[500] flex max-w-[calc(100%-1.5rem)] flex-wrap items-center justify-end gap-1.5">
             {!isMapFocused && <Button
               size="sm"
               variant="outline"
@@ -1312,11 +1314,11 @@ export function DriverNavigation({
                 setIsCockpitOpen(open)
                 setMobileActiveTab(open ? 'COCKPIT' : 'MAP')
               }}
-              className="hidden min-h-11 min-w-11 gap-1.5 border-border bg-card/95 px-3 text-foreground shadow-lg backdrop-blur-md lg:inline-flex"
+              className="hidden h-9 gap-1.5 rounded-lg border-border bg-card/95 px-2.5 text-xs font-semibold text-foreground shadow-md backdrop-blur-md lg:inline-flex"
               aria-expanded={isCockpitOpen}
               aria-label={isCockpitOpen ? 'Close mission details' : 'Open mission details'}
             >
-              <PanelLeft className="size-4" />
+              <PanelLeft className="size-3.5" />
               <span>Mission</span>
             </Button>}
 
@@ -1329,11 +1331,11 @@ export function DriverNavigation({
                 setIsCockpitOpen(open)
                 setMobileActiveTab(open ? 'COCKPIT' : 'MAP')
               }}
-              className="min-h-11 px-3 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-lg backdrop-blur-xl border border-emerald-400 transition-colors"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-emerald-400/70 bg-emerald-700 px-2.5 text-xs font-bold text-white shadow-md backdrop-blur-xl transition-colors hover:bg-emerald-800"
               title="Open Route Planner"
             >
-              <RouteIcon className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline">{isRoutePlannerVisible ? 'Hide' : 'Plan'}</span>
+              <RouteIcon className="size-3.5" />
+              <span className="hidden sm:inline">{isRoutePlannerVisible ? 'Hide' : 'Plan'}</span>
             </Button>
 
             {/* Scenario Button */}
@@ -1341,11 +1343,11 @@ export function DriverNavigation({
               <Button
                 size="sm"
                 onClick={() => setIsScenarioSelectorOpen(true)}
-                className="min-h-11 px-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-lg backdrop-blur-xl border border-blue-400 transition-colors"
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-blue-400/70 bg-blue-700 px-2.5 text-xs font-bold text-white shadow-md backdrop-blur-xl transition-colors hover:bg-blue-800"
                 title="Select Demo Scenario"
               >
-                <Sparkles className="h-3 w-3" />
-                <span className="hidden lg:inline">{currentScenario.id}</span>
+                <Sparkles className="size-3.5" />
+                <span className="hidden sm:inline">{currentScenario.id}</span>
               </Button>
             )}
 
@@ -1353,22 +1355,22 @@ export function DriverNavigation({
             <Button
               size="sm"
               onClick={toggleSimulation}
-              className={`min-h-11 px-3 rounded-lg shadow-lg font-bold text-[11px] flex items-center gap-1.5 border backdrop-blur-xl transition-colors ${
+              className={`flex h-9 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-bold shadow-md backdrop-blur-xl transition-colors ${
                 isSimulating
-                  ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 animate-pulse'
-                  : 'bg-slate-900/90 hover:bg-slate-800 text-white border-slate-700/80'
+                  ? 'animate-pulse border-amber-400 bg-amber-500 text-slate-950 hover:bg-amber-600'
+                  : 'border-slate-700/80 bg-slate-900/90 text-white hover:bg-slate-800'
               }`}
               title="Drive along route"
             >
               {isSimulating ? (
                 <>
-                  <Pause className="h-3 w-3 fill-current" />
-                  <span className="hidden lg:inline">Pause</span>
+                  <Pause className="size-3 fill-current" />
+                  <span className="hidden sm:inline">Pause</span>
                 </>
               ) : (
                 <>
-                  <Play className="h-3 w-3 fill-current" />
-                  <span className="hidden lg:inline">Simulate</span>
+                  <Play className="size-3 fill-current" />
+                  <span className="hidden sm:inline">Simulate</span>
                 </>
               )}
             </Button>
@@ -1377,30 +1379,30 @@ export function DriverNavigation({
             <button
               type="button"
               onClick={() => setRecenterTrigger((prev) => prev + 1)}
-              className="min-h-11 min-w-11 rounded-lg bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-white shadow-lg flex items-center justify-center backdrop-blur-xl transition-colors"
+              className="flex size-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/95 text-white shadow-md backdrop-blur-xl transition-colors hover:bg-slate-800"
               aria-label="Recenter map"
               title="Recenter"
             >
-              <LocateFixed className="h-3.5 w-3.5 text-cyan-400" />
+              <LocateFixed className="size-3.5 text-cyan-400" />
             </button>
 
             {/* Voice Mute */}
             <button
               type="button"
               onClick={() => setVoiceMuted(!voiceMuted)}
-              className="min-h-11 min-w-11 rounded-lg bg-slate-900/95 hover:bg-slate-800 border border-slate-700 text-white shadow-lg flex items-center justify-center backdrop-blur-xl transition-colors"
+              className="flex size-9 items-center justify-center rounded-lg border border-slate-700 bg-slate-900/95 text-white shadow-md backdrop-blur-xl transition-colors hover:bg-slate-800"
               aria-label={voiceMuted ? 'Unmute voice' : 'Mute voice'}
             >
               {voiceMuted ? (
-                <VolumeX className="h-3.5 w-3.5 text-red-400" />
+                <VolumeX className="size-3.5 text-red-400" />
               ) : (
-                <Volume2 className="h-3.5 w-3.5 text-emerald-400" />
+                <Volume2 className="size-3.5 text-emerald-400" />
               )}
             </button>
           </div>
 
-          {navigationMode === 'EMERGENCY_MISSION' && (
-            <div className="pointer-events-auto absolute right-2 top-[14rem] z-30 w-[min(calc(100%-1rem),26rem)] md:right-4 md:top-16">
+          {navigationMode === 'EMERGENCY_MISSION' && !isMapFocused && (
+            <div className="pointer-events-auto absolute right-3 top-14 z-[450] w-[min(calc(100%-1.5rem),22rem)]">
               {geoAgentState === 'BACKUP_RECOMMENDED' ? (
                 <section className="rounded-xl border border-amber-500/50 bg-card/95 p-3 text-foreground shadow-xl backdrop-blur-md" aria-live="polite">
                   <div className="flex items-center gap-2">

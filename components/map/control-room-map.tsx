@@ -401,6 +401,49 @@ export function ControlRoomMap({
               status: 'ACTIVE',
               provider: primaryDoc.provider,
             } as Route)
+          } else if (primaryDoc.origin && primaryDoc.destination) {
+            // Fetch a live OSRM alternative route so every real MongoDB emergency gets a dashed purple corridor
+            try {
+              const calcRes = await fetch('/api/routes/calculate', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({
+                  origin: primaryDoc.origin,
+                  destination: primaryDoc.destination,
+                  preference: 'FASTEST',
+                  computeAlternatives: true,
+                }),
+              })
+              const calcJson = calcRes.ok ? await calcRes.json().catch(() => null) : null
+              const liveAlt = calcJson?.data?.alternative
+              if (isMounted && liveAlt?.geometry?.coordinates?.length >= 5) {
+                const altCoords = liveAlt.geometry.coordinates
+                candidateRoutes.push({
+                  id: `${primaryDoc.routeId}-ALT-LIVE`,
+                  routeId: `${primaryDoc.routeId}-ALT-LIVE`,
+                  emergency: selectedEmergencyId!,
+                  vehicle: primaryDoc.vehicle,
+                  origin: { type: 'Point', coordinates: altCoords[0] },
+                  destination: { type: 'Point', coordinates: altCoords[altCoords.length - 1] },
+                  geometry: liveAlt.geometry,
+                  distance: liveAlt.distanceMeters || primaryDoc.distance || 0,
+                  duration: liveAlt.durationSeconds || primaryDoc.duration || 0,
+                  distanceMeters: liveAlt.distanceMeters || primaryDoc.distanceMeters || 0,
+                  durationSeconds: liveAlt.durationSeconds || primaryDoc.durationSeconds || 0,
+                  routeType: 'ALTERNATIVE',
+                  status: 'ACTIVE',
+                  provider: calcJson?.data?.provider || 'OSRM',
+                  steps: liveAlt.steps,
+                } as unknown as Route)
+              } else if (canonicalPair.length > 1) {
+                candidateRoutes.push(canonicalPair[1])
+              }
+            } catch {
+              if (canonicalPair.length > 1) {
+                candidateRoutes.push(canonicalPair[1])
+              }
+            }
           } else if (canonicalPair.length > 1) {
             candidateRoutes.push(canonicalPair[1])
           }
