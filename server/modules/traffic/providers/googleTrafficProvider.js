@@ -46,6 +46,17 @@ class GoogleTrafficProvider {
       };
     }
 
+    if (!googleRoutingProvider.isAvailable()) {
+      return {
+        level: trafficConfig.levels.UNKNOWN,
+        speedKmh: freeFlowFallback,
+        freeFlowSpeedKmh: freeFlowFallback,
+        congestionRatio: 0,
+        source: 'FALLBACK',
+        epistemicType: 'UNKNOWN'
+      };
+    }
+
     const coords = routeGeometry.coordinates;
     const origin = { type: 'Point', coordinates: coords[0] };
     const destination = { type: 'Point', coordinates: coords[coords.length - 1] };
@@ -97,7 +108,9 @@ class GoogleTrafficProvider {
         disclaimer: 'Derived from Google Routes API duration vs staticDuration'
       };
     } catch (err) {
-      console.warn(`[GoogleTrafficProvider] Route traffic calculation fallback: ${err.message}`);
+      if (err?.code !== 'QUOTA_CIRCUIT_OPEN') {
+        console.warn(`[GoogleTrafficProvider] Route traffic calculation fallback (${err?.code || 'ERROR'}): ${err.message}`);
+      }
       return {
         level: trafficConfig.levels.UNKNOWN,
         speedKmh: freeFlowFallback,
@@ -125,6 +138,17 @@ class GoogleTrafficProvider {
         freeFlowSpeedKmh: freeFlowFallback,
         congestionRatio: 0,
         source: 'UNKNOWN',
+        epistemicType: 'UNKNOWN'
+      };
+    }
+
+    if (!googleRoutingProvider.isAvailable()) {
+      return {
+        level: trafficConfig.levels.UNKNOWN,
+        speedKmh: freeFlowFallback,
+        freeFlowSpeedKmh: freeFlowFallback,
+        congestionRatio: 0,
+        source: 'FALLBACK',
         epistemicType: 'UNKNOWN'
       };
     }

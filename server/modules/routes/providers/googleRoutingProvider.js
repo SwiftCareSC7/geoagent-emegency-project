@@ -259,6 +259,15 @@ class GoogleRoutingProvider {
       return cached.data;
     }
 
+    // Respect open circuit breaker (e.g. after 403/429 quota exhaustion)
+    if (this.circuitOpenUntil && Date.now() < this.circuitOpenUntil) {
+      const error = new Error('Google Routes API circuit breaker open (quota cooldown active)');
+      error.status = 429;
+      error.code = 'QUOTA_CIRCUIT_OPEN';
+      error.isOperational = true;
+      throw error;
+    }
+
     const [origLng, origLat] = origin.coordinates;
     const [destLng, destLat] = destination.coordinates;
 
@@ -353,8 +362,12 @@ class GoogleRoutingProvider {
           throw new Error(`Google Routes API access denied: ${errorMsg}`);
         }
         if (response.status === 429) {
-          this.circuitOpenUntil = Date.now() + 15 * 60 * 1000;
-          throw new Error(`Google Routes API quota exceeded: ${errorMsg}`);
+          const isDailyQuota = /per day/i.test(errorMsg);
+          this.circuitOpenUntil = Date.now() + (isDailyQuota ? 60 : 15) * 60 * 1000;
+          const quotaErr = new Error(`Google Routes API quota exceeded: ${errorMsg}`);
+          quotaErr.status = 429;
+          quotaErr.code = 'QUOTA_EXCEEDED';
+          throw quotaErr;
         }
         throw new Error(`Google Routes API error (${response.status}): ${errorMsg}`);
       }
