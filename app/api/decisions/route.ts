@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     })
 
     // Unknown/demo emergency IDs or unscoped list requests should return an empty list cleanly instead of 400/404 noise.
-    if (res.status === 404 || (res.status === 400 && !emergencyId)) {
+    if (res.status === 404 || res.status === 400) {
       return NextResponse.json(EMPTY_DECISIONS, { status: 200 })
     }
 
