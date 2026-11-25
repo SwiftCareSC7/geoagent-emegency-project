@@ -260,9 +260,9 @@ export function NavigationManeuverHUD({
         </div>
       </div>
 
-      {/* 2. BOTTOM INFO BAR (driver view only; control-room keeps bottom-left clear for MapLegend) */}
+      {/* 2. BOTTOM INFO BAR (driver view only; offset right on desktop so bottom-left MapLegend never overlaps) */}
       {!isControlRoom && (
-      <div className="pointer-events-auto flex flex-col items-center w-full gap-2">
+      <div className="pointer-events-auto mb-10 sm:mb-0 sm:ml-auto sm:mr-10 flex flex-col items-center sm:items-end w-full sm:w-auto gap-2">
         {/* Return to Vehicle Button */}
         {isUserPanning && onRecenter && (
           <button

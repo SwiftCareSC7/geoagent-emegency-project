@@ -81,6 +81,7 @@ interface DriverNavigationMapProps {
   isDeviated?: boolean
   deviationDistance?: number
   recenterTrigger?: number
+  isSimulating?: boolean
   height?: string
   className?: string
   // Turn-by-Turn Navigation props
@@ -115,6 +116,7 @@ export function DriverNavigationMap({
   isDeviated = false,
   deviationDistance = 0,
   recenterTrigger = 0,
+  isSimulating = false,
   height = '100%',
   className = '',
   currentStep,
@@ -360,14 +362,14 @@ export function DriverNavigationMap({
       }).addTo(group)
     }
 
-    // 2C. Render Recommended Alternative Route ON TOP (Dashed Purple — clearly visible over blue corridor)
+    // 2C. Render Recommended Alternative Route ON TOP (Dashed Purple — clearly visible & diverging from Planned Blue)
     const altLatLngs = toValidLatLngs(alternativeRouteCoordinates)
     if (altLatLngs.length > 1) {
       allPointsToFit.push(...altLatLngs)
       L.polyline(altLatLngs, {
-        color: '#4c1d95',
-        weight: 9,
-        opacity: 0.45,
+        color: '#ffffff',
+        weight: 8,
+        opacity: 0.85,
         lineCap: 'round',
         lineJoin: 'round'
       }).addTo(group)
@@ -381,10 +383,10 @@ export function DriverNavigationMap({
       }).addTo(group)
     }
 
-    // Fit map bounds to show both primary and alternative corridors cleanly
-    if (allPointsToFit.length > 0 && !isUserPanning) {
+    // Fit map bounds to show both Planned (Blue) and Recommended (Purple) corridors cleanly
+    if (allPointsToFit.length > 0 && !isUserPanning && !isSimulating) {
       const bounds = L.latLngBounds(allPointsToFit)
-      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 })
+      map.fitBounds(bounds, { padding: [70, 70], maxZoom: 15 })
     }
   }, [
     activeRouteCoordinates,
@@ -393,6 +395,7 @@ export function DriverNavigationMap({
     activeLegNumber,
     alternativeRouteCoordinates,
     originalRouteCoordinates,
+    isSimulating,
     mapInitialized
   ])
 
@@ -670,21 +673,12 @@ function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
       chevronLayer.addLayer(marker)
     }
 
-    // 2. Turn Maneuver Waypoint Badges at each intersection on the map
-    const maneuverSteps = (steps && steps.length > 0) ? steps : [currentStep].filter(Boolean) as NavigationStep[]
+    // 2. Turn Maneuver Waypoint Badges — only at real intersection coordinates (never synthetic fraction spacing)
+    const maneuverSteps = (steps || []).filter((s) => Array.isArray(s?.startLocation) && s.startLocation.length >= 2)
     if (maneuverSteps.length === 0) return
 
-    maneuverSteps.forEach((step, idx) => {
-      let coord: [number, number] | null = null
-      if (step.startLocation && Array.isArray(step.startLocation)) {
-        coord = [step.startLocation[1], step.startLocation[0]]
-      } else {
-        const frac = idx / Math.max(1, maneuverSteps.length)
-        const pointIdx = Math.min(Math.floor(frac * (activeCoords.length - 1)), activeCoords.length - 1)
-        const c = activeCoords[pointIdx]
-        if (c) coord = [c[1], c[0]]
-      }
-      if (!coord) return
+    maneuverSteps.slice(0, 6).forEach((step, idx) => {
+      const coord: [number, number] = [step.startLocation![1], step.startLocation![0]]
 
       const isCurrentTurn = idx === 0
       const svgIcon = getManeuverSvg(step.maneuver)
@@ -751,24 +745,46 @@ function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
     })
   }, [steps, currentStep, activeRouteCoordinates, leg1Coordinates, leg2Coordinates, activeLegNumber, mapInitialized])
 
-  // 8. Handle Re-center & Auto-Follow Camera
+  // 8. Handle Explicit Re-center Trigger (fit full corridor when idle, follow ambulance when simulating)
+  const initialMountRef = useRef(true)
   useEffect(() => {
-    if (!mapRef.current || !driverLocation) return
+    if (initialMountRef.current) {
+      initialMountRef.current = false
+      return
+    }
+    if (!mapRef.current || !leafletRef.current) return
     setIsUserPanning(false)
-    mapRef.current.setView([driverLocation[1], driverLocation[0]], 16, {
-      animate: true,
-      duration: 0.8
-    })
+    if (!isSimulating) {
+      const L = leafletRef.current
+      const all = [
+        ...(leg1Coordinates || []),
+        ...(leg2Coordinates || []),
+        ...(activeRouteCoordinates || []),
+        ...(alternativeRouteCoordinates || []),
+      ]
+        .filter((pt) => Array.isArray(pt) && pt.length >= 2)
+        .map(([lng, lat]) => [lat, lng] as [number, number])
+      if (all.length > 1) {
+        mapRef.current.fitBounds(L.latLngBounds(all), { padding: [70, 70], maxZoom: 15, animate: true })
+        return
+      }
+    }
+    if (driverLocation) {
+      mapRef.current.setView([driverLocation[1], driverLocation[0]], 16, {
+        animate: true,
+        duration: 0.8
+      })
+    }
   }, [recenterTrigger])
 
-  // Smoothly pan to follow driver when live tracking or simulated driving (unless user panned away)
+  // Smoothly pan to follow driver ONLY during active simulation or live GPS (never overriding initial corridor fitBounds)
   useEffect(() => {
-    if (!mapRef.current || !driverLocation || isUserPanning) return
+    if (!mapRef.current || !driverLocation || isUserPanning || !isSimulating) return
     mapRef.current.panTo([driverLocation[1], driverLocation[0]], {
       animate: true,
       duration: 0.5
     })
-  }, [driverLocation, isUserPanning])
+  }, [driverLocation, isUserPanning, isSimulating])
 
   const handleRecenter = React.useCallback(() => {
     if (!mapRef.current || !driverLocation) return
@@ -801,7 +817,7 @@ function getManeuverSvg(maneuver: ManeuverType | string | undefined): string {
   }, [])
 
   return (
-    <div className="relative w-full h-full min-h-[450px]">
+    <div className="relative isolate z-0 w-full h-full min-h-[450px]">
       {/* 1. SHARED GOOGLE-MAPS-STYLE TURN-BY-TURN NAVIGATION HUD */}
       <NavigationManeuverHUD
         currentStep={currentStep as any}

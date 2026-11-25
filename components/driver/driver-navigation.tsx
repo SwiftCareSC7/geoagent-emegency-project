@@ -71,51 +71,58 @@ function getCanonicalScenarioLegs(sc: ScenarioDefinition): {
   leg1Coords: [number, number][]
   leg2Coords: [number, number][]
   altCoords: [number, number][] | null
-} {
-  const code = (sc.code || sc.id || '').toUpperCase()
+} | null {
+  const id = (sc.id || '').toUpperCase()
   const emgId = (sc.emergencyId || '').toUpperCase()
 
-  if (code.includes('001') || emgId.includes('001')) {
+  if (id === 'DEMO-001' || emgId === 'E-DEMO-001') {
     return {
-      leg1Coords: CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary.coordinates as unknown as [number, number][],
-      leg2Coords: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary.coordinates as unknown as [number, number][],
-      altCoords: (CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative?.coordinates || null) as unknown as [number, number][] | null
+      leg1Coords: [...CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary.coordinates] as unknown as [number, number][],
+      leg2Coords: [...CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary.coordinates] as unknown as [number, number][],
+      altCoords: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative?.coordinates
+        ? ([...CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative.coordinates] as unknown as [number, number][])
+        : null
     }
   }
-  if (code.includes('002') || emgId.includes('002')) {
+  if (id === 'DEMO-002' || emgId === 'E-DEMO-002') {
     return {
-      leg1Coords: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.coordinates as unknown as [number, number][],
-      leg2Coords: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.coordinates as unknown as [number, number][],
-      altCoords: (CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative?.coordinates || null) as unknown as [number, number][] | null
+      leg1Coords: [...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG1.primary.coordinates] as unknown as [number, number][],
+      leg2Coords: [...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.primary.coordinates] as unknown as [number, number][],
+      altCoords: CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative?.coordinates
+        ? ([...CANONICAL_ROAD_CORRIDORS.HEBBAL_TO_VICTORIA_LEG2.alternative.coordinates] as unknown as [number, number][])
+        : null
     }
   }
-  if (code.includes('003') || emgId.includes('003')) {
+  if (id === 'DEMO-003' || emgId === 'E-DEMO-003') {
     return {
-      leg1Coords: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.coordinates as unknown as [number, number][],
-      leg2Coords: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.coordinates as unknown as [number, number][],
-      altCoords: (CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative?.coordinates || null) as unknown as [number, number][] | null
+      leg1Coords: [...CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG1.primary.coordinates] as unknown as [number, number][],
+      leg2Coords: [...CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.primary.coordinates] as unknown as [number, number][],
+      altCoords: CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative?.coordinates
+        ? ([...CANONICAL_ROAD_CORRIDORS.WHITEFIELD_TO_SAKRA_LEG2.alternative.coordinates] as unknown as [number, number][])
+        : null
     }
   }
-  if (code.includes('004') || emgId.includes('004')) {
+  if (id === 'DEMO-004' || emgId === 'E-DEMO-004') {
     return {
-      leg1Coords: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.coordinates as unknown as [number, number][],
-      leg2Coords: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.coordinates as unknown as [number, number][],
-      altCoords: (CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative?.coordinates || null) as unknown as [number, number][] | null
+      leg1Coords: [...CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG1.primary.coordinates] as unknown as [number, number][],
+      leg2Coords: [...CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.primary.coordinates] as unknown as [number, number][],
+      altCoords: CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative?.coordinates
+        ? ([...CANONICAL_ROAD_CORRIDORS.YELAHANKA_TO_BOWRING_LEG2.alternative.coordinates] as unknown as [number, number][])
+        : null
     }
   }
-  if (code.includes('005') || emgId.includes('005')) {
+  if (id === 'DEMO-005' || emgId === 'E-DEMO-005') {
     return {
-      leg1Coords: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.coordinates as unknown as [number, number][],
-      leg2Coords: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.coordinates as unknown as [number, number][],
-      altCoords: (CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative?.coordinates || null) as unknown as [number, number][] | null
+      leg1Coords: [...CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG1.primary.coordinates] as unknown as [number, number][],
+      leg2Coords: [...CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.primary.coordinates] as unknown as [number, number][],
+      altCoords: CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative?.coordinates
+        ? ([...CANONICAL_ROAD_CORRIDORS.ECITY_TO_STJOHNS_LEG2.alternative.coordinates] as unknown as [number, number][])
+        : null
     }
   }
 
-  return {
-    leg1Coords: CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary.coordinates as unknown as [number, number][],
-    leg2Coords: CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.primary.coordinates as unknown as [number, number][],
-    altCoords: (CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative?.coordinates || null) as unknown as [number, number][] | null
-  }
+  // Scenarios DEMO-006..DEMO-018 use their own real OSRM road coordinates; never inject Koramangala geometry
+  return null
 }
 
 interface DriverNavigationProps {
@@ -486,19 +493,22 @@ export function DriverNavigation({
       const canonical = getCanonicalScenarioLegs(sc)
 
       // Use API-returned geometry when available (real road-following routes)
-      // Fall back to authentic canonical road network corridor fixtures for DEMO scenarios
+      // Fall back to authentic canonical road network corridor fixtures only for matching DEMO-001..005 scenarios
       const leg1Coords: [number, number][] = (leg1Plan?.geometry?.coordinates?.length >= 5)
         ? (leg1Plan.geometry.coordinates as [number, number][])
-        : canonical.leg1Coords
+        : (canonical?.leg1Coords || [])
 
       const leg2Coords: [number, number][] = (leg2Plan?.geometry?.coordinates?.length >= 5)
         ? (leg2Plan.geometry.coordinates as [number, number][])
-        : canonical.leg2Coords
+        : (canonical?.leg2Coords || [])
 
       setLeg1Coordinates(leg1Coords)
       setLeg2Coordinates(leg2Coords)
 
-      const fullLine: [number, number][] = [...leg1Coords, ...leg2Coords.slice(1)]
+      const fullLine: [number, number][] =
+        leg1Coords.length > 0 && leg2Coords.length > 0
+          ? [...leg1Coords, ...leg2Coords.slice(1)]
+          : [...leg1Coords, ...leg2Coords]
       // Clear previous reroute ghost line until a reroute is actually accepted
       setOriginalRouteCoordinates([])
 
@@ -552,46 +562,97 @@ export function DriverNavigation({
         }
       ]
 
+      // Build GeoAgent Recommended Alternative (Dashed Purple) as a clean, diverging road-snapped bypass
+      // Preferring Leg 2 (Emergency -> Hospital) bypass when available, or Leg 1 bypass otherwise.
+      const coordsOverlapPct = (p: [number, number][], q: [number, number][]) => {
+        if (!p?.length || !q?.length) return 100
+        let close = 0
+        let samples = 0
+        const sp = Math.max(1, Math.floor(p.length / 45))
+        const sq = Math.max(1, Math.floor(q.length / 30))
+        for (let j = 0; j < q.length; j += sq) {
+          samples++
+          let minD = Infinity
+          for (let i = 0; i < p.length; i += sp) {
+            const d = haversineMeters(q[j], p[i])
+            if (d < minD) minD = d
+            if (minD <= 50) break
+          }
+          if (minD <= 50) close++
+        }
+        return Math.round((100 * close) / Math.max(1, samples))
+      }
+
       let alternative = null
-      if (leg1Plan?.alternative && leg1Plan.alternative.geometry?.coordinates?.length > 1) {
-        alternative = {
-          affectedLegNumber: 1,
-          geometry: leg1Plan.alternative.geometry,
-          distanceMeters: leg1Plan.alternative.distanceMeters,
-          durationSeconds: leg1Plan.alternative.durationSeconds,
-          preference: 'FASTEST' as const,
-          description: leg1Plan.alternative.description || `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes} min)`,
-          trafficDelaySeconds: 20,
-          steps: leg1Plan.alternative.steps || [
-            { maneuver: 'CONTINUE' as const, instruction: 'Bypass bottleneck via arterial corridor', distance: 1200, duration: 140 },
-            { maneuver: 'ARRIVE' as const, instruction: 'Arrive at destination', distance: 200, duration: 30 }
-          ]
+      if (sc.requiresReroute !== false) {
+        let leg2Alt = leg2Plan?.alternative
+        if (
+          leg2Coords.length >= 5 &&
+          (!leg2Alt?.geometry?.coordinates ||
+            leg2Alt.geometry.coordinates.length < 5 ||
+            coordsOverlapPct(leg2Coords, leg2Alt.geometry.coordinates as [number, number][]) > 65)
+        ) {
+          // Ask same-origin Next.js BFF /api/routes/calculate which guarantees a diverging OSRM bypass
+          try {
+            const bffRes = await fetch('/api/routes/calculate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({
+                origin: { type: 'Point', coordinates: sc.emergencyCoordinates },
+                destination: { type: 'Point', coordinates: sc.destinationCoordinates },
+                preference: 'FASTEST',
+                computeAlternatives: true
+              })
+            })
+            const bffJson = bffRes.ok ? await bffRes.json().catch(() => null) : null
+            if (bffJson?.data?.alternative?.geometry?.coordinates?.length >= 5) {
+              leg2Alt = bffJson.data.alternative
+            }
+          } catch {
+            // Fall through to canonical check
+          }
         }
-      } else if (sc.hasAutoReroute && leg2Plan?.alternative?.geometry?.coordinates?.length > 2) {
-        alternative = {
-          affectedLegNumber: 2,
-          geometry: leg2Plan.alternative.geometry,
-          distanceMeters: leg2Plan.alternative.distanceMeters || (dist2 + 600),
-          durationSeconds: leg2Plan.alternative.durationSeconds || (dur2 + 360),
-          preference: 'FASTEST' as const,
-          description: leg2Plan.alternative.description || `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 6} min)`,
-          trafficDelaySeconds: leg2Plan.alternative.trafficDelaySeconds || 360,
-          steps: leg2Plan.alternative.steps || []
-        }
-      } else if (sc.hasAutoReroute && canonical.altCoords && canonical.altCoords.length > 2) {
-        alternative = {
-          affectedLegNumber: 2,
-          geometry: { type: 'LineString', coordinates: canonical.altCoords },
-          distanceMeters: dist2 + 600,
-          durationSeconds: Math.max(dur2 - (sc.expectedTimeSavedMinutes || 6) * 60, 240),
-          preference: 'FASTEST' as const,
-          description: `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 6} min)`,
-          trafficDelaySeconds: 30,
-          steps: [
-            { maneuver: 'DEPART' as const, instruction: 'Take arterial bypass around congestion bottleneck', distance: 800, duration: 90 },
-            { maneuver: 'CONTINUE' as const, instruction: 'Proceed via synchronized signal corridor', distance: 2400, duration: 240 },
-            { maneuver: 'ARRIVE' as const, instruction: `Arrive at ${sc.destinationName} ER Bay`, distance: 300, duration: 40 }
-          ]
+
+        if (
+          leg2Alt?.geometry?.coordinates?.length >= 5 &&
+          coordsOverlapPct(leg2Coords, leg2Alt.geometry.coordinates as [number, number][]) <= 70
+        ) {
+          alternative = {
+            affectedLegNumber: 2,
+            geometry: leg2Alt.geometry,
+            distanceMeters: leg2Alt.distanceMeters || (dist2 + 500),
+            durationSeconds: Math.max(180, dur2 - (sc.expectedTimeSavedMinutes || 5) * 60),
+            preference: 'FASTEST' as const,
+            description: leg2Alt.description || `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 5} min)`,
+            trafficDelaySeconds: 25,
+            steps: leg2Alt.steps || []
+          }
+        } else if (
+          canonical?.altCoords &&
+          canonical.altCoords.length >= 5 &&
+          coordsOverlapPct(leg2Coords, canonical.altCoords) <= 70
+        ) {
+          alternative = {
+            affectedLegNumber: 2,
+            geometry: { type: 'LineString', coordinates: canonical.altCoords },
+            distanceMeters: dist2 + 500,
+            durationSeconds: Math.max(180, dur2 - (sc.expectedTimeSavedMinutes || 6) * 60),
+            preference: 'FASTEST' as const,
+            description: `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 6} min)`,
+            trafficDelaySeconds: 25,
+            steps: []
+          }
+        } else if (leg1Plan?.alternative?.geometry?.coordinates?.length >= 5) {
+          alternative = {
+            affectedLegNumber: 1,
+            geometry: leg1Plan.alternative.geometry,
+            distanceMeters: leg1Plan.alternative.distanceMeters || (dist1 + 400),
+            durationSeconds: Math.max(120, dur1 - (sc.expectedTimeSavedMinutes || 4) * 60),
+            preference: 'FASTEST' as const,
+            description: leg1Plan.alternative.description || `GeoAgent Recommended Bypass Corridor (Saves ~${sc.expectedTimeSavedMinutes || 4} min)`,
+            trafficDelaySeconds: 20,
+            steps: leg1Plan.alternative.steps || []
+          }
         }
       }
 
@@ -628,6 +689,37 @@ export function DriverNavigation({
       })
       setDistanceToNextStepMeters(legs[0]?.steps?.[0]?.distance || 350)
       setRecenterTrigger((prev) => prev + 1)
+      // Place simulated incident marker strictly ON the congested Planned Blue Route (never off-road in buildings)
+      if (sc.requiresReroute !== false && (sc.type === 'ACCIDENT' || sc.hasRoadClosure || sc.hasAutoReroute || sc.hasDeviation)) {
+        const affectedCoords =
+          alternative?.affectedLegNumber === 1
+            ? leg1Coords
+            : leg2Coords.length >= 2
+            ? leg2Coords
+            : leg1Coords
+        const midRoadPt =
+          affectedCoords.length >= 2
+            ? affectedCoords[Math.floor(affectedCoords.length * 0.48)]
+            : sc.emergencyCoordinates
+        setRouteIncidents([
+          {
+            _id: 'inc-sim-01',
+            incidentId: 'INC-DEMO-CORRIDOR',
+            type: sc.hasRoadClosure ? 'ROAD_CLOSURE' : 'ACCIDENT',
+            severity: 'HIGH',
+            status: 'ACTIVE',
+            description: sc.hasRoadClosure
+              ? `Road closure ahead on planned corridor near ${sc.emergencyName}`
+              : `Congestion & collision bottleneck on planned corridor`,
+            location: { type: 'Point', coordinates: midRoadPt },
+            reportedBy: { _id: 'u1', name: 'Traffic Police', email: 'tp@swiftcare.local', role: 'ADMIN' },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          } as any
+        ])
+      } else {
+        setRouteIncidents([])
+      }
     } catch (err: unknown) {
       console.error('[DriverNav] Scenario corridor calculation failed:', err)
       setRouteError('Unable to calculate road route. Please check network connection and retry.')
@@ -647,26 +739,6 @@ export function DriverNavigation({
       setIsDeviated(true)
       setDeviationDistance(sc.hasDeviation ? 92 : 68)
       setGeoAgentState('REROUTE_RECOMMENDED')
-    }
-
-    // Set simulated incidents if applicable
-    if (sc.type === 'ACCIDENT') {
-      setRouteIncidents([
-        {
-          _id: 'inc-sim-01',
-          incidentId: 'INC-DEMO-CORRIDOR',
-          type: 'ACCIDENT',
-          severity: 'HIGH',
-          status: 'ACTIVE',
-          description: `Two-vehicle collision near ${sc.emergencyName} bottleneck`,
-          location: { type: 'Point', coordinates: [(sc.originCoordinates[0] + sc.emergencyCoordinates[0]) / 2, (sc.originCoordinates[1] + sc.emergencyCoordinates[1]) / 2] },
-          reportedBy: { _id: 'u1', name: 'Traffic Police', email: 'tp@swiftcare.local', role: 'ADMIN' },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        } as any
-      ])
-    } else {
-      setRouteIncidents([])
     }
   }, [])
 
@@ -781,26 +853,62 @@ export function DriverNavigation({
         }
       }
 
-      // Update affected leg coordinates
-      if (affectedLeg === 1) {
-        setLeg1Coordinates(alternative.geometry.coordinates)
-      } else {
-        setLeg2Coordinates(alternative.geometry.coordinates)
+      // Preserve superseded leg as gray reference line and update affected leg cleanly without jumps
+      const prevAffectedCoords =
+        navigationMode === 'MANUAL_ROUTE'
+          ? routePlan.geometry.coordinates
+          : affectedLeg === 1
+          ? leg1Coordinates
+          : leg2Coordinates
+      setOriginalRouteCoordinates(prevAffectedCoords)
+
+      const nextLeg1 = affectedLeg === 1 ? alternative.geometry.coordinates : leg1Coordinates
+      const nextLeg2 = affectedLeg === 2 ? alternative.geometry.coordinates : leg2Coordinates
+      if (navigationMode !== 'MANUAL_ROUTE') {
+        if (affectedLeg === 1) setLeg1Coordinates(nextLeg1)
+        else setLeg2Coordinates(nextLeg2)
       }
 
-      // Update frontend navigation state immediately
-      setOriginalRouteCoordinates(routePlan.geometry.coordinates)
+      const combinedGeometry =
+        navigationMode === 'MANUAL_ROUTE'
+          ? alternative.geometry
+          : {
+              type: 'LineString' as const,
+              coordinates:
+                nextLeg1.length > 0 && nextLeg2.length > 0
+                  ? [...nextLeg1, ...nextLeg2.slice(1)]
+                  : [...nextLeg1, ...nextLeg2]
+            }
+
       setRoutePlan({
         ...routePlan,
-        geometry: alternative.geometry,
-        distanceMeters: alternative.distanceMeters,
-        durationSeconds: alternative.durationSeconds,
+        geometry: combinedGeometry,
+        legs: routePlan.legs?.map((l) =>
+          l.legNumber === affectedLeg
+            ? {
+                ...l,
+                geometry: alternative.geometry,
+                distanceMeters: alternative.distanceMeters,
+                durationSeconds: alternative.durationSeconds,
+                steps: alternative.steps && alternative.steps.length > 0 ? alternative.steps : l.steps
+              }
+            : l
+        ),
+        distanceMeters:
+          navigationMode === 'MANUAL_ROUTE'
+            ? alternative.distanceMeters
+            : (affectedLeg === 1 ? alternative.distanceMeters : (routePlan.legs?.[0]?.distanceMeters || 0)) +
+              (affectedLeg === 2 ? alternative.distanceMeters : (routePlan.legs?.[1]?.distanceMeters || 0)),
+        durationSeconds:
+          navigationMode === 'MANUAL_ROUTE'
+            ? alternative.durationSeconds
+            : (affectedLeg === 1 ? alternative.durationSeconds : (routePlan.legs?.[0]?.durationSeconds || 0)) +
+              (affectedLeg === 2 ? alternative.durationSeconds : (routePlan.legs?.[1]?.durationSeconds || 0)),
         preference: alternative.preference,
-        steps: alternative.steps || [
-          { maneuver: 'CONTINUE', instruction: 'Head onto recommended bypass arterial corridor', distance: 1100, duration: 150 },
-          { maneuver: 'TURN_RIGHT', instruction: 'Turn right toward emergency approach', distance: 1500, duration: 190 },
-          { maneuver: 'ARRIVE', instruction: 'Arrive at destination', distance: 200, duration: 35 }
-        ],
+        steps:
+          alternative.steps && alternative.steps.length > 0
+            ? alternative.steps
+            : routePlan.steps || [],
         alternative: null,
         description: alternative.description || 'Active GeoAgent Recommended Bypass'
       })
@@ -1494,6 +1602,7 @@ export function DriverNavigation({
             isVoiceActive={!voiceMuted}
             onToggleVoice={() => setVoiceMuted(!voiceMuted)}
             vehicleCallsign={activeAmbulanceId}
+            isSimulating={isSimulating || gpsMode === 'LIVE_GPS'}
             height="100%"
           />
         </div>

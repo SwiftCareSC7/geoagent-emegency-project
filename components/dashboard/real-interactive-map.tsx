@@ -67,9 +67,10 @@ const RECOMMENDED_ROUTE_B: [number, number][] = (
   CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.coordinates
 ).map(([lng, lat]) => [lat, lng] as [number, number])
 
-const ALTERNATIVE_ROUTE_C: [number, number][] = (
-  CANONICAL_ROAD_CORRIDORS.KORAMANGALA_DEPOT_TO_EMERGENCY.primary.coordinates
-).map(([lng, lat]) => [lat, lng] as [number, number])
+const ALTERNATIVE_ROUTE_C: [number, number][] = [
+  ...CANONICAL_ROAD_CORRIDORS.MG_ROAD_TO_MANIPAL.primary.coordinates.slice(0, 125),
+  ...CANONICAL_ROAD_CORRIDORS.EMERGENCY_TO_MANIPAL.alternative.coordinates,
+].map(([lng, lat]) => [lat, lng] as [number, number])
 
 const DEVIATED_PATH: [number, number][] = PLANNED_ROUTE_A.slice(0, Math.floor(PLANNED_ROUTE_A.length * 0.45))
 

@@ -369,7 +369,49 @@ export function ControlRoomMap({
 
         if (!isMounted) return
 
-        // 1. Map Routes — Authoritative and correctly scoped to selectedEmergencyId
+        // 1. Map Routes — Authoritative Planned (Solid Blue) + GeoAgent Recommended (Dashed Purple)
+        const hasTangentJump = (coords?: [number, number][]) => {
+          if (!coords || coords.length < 2) return true
+          for (let i = 0; i < coords.length - 1; i++) {
+            const [lng1, lat1] = coords[i]
+            const [lng2, lat2] = coords[i + 1]
+            const dLat = ((lat2 - lat1) * Math.PI) / 180
+            const dLng = ((lng2 - lng1) * Math.PI) / 180
+            const a =
+              Math.sin(dLat / 2) ** 2 +
+              Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+            const segMeters = 2 * 6371000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+            if (segMeters > 900) return true
+          }
+          return false
+        }
+
+        const routeOverlapPercent = (p: [number, number][], q: [number, number][]) => {
+          if (!p?.length || !q?.length) return 100
+          let close = 0
+          const stepQ = Math.max(1, Math.floor(q.length / 35))
+          const stepP = Math.max(1, Math.floor(p.length / 50))
+          let samples = 0
+          for (let j = 0; j < q.length; j += stepQ) {
+            samples++
+            const [qlng, qlat] = q[j]
+            let minD = Infinity
+            for (let i = 0; i < p.length; i += stepP) {
+              const [plng, plat] = p[i]
+              const dLat = ((plat - qlat) * Math.PI) / 180
+              const dLng = ((plng - qlng) * Math.PI) / 180
+              const a =
+                Math.sin(dLat / 2) ** 2 +
+                Math.cos((qlat * Math.PI) / 180) * Math.cos((plat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+              const d = 2 * 6371000 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+              if (d < minD) minD = d
+              if (minD <= 55) break
+            }
+            if (minD <= 55) close++
+          }
+          return Math.round((100 * close) / Math.max(1, samples))
+        }
+
         const fetchedRoutes: Route[] = routesRes.data || []
         const canonicalPair: Route[] = getCanonicalRouteForEmergency(selectedEmergencyId!, emg)
         const candidateRoutes: Route[] = fetchedRoutes.length > 0 ? [...fetchedRoutes] : [...canonicalPair]
@@ -384,98 +426,126 @@ export function ControlRoomMap({
               steps?: unknown[]
             }
           }
-          if (primaryDoc.alternative?.geometry?.coordinates && primaryDoc.alternative.geometry.coordinates.length >= 5) {
-            const altCoords = primaryDoc.alternative.geometry.coordinates
+          const embCoords = primaryDoc.alternative?.geometry?.coordinates
+          if (embCoords && embCoords.length >= 5 && !hasTangentJump(embCoords)) {
             candidateRoutes.push({
               id: `${primaryDoc.routeId}-ALT`,
               routeId: `${primaryDoc.routeId}-ALT`,
               emergency: selectedEmergencyId!,
-              origin: { type: 'Point', coordinates: altCoords[0] },
-              destination: { type: 'Point', coordinates: altCoords[altCoords.length - 1] },
-              geometry: primaryDoc.alternative.geometry,
-              distance: primaryDoc.alternative.distanceMeters || primaryDoc.distance || 0,
-              duration: primaryDoc.alternative.durationSeconds || primaryDoc.duration || 0,
-              distanceMeters: primaryDoc.alternative.distanceMeters || primaryDoc.distanceMeters || 0,
-              durationSeconds: primaryDoc.alternative.durationSeconds || primaryDoc.durationSeconds || 0,
+              origin: { type: 'Point', coordinates: embCoords[0] },
+              destination: { type: 'Point', coordinates: embCoords[embCoords.length - 1] },
+              geometry: primaryDoc.alternative!.geometry!,
+              distance: primaryDoc.alternative!.distanceMeters || primaryDoc.distance || 0,
+              duration: primaryDoc.alternative!.durationSeconds || primaryDoc.duration || 0,
+              distanceMeters: primaryDoc.alternative!.distanceMeters || primaryDoc.distanceMeters || 0,
+              durationSeconds: primaryDoc.alternative!.durationSeconds || primaryDoc.durationSeconds || 0,
               routeType: 'ALTERNATIVE',
               status: 'ACTIVE',
               provider: primaryDoc.provider,
             } as Route)
-          } else if (primaryDoc.origin && primaryDoc.destination) {
-            // Fetch a live OSRM alternative route so every real MongoDB emergency gets a dashed purple corridor
-            try {
-              const calcRes = await fetch('/api/routes/calculate', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-                body: JSON.stringify({
-                  origin: primaryDoc.origin,
-                  destination: primaryDoc.destination,
-                  preference: 'FASTEST',
-                  computeAlternatives: true,
-                }),
-              })
-              const calcJson = calcRes.ok ? await calcRes.json().catch(() => null) : null
-              const liveAlt = calcJson?.data?.alternative
-              if (isMounted && liveAlt?.geometry?.coordinates?.length >= 5) {
-                const altCoords = liveAlt.geometry.coordinates
-                candidateRoutes.push({
-                  id: `${primaryDoc.routeId}-ALT-LIVE`,
-                  routeId: `${primaryDoc.routeId}-ALT-LIVE`,
-                  emergency: selectedEmergencyId!,
-                  vehicle: primaryDoc.vehicle,
-                  origin: { type: 'Point', coordinates: altCoords[0] },
-                  destination: { type: 'Point', coordinates: altCoords[altCoords.length - 1] },
-                  geometry: liveAlt.geometry,
-                  distance: liveAlt.distanceMeters || primaryDoc.distance || 0,
-                  duration: liveAlt.durationSeconds || primaryDoc.duration || 0,
-                  distanceMeters: liveAlt.distanceMeters || primaryDoc.distanceMeters || 0,
-                  durationSeconds: liveAlt.durationSeconds || primaryDoc.durationSeconds || 0,
-                  routeType: 'ALTERNATIVE',
-                  status: 'ACTIVE',
-                  provider: calcJson?.data?.provider || 'OSRM',
-                  steps: liveAlt.steps,
-                } as unknown as Route)
-              } else if (canonicalPair.length > 1) {
-                candidateRoutes.push(canonicalPair[1])
-              }
-            } catch {
-              if (canonicalPair.length > 1) {
-                candidateRoutes.push(canonicalPair[1])
-              }
-            }
-          } else if (canonicalPair.length > 1) {
-            candidateRoutes.push(canonicalPair[1])
           }
         }
 
-        // Strict validation: Reject non-road geometry, straight lines, or cross-mission leaks
+        // Strict validation: Reject non-road geometry, straight-line tangents (>900m jump), or cross-mission leaks
         let validatedRoutes = candidateRoutes.filter((r) => {
           const v = validateRouteGeometry(r)
-          if (!v.isValid || !v.isRoadConstrained) {
-            console.warn(`[ControlRoomMap] Route ${r.routeId || r.id} rejected by route validator:`, v.reasons)
+          if (!v.isValid || !v.isRoadConstrained || hasTangentJump(r.geometry?.coordinates)) {
+            console.warn(`[ControlRoomMap] Route ${r.routeId || r.id} rejected by road/tangent validator`)
             return false
           }
           return true
         })
 
         if (validatedRoutes.length === 0 && canonicalPair.length > 0) {
-          validatedRoutes = canonicalPair.filter((r) => validateRouteGeometry(r).isValid)
-        } else if (validatedRoutes.length === 1 && canonicalPair.length > 1) {
-          const altFallback = canonicalPair[1]
-          if (validateRouteGeometry(altFallback).isValid) {
-            validatedRoutes.push(altFallback)
+          validatedRoutes = canonicalPair.filter(
+            (r) => validateRouteGeometry(r).isValid && !hasTangentJump(r.geometry?.coordinates)
+          )
+        }
+
+        // Sort so Planned Corridor is index 0 (Solid Blue) and Recommended Bypass is index 1 (Dashed Purple)
+        let orderedRoutes = [...validatedRoutes].sort((a, b) => {
+          const aRank = a.routeType === 'PLANNED' ? 0 : 1
+          const bRank = b.routeType === 'PLANNED' ? 0 : 1
+          return aRank - bRank
+        })
+
+        // Guarantee a genuinely diverging Recommended Purple Route (never missing and never overlapping >65% with Planned Blue)
+        if (orderedRoutes.length >= 1) {
+          const primaryPlanned = orderedRoutes[0]
+          const pCoords = primaryPlanned.geometry.coordinates
+          const secondCoords = orderedRoutes[1]?.geometry?.coordinates
+          const needsDivergingRecommended =
+            !secondCoords ||
+            secondCoords.length < 5 ||
+            routeOverlapPercent(pCoords, secondCoords) > 65
+
+          if (needsDivergingRecommended) {
+            const originPt = primaryPlanned.origin || { type: 'Point', coordinates: pCoords[0] }
+            const destPt = primaryPlanned.destination || { type: 'Point', coordinates: pCoords[pCoords.length - 1] }
+            let resolvedAlt: Route | null = null
+
+            try {
+              const calcRes = await fetch('/api/routes/calculate', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({
+                  origin: originPt,
+                  destination: destPt,
+                  preference: 'FASTEST',
+                  computeAlternatives: true,
+                }),
+              })
+              const calcJson = calcRes.ok ? await calcRes.json().catch(() => null) : null
+              const liveAlt = calcJson?.data?.alternative
+              const altCoords = liveAlt?.geometry?.coordinates as [number, number][] | undefined
+              if (
+                isMounted &&
+                altCoords &&
+                altCoords.length >= 5 &&
+                !hasTangentJump(altCoords) &&
+                routeOverlapPercent(pCoords, altCoords) <= 65
+              ) {
+                resolvedAlt = {
+                  id: `${primaryPlanned.routeId}-RECOMMENDED`,
+                  routeId: `${primaryPlanned.routeId}-RECOMMENDED`,
+                  emergency: selectedEmergencyId!,
+                  vehicle: primaryPlanned.vehicle,
+                  origin: { type: 'Point', coordinates: altCoords[0] },
+                  destination: { type: 'Point', coordinates: altCoords[altCoords.length - 1] },
+                  geometry: liveAlt.geometry,
+                  distance: liveAlt.distanceMeters || primaryPlanned.distance || 0,
+                  duration: Math.max(180, (primaryPlanned.duration || 660) - 240),
+                  distanceMeters: liveAlt.distanceMeters || primaryPlanned.distanceMeters || 0,
+                  durationSeconds: Math.max(180, (primaryPlanned.durationSeconds || primaryPlanned.duration || 660) - 240),
+                  routeType: 'ALTERNATIVE',
+                  status: 'ACTIVE',
+                  provider: calcJson?.data?.provider || 'GEOAGENT',
+                  steps: liveAlt.steps,
+                } as unknown as Route
+              }
+            } catch {
+              // Fall through to canonical check
+            }
+
+            if (!resolvedAlt && canonicalPair.length > 1) {
+              const candAlt = canonicalPair[1]
+              if (
+                candAlt?.geometry?.coordinates?.length >= 5 &&
+                !hasTangentJump(candAlt.geometry.coordinates) &&
+                routeOverlapPercent(pCoords, candAlt.geometry.coordinates) <= 65
+              ) {
+                resolvedAlt = candAlt
+              }
+            }
+
+            if (resolvedAlt) {
+              orderedRoutes = [primaryPlanned, resolvedAlt]
+            }
           }
         }
 
-        // Sort so primary active/planned corridor is index 0 (Solid Blue) and alternative detour is index 1+ (Dashed Purple)
-        const orderedRoutes = [...validatedRoutes].sort((a, b) => {
-          const aIsAlt = a.routeType === 'ALTERNATIVE' || (a.routeType as string) === 'DETOUR' || a.status === 'CANCELLED'
-          const bIsAlt = b.routeType === 'ALTERNATIVE' || (b.routeType as string) === 'DETOUR' || b.status === 'CANCELLED'
-          return Number(aIsAlt) - Number(bIsAlt)
-        })
-
-        const mappedRoutes: MapRoute[] = orderedRoutes.map((r, idx) => {
+        const mappedRoutes: MapRoute[] = orderedRoutes.slice(0, 2).map((r, idx) => {
           const isAlternative = idx > 0
           const isRecommended = isAlternative && showRecommended
 
@@ -483,13 +553,15 @@ export function ControlRoomMap({
             id: r.id || r.routeId,
             routeId: r.routeId,
             emergencyId: selectedEmergencyId!,
-            origin: r.origin,
-            destination: r.destination,
+            origin: r.origin || { type: 'Point', coordinates: r.geometry.coordinates[0] },
+            destination:
+              r.destination || { type: 'Point', coordinates: r.geometry.coordinates[r.geometry.coordinates.length - 1] },
+            emergencyLocation: emg?.location,
             geometry: r.geometry,
             distanceMeters: r.distance || r.distanceMeters || 0,
             durationSeconds: r.duration || r.durationSeconds || 0,
             routeType: isAlternative ? 'ALTERNATIVE' : 'PLANNED',
-            status: isAlternative ? 'ACTIVE' : (r.status === 'CANCELLED' ? 'ACTIVE' : (r.status || 'ACTIVE')),
+            status: 'ACTIVE',
             provider: r.provider,
             isRecommended,
             steps: (r as { steps?: unknown[] }).steps,

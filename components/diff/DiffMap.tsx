@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { MapLegend } from '@/components/map/map-legend'
 import { cn } from '@/lib/utils'
 import type { DiffSimulationSnapshot } from '@/lib/simulation/diff-scenario-engine'
 
@@ -102,7 +103,7 @@ export const DiffMap = forwardRef<DiffMapHandle, DiffMapProps>(function DiffMap(
         [12.957, 77.650], // Manipal Hospital HAL
         [12.980, 77.643], // Indiranagar 100ft bypass
       ])
-      map.fitBounds(fullBounds, { padding: [40, 40] })
+      map.fitBounds(fullBounds, { paddingTopLeft: [50, 50], paddingBottomRight: [380, 50] })
 
       setMapReady(true)
     }
@@ -475,12 +476,12 @@ export const DiffMap = forwardRef<DiffMapHandle, DiffMapProps>(function DiffMap(
   }, [snapshot, mapReady, autoFollowVehicle])
 
   return (
-    <div className="relative h-full w-full flex-1 overflow-hidden bg-muted/20">
+    <div className="relative isolate z-0 h-full w-full flex-1 overflow-hidden bg-muted/20">
       {/* Map Canvas */}
       <div ref={containerRef} className="h-full w-full" tabIndex={0} aria-label="Interactive What-If Simulation Map" />
 
-      {/* Floating Map Overlays & Quick Controls */}
-      <div className="absolute right-3 top-3 z-10 flex flex-col gap-2">
+      {/* Floating Map Overlays & Quick Controls (Top-Left below corridor badge so right-side Tactical HUD never occludes them) */}
+      <div className="absolute left-3 top-14 z-[500] flex flex-col gap-2">
         {/* Recenter & Fit All Bounds */}
         <Button
           size="sm"
@@ -536,8 +537,8 @@ export const DiffMap = forwardRef<DiffMapHandle, DiffMapProps>(function DiffMap(
         </Button>
       </div>
 
-      {/* Corridor HUD Badge on Bottom-Left */}
-      <div className="absolute bottom-3 left-3 z-10 hidden sm:flex items-center gap-2 rounded-md border border-border/70 bg-background/85 px-2.5 py-1.5 text-[11px] font-mono shadow-md backdrop-blur-xs">
+      {/* Corridor HUD Badge on Top-Left */}
+      <div className="absolute top-3 left-3 z-[500] hidden sm:flex items-center gap-2 rounded-md border border-border/70 bg-background/90 px-2.5 py-1.5 text-[11px] font-mono shadow-md backdrop-blur-xs">
         <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
         <span className="text-muted-foreground">Corridor:</span>
         <span className="font-bold text-foreground">
@@ -546,6 +547,8 @@ export const DiffMap = forwardRef<DiffMapHandle, DiffMapProps>(function DiffMap(
             : 'MG Road -> Old Airport Rd (Primary)'}
         </span>
       </div>
+
+      <MapLegend />
     </div>
   )
 })

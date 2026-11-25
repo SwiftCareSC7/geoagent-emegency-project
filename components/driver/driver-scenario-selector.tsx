@@ -287,9 +287,9 @@ export const CANONICAL_DEMO_SCENARIOS: ScenarioDefinition[] = [
     originName: 'Banashankari BDA Complex',
     originCoordinates: [77.5560, 12.9250],
     emergencyName: 'Banashankari 2nd Stage Junction',
-    emergencyCoordinates: [77.5600, 12.9300],
-    destinationName: 'Sagar Hospitals (Banashankari)',
-    destinationCoordinates: [77.5560, 12.9250],
+    emergencyCoordinates: [77.5685, 12.9265],
+    destinationName: 'Sagar Hospitals (Jayanagar)',
+    destinationCoordinates: [77.5908, 12.9275],
     vehicleId: 'AMB-17',
     emergencyId: 'E-DEMO-013',
     priority: 'CRITICAL',
@@ -347,9 +347,9 @@ export const CANONICAL_DEMO_SCENARIOS: ScenarioDefinition[] = [
     originName: 'Kalyan Nagar HRBR Layout',
     originCoordinates: [77.6480, 13.0180],
     emergencyName: 'Kammanahalli Main Road Clinic',
-    emergencyCoordinates: [77.6420, 13.0120],
-    destinationName: 'Specialist Hospital Kalyan Nagar',
-    destinationCoordinates: [77.6480, 13.0180],
+    emergencyCoordinates: [77.6385, 13.0115],
+    destinationName: 'Specialist Hospital (Banaswadi)',
+    destinationCoordinates: [77.6295, 13.0055],
     vehicleId: 'AMB-20',
     emergencyId: 'E-DEMO-016',
     priority: 'HIGH',
@@ -457,7 +457,7 @@ export function DriverScenarioSelector({
               </h2>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              12 canonical high-fidelity multi-leg emergency corridors with verified road telemetry
+              {CANONICAL_DEMO_SCENARIOS.length} canonical high-fidelity multi-leg emergency corridors with verified road telemetry
             </p>
           </div>
           <button
@@ -487,7 +487,7 @@ export function DriverScenarioSelector({
           {/* Filter Chips */}
           <div className="flex flex-wrap gap-1.5 text-xs">
             {[
-              { id: 'ALL', label: 'All Scenarios (12)' },
+              { id: 'ALL', label: `All Scenarios (${CANONICAL_DEMO_SCENARIOS.length})` },
               { id: 'CRITICAL', label: 'Critical Priority' },
               { id: 'REROUTE', label: 'Reroute Available' },
               { id: 'DEVIATION', label: 'Ambulance Deviation' },

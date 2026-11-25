@@ -157,6 +157,65 @@ class RouteService {
           // Non-blocking alternative calculation
         }
       }
+
+      // If alternative is still missing or overlaps >65% with primary, compute a diverging arterial bypass via OSRM
+      const pCoords = routeData.geometry?.coordinates || [];
+      const aCoords = alternative?.geometry?.coordinates || [];
+      const calcOverlap = (p, q) => {
+        if (!p.length || !q.length) return 100;
+        let close = 0, samples = 0;
+        const sp = Math.max(1, Math.floor(p.length / 50));
+        const sq = Math.max(1, Math.floor(q.length / 35));
+        for (let j = 0; j < q.length; j += sq) {
+          samples++;
+          let minD = Infinity;
+          for (let i = 0; i < p.length; i += sp) {
+            const dLat = ((p[i][1] - q[j][1]) * Math.PI) / 180;
+            const dLng = ((p[i][0] - q[j][0]) * Math.PI) / 180;
+            const x = Math.sin(dLat / 2) ** 2 + Math.cos((q[j][1] * Math.PI) / 180) * Math.cos((p[i][1] * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+            const d = 2 * 6371000 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+            if (d < minD) minD = d;
+            if (minD <= 50) break;
+          }
+          if (minD <= 50) close++;
+        }
+        return Math.round((100 * close) / Math.max(1, samples));
+      };
+
+      if (pCoords.length >= 2 && (!aCoords.length || calcOverlap(pCoords, aCoords) > 65)) {
+        const origPt = pCoords[0];
+        const destPt = pCoords[pCoords.length - 1];
+        const midLng = (origPt[0] + destPt[0]) / 2;
+        const midLat = (origPt[1] + destPt[1]) / 2;
+        const dx = destPt[0] - origPt[0];
+        const dy = destPt[1] - origPt[1];
+        for (const scale of [0.28, -0.28, 0.42, -0.42]) {
+          try {
+            const viaLng = Number((midLng - dy * scale).toFixed(6));
+            const viaLat = Number((midLat + dx * scale).toFixed(6));
+            const url = `https://router.project-osrm.org/route/v1/driving/${origPt[0]},${origPt[1]};${viaLng},${viaLat};${destPt[0]},${destPt[1]}?overview=full&geometries=geojson&steps=true`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(3500) });
+            if (!res.ok) continue;
+            const json = await res.json();
+            const r = json?.routes?.[0];
+            if (!r?.geometry?.coordinates || r.geometry.coordinates.length < 6) continue;
+            if (calcOverlap(pCoords, r.geometry.coordinates) <= 65) {
+              alternative = {
+                geometry: r.geometry,
+                distanceMeters: Math.round(r.distance || 0),
+                durationSeconds: Math.round(r.duration || 0),
+                preference: altPreference,
+                description: 'GeoAgent Recommended Bypass Corridor',
+                steps: [],
+                trafficDelaySeconds: 20
+              };
+              break;
+            }
+          } catch {
+            // Try next perpendicular bypass candidate
+          }
+        }
+      }
     }
 
     return {
