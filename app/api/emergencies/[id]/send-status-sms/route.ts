@@ -1,14 +1,19 @@
 import { NextResponse, NextRequest } from 'next/server'
+import { getBackendUrl, BACKEND_TIMEOUT_MS } from '@/lib/backend-url'
 
 export const dynamic = 'force-dynamic'
+
+function resolveEmergencyId(params: Record<string, string>): string {
+  const raw = (params.id || params.emergencyId || '').trim()
+  return /^DEMO-\d+$/i.test(raw) ? `E-${raw.toUpperCase()}` : raw
+}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
-  const resolvedParams = await params
-  const emergencyId = resolvedParams.id || resolvedParams.emergencyId || ''
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001'
+  const emergencyId = resolveEmergencyId(await params)
+  const backendUrl = getBackendUrl() || 'http://localhost:5001'
 
   try {
     const body = await request.json().catch(() => ({}))
@@ -23,6 +28,7 @@ export async function POST(
     if (authHeader) headers['authorization'] = authHeader
 
     const res = await fetch(`${backendUrl}/api/emergencies/${encodeURIComponent(emergencyId)}/send-status-sms`, {
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -45,8 +51,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<Record<string, string>> }
 ) {
-  const { emergencyId } = await params as { emergencyId: string }
-  const backendUrl = process.env.BACKEND_URL || 'http://localhost:5001'
+  const emergencyId = resolveEmergencyId(await params)
+  const backendUrl = getBackendUrl() || 'http://localhost:5001'
 
   try {
     const cookieHeader = request.headers.get('cookie') || ''
@@ -59,10 +65,18 @@ export async function GET(
     if (authHeader) headers['authorization'] = authHeader
 
     const res = await fetch(`${backendUrl}/api/emergencies/${encodeURIComponent(emergencyId)}/send-status-sms`, {
+      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
       method: 'GET',
       headers,
       next: { revalidate: 0 },
     })
+
+    if (res.status === 404) {
+      return NextResponse.json({
+        success: true,
+        data: { emergencyId, status: 'NOT_SENT', provider: 'MSG91', canSend: true },
+      })
+    }
 
     const data = await res.json()
     return NextResponse.json(data, { status: res.status })

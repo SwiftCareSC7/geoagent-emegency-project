@@ -14,11 +14,13 @@ let socketInstance: Socket | null = null;
 
 export function getSocketUrl(): string {
   if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:5001';
+    }
     const env = process.env.NEXT_PUBLIC_SOCKET_URL;
     if (env && !env.includes('localhost') && !env.includes('127.0.0.1')) return env;
-    if (window.location.protocol === 'https:') {
-      return window.location.origin;
-    }
+    return 'https://geoagent-backend.onrender.com';
   }
   return process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5001';
 }
@@ -73,7 +75,7 @@ export function getSocket(): Socket {
           .then((d) => cb({ token: d?.token }))
           .catch(() => cb({}))
       },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 5,

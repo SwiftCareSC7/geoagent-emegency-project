@@ -74,7 +74,10 @@ export const getIncidents = async (filters = {}) => {
   if (filters.severity) query.severity = filters.severity;
   if (filters.type) query.type = filters.type;
 
-  return await Incident.find(query).populate('emergency', 'emergencyId status');
+  return await Incident.find(query)
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .populate('emergency', 'emergencyId status');
 };
 
 /**

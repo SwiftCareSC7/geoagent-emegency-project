@@ -2128,9 +2128,10 @@ class DemoService {
       activeLegIndex: 0,
       geometry: {
         type: 'LineString',
+        // Splice at exact 0m road intersection (kora[35] === manipalAlt[9]) to prevent 1.24km straight-line jump
         coordinates: [
-          ...leg001_1.geometry.coordinates,
-          ...leg001_2_congested.geometry.coordinates.slice(1)
+          ...leg001_1.geometry.coordinates.slice(0, 36),
+          ...leg001_2_congested.geometry.coordinates.slice(10)
         ]
       },
       distance: leg001_1.distance + leg001_2_congested.distance,
@@ -2170,9 +2171,15 @@ class DemoService {
       steps: [...leg001_1.steps, ...leg001_2_recommended.steps],
       alternative: {
         affectedLegNumber: 2,
-        geometry: leg001_2_congested.geometry,
-        distanceMeters: leg001_2_congested.distance,
-        durationSeconds: leg001_2_congested.duration,
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            ...leg001_1.geometry.coordinates.slice(0, 36),
+            ...leg001_2_congested.geometry.coordinates.slice(10)
+          ]
+        },
+        distanceMeters: leg001_1.distance + leg001_2_congested.distance,
+        durationSeconds: leg001_1.duration + leg001_2_congested.duration,
         preference: 'FASTEST',
         description: 'Original bottleneck route via Intermediate Ring Rd (+6m delay)'
       },

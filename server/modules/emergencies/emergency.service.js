@@ -68,7 +68,10 @@ export const getEmergencies = async (filters = {}) => {
   if (filters.priority) query.priority = filters.priority;
   if (filters.type) query.type = filters.type;
 
-  return await Emergency.find(query).populate('assignedVehicle', 'vehicleId registrationNumber status');
+  return await Emergency.find(query)
+    .sort({ createdAt: -1 })
+    .limit(200)
+    .populate('assignedVehicle', 'vehicleId registrationNumber status');
 };
 
 /**

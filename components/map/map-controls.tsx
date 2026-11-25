@@ -118,7 +118,7 @@ export function MapControls({
         </button>
 
         {layersOpen ? (
-          <div className="absolute right-0 top-11 w-48 rounded-xl border border-border bg-card/95 p-2.5 text-xs text-foreground shadow-2xl backdrop-blur-md space-y-1">
+          <div className="absolute right-11 top-0 z-20 max-h-72 w-52 overflow-y-auto rounded-xl border border-border bg-card/95 p-2 text-xs text-foreground shadow-2xl backdrop-blur-md space-y-1">
             <div className="font-bold text-muted-foreground text-[11px] pb-1 border-b border-border">
               Layer Controls
             </div>
@@ -172,10 +172,10 @@ export function MapControls({
         </button>
 
         {tilesOpen ? (
-          <div className="absolute right-0 top-11 w-52 rounded-xl border border-border bg-card/95 p-2 text-xs text-foreground shadow-2xl backdrop-blur-md space-y-1">
+          <div className="absolute right-11 bottom-0 z-20 max-h-72 w-52 overflow-y-auto rounded-xl border border-border bg-card/95 p-2 text-xs text-foreground shadow-2xl backdrop-blur-md space-y-1">
             <div className="font-bold text-muted-foreground text-[11px] pb-1 border-b border-border flex items-center justify-between">
               <span>Basemap Style</span>
-              <span className="text-[9px] font-normal text-muted-foreground">Google Maps</span>
+              <span className="text-[9px] font-normal text-muted-foreground">6 Providers</span>
             </div>
             {[
               { id: 'google_streets', label: 'Google Streets', tag: 'Google' },

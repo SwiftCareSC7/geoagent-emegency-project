@@ -563,7 +563,9 @@ class PredictionService {
    * @returns {Promise<Object>}
    */
   async predictForVehicle(vehicleId, { triggerDecision = true } = {}) {
-    const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
+    const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false })
+      .select('_id vehicleId status speed currentLocation')
+      .lean();
     if (!vehicle) {
       const error = new Error('Vehicle not found');
       error.status = 404;
@@ -571,14 +573,19 @@ class PredictionService {
       throw error;
     }
 
-    const route = await Route.findOne({ vehicle: vehicle._id, status: 'ACTIVE' })
-      .sort({ createdAt: -1 })
-      .populate('emergency', 'emergencyId status priority');
+    // Fetch active route and recent/historical trajectories in parallel
+    const [route, trajectoryWindow] = await Promise.all([
+      Route.findOne({ vehicle: vehicle._id, status: 'ACTIVE' })
+        .sort({ createdAt: -1 })
+        .populate('emergency', 'emergencyId status priority')
+        .lean(),
+      Trajectory.find({ vehicle: vehicle._id })
+        .sort({ timestamp: -1 })
+        .limit(30)
+        .lean()
+    ]);
 
-    const recentTrajectories = await Trajectory.find({ vehicle: vehicle._id })
-      .sort({ timestamp: -1 })
-      .limit(10);
-
+    const recentTrajectories = trajectoryWindow.slice(0, 10);
     if (!recentTrajectories || recentTrajectories.length === 0) {
       const error = new Error('No trajectory data available to compute prediction');
       error.status = 404;
@@ -588,7 +595,19 @@ class PredictionService {
 
     const latestTrajectory = recentTrajectories[0];
 
-    // Compute progress & deviation if route exists
+    // Historical speed benchmark derived from the single combined trajectory query (no extra DB hit)
+    let historicalSpeedKmh = null;
+    const pastTrajectories = trajectoryWindow.slice(10);
+    if (pastTrajectories.length >= 5) {
+      const validSpeeds = pastTrajectories
+        .map((p) => (typeof p.speed === 'number' ? p.speed : 0))
+        .filter((s) => s > 5);
+      if (validSpeeds.length > 0) {
+        historicalSpeedKmh = Number((validSpeeds.reduce((a, b) => a + b, 0) / validSpeeds.length).toFixed(1));
+      }
+    }
+
+    // Compute progress & deviation if route exists, and fetch traffic + incidents in parallel
     let progress = null;
     let deviation = null;
     let traffic = null;
@@ -602,35 +621,21 @@ class PredictionService {
         recentTrajectories,
         latestTrajectory.heading
       );
-      traffic = await trafficService.getTrafficForRoute(route.geometry);
-      incidents = await analysisService.getCorrelatedIncidents(latestTrajectory.location, route.geometry);
+      [traffic, incidents] = await Promise.all([
+        trafficService.getTrafficForRoute(route.geometry),
+        analysisService.getCorrelatedIncidents(latestTrajectory.location, route.geometry)
+      ]);
     } else {
       traffic = await trafficService.getTrafficForLocation(latestTrajectory.location);
     }
 
-    // Query vehicle-scoped historical trajectory speed benchmark (avoiding cross-vehicle / cross-emergency leakage)
-    let historicalSpeedKmh = null;
-    try {
-      const pastTrajectories = await Trajectory.find({ vehicle: vehicle._id })
-        .sort({ timestamp: -1 })
-        .skip(10)
-        .limit(20)
-        .select('speed');
-      if (pastTrajectories && pastTrajectories.length >= 5) {
-        const validSpeeds = pastTrajectories
-          .map((p) => (typeof p.speed === 'number' ? p.speed : 0))
-          .filter((s) => s > 5);
-        if (validSpeeds.length > 0) {
-          historicalSpeedKmh = Number((validSpeeds.reduce((a, b) => a + b, 0) / validSpeeds.length).toFixed(1));
-        }
-      }
-    } catch {
-      // Non-blocking query
-    }
-
+    // Reuse already-fetched records so V2X analysis performs zero extra DB queries
     let v2x = null;
     try {
-      v2x = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicleId, { silent: true });
+      v2x = await corridorGreenWaveService.analyzeCorridorForVehicle(vehicleId, {
+        silent: true,
+        preloaded: { vehicle, latestTrajectory, route, incidents }
+      });
     } catch {
       // Non-blocking if corridor cannot be evaluated
     }
@@ -671,38 +676,36 @@ class PredictionService {
 
     const emergencyId = route && route.emergency ? route.emergency.emergencyId : null;
 
-    // Conditionally persist snapshot if delay is meaningful or at least 60s elapsed
+    // Persist snapshot asynchronously so HTTP responses do not block on DB writes
     const lastSaved = this.lastSavedTimes.get(vehicleId) || 0;
     const shouldSave = (prediction.predictedDelayMinutes >= 2) || ((Date.now() - lastSaved) > 60000);
 
     if (shouldSave) {
-      try {
-        const snapshot = new Prediction({
-          emergency: route && route.emergency ? route.emergency._id : undefined,
-          vehicle: vehicle._id,
-          route: route ? route._id : undefined,
-          predictedEta: new Date(prediction.predictedEta),
-          baselineEta: new Date(prediction.baselineEta),
-          predictedDurationSeconds: prediction.predictedDurationSeconds,
-          baselineDurationSeconds: prediction.baselineDurationSeconds,
-          predictedDelaySeconds: prediction.predictedDelaySeconds,
-          predictedDelayMinutes: prediction.predictedDelayMinutes,
-          delayRisk: prediction.delayRisk,
-          routeRisk: prediction.routeRisk,
-          confidence: prediction.confidence,
-          confidenceScore: prediction.confidenceScore,
-          rerouteAdvised: prediction.rerouteAdvised,
-          rerouteUrgency: prediction.rerouteUrgency,
-          factors: prediction.factors,
-          inputsSummary: prediction.inputsSummary,
-          modelVersion: prediction.modelVersion,
-          trafficSource: prediction.trafficSource
-        });
-        await snapshot.save();
-        this.lastSavedTimes.set(vehicleId, Date.now());
-      } catch (err) {
+      this.lastSavedTimes.set(vehicleId, Date.now());
+      const snapshot = new Prediction({
+        emergency: route && route.emergency ? route.emergency._id : undefined,
+        vehicle: vehicle._id,
+        route: route ? route._id : undefined,
+        predictedEta: new Date(prediction.predictedEta),
+        baselineEta: new Date(prediction.baselineEta),
+        predictedDurationSeconds: prediction.predictedDurationSeconds,
+        baselineDurationSeconds: prediction.baselineDurationSeconds,
+        predictedDelaySeconds: prediction.predictedDelaySeconds,
+        predictedDelayMinutes: prediction.predictedDelayMinutes,
+        delayRisk: prediction.delayRisk,
+        routeRisk: prediction.routeRisk,
+        confidence: prediction.confidence,
+        confidenceScore: prediction.confidenceScore,
+        rerouteAdvised: prediction.rerouteAdvised,
+        rerouteUrgency: prediction.rerouteUrgency,
+        factors: prediction.factors,
+        inputsSummary: prediction.inputsSummary,
+        modelVersion: prediction.modelVersion,
+        trafficSource: prediction.trafficSource
+      });
+      snapshot.save().catch((err) => {
         console.warn(`[PredictionService] Snapshot save warning: ${err.message}`);
-      }
+      });
     }
 
     // Emit Real-Time Socket.IO event

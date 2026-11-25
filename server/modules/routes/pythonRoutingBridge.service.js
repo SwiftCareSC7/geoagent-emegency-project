@@ -191,20 +191,36 @@ class PythonRoutingBridgeService {
     this.pythonExecutable = process.env.PYTHON_BIN || 'python3';
     this.scriptPath = SCRIPT_PATH;
     this.timeoutMs = 1500;
+    this._availabilityCache = null;
   }
 
   /**
-   * Checks whether the Python3 runtime and script are available
+   * Checks whether the Python3 runtime and script are available (cached per process)
    * @returns {Object} { available, engine, message, version }
    */
   checkAvailability() {
+    if (this._availabilityCache) {
+      return this._availabilityCache;
+    }
+
+    if (process.env.ENABLE_PYTHON_V2X_SUBPROCESS !== 'true') {
+      this._availabilityCache = {
+        available: true,
+        engine: 'javascript-fallback',
+        status: 'AVAILABLE',
+        message: 'In-process Node.js V2X engine active (zero subprocess latency)'
+      };
+      return this._availabilityCache;
+    }
+
     if (!fs.existsSync(this.scriptPath)) {
-      return {
+      this._availabilityCache = {
         available: true,
         engine: 'javascript-fallback',
         status: 'DEGRADED',
         message: 'Python script not found; using in-process JS fallback V2X engine'
       };
+      return this._availabilityCache;
     }
     try {
       const proc = spawnSync(this.pythonExecutable, ['--version'], {
@@ -213,40 +229,44 @@ class PythonRoutingBridgeService {
       });
       if (proc.status === 0) {
         const version = (proc.stdout || proc.stderr || '').trim();
-        return {
+        this._availabilityCache = {
           available: true,
           engine: 'python',
           status: 'AVAILABLE',
           version,
           message: `Native Python V2X engine active (${version})`
         };
+        return this._availabilityCache;
       }
-      return {
+      this._availabilityCache = {
         available: true,
         engine: 'javascript-fallback',
         status: 'DEGRADED',
         message: 'Python process unavailable; running in Node.js fallback V2X engine'
       };
+      return this._availabilityCache;
     } catch (err) {
-      return {
+      this._availabilityCache = {
         available: true,
         engine: 'javascript-fallback',
         status: 'DEGRADED',
         message: `Running in Node.js fallback V2X engine (${err.message})`
       };
+      return this._availabilityCache;
     }
   }
 
   /**
-   * Executes the Python spatial V2X bridge or falls back to JS implementation
+   * Executes the V2X corridor engine.
+   * Defaults to the fast in-process JS engine (<2ms) to avoid blocking the Node.js event loop
+   * with spawnSync; set ENABLE_PYTHON_V2X_SUBPROCESS=true to opt into the Python subprocess.
    * @param {Object} params
    * @returns {Object} V2X Corridor analysis result
    */
   executeV2XBridge(params = {}) {
     const startTime = Date.now();
 
-    // Check if script exists
-    if (!fs.existsSync(this.scriptPath)) {
+    if (process.env.ENABLE_PYTHON_V2X_SUBPROCESS !== 'true' || !fs.existsSync(this.scriptPath)) {
       const fallbackResult = fallbackV2XEngine(params);
       fallbackResult.executionTimeMs = Date.now() - startTime;
       return fallbackResult;

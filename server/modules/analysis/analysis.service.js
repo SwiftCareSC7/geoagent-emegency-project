@@ -31,7 +31,10 @@ class AnalysisService {
     const activeIncidents = await Incident.find({
       status: 'ACTIVE',
       isDeleted: false
-    });
+    })
+      .select('incidentId type severity status description location')
+      .limit(100)
+      .lean();
 
     const correlated = [];
 
@@ -180,7 +183,9 @@ class AnalysisService {
    */
   async getVehicleSituation(vehicleId) {
     // 1. Resolve vehicle
-    const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
+    const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false })
+      .select('_id vehicleId status')
+      .lean();
     if (!vehicle) {
       const error = new Error('Vehicle not found');
       error.status = 404;
@@ -188,11 +193,17 @@ class AnalysisService {
       throw error;
     }
 
-    // 2. Find active route
-    const route = await Route.findOne({
-      vehicle: vehicle._id,
-      status: 'ACTIVE'
-    }).sort({ createdAt: -1 }).populate('emergency', 'emergencyId status priority');
+    // 2 & 3. Fetch active route and recent trajectories in parallel
+    const [route, recentTrajectories] = await Promise.all([
+      Route.findOne({ vehicle: vehicle._id, status: 'ACTIVE' })
+        .sort({ createdAt: -1 })
+        .populate('emergency', 'emergencyId status priority')
+        .lean(),
+      Trajectory.find({ vehicle: vehicle._id })
+        .sort({ timestamp: -1 })
+        .limit(deviationConfig.gpsStabilityWindow)
+        .lean()
+    ]);
 
     if (!route) {
       const error = new Error('No active route found for this vehicle');
@@ -200,11 +211,6 @@ class AnalysisService {
       error.isOperational = true;
       throw error;
     }
-
-    // 3. Find recent trajectories
-    const recentTrajectories = await Trajectory.find({ vehicle: vehicle._id })
-      .sort({ timestamp: -1 })
-      .limit(deviationConfig.gpsStabilityWindow);
 
     if (!recentTrajectories || recentTrajectories.length === 0) {
       const error = new Error('No trajectory data available for this vehicle');
@@ -227,11 +233,11 @@ class AnalysisService {
     // 5. Calculate Route Progress
     const progress = calculateRouteProgress(latestTrajectory.location, route.geometry);
 
-    // 6. Analyze Traffic
-    const traffic = await trafficService.getTrafficForLocation(latestTrajectory.location);
-
-    // 7. Correlate Active Incidents
-    const incidents = await this.getCorrelatedIncidents(latestTrajectory.location, route.geometry);
+    // 6 & 7. Analyze Traffic and Correlate Active Incidents in parallel
+    const [traffic, incidents] = await Promise.all([
+      trafficService.getTrafficForLocation(latestTrajectory.location),
+      this.getCorrelatedIncidents(latestTrajectory.location, route.geometry)
+    ]);
 
     // 8. Calculate ETA & Delay
     const etaAnalysis = this.calculateETAAndDelay(

@@ -82,6 +82,7 @@ export interface MapRoute {
   status: RouteStatus // 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
   provider?: string
   isRecommended?: boolean
+  steps?: unknown[] // provider turn-by-turn steps, normalized by lib/navigation/adapter
   legs?: Array<{
     legNumber: number
     type: 'TO_EMERGENCY' | 'TO_HOSPITAL'

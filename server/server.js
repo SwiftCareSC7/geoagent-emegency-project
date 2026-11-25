@@ -7,6 +7,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
+import { gzipCompression } from './shared/middleware/compression.js';
 import { errorHandler, notFoundHandler } from './shared/middleware/errorHandler.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import vehicleRoutes from './modules/vehicles/vehicle.routes.js';
@@ -104,6 +105,9 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
+
+// Compress JSON responses > 1KB (GeoJSON polylines, trajectories, lists)
+app.use(gzipCompression());
 
 // Parse incoming JSON requests safely
 app.use(express.json());

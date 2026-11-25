@@ -9,6 +9,7 @@ import {
 import {
   analyzeDecision,
   getDecision,
+  getEmergencyDecisions,
   approveDecision,
   rejectDecision,
   executeDecision
@@ -19,6 +20,22 @@ const router = express.Router();
 // All decision routes require authentication + operational role
 router.use(protect);
 router.use(requireRole('CONTROL_ROOM', 'ADMIN'));
+
+/**
+ * @route GET /api/decisions
+ * @desc  List decisions for an emergency (?emergencyId=...) or return empty list when unscoped
+ */
+router.get('/', (req, res, next) => {
+  if (req.query.emergencyId) {
+    req.params.emergencyId = req.query.emergencyId;
+    return getEmergencyDecisions(req, res, next);
+  }
+  return res.status(200).json({
+    success: true,
+    data: [],
+    meta: { total: 0, page: 1, limit: 50, totalPages: 0 }
+  });
+});
 
 /**
  * @route POST /api/decisions/analyze

@@ -113,31 +113,49 @@ class RouteService {
    */
   async calculateRoutePlan(origin, destination, options = {}) {
     const preference = (options.preference || 'FASTEST').toUpperCase();
+    const wantAlternatives = options.computeAlternatives !== false;
     const routeData = await routingService.getRoute(origin, destination, {
       ...options,
-      preference
+      preference,
+      computeAlternativeRoutes: wantAlternatives
     });
 
     let alternative = null;
-    if (options.computeAlternatives !== false) {
-      // Calculate alternative with complementary preference
+    if (wantAlternatives) {
       const altPreference = preference === 'FASTEST' ? 'SHORTEST' : 'FASTEST';
-      try {
-        const altRoute = await routingService.getRoute(origin, destination, {
-          ...options,
-          preference: altPreference
-        });
+      // Reuse provider-returned alternative to avoid a second sequential external API round-trip
+      const embeddedAlt = Array.isArray(routeData.alternatives) && routeData.alternatives.length > 0
+        ? routeData.alternatives[0]
+        : null;
+      if (embeddedAlt && embeddedAlt.geometry) {
         alternative = {
-          geometry: altRoute.geometry,
-          distanceMeters: altRoute.distanceMeters,
-          durationSeconds: altRoute.durationSeconds,
+          geometry: embeddedAlt.geometry,
+          distanceMeters: embeddedAlt.distanceMeters,
+          durationSeconds: embeddedAlt.durationSeconds,
           preference: altPreference,
-          description: altRoute.description,
-          steps: altRoute.steps || [],
-          trafficDelaySeconds: altRoute.trafficDelaySeconds || 0
+          description: embeddedAlt.description,
+          steps: embeddedAlt.steps || [],
+          trafficDelaySeconds: embeddedAlt.trafficDelaySeconds || 0
         };
-      } catch (err) {
-        // Non-blocking alternative calculation
+      } else {
+        try {
+          const altRoute = await routingService.getRoute(origin, destination, {
+            ...options,
+            preference: altPreference,
+            computeAlternativeRoutes: false
+          });
+          alternative = {
+            geometry: altRoute.geometry,
+            distanceMeters: altRoute.distanceMeters,
+            durationSeconds: altRoute.durationSeconds,
+            preference: altPreference,
+            description: altRoute.description,
+            steps: altRoute.steps || [],
+            trafficDelaySeconds: altRoute.trafficDelaySeconds || 0
+          };
+        } catch (err) {
+          // Non-blocking alternative calculation
+        }
       }
     }
 
@@ -281,36 +299,22 @@ class RouteService {
    */
   async compareRoute(routeId) {
     const route = await this.getRouteById(routeId);
+    const vehicleId = route.vehicle && route.vehicle.vehicleId ? route.vehicle.vehicleId : null;
 
-    // Get candidate alternatives from routing provider
-    const routeResult = await routingService.getRouteWithAlternatives(route.origin, route.destination);
+    // Run routing alternatives, situation analysis, and prediction in parallel instead of sequentially
+    const [routeResult, situationResult, predictionResult] = await Promise.all([
+      routingService.getRouteWithAlternatives(route.origin, route.destination),
+      vehicleId ? analysisService.getVehicleSituation(vehicleId).catch(() => null) : Promise.resolve(null),
+      vehicleId ? predictionService.predictForVehicle(vehicleId).catch(() => null) : Promise.resolve(null)
+    ]);
+
     const candidates = routeResult.alternatives || [];
-
-    // Attempt to enrich with live vehicle situation and prediction if vehicle is assigned
-    let vehicleState = null;
-    let predictionState = null;
-    let deviationState = null;
-    let incidents = [];
-
-    if (route.vehicle && route.vehicle.vehicleId) {
-      try {
-        const situation = await analysisService.getVehicleSituation(route.vehicle.vehicleId);
-        deviationState = situation.deviation;
-        incidents = situation.incidents || [];
-        vehicleState = {
-          vehicleId: route.vehicle.vehicleId,
-          status: route.vehicle.status
-        };
-      } catch {
-        // Continue with un-enriched route comparison if situation unavailable
-      }
-
-      try {
-        predictionState = await predictionService.predictForVehicle(route.vehicle.vehicleId);
-      } catch {
-        // Continue if prediction unavailable
-      }
-    }
+    const vehicleState = situationResult && vehicleId
+      ? { vehicleId, status: route.vehicle.status }
+      : null;
+    const deviationState = situationResult ? situationResult.deviation : null;
+    const incidents = situationResult ? (situationResult.incidents || []) : [];
+    const predictionState = predictionResult || null;
 
     return routeComparisonService.compareRoutes({
       currentRoute: {

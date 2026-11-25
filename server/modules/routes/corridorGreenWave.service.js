@@ -24,13 +24,25 @@ class CorridorGreenWaveService {
    * @returns {Promise<Object>} Corridor and Green-Wave analysis payload
    */
   async analyzeCorridorForVehicle(vehicleId, options = {}) {
-    const vehicle = await Vehicle.findOne({ vehicleId, isDeleted: false });
+    const preloaded = options.preloaded || {};
+    const vehicle = preloaded.vehicle || await Vehicle.findOne({ vehicleId, isDeleted: false }).lean();
     if (!vehicle) {
       throw new Error(`Vehicle ${vehicleId} not found`);
     }
 
-    // 1. Fetch latest trajectory point
-    const latestTrajectory = await Trajectory.findOne({ vehicle: vehicle._id }).sort({ timestamp: -1 });
+    // Fetch trajectory, active route, and incidents in parallel (reusing preloaded records when available)
+    const [latestTrajectory, route, incidents] = await Promise.all([
+      preloaded.latestTrajectory !== undefined
+        ? Promise.resolve(preloaded.latestTrajectory)
+        : Trajectory.findOne({ vehicle: vehicle._id }).sort({ timestamp: -1 }).lean(),
+      preloaded.route !== undefined
+        ? Promise.resolve(preloaded.route)
+        : Route.findOne({ vehicle: vehicle._id, status: 'ACTIVE' }).sort({ createdAt: -1 }).lean(),
+      preloaded.incidents !== undefined
+        ? Promise.resolve(preloaded.incidents)
+        : Incident.find({ status: 'ACTIVE', isDeleted: false }).select('incidentId severity type location').limit(10).lean()
+    ]);
+
     const vehicleLocation = latestTrajectory?.location?.coordinates
       ? { lat: latestTrajectory.location.coordinates[1], lng: latestTrajectory.location.coordinates[0] }
       : (vehicle.currentLocation?.coordinates
@@ -40,21 +52,13 @@ class CorridorGreenWaveService {
     const speedKmh = latestTrajectory?.speed || vehicle.speed || 40.0;
     const heading = latestTrajectory?.heading || 0.0;
 
-    // 2. Fetch active route
-    const route = await Route.findOne({
-      vehicle: vehicle._id,
-      status: 'ACTIVE'
-    }).sort({ createdAt: -1 });
-
     let routeCoordinates = null;
     if (route && route.geometry && Array.isArray(route.geometry.coordinates)) {
       // GeoJSON LineString coordinates are [lng, lat] -> convert to [[lat, lng], ...]
       routeCoordinates = route.geometry.coordinates.map((c) => [c[1], c[0]]);
     }
 
-    // 3. Fetch active nearby incidents
-    const incidents = await Incident.find({ status: 'ACTIVE', isDeleted: false }).limit(10);
-    const formattedIncidents = incidents.map((inc) => ({
+    const formattedIncidents = (incidents || []).map((inc) => ({
       incidentId: inc.incidentId,
       severity: inc.severity,
       type: inc.type,

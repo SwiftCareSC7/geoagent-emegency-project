@@ -22,7 +22,7 @@ services:
       - key: CLIENT_URL
         sync: false
       - key: ROUTING_PROVIDER
-        value: google
+        value: osrm
       - key: TRAFFIC_PROVIDER
         value: mock
       - key: GOOGLE_MAPS_API_KEY

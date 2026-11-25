@@ -101,6 +101,8 @@ const defaultInit: RequestInit = {
   },
 }
 
+const inFlightGets = new Map<string, Promise<unknown>>()
+
 async function executeRequest<T>(url: string, init: RequestInit): Promise<T> {
   let res: Response
   try {
@@ -116,15 +118,24 @@ async function executeRequest<T>(url: string, init: RequestInit): Promise<T> {
 // Public HTTP methods
 // ---------------------------------------------------------------------------
 
-/** Send a GET request */
+/** Send a GET request (deduplicates identical concurrent in-flight requests) */
 export async function get<T>(
   path: string,
   params?: Record<string, string | number | undefined>,
 ): Promise<T> {
-  return executeRequest<T>(buildUrl(path, params), {
+  const url = buildUrl(path, params)
+  const existing = inFlightGets.get(url)
+  if (existing) {
+    return existing as Promise<T>
+  }
+  const promise = executeRequest<T>(url, {
     ...defaultInit,
     method: 'GET',
+  }).finally(() => {
+    inFlightGets.delete(url)
   })
+  inFlightGets.set(url, promise)
+  return promise
 }
 
 /** Send a POST request with a JSON body */

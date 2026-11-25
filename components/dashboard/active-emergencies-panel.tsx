@@ -4,13 +4,11 @@ import {
   Activity,
   AlertCircle,
   ArrowRight,
-  Clock,
   ChevronDown,
   ChevronUp,
   Flame,
   HeartPulse,
   MapPin,
-  Navigation,
   Phone,
   RefreshCw,
   Shield,
@@ -20,7 +18,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
-import type { Emergency, EmergencyPriority, AssignedVehicleSummary } from '@/lib/api/types'
+import type { Emergency, AssignedVehicleSummary } from '@/lib/api/types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -129,34 +127,37 @@ export function ActiveEmergenciesPanel({
     const bUpdatedAt = Date.parse(b.updatedAt || b.createdAt || '') || 0
     return bUpdatedAt - aUpdatedAt
   })
-  const visibleEmergencies = prioritizedEmergencies.slice(0, 3)
-  const remainingCount = filteredEmergencies.length - (showAllEmergencies ? filteredEmergencies.length : visibleEmergencies.length)
+
+  const displayedEmergencies = showAllEmergencies
+    ? prioritizedEmergencies
+    : prioritizedEmergencies.slice(0, 3)
+  const remainingCount = Math.max(0, filteredEmergencies.length - displayedEmergencies.length)
 
   return (
-    <div className="flex flex-col rounded-2xl border-2 border-border bg-card p-6 shadow-md hover:shadow-lg transition-all text-card-foreground">
+    <div className="flex flex-col rounded-xl border border-border bg-card p-4 shadow-sm transition-all text-card-foreground">
       {/* Panel Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-critical/10 text-critical">
-              <Siren className="size-4" />
-            </span>
-            <h3 className="font-display text-base font-bold text-card-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex size-6 items-center justify-center rounded-md bg-critical/10 text-critical">
+            <Siren className="size-3.5" />
+          </span>
+          <div>
+            <h3 className="font-display text-sm font-bold leading-tight text-card-foreground">
               Emergency Incidents Stream
             </h3>
+            <p className="text-[11px] text-muted-foreground">
+              Live emergency calls registry
+            </p>
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Live emergency calls registry connected to MongoDB emergencies collection
-          </p>
         </div>
 
-        <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-          {filteredEmergencies.length} of {emergencies.length} Calls
+        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+          {filteredEmergencies.length} / {emergencies.length} Calls
         </span>
       </div>
 
       {/* Filter Chips */}
-      <div className="mt-4 flex flex-wrap gap-1.5 border-b border-border pb-3">
+      <div className="mt-2.5 flex flex-wrap gap-1 border-b border-border/70 pb-2.5">
         {filterOptions.map((opt) => (
           <button
             key={opt.key}
@@ -166,7 +167,7 @@ export function ActiveEmergenciesPanel({
               setShowAllEmergencies(false)
             }}
             className={cn(
-              'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
+              'rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors',
               selectedPriority === opt.key
                 ? 'bg-primary text-primary-foreground shadow-xs'
                 : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -178,244 +179,196 @@ export function ActiveEmergenciesPanel({
       </div>
 
       {/* Content Area */}
-      <div className="mt-4">
+      <div className="mt-2.5">
         {loading ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="h-28 animate-pulse rounded-xl border border-border/60 bg-muted/40 p-4"
+                className="h-20 animate-pulse rounded-lg border border-border/60 bg-muted/40 p-3"
               />
             ))}
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-rose-500/30 bg-rose-500/5 p-6 text-center">
-            <AlertCircle className="size-8 text-rose-500" />
-            <p className="mt-2 text-sm font-semibold text-rose-700 dark:text-rose-400">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-rose-500/30 bg-rose-500/5 p-4 text-center">
+            <AlertCircle className="size-6 text-rose-500" />
+            <p className="mt-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400">
               Unable to load emergency stream
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{error}</p>
             {onRetry ? (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onRetry}
-                className="mt-3 gap-1.5"
+                className="mt-2.5 h-7 gap-1.5 text-xs"
               >
-                <RefreshCw className="size-3.5" />
+                <RefreshCw className="size-3" />
                 Retry Call Sync
               </Button>
             ) : null}
           </div>
         ) : filteredEmergencies.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border p-8 text-center">
-            <Siren className="size-8 text-muted-foreground/50" />
-            <p className="mt-2 text-sm font-semibold text-foreground">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-5 text-center">
+            <Siren className="size-6 text-muted-foreground/50" />
+            <p className="mt-1.5 text-xs font-semibold text-foreground">
               {emergencies.length === 0
                 ? 'No emergency calls found in database'
                 : 'No emergency calls match current filter'}
             </p>
-            <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+            <p className="mt-0.5 max-w-sm text-[11px] text-muted-foreground">
               {emergencies.length === 0
-                ? 'MongoDB emergencies collection is currently empty. Run the database seeder or create emergency records via POST /api/emergencies.'
-                : `No active emergencies have priority "${selectedPriority}". Try selecting "All Emergencies".`}
+                ? 'MongoDB emergencies collection is currently empty.'
+                : `No active emergencies have priority "${selectedPriority}".`}
             </p>
           </div>
         ) : (
           <>
-          <div className={cn(
-            'space-y-3',
-            showAllEmergencies && 'max-h-[min(65vh,40rem)] overflow-y-auto',
-          )}>
-            {prioritizedEmergencies.map((e, index) => {
-              const Icon = typeIcons[e.type] || Siren
-              const priority = priorityBadges[e.priority] || {
-                label: e.priority,
-                className: 'bg-muted text-muted-foreground border-border',
-              }
-              const status = statusBadges[e.status] || {
-                label: e.status,
-                className: 'bg-muted text-muted-foreground border-border',
-              }
+            <div className={cn(
+              'space-y-2',
+              showAllEmergencies && 'max-h-[min(55vh,30rem)] overflow-y-auto pr-1',
+            )}>
+              {displayedEmergencies.map((e) => {
+                const Icon = typeIcons[e.type] || Siren
+                const priority = priorityBadges[e.priority] || {
+                  label: e.priority,
+                  className: 'bg-muted text-muted-foreground border-border',
+                }
+                const status = statusBadges[e.status] || {
+                  label: e.status,
+                  className: 'bg-muted text-muted-foreground border-border',
+                }
 
-              // Parse assigned vehicle info
-              const assignedVehicle =
-                e.assignedVehicle && typeof e.assignedVehicle === 'object'
-                  ? (e.assignedVehicle as AssignedVehicleSummary)
-                  : null
+                const assignedVehicle =
+                  e.assignedVehicle && typeof e.assignedVehicle === 'object'
+                    ? (e.assignedVehicle as AssignedVehicleSummary)
+                    : null
 
-              const assignedVehicleId =
-                typeof e.assignedVehicle === 'string'
-                  ? e.assignedVehicle
-                  : assignedVehicle?.vehicleId
+                const assignedVehicleId =
+                  typeof e.assignedVehicle === 'string'
+                    ? e.assignedVehicle
+                    : assignedVehicle?.vehicleId
 
-              const card = (
-                <article
-                  key={e.id || e.emergencyId}
-                  className="flex flex-col rounded-xl border border-border/80 bg-background/50 p-4 transition-all hover:border-primary/40 hover:bg-background"
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-start gap-3">
-                      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
-                        <Icon className="size-4" />
-                      </span>
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-display text-sm font-bold text-foreground">
-                            {e.emergencyId}
-                          </span>
-                          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            {e.type}
-                          </span>
-                        </div>
-                        {e.description ? (
-                          <p className="mt-1 text-xs text-foreground/90 line-clamp-2">
-                            {e.description}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {((e as any).isSimulated || e.emergencyId.startsWith('E-DEMO-')) && (
-                        <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
-                          SIMULATED
+                return (
+                  <article
+                    key={e.id || e.emergencyId}
+                    className="flex flex-col rounded-lg border border-border/80 bg-background/50 p-3 transition-all hover:border-primary/40 hover:bg-background"
+                  >
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-2.5">
+                        <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-foreground">
+                          <Icon className="size-3.5" />
                         </span>
-                      )}
-                      <span
-                        className={cn(
-                          'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-semibold',
-                          priority.className,
-                          priority.pulse && 'animate-pulse',
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="font-display text-xs font-bold text-foreground">
+                              {e.emergencyId}
+                            </span>
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {e.type}
+                            </span>
+                          </div>
+                          {e.description ? (
+                            <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-foreground/85">
+                              {e.description}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 flex-wrap items-center gap-1">
+                        {((e as any).isSimulated || e.emergencyId.startsWith('E-DEMO-')) && (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                            SIMULATED
+                          </span>
                         )}
-                      >
-                        {priority.label}
-                      </span>
-                      <span
-                        className={cn(
-                          'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-xs font-medium',
-                          status.className,
-                        )}
-                      >
-                        {status.label}
-                      </span>
-                      {e.communication?.lastSmsStatus && e.communication.lastSmsStatus !== 'READY' && (
                         <span
                           className={cn(
-                            'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-mono font-bold',
-                            e.communication.lastSmsStatus === 'SUBMITTED' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-                            e.communication.lastSmsStatus === 'DELIVERED' && 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
-                            e.communication.lastSmsStatus === 'FAILED' && 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
-                            e.communication.lastSmsStatus === 'SENDING' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                            'inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold',
+                            priority.className,
+                            priority.pulse && 'animate-pulse',
                           )}
                         >
-                          <Phone className="size-3" />
-                          <span>STATUS SMS: {e.communication.lastSmsStatus}</span>
+                          {priority.label}
                         </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Metadata and Context Row */}
-                  <div className="mt-3 grid grid-cols-1 gap-2 border-t border-border/50 pt-3 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
-                    {/* Location */}
-                    <div className="flex items-center gap-1.5 truncate">
-                      <MapPin className="size-3.5 shrink-0 text-muted-foreground/70" />
-                      <span className="truncate">
-                        Scene: [
-                        {e.location?.coordinates
-                          ? `${e.location.coordinates[0].toFixed(4)}, ${e.location.coordinates[1].toFixed(4)}`
-                          : 'Coordinates n/a'}
-                        ]
-                      </span>
-                    </div>
-
-                    {/* Destination */}
-                    {e.destination ? (
-                      <div className="flex items-center gap-1.5 truncate">
-                        <Navigation className="size-3.5 shrink-0 text-muted-foreground/70" />
-                        <span className="truncate">
-                          Hospital: [
-                          {`${e.destination.coordinates[0].toFixed(4)}, ${e.destination.coordinates[1].toFixed(4)}`}
-                          ]
+                        <span
+                          className={cn(
+                            'inline-flex shrink-0 items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                            status.className,
+                          )}
+                        >
+                          {status.label}
                         </span>
-                      </div>
-                    ) : null}
-
-                    {/* Assigned Vehicle */}
-                    <div className="flex items-center gap-1.5 truncate">
-                      <Truck className="size-3.5 shrink-0 text-muted-foreground/70" />
-                      <span className="truncate">
-                        Unit:{' '}
-                        {assignedVehicleId ? (
-                          <span className="font-semibold text-foreground">
-                            {assignedVehicleId}
-                            {assignedVehicle?.registrationNumber
-                              ? ` (${assignedVehicle.registrationNumber})`
-                              : ''}
-                          </span>
-                        ) : (
-                          <span className="italic text-muted-foreground">
-                            Unassigned
+                        {e.communication?.lastSmsStatus && e.communication.lastSmsStatus !== 'READY' && (
+                          <span
+                            className={cn(
+                              'inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-mono font-bold',
+                              e.communication.lastSmsStatus === 'SUBMITTED' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+                              e.communication.lastSmsStatus === 'DELIVERED' && 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
+                              e.communication.lastSmsStatus === 'FAILED' && 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
+                              e.communication.lastSmsStatus === 'SENDING' && 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 animate-pulse'
+                            )}
+                          >
+                            <Phone className="size-2.5" />
+                            <span>SMS: {e.communication.lastSmsStatus}</span>
                           </span>
                         )}
-                      </span>
+                      </div>
                     </div>
 
-                    {/* Caller Info */}
-                    {e.callerName ? (
-                      <div className="flex items-center gap-1.5 truncate">
-                        <User className="size-3.5 shrink-0 text-muted-foreground/70" />
-                        <span className="truncate">
-                          Caller: {e.callerName}
-                          {e.callerContact ? ` · ${e.callerContact}` : ''}
+                    {/* Compact Metadata + Action Row */}
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
+                        <span className="inline-flex items-center gap-1 truncate">
+                          <Truck className="size-3 shrink-0 text-muted-foreground/70" />
+                          {assignedVehicleId ? (
+                            <span className="font-semibold text-foreground">
+                              {assignedVehicleId}
+                            </span>
+                          ) : (
+                            <span className="italic">Unassigned</span>
+                          )}
                         </span>
+                        {e.location?.coordinates ? (
+                          <span className="inline-flex items-center gap-1 truncate">
+                            <MapPin className="size-3 shrink-0 text-muted-foreground/70" />
+                            <span>
+                              {e.location.coordinates[0].toFixed(3)}, {e.location.coordinates[1].toFixed(3)}
+                            </span>
+                          </span>
+                        ) : null}
+                        {e.callerName ? (
+                          <span className="inline-flex items-center gap-1 truncate">
+                            <User className="size-3 shrink-0 text-muted-foreground/70" />
+                            <span className="max-w-[140px] truncate">{e.callerName}</span>
+                          </span>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
 
-                  {/* Action Link to Emergency Detail & Corridor Analysis */}
-                  <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">
-                      Dispatch ID: <span className="font-mono font-medium text-foreground">{e.emergencyId}</span>
-                    </span>
-                    <Link
-                      href={`/emergencies/${encodeURIComponent(e.emergencyId)}`}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors group"
-                    >
-                      <span>Track & Analyze Corridor</span>
-                      <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </Link>
-                  </div>
-                </article>
-              )
-              if (index < 3) return card
-              return (
-                <div
-                  key={e.id || e.emergencyId}
-                  aria-hidden={!showAllEmergencies}
-                  inert={!showAllEmergencies}
-                  className={cn(
-                    'overflow-hidden transition-[max-height,opacity,margin] duration-200 ease-out motion-reduce:transition-none',
-                    showAllEmergencies ? 'mt-3 max-h-96 opacity-100' : 'mt-0! max-h-0 opacity-0',
-                  )}
-                >
-                  {card}
-                </div>
-              )
-            })}
-          </div>
-          {filteredEmergencies.length > 3 && (
-            <button
-              type="button"
-              aria-expanded={showAllEmergencies}
-              onClick={() => setShowAllEmergencies((expanded) => !expanded)}
-              className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-border bg-muted/40 px-4 text-sm font-semibold text-primary transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              {showAllEmergencies ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-              {showAllEmergencies ? 'Show fewer' : `Show ${remainingCount} more incidents`}
-            </button>
-          )}
+                      <Link
+                        href={`/emergencies/${encodeURIComponent(e.emergencyId)}`}
+                        className="group inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-primary transition-colors hover:text-primary/80"
+                      >
+                        <span>Track Corridor</span>
+                        <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+                      </Link>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+
+            {filteredEmergencies.length > 3 && (
+              <button
+                type="button"
+                aria-expanded={showAllEmergencies}
+                onClick={() => setShowAllEmergencies((expanded) => !expanded)}
+                className="mt-2.5 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 text-xs font-semibold text-primary transition-colors hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                {showAllEmergencies ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                {showAllEmergencies ? 'Show fewer' : `Show ${remainingCount} more incidents`}
+              </button>
+            )}
           </>
         )}
       </div>

@@ -179,58 +179,10 @@ export function ControlRoomMap({
   const [crTurnListOpen, setCrTurnListOpen] = useState(false)
   const [crNavHudCollapsed, setCrNavHudCollapsed] = useState(false)
 
+  // Real provider steps (OSRM/Google) for the active route; never synthesized.
   const routeSteps = useMemo(() => {
     const activeRoute = routes.find((r) => r.isRecommended || r.status === 'ACTIVE') || routes[0]
-    const defaultCoords: [number, number][] = [
-      [77.6030, 12.9730],
-      [77.6180, 12.9690],
-      [77.6350, 12.9640],
-      [77.6483, 12.9582],
-    ]
-    const coords = (activeRoute?.geometry?.coordinates && activeRoute.geometry.coordinates.length >= 2)
-      ? activeRoute.geometry.coordinates
-      : defaultCoords
-
-    const totalDist = activeRoute?.distanceMeters || 5400
-    const totalDur = activeRoute?.durationSeconds || 600
-
-    return [
-      {
-        maneuver: 'DEPART',
-        instruction: 'Head out from starting depot onto arterial corridor',
-        distance: Math.round(totalDist * 0.15),
-        duration: Math.round(totalDur * 0.15),
-        coord: coords[0] as [number, number]
-      },
-      {
-        maneuver: 'TURN_LEFT',
-        instruction: 'Turn left onto priority green-wave emergency corridor',
-        distance: Math.round(totalDist * 0.3),
-        duration: Math.round(totalDur * 0.3),
-        coord: coords[Math.min(1, coords.length - 1)] as [number, number]
-      },
-      {
-        maneuver: 'CONTINUE',
-        instruction: 'Proceed along Indiranagar arterial bypass with V2X preemption',
-        distance: Math.round(totalDist * 0.35),
-        duration: Math.round(totalDur * 0.35),
-        coord: coords[Math.min(Math.floor(coords.length / 2), coords.length - 1)] as [number, number]
-      },
-      {
-        maneuver: 'TURN_RIGHT',
-        instruction: 'Turn right toward destination medical receiving facility',
-        distance: Math.round(totalDist * 0.15),
-        duration: Math.round(totalDur * 0.15),
-        coord: coords[Math.max(0, coords.length - 2)] as [number, number]
-      },
-      {
-        maneuver: 'ARRIVE',
-        instruction: 'Arrive at Emergency Care Bay',
-        distance: Math.round(totalDist * 0.05),
-        duration: Math.round(totalDur * 0.05),
-        coord: coords[coords.length - 1] as [number, number]
-      }
-    ]
+    return normalizeRouteResponse(activeRoute)?.steps ?? []
   }, [routes])
 
   const handleCrStepClick = (stepCoord?: [number, number]) => {
@@ -419,13 +371,43 @@ export function ControlRoomMap({
 
         // 1. Map Routes — Authoritative and correctly scoped to selectedEmergencyId
         const fetchedRoutes: Route[] = routesRes.data || []
-        const candidateRoutes: Route[] =
-          fetchedRoutes.length > 0
-            ? fetchedRoutes
-            : getCanonicalRouteForEmergency(selectedEmergencyId!, emg)
+        const canonicalPair: Route[] = getCanonicalRouteForEmergency(selectedEmergencyId!, emg)
+        const candidateRoutes: Route[] = fetchedRoutes.length > 0 ? [...fetchedRoutes] : [...canonicalPair]
+
+        // Expand embedded r.alternative if only 1 route document was returned
+        if (candidateRoutes.length === 1) {
+          const primaryDoc = candidateRoutes[0] as Route & {
+            alternative?: {
+              geometry?: { type: 'LineString'; coordinates: [number, number][] }
+              distanceMeters?: number
+              durationSeconds?: number
+              steps?: unknown[]
+            }
+          }
+          if (primaryDoc.alternative?.geometry?.coordinates && primaryDoc.alternative.geometry.coordinates.length >= 5) {
+            const altCoords = primaryDoc.alternative.geometry.coordinates
+            candidateRoutes.push({
+              id: `${primaryDoc.routeId}-ALT`,
+              routeId: `${primaryDoc.routeId}-ALT`,
+              emergency: selectedEmergencyId!,
+              origin: { type: 'Point', coordinates: altCoords[0] },
+              destination: { type: 'Point', coordinates: altCoords[altCoords.length - 1] },
+              geometry: primaryDoc.alternative.geometry,
+              distance: primaryDoc.alternative.distanceMeters || primaryDoc.distance || 0,
+              duration: primaryDoc.alternative.durationSeconds || primaryDoc.duration || 0,
+              distanceMeters: primaryDoc.alternative.distanceMeters || primaryDoc.distanceMeters || 0,
+              durationSeconds: primaryDoc.alternative.durationSeconds || primaryDoc.durationSeconds || 0,
+              routeType: 'ALTERNATIVE',
+              status: 'ACTIVE',
+              provider: primaryDoc.provider,
+            } as Route)
+          } else if (canonicalPair.length > 1) {
+            candidateRoutes.push(canonicalPair[1])
+          }
+        }
 
         // Strict validation: Reject non-road geometry, straight lines, or cross-mission leaks
-        const validatedRoutes = candidateRoutes.filter((r) => {
+        let validatedRoutes = candidateRoutes.filter((r) => {
           const v = validateRouteGeometry(r)
           if (!v.isValid || !v.isRoadConstrained) {
             console.warn(`[ControlRoomMap] Route ${r.routeId || r.id} rejected by route validator:`, v.reasons)
@@ -434,11 +416,24 @@ export function ControlRoomMap({
           return true
         })
 
-        const mappedRoutes: MapRoute[] = validatedRoutes.map((r) => {
-          const isAlternative =
-            r.routeType === 'ALTERNATIVE' ||
-            (r.routeType as string) === 'RECOMMENDED' ||
-            (r.routeType as string) === 'DETOUR'
+        if (validatedRoutes.length === 0 && canonicalPair.length > 0) {
+          validatedRoutes = canonicalPair.filter((r) => validateRouteGeometry(r).isValid)
+        } else if (validatedRoutes.length === 1 && canonicalPair.length > 1) {
+          const altFallback = canonicalPair[1]
+          if (validateRouteGeometry(altFallback).isValid) {
+            validatedRoutes.push(altFallback)
+          }
+        }
+
+        // Sort so primary active/planned corridor is index 0 (Solid Blue) and alternative detour is index 1+ (Dashed Purple)
+        const orderedRoutes = [...validatedRoutes].sort((a, b) => {
+          const aIsAlt = a.routeType === 'ALTERNATIVE' || (a.routeType as string) === 'DETOUR' || a.status === 'CANCELLED'
+          const bIsAlt = b.routeType === 'ALTERNATIVE' || (b.routeType as string) === 'DETOUR' || b.status === 'CANCELLED'
+          return Number(aIsAlt) - Number(bIsAlt)
+        })
+
+        const mappedRoutes: MapRoute[] = orderedRoutes.map((r, idx) => {
+          const isAlternative = idx > 0
           const isRecommended = isAlternative && showRecommended
 
           return {
@@ -451,9 +446,10 @@ export function ControlRoomMap({
             distanceMeters: r.distance || r.distanceMeters || 0,
             durationSeconds: r.duration || r.durationSeconds || 0,
             routeType: isAlternative ? 'ALTERNATIVE' : 'PLANNED',
-            status: r.status || 'ACTIVE',
+            status: isAlternative ? 'ACTIVE' : (r.status === 'CANCELLED' ? 'ACTIVE' : (r.status || 'ACTIVE')),
             provider: r.provider,
             isRecommended,
+            steps: (r as { steps?: unknown[] }).steps,
           }
         })
         setRoutes(mappedRoutes)
@@ -798,7 +794,7 @@ export function ControlRoomMap({
   }
 
   return (
-    <div className={`relative w-full rounded-2xl border border-border bg-card dark:bg-slate-950 overflow-hidden shadow-2xl ${className}`}>
+    <div className={`relative isolate z-0 w-full rounded-2xl border border-border bg-card dark:bg-slate-950 overflow-hidden shadow-2xl ${className}`}>
       {/* Real Map Viewport */}
       <MapView
         ref={mapViewRef}
@@ -823,8 +819,6 @@ export function ControlRoomMap({
         hasSelectedEmergency={!!selectedEmergencyId}
       />
 
-      {/* Floating Accessible Legend */}
-      <MapLegend />
 
       {/* Floating Status & Freshness Header Banner */}
       <div className="absolute top-3 left-3 z-[1000] flex flex-col gap-1.5 max-w-sm">
@@ -867,15 +861,15 @@ export function ControlRoomMap({
         {routeSteps.length > 0 && (
           <div className="w-full max-w-sm pointer-events-auto">
             <NavigationManeuverHUD
-              currentStep={routeSteps[0] as any}
-              nextStep={routeSteps[1] as any}
-              distanceToNextStepMeters={routeSteps[0]?.distance || 0}
-              formattedDistance={formatDistance(routeSteps[0]?.distance)}
-              isImminentTurn={(routeSteps[0]?.distance || 0) <= 45}
-              upcomingSteps={routeSteps.slice(1) as any}
-              remainingDistanceFormatted={formatDistance(routeSteps.reduce((acc, s) => acc + (s.distance || 0), 0))}
-              remainingDurationFormatted={formatDuration(routeSteps.reduce((acc, s) => acc + (s.duration || 60), 0))}
-              arrivalTimeFormatted={formatArrivalTime(routeSteps.reduce((acc, s) => acc + (s.duration || 60), 0))}
+              currentStep={routeSteps[0]}
+              nextStep={routeSteps[1] ?? null}
+              distanceToNextStepMeters={routeSteps[0]?.distanceMeters || 0}
+              formattedDistance={formatDistance(routeSteps[0]?.distanceMeters)}
+              isImminentTurn={(routeSteps[0]?.distanceMeters || 0) <= 45}
+              upcomingSteps={routeSteps.slice(1)}
+              remainingDistanceFormatted={formatDistance(routeSteps.reduce((acc, s) => acc + (s.distanceMeters || 0), 0))}
+              remainingDurationFormatted={formatDuration(routeSteps.reduce((acc, s) => acc + (s.durationSeconds || 0), 0))}
+              arrivalTimeFormatted={formatArrivalTime(routeSteps.reduce((acc, s) => acc + (s.durationSeconds || 0), 0))}
               routeProgressPercent={35}
               speed={42}
               navState="NAVIGATING"
@@ -883,7 +877,7 @@ export function ControlRoomMap({
               vehicleCallsign={selectedVehicleId || 'AMB-01'}
               variant="control-room"
               onRouteOverview={handleFitCorridor}
-              onSelectStep={(step: any) => handleCrStepClick(step.coord || step.startLocation)}
+              onSelectStep={(step) => handleCrStepClick(step.startLocation)}
             />
           </div>
         )}
@@ -909,6 +903,9 @@ export function ControlRoomMap({
           </div>
         ) : null}
       </div>
+
+      {/* Floating Accessible Legend — rendered after top-left overlays so it always stacks cleanly on top */}
+      <MapLegend />
 
       {/* Honest Empty State Banner (No Fabricated Data) */}
       {!loading && emergencies.length === 0 && vehicles.length === 0 ? (

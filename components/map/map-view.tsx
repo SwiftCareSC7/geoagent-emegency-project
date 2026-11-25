@@ -82,7 +82,6 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         attributionControl: false,
       })
 
-      L.control.zoom({ position: 'topright' }).addTo(map)
       L.control
         .attribution({
           position: 'bottomright',

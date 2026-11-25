@@ -9,6 +9,7 @@
 
 import mongoose from 'mongoose';
 import User from '../auth/user.model.js';
+import { invalidateAuthUserCache } from '../auth/auth.middleware.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Incident from '../incidents/incident.model.js';
@@ -381,6 +382,7 @@ class AdminService {
     }
 
     await user.save();
+    invalidateAuthUserCache(user._id);
     return user.toSafeObject();
   }
 
@@ -426,6 +428,7 @@ class AdminService {
     }
 
     await user.save();
+    invalidateAuthUserCache(user._id);
     return user.toSafeObject();
   }
 

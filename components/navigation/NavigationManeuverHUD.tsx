@@ -79,8 +79,16 @@ export function NavigationManeuverHUD({
     UNKNOWN: 'bg-muted text-muted-foreground border-border'
   }[trafficCondition]
 
+  const isControlRoom = variant === 'control-room'
+
   return (
-    <div className="pointer-events-none absolute inset-0 z-[450] flex flex-col justify-between p-3 sm:p-4">
+    <div
+      className={
+        isControlRoom
+          ? 'relative z-10 flex w-full flex-col gap-1.5'
+          : 'pointer-events-none absolute inset-0 z-[450] flex flex-col justify-between p-3 sm:p-4'
+      }
+    >
       {/* 1. TOP MANEUVER HUD CARD */}
       <div className="pointer-events-auto flex flex-col items-start w-full max-w-sm sm:max-w-md">
         <div className="w-full rounded-xl border border-border/80 bg-card/95 shadow-2xl backdrop-blur-xl overflow-hidden">
@@ -252,7 +260,8 @@ export function NavigationManeuverHUD({
         </div>
       </div>
 
-      {/* 2. BOTTOM INFO BAR */}
+      {/* 2. BOTTOM INFO BAR (driver view only; control-room keeps bottom-left clear for MapLegend) */}
+      {!isControlRoom && (
       <div className="pointer-events-auto flex flex-col items-center w-full gap-2">
         {/* Return to Vehicle Button */}
         {isUserPanning && onRecenter && (
@@ -320,6 +329,7 @@ export function NavigationManeuverHUD({
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

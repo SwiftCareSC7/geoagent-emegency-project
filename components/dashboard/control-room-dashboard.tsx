@@ -20,7 +20,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -152,7 +152,8 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
     if (eRes.status === 'fulfilled' && eRes.value.data && eRes.value.data.length > 0) {
       const emgList = eRes.value.data
       setEmergencies(emgList)
-      setSelectedEmergencyId((prev) => prev || (emgList.length > 0 ? emgList[0].emergencyId : null))
+      const preferred = emgList.find((e) => e.emergencyId === 'E-DEMO-001' || e.emergencyId === 'EMG-0001') || emgList[0]
+      setSelectedEmergencyId((prev) => prev || (preferred ? preferred.emergencyId : null))
       backendLive = true
     }
 
@@ -203,16 +204,20 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
       : (typeof selectedEmergency.assignedVehicle === 'string' ? selectedEmergency.assignedVehicle : undefined)
     : undefined
   const selectedVehicle = assignedVehicleId ? vehicles.find((v) => v.vehicleId === assignedVehicleId) || null : null
+  const selectedEmergencyRef = useRef<Emergency | null>(selectedEmergency)
+  selectedEmergencyRef.current = selectedEmergency
 
   // Fetch corridor telemetry, analysis, prediction, and decisions for selected emergency
   useEffect(() => {
     if (!selectedEmergencyId) return
 
+    let cancelled = false
     const targetVehId = assignedVehicleId || null
 
     // Fetch Route
     routeApi.getForEmergency(selectedEmergencyId)
       .then(async (res) => {
+        if (cancelled) return
         let authRoute: Route | null = null
         if (res.data && res.data.length > 0) {
           const candidate = res.data[0]
@@ -222,42 +227,41 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
           }
         }
         if (!authRoute) {
-          const fallback = getCanonicalRouteForEmergency(selectedEmergencyId, selectedEmergency)
+          const fallback = getCanonicalRouteForEmergency(selectedEmergencyId, selectedEmergencyRef.current)
           authRoute = fallback.length > 0 ? (fallback[0] as unknown as Route) : null
         }
         setSelectedRoute(authRoute)
         if (authRoute) {
           try {
             const comp = await routeApi.compare(authRoute.routeId)
-            if (comp && comp.data) setComparisonData(comp.data)
+            if (!cancelled && comp && comp.data) setComparisonData(comp.data)
           } catch {
-            setComparisonData(null)
+            if (!cancelled) setComparisonData(null)
           }
         } else {
           setComparisonData(null)
         }
       })
       .catch(() => {
-        const fallback = getCanonicalRouteForEmergency(selectedEmergencyId, selectedEmergency)
+        if (cancelled) return
+        const fallback = getCanonicalRouteForEmergency(selectedEmergencyId, selectedEmergencyRef.current)
         setSelectedRoute(fallback.length > 0 ? (fallback[0] as unknown as Route) : null)
         setComparisonData(null)
       })
 
-    // Fetch Latest GPS Trajectory
+    // Fetch Latest GPS Trajectory, Situation Analysis, and Prediction in parallel
     if (targetVehId) {
       trajectoryApi.getLatestSafe(targetVehId)
-        .then((t) => setSelectedTrajectory(t))
-        .catch(() => setSelectedTrajectory(null))
+        .then((t) => { if (!cancelled) setSelectedTrajectory(t) })
+        .catch(() => { if (!cancelled) setSelectedTrajectory(null) })
 
-      // Fetch Situation Analysis (Deviation + Hazard correlation)
       analysisApi.getVehicleSituationSafe(targetVehId)
-        .then((s) => setSituationAnalysis(s))
-        .catch(() => setSituationAnalysis(null))
+        .then((s) => { if (!cancelled) setSituationAnalysis(s) })
+        .catch(() => { if (!cancelled) setSituationAnalysis(null) })
 
-      // Fetch Delay & Arrival Prediction
       analysisApi.getVehiclePredictionSafe(targetVehId)
-        .then((p) => setPrediction(p))
-        .catch(() => setPrediction(null))
+        .then((p) => { if (!cancelled) setPrediction(p) })
+        .catch(() => { if (!cancelled) setPrediction(null) })
     } else {
       setSelectedTrajectory(null)
       setSituationAnalysis(null)
@@ -267,14 +271,17 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
     // Fetch Decisions
     decisionApi.list({ emergencyId: selectedEmergencyId })
       .then((dRes) => {
+        if (cancelled) return
         if (dRes.data && dRes.data.length > 0) {
           setDecision(dRes.data[0])
         } else {
           setDecision(null)
         }
       })
-      .catch(() => setDecision(null))
-  }, [selectedEmergencyId, assignedVehicleId, selectedEmergency])
+      .catch(() => { if (!cancelled) setDecision(null) })
+
+    return () => { cancelled = true }
+  }, [selectedEmergencyId, assignedVehicleId])
 
   // Decision Handlers
   const handleApproveDecision = async (decisionId: string, comment?: string, candidateId?: string) => {
