@@ -138,15 +138,8 @@ export function DriverNavigationMap({
   const tileLayerRef = useRef<L.TileLayer | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
 
-  // Layer groups & polyline references
-  const leg1LayerRef = useRef<L.Polyline | null>(null)
-  const leg1BackingRef = useRef<L.Polyline | null>(null)
-  const leg2LayerRef = useRef<L.Polyline | null>(null)
-  const leg2BackingRef = useRef<L.Polyline | null>(null)
-  const fallbackActiveRouteLayerRef = useRef<L.Polyline | null>(null)
-  const fallbackActiveRouteBackingRef = useRef<L.Polyline | null>(null)
-  const alternativeRouteLayerRef = useRef<L.Polyline | null>(null)
-  const originalRouteLayerRef = useRef<L.Polyline | null>(null)
+  // Single dedicated LayerGroup for all route polylines — guarantees zero orphaned/leaked lines
+  const routeLinesGroupRef = useRef<L.LayerGroup | null>(null)
 
   // Markers
   const driverMarkerRef = useRef<L.Marker | null>(null)
@@ -223,10 +216,11 @@ export function DriverNavigationMap({
         setIsUserPanning(true)
       })
 
-      // Custom non-intrusive zoom controls in top-right
-      L.control.zoom({ position: 'topright' }).addTo(map)
+      // Place zoom controls in bottom-right so top-right action bar & advisory card never overlap them
+      L.control.zoom({ position: 'bottomright' }).addTo(map)
 
       mapRef.current = map
+      routeLinesGroupRef.current = L.layerGroup().addTo(map)
       incidentsLayerRef.current = L.layerGroup().addTo(map)
       clearanceLayerRef.current = L.layerGroup().addTo(map)
       turnMarkersLayerRef.current = L.layerGroup().addTo(map)
@@ -275,136 +269,122 @@ export function DriverNavigationMap({
     }
   }, [isDark])
 
-  // 2. Render Multi-Leg Route Geometry (Leg 1: BLUE, Leg 2: GREEN, Alt: CYAN)
+  // 2. Render Multi-Leg Route Geometry inside a single LayerGroup (prevents orphaned purple/blue lines)
   useEffect(() => {
-    if (!mapRef.current || !leafletRef.current) return
+    if (!mapRef.current || !leafletRef.current || !routeLinesGroupRef.current) return
     const L = leafletRef.current
     const map = mapRef.current
+    const group = routeLinesGroupRef.current
 
-    // Clean previous route layers
-    if (leg1LayerRef.current) map.removeLayer(leg1LayerRef.current)
-    if (leg1BackingRef.current) map.removeLayer(leg1BackingRef.current)
-    if (leg2LayerRef.current) map.removeLayer(leg2LayerRef.current)
-    if (leg2BackingRef.current) map.removeLayer(leg2BackingRef.current)
-    if (fallbackActiveRouteLayerRef.current) map.removeLayer(fallbackActiveRouteLayerRef.current)
-    if (fallbackActiveRouteBackingRef.current) map.removeLayer(fallbackActiveRouteBackingRef.current)
-    if (alternativeRouteLayerRef.current) map.removeLayer(alternativeRouteLayerRef.current)
-    if (originalRouteLayerRef.current) map.removeLayer(originalRouteLayerRef.current)
+    // Clear ALL previous route polylines cleanly (including backing strokes)
+    group.clearLayers()
 
-    // Render Original / Degraded Route if available (Slate Gray Dashed)
-    if (originalRouteCoordinates && originalRouteCoordinates.length > 1) {
-      const origLatLngs = originalRouteCoordinates.map(([lng, lat]) => [lat, lng] as [number, number])
-      originalRouteLayerRef.current = L.polyline(origLatLngs, {
-        color: ROUTE_SEMANTICS.otherAlternative.color, // Slate-500 (#64748b)
-        weight: 4,
-        opacity: 0.7,
-        dashArray: '4, 6',
-        lineCap: 'round',
-        lineJoin: 'round'
-      }).addTo(map)
-    }
-
-    // Render Alternative Route (PURPLE Dashed — Recommended Bypass Detour)
-    if (alternativeRouteCoordinates && alternativeRouteCoordinates.length > 1) {
-      const altLatLngs = alternativeRouteCoordinates.map(([lng, lat]) => [lat, lng] as [number, number])
-      // Contrast backing for purple detour line
-      L.polyline(altLatLngs, {
-        color: '#4c1d95', // Deep Violet-900 backing
-        weight: 9,
-        opacity: 0.5,
-        lineCap: 'round',
-        lineJoin: 'round'
-      }).addTo(map)
-
-      alternativeRouteLayerRef.current = L.polyline(altLatLngs, {
-        color: ROUTE_SEMANTICS.recommendedAlternative.color, // Purple-500 (#8b5cf6)
-        weight: 5,
-        opacity: 0.95,
-        dashArray: '6, 6',
-        lineCap: 'round',
-        lineJoin: 'round'
-      }).addTo(map)
-    }
+    const toValidLatLngs = (coords?: [number, number][]) =>
+      (coords || [])
+        .filter((pt) => Array.isArray(pt) && pt.length >= 2 && Number.isFinite(pt[0]) && Number.isFinite(pt[1]))
+        .map(([lng, lat]) => [lat, lng] as [number, number])
 
     const allPointsToFit: [number, number][] = []
 
-    // 2A. Render Distinct Multi-Leg Route if legs provided (Both part of Planned / Active Corridor in BLUE)
-    if (leg1Coordinates && leg1Coordinates.length > 1) {
-      const leg1LatLngs = leg1Coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
-      allPointsToFit.push(...leg1LatLngs)
-
-      const isLeg1Active = activeLegNumber === 1
-
-      // Backing line for high contrast
-      leg1BackingRef.current = L.polyline(leg1LatLngs, {
-        color: '#1e3a8a', // Deep Blue-900 backing
-        weight: isLeg1Active ? 10 : 6,
-        opacity: 0.9,
+    // Render Original / Degraded Route if available (Slate Gray Dashed)
+    const origLatLngs = toValidLatLngs(originalRouteCoordinates)
+    if (origLatLngs.length > 1) {
+      L.polyline(origLatLngs, {
+        color: ROUTE_SEMANTICS.otherAlternative.color,
+        weight: 4,
+        opacity: 0.55,
+        dashArray: '4, 6',
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(map)
+      }).addTo(group)
+    }
 
-      // LEG 1 (PLANNED / ACTIVE CORRIDOR — BLUE)
-      leg1LayerRef.current = L.polyline(leg1LatLngs, {
-        color: isLeg1Active ? ROUTE_SEMANTICS.activeCorridor.color : '#3b82f6', // Blue-600 or Blue-500
+    // 2A. Render Distinct Multi-Leg Route if legs provided (Planned / Active Corridor in Solid Blue)
+    const leg1LatLngs = toValidLatLngs(leg1Coordinates)
+    if (leg1LatLngs.length > 1) {
+      allPointsToFit.push(...leg1LatLngs)
+      const isLeg1Active = activeLegNumber === 1
+      L.polyline(leg1LatLngs, {
+        color: '#1e3a8a',
+        weight: isLeg1Active ? 10 : 6,
+        opacity: 0.85,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(group)
+      L.polyline(leg1LatLngs, {
+        color: isLeg1Active ? ROUTE_SEMANTICS.activeCorridor.color : '#3b82f6',
         weight: isLeg1Active ? 6 : 4,
         opacity: isLeg1Active ? 1.0 : 0.75,
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(map)
+      }).addTo(group)
     }
 
-    if (leg2Coordinates && leg2Coordinates.length > 1) {
-      const leg2LatLngs = leg2Coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
+    const leg2LatLngs = toValidLatLngs(leg2Coordinates)
+    if (leg2LatLngs.length > 1) {
       allPointsToFit.push(...leg2LatLngs)
-
       const isLeg2Active = activeLegNumber === 2
-
-      // Backing line for high contrast
-      leg2BackingRef.current = L.polyline(leg2LatLngs, {
-        color: '#1e3a8a', // Deep Blue-900 backing
+      L.polyline(leg2LatLngs, {
+        color: '#1e3a8a',
         weight: isLeg2Active ? 10 : 6,
-        opacity: 0.9,
+        opacity: 0.85,
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(map)
-
-      // LEG 2 (PLANNED / ACTIVE CORRIDOR TO HOSPITAL — BLUE TONE)
-      leg2LayerRef.current = L.polyline(leg2LatLngs, {
-        color: isLeg2Active ? ROUTE_SEMANTICS.activeCorridor.color : '#60a5fa', // Blue-600 or Blue-400
+      }).addTo(group)
+      L.polyline(leg2LatLngs, {
+        color: isLeg2Active ? ROUTE_SEMANTICS.activeCorridor.color : '#60a5fa',
         weight: isLeg2Active ? 6 : 4,
         opacity: isLeg2Active ? 1.0 : 0.8,
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(map)
+      }).addTo(group)
     }
 
-    // 2B. Fallback to unified activeRouteCoordinates if legs not partitioned (PLANNED / ACTIVE CORRIDOR — BLUE)
-    if ((!leg1Coordinates || leg1Coordinates.length < 2) && activeRouteCoordinates && activeRouteCoordinates.length > 1) {
-      const activeLatLngs = activeRouteCoordinates.map(([lng, lat]) => [lat, lng] as [number, number])
+    // 2B. Fallback to unified activeRouteCoordinates if legs not partitioned (Solid Blue)
+    const activeLatLngs = toValidLatLngs(activeRouteCoordinates)
+    if (leg1LatLngs.length < 2 && activeLatLngs.length > 1) {
       allPointsToFit.push(...activeLatLngs)
-
-      fallbackActiveRouteBackingRef.current = L.polyline(activeLatLngs, {
-        color: '#1e3a8a', // Deep Blue-900 backing
+      L.polyline(activeLatLngs, {
+        color: '#1e3a8a',
         weight: 10,
-        opacity: 0.9,
+        opacity: 0.85,
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(map)
-
-      fallbackActiveRouteLayerRef.current = L.polyline(activeLatLngs, {
-        color: ROUTE_SEMANTICS.activeCorridor.color, // Blue-600 (#2563eb)
+      }).addTo(group)
+      L.polyline(activeLatLngs, {
+        color: ROUTE_SEMANTICS.activeCorridor.color,
         weight: 6,
         opacity: 1.0,
         lineCap: 'round',
         lineJoin: 'round'
-      }).addTo(map)
+      }).addTo(group)
     }
 
-    // Initial view fit
-    if (recenterTrigger === 0 && allPointsToFit.length > 0) {
+    // 2C. Render Recommended Alternative Route ON TOP (Dashed Purple — clearly visible over blue corridor)
+    const altLatLngs = toValidLatLngs(alternativeRouteCoordinates)
+    if (altLatLngs.length > 1) {
+      allPointsToFit.push(...altLatLngs)
+      L.polyline(altLatLngs, {
+        color: '#4c1d95',
+        weight: 9,
+        opacity: 0.45,
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(group)
+      L.polyline(altLatLngs, {
+        color: ROUTE_SEMANTICS.recommendedAlternative.color,
+        weight: 5,
+        opacity: 0.98,
+        dashArray: '8, 8',
+        lineCap: 'round',
+        lineJoin: 'round'
+      }).addTo(group)
+    }
+
+    // Fit map bounds to show both primary and alternative corridors cleanly
+    if (allPointsToFit.length > 0 && !isUserPanning) {
       const bounds = L.latLngBounds(allPointsToFit)
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 })
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 })
     }
   }, [
     activeRouteCoordinates,
