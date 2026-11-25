@@ -18,11 +18,11 @@ export function getSocketUrl(): string {
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://localhost:5001';
     }
-    const env = process.env.NEXT_PUBLIC_SOCKET_URL;
+    const env = process.env.NEXT_PUBLIC_SOCKET_URL?.trim().replace(/\/+$/, '');
     if (env && !env.includes('localhost') && !env.includes('127.0.0.1')) return env;
     return 'https://geoagent-backend.onrender.com';
   }
-  return process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5001';
+  return (process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5001').trim().replace(/\/+$/, '');
 }
 
 export const SOCKET_URL = getSocketUrl();
@@ -66,7 +66,7 @@ export function getSocket(): Socket {
 
   if (!socketInstance) {
     const targetUrl = getSocketUrl();
-    const isRenderHost = /\.onrender\.com$/i.test(targetUrl);
+    const isRenderHost = targetUrl.toLowerCase().includes('.onrender.com');
     socketInstance = io(targetUrl, {
       withCredentials: true,
       // Fetched on every (re)connect so a new login or logout is picked up.
@@ -80,6 +80,7 @@ export function getSocket(): Socket {
       // delivers all real-time Socket.IO events reliably without repeating WebSocket errors.
       transports: isRenderHost ? ['polling'] : ['polling', 'websocket'],
       upgrade: !isRenderHost,
+      rememberUpgrade: false,
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 5,
