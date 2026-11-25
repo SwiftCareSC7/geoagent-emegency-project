@@ -7,8 +7,7 @@ export const dynamic = 'force-dynamic'
 function buildLocalEnvProviderSummary() {
   const googleKey = Boolean(process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY)
   const geminiKey = Boolean(process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || process.env.OPENCODE_API_KEY)
-  const cartoKey = Boolean(process.env.CARTO_API_KEY || process.env.NEXT_PUBLIC_CARTO_API_KEY)
-  const routingProvider = (process.env.ROUTING_PROVIDER || 'osrm').toLowerCase()
+  const routingProvider = (process.env.ROUTING_PROVIDER || 'google').toLowerCase()
 
   return {
     success: true,
@@ -46,10 +45,10 @@ function buildLocalEnvProviderSummary() {
           provider: 'socket.io',
           status: 'AVAILABLE',
         },
-        cartoBasemap: {
-          provider: 'carto-dark-matter',
-          status: cartoKey ? 'AVAILABLE' : 'NOT_CONFIGURED',
-          configured: cartoKey,
+        googleBasemap: {
+          provider: 'google-maps-tiles',
+          status: 'AVAILABLE',
+          configured: true,
         },
       },
       checkedAt: new Date().toISOString(),

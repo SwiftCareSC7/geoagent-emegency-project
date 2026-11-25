@@ -91,7 +91,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         })
         .addTo(map)
 
-      // 4. Create High-Definition Tile Layers (Google Maps, CARTO Retina, OSM, ESRI)
+      // 4. Create High-Definition Tile Layers (Google Maps, OSM, ESRI)
       const googleStreets = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         maxZoom: 20,
         subdomains: ['0', '1', '2', '3'],
@@ -116,18 +116,6 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         attribution: '&copy; Google Maps Satellite',
       })
 
-      const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-      })
-
-      const lightTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-      })
-
       const osmTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap',
@@ -142,7 +130,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
       )
 
       if (onBasemapHealthChange) {
-        onBasemapHealthChange('AVAILABLE', 'High-definition basemap layers active')
+        onBasemapHealthChange('AVAILABLE', 'Google Maps HD basemap layers active')
       }
 
       tileLayersRef.current = {
@@ -150,8 +138,6 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
         google_traffic: googleTraffic,
         google_hybrid: googleHybrid,
         google_satellite: googleSatellite,
-        carto_dark: darkTiles,
-        carto_light: lightTiles,
         osm: osmTiles,
         esri_satellite: satelliteTiles,
       }
@@ -257,28 +243,6 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
     }),
     [mapLoaded]
   )
-
-  // Dynamically synchronize basemap with global light / dark theme
-  useEffect(() => {
-    const map = mapInstanceRef.current
-    if (!map) return
-    const currentProvider = activeTileLayerRef.current
-    // Only auto-switch if active tile is carto_dark or carto_light
-    if (currentProvider === 'carto_dark' || currentProvider === 'carto_light') {
-      const targetProvider: TileLayerProvider = resolvedTheme === 'light' ? 'carto_light' : 'carto_dark'
-      if (currentProvider !== targetProvider) {
-        const currentLayer = tileLayersRef.current[currentProvider]
-        const targetLayer = tileLayersRef.current[targetProvider]
-        if (currentLayer && map.hasLayer(currentLayer)) {
-          map.removeLayer(currentLayer)
-        }
-        if (targetLayer) {
-          targetLayer.addTo(map)
-          activeTileLayerRef.current = targetProvider
-        }
-      }
-    }
-  }, [resolvedTheme])
 
   return (
     <div className={`relative w-full overflow-hidden rounded-xl bg-muted/40 dark:bg-slate-950 ${className}`} style={{ height }}>

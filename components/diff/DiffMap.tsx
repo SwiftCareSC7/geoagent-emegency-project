@@ -52,7 +52,7 @@ export const DiffMap = forwardRef<DiffMapHandle, DiffMapProps>(function DiffMap(
 
   const [mapReady, setMapReady] = useState(false)
   const [autoFollowVehicle, setAutoFollowVehicle] = useState(false)
-  const [basemapStyle, setBasemapStyle] = useState<'carto' | 'google'>('google')
+  const [basemapStyle, setBasemapStyle] = useState<'google_streets' | 'google_traffic'>('google_streets')
 
   // Initialize Map
   useEffect(() => {
@@ -126,21 +126,15 @@ export const DiffMap = forwardRef<DiffMapHandle, DiffMapProps>(function DiffMap(
 
     mapInstanceRef.current.removeLayer(tileLayerRef.current)
 
-    let url = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
-    let subdomains: string | string[] = ['0', '1', '2', '3']
-
-    if (basemapStyle === 'google') {
-      url = 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
-      subdomains = ['0', '1', '2', '3']
-    } else {
-      url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-      subdomains = 'abc'
-    }
+    const url =
+      basemapStyle === 'google_traffic'
+        ? 'https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}'
+        : 'https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
 
     const newTile = LRef.tileLayer(url, {
       maxZoom: 20,
-      subdomains,
-      attribution: '&copy; OpenStreetMap / Google Maps',
+      subdomains: ['0', '1', '2', '3'],
+      attribution: '&copy; Google Maps',
     }).addTo(mapInstanceRef.current)
 
     tileLayerRef.current = newTile
@@ -534,8 +528,8 @@ export const DiffMap = forwardRef<DiffMapHandle, DiffMapProps>(function DiffMap(
           size="sm"
           variant="secondary"
           className="size-8 p-0 bg-background/90 shadow-md backdrop-blur-xs border border-border/70"
-          onClick={() => setBasemapStyle((prev) => (prev === 'carto' ? 'google' : 'carto'))}
-          title={`Switch Basemap (Current: ${basemapStyle === 'carto' ? 'CARTO' : 'Google Maps'})`}
+          onClick={() => setBasemapStyle((prev) => (prev === 'google_streets' ? 'google_traffic' : 'google_streets'))}
+          title={`Switch Basemap (Current: ${basemapStyle === 'google_traffic' ? 'Google Traffic' : 'Google Streets'})`}
         >
           <Layers className="size-4" />
           <span className="sr-only">Switch Basemap</span>

@@ -2,7 +2,7 @@
  * SwiftCare GeoAgent — Combined Final Integration & Full System Validation Audit
  *
  * Comprehensive validation across:
- *   1. Interactive Map & CARTO Basemap Provider Configuration
+ *   1. Interactive Map & Google Maps Basemap Provider Configuration
  *   2. Real-World Prediction Validation, Ground-Truth Metrics & Small-Sample Protection
  *   3. Route Recommendation Counterfactual Honesty
  *   4. AI Governance, Deterministic Decision Separation & Operator Approval
@@ -124,15 +124,15 @@ function assert(condition, message) {
 }
 
 // -------------------------------------------------------------------------
-// 1. MAP & CARTO BASEMAP PROVIDER HEALTH
+// 1. MAP & GOOGLE BASEMAP PROVIDER HEALTH
 // -------------------------------------------------------------------------
-console.log('\n--- 1. Basemap Provider & CARTO Health ---');
+console.log('\n--- 1. Basemap Provider & Google Maps Health ---');
 
 const healthReport = await providerHealthService.getHealthStatus();
-assert(healthReport.providers.cartoBasemap !== undefined, 'Provider health reports cartoBasemap status');
+assert(healthReport.providers.googleBasemap !== undefined, 'Provider health reports googleBasemap status');
 assert(
-  ['AVAILABLE', 'NOT_CONFIGURED'].includes(healthReport.providers.cartoBasemap.status),
-  `CARTO basemap status is valid non-sensitive state: ${healthReport.providers.cartoBasemap.status}`
+  ['AVAILABLE', 'NOT_CONFIGURED'].includes(healthReport.providers.googleBasemap.status),
+  `Google basemap status is valid non-sensitive state: ${healthReport.providers.googleBasemap.status}`
 );
 assert(
   !JSON.stringify(healthReport).includes('your_google_maps_key') && !JSON.stringify(healthReport).includes('secret'),

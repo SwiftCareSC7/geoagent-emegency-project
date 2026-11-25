@@ -175,15 +175,13 @@ export function MapControls({
           <div className="absolute right-0 top-11 w-52 rounded-xl border border-border bg-card/95 p-2 text-xs text-foreground shadow-2xl backdrop-blur-md space-y-1">
             <div className="font-bold text-muted-foreground text-[11px] pb-1 border-b border-border flex items-center justify-between">
               <span>Basemap Style</span>
-              <span className="text-[9px] font-normal text-muted-foreground">8 Providers</span>
+              <span className="text-[9px] font-normal text-muted-foreground">Google Maps</span>
             </div>
             {[
               { id: 'google_streets', label: 'Google Streets', tag: 'Google' },
               { id: 'google_traffic', label: 'Google Live Traffic', tag: 'Live' },
               { id: 'google_hybrid', label: 'Google Hybrid', tag: 'Sat+Road' },
               { id: 'google_satellite', label: 'Google Satellite', tag: 'Photo' },
-              { id: 'carto_dark', label: 'CARTO Dark Matter', tag: 'Night' },
-              { id: 'carto_light', label: 'CARTO Voyager', tag: 'Day' },
               { id: 'osm', label: 'OpenStreetMap', tag: 'OSM' },
               { id: 'esri_satellite', label: 'ESRI World Imagery', tag: 'Sat' },
             ].map(({ id, label, tag }) => (

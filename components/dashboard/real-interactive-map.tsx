@@ -187,17 +187,17 @@ export function RealInteractiveMap({
       L.control.zoom({ position: 'topright' }).addTo(map)
       mapInstanceRef.current = map
 
-      // Base Tile Layer Providers (Google Streets default, Live Traffic, CARTO Dark, Satellite)
+      // Base Tile Layer Providers (Google Streets default, Live Traffic, Google Terrain, Satellite)
       const googleStreetsTiles = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
         attribution: '&copy; Google Maps',
         maxZoom: 20,
         subdomains: ['0', '1', '2', '3'],
       })
 
-      const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-        maxZoom: 19,
-        subdomains: 'abcd',
+      const darkTiles = L.tileLayer('https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps Terrain',
+        maxZoom: 20,
+        subdomains: ['0', '1', '2', '3'],
       })
 
       const googleTrafficTiles = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
@@ -596,7 +596,7 @@ export function RealInteractiveMap({
                 mapStyle === 'dark' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground',
               )}
             >
-              Dark GIS
+              Google Terrain
             </button>
             <button
               type="button"

@@ -93,12 +93,9 @@ class ProviderHealthService {
       ? 'Socket.IO gateway initialized and accepting real-time connections'
       : 'Socket.IO server instance not yet attached';
 
-    // 7. CARTO Basemap Provider Health
-    const cartoKeyConfigured = this.isConfigured(process.env.CARTO_API_KEY || process.env.NEXT_PUBLIC_CARTO_API_KEY);
-    const cartoStatus = cartoKeyConfigured ? 'AVAILABLE' : 'NOT_CONFIGURED';
-    const cartoMessage = cartoKeyConfigured
-      ? 'CARTO basemap API key is configured for browser tile requests'
-      : 'CARTO basemap API key is not configured (NEXT_PUBLIC_CARTO_API_KEY)';
+    // 7. Google Maps Basemap Tile Provider Health
+    const googleBasemapStatus = 'AVAILABLE';
+    const googleBasemapMessage = 'Google Maps HD tile servers (Streets, Live Traffic, Hybrid, Satellite) active';
 
     return {
       timestamp: new Date().toISOString(),
@@ -146,11 +143,11 @@ class ProviderHealthService {
           configured: true,
           message: socketMessage
         },
-        cartoBasemap: {
-          provider: 'carto-dark-matter',
-          status: cartoStatus,
-          configured: cartoKeyConfigured,
-          message: cartoMessage
+        googleBasemap: {
+          provider: 'google-maps-tiles',
+          status: googleBasemapStatus,
+          configured: true,
+          message: googleBasemapMessage
         },
         // Free-model LLM providers (OpenCode / OpenRouter): last known state, no network call
         geoAgentAI: (() => {

@@ -27,8 +27,6 @@ export type TileLayerProvider =
   | 'google_traffic'
   | 'google_hybrid'
   | 'google_satellite'
-  | 'carto_dark'
-  | 'carto_light'
   | 'osm'
   | 'esri_satellite'
 

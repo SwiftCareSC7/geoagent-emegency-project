@@ -315,16 +315,13 @@ export function AdminOverview() {
 
             <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MapIcon className="size-3.5 text-slate-400" /> CARTO Basemap
+                <MapIcon className="size-3.5 text-slate-400" /> Google Maps Tiles
               </div>
               <div className="mt-2">
-                {getStatusBadge(
-                  providers?.providers?.cartoBasemap?.status ||
-                  (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_CARTO_API_KEY ? 'AVAILABLE' : 'NOT_CONFIGURED')
-                )}
+                {getStatusBadge(providers?.providers?.googleBasemap?.status || 'AVAILABLE')}
               </div>
               <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-                Dark Matter Tiles
+                HD Streets &amp; Traffic
               </p>
             </div>
           </div>
