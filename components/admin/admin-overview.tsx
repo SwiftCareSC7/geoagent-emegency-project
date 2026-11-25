@@ -13,23 +13,19 @@ import {
   Cpu,
   RefreshCw,
   Clock,
-  Radio,
-  Server,
   Sparkles,
   Gauge,
   Info,
-  Map as MapIcon,
   ShieldAlert,
   CheckCircle2,
 } from 'lucide-react'
 import { adminApi } from '@/lib/api/admin'
-import type { AdminSystemStats, AdminDatabaseHealth, AdminSystemHealthSummary, Decision } from '@/lib/api/types'
+import type { AdminSystemStats, AdminDatabaseHealth, Decision } from '@/lib/api/types'
 import { Button } from '@/components/ui/button'
 
 export function AdminOverview() {
   const [stats, setStats] = useState<AdminSystemStats | null>(null)
   const [dbHealth, setDbHealth] = useState<AdminDatabaseHealth | null>(null)
-  const [providers, setProviders] = useState<AdminSystemHealthSummary | null>(null)
   const [predictionAnalytics, setPredictionAnalytics] = useState<any>(null)
   const [recentDecisions, setRecentDecisions] = useState<Decision[]>([])
   const [loading, setLoading] = useState(true)
@@ -86,16 +82,14 @@ export function AdminOverview() {
     setError(null)
 
     try {
-      const [statsRes, healthRes, provRes, decRes, predAnalyticsRes] = await Promise.all([
+      const [statsRes, healthRes, decRes, predAnalyticsRes] = await Promise.all([
         adminApi.getStats(),
         adminApi.getHealth(),
-        adminApi.getProviders(),
         adminApi.getDecisions({ limit: 5 }).catch(() => ({ data: [] })),
         adminApi.getPredictionAnalytics().catch(() => null),
       ])
       setStats(statsRes.data)
       setDbHealth(healthRes.data)
-      setProviders(provRes.data)
       if (predAnalyticsRes && predAnalyticsRes.data) {
         setPredictionAnalytics(predAnalyticsRes.data)
       }
@@ -217,8 +211,8 @@ export function AdminOverview() {
         </div>
       </div>
 
-      {/* Database & System Infrastructure Health Banner */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* Database Infrastructure Health Banner */}
+      <div className="grid grid-cols-1 gap-4">
         {/* MongoDB Card */}
         <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-card/90 to-card/50 p-5 shadow-sm backdrop-blur-md">
           <div className="flex items-center justify-between">
@@ -248,81 +242,6 @@ export function AdminOverview() {
             <div>
               <span className="text-muted-foreground">Ready State:</span>
               <p className="font-semibold text-foreground">{dbHealth?.readyState || 'UNKNOWN'}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Upstream Providers Card */}
-        <div className="col-span-1 rounded-2xl border border-border/50 bg-gradient-to-br from-card/90 to-card/50 p-5 shadow-sm backdrop-blur-md lg:col-span-2">
-          <div className="flex items-center justify-between pb-3 border-b border-border/40">
-            <div className="flex items-center gap-2">
-              <Server className="size-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">External Intelligence & Routing Providers</h3>
-            </div>
-            <span className="text-xs text-muted-foreground">Advisory & Telemetry Ingestion</span>
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <RouteIcon className="size-3.5 text-blue-400" /> Google Routes
-              </div>
-              <div className="mt-2">{getStatusBadge(providers?.providers?.googleRoutes?.status)}</div>
-              <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-                Mode: {providers?.providers?.googleRoutes?.mode || 'mock'}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MapPin className="size-3.5 text-emerald-400" /> Google Roads
-              </div>
-              <div className="mt-2">{getStatusBadge(providers?.providers?.googleRoads?.status)}</div>
-              <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-                Mode: {providers?.providers?.googleRoads?.mode || 'mock'}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Sparkles className="size-3.5 text-purple-400" /> Gemini 2.5 Flash
-              </div>
-              <div className="mt-2">{getStatusBadge(providers?.providers?.gemini?.status || providers?.providers?.geminiAi?.status)}</div>
-              <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-                Advisory Reasoning
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Cpu className="size-3.5 text-amber-400" /> Python / V2X
-              </div>
-              <div className="mt-2">{getStatusBadge(providers?.providers?.pythonV2X?.status || 'AVAILABLE')}</div>
-              <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-                {providers?.providers?.pythonV2X?.engine === 'python' ? 'Native Python 3.12' : 'JS Fallback Engine'}
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Radio className="size-3.5 text-cyan-400" /> Socket.IO
-              </div>
-              <div className="mt-2">{getStatusBadge(providers?.providers?.socketIO?.status || 'AVAILABLE')}</div>
-              <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-                Live Broadcast
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-border/30 bg-muted/20 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MapIcon className="size-3.5 text-slate-400" /> Google Maps Tiles
-              </div>
-              <div className="mt-2">
-                {getStatusBadge(providers?.providers?.googleBasemap?.status || 'AVAILABLE')}
-              </div>
-              <p className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-                HD Streets &amp; Traffic
-              </p>
             </div>
           </div>
         </div>

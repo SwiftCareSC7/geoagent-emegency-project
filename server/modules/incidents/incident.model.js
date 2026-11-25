@@ -67,7 +67,7 @@ const incidentSchema = new mongoose.Schema(
 // Indexes for operational queries
 incidentSchema.index({ location: '2dsphere' });
 incidentSchema.index({ emergency: 1, isDeleted: 1 });
-incidentSchema.index({ status: 1, isDeleted: 1 });
+incidentSchema.index({ status: 1, isDeleted: 1, createdAt: -1 });
 incidentSchema.index({ createdAt: -1 });
 
 

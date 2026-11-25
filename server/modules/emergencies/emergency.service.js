@@ -146,7 +146,13 @@ export const updateEmergency = async (emergencyId, updateData) => {
 export const assignVehicle = async (emergencyId, vehicleId) => {
   const isEmergencyObjectId = typeof emergencyId === 'string' && emergencyId.match(/^[0-9a-fA-F]{24}$/);
   const emgQuery = isEmergencyObjectId ? { _id: emergencyId, isDeleted: false } : { emergencyId, isDeleted: false };
-  const emergency = await Emergency.findOne(emgQuery);
+  const isVehicleObjectId = typeof vehicleId === 'string' && vehicleId.match(/^[0-9a-fA-F]{24}$/);
+  const vehQuery = isVehicleObjectId ? { _id: vehicleId, isDeleted: false } : { vehicleId, isDeleted: false };
+
+  const [emergency, vehicle] = await Promise.all([
+    Emergency.findOne(emgQuery),
+    Vehicle.findOne(vehQuery)
+  ]);
 
   if (!emergency) {
     const error = new Error('Emergency not found');
@@ -154,10 +160,6 @@ export const assignVehicle = async (emergencyId, vehicleId) => {
     error.isOperational = true;
     throw error;
   }
-
-  const isVehicleObjectId = typeof vehicleId === 'string' && vehicleId.match(/^[0-9a-fA-F]{24}$/);
-  const vehQuery = isVehicleObjectId ? { _id: vehicleId, isDeleted: false } : { vehicleId, isDeleted: false };
-  const vehicle = await Vehicle.findOne(vehQuery);
 
   if (!vehicle) {
     const error = new Error('Vehicle not found');
@@ -173,13 +175,11 @@ export const assignVehicle = async (emergencyId, vehicleId) => {
     throw error;
   }
 
-  // Perform updates
+  // Perform updates in parallel
   emergency.assignedVehicle = vehicle._id;
   emergency.status = 'DISPATCHED';
-  await emergency.save();
-
   vehicle.status = 'DISPATCHED';
-  await vehicle.save();
+  await Promise.all([emergency.save(), vehicle.save()]);
 
   const result = await Emergency.findById(emergency._id).populate(
     'assignedVehicle',

@@ -8,7 +8,7 @@
  * and stable layer managers.
  */
 
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { useTheme } from 'next-themes'
 import type L from 'leaflet'
 import {
@@ -119,7 +119,7 @@ interface ControlRoomMapProps {
   height?: string
 }
 
-export function ControlRoomMap({
+function ControlRoomMapImpl({
   initialEmergencies,
   initialVehicles,
   initialIncidents,
@@ -1038,3 +1038,5 @@ export function ControlRoomMap({
     </div>
   )
 }
+
+export const ControlRoomMap = memo(ControlRoomMapImpl)

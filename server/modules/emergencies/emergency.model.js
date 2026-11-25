@@ -102,7 +102,8 @@ const emergencySchema = new mongoose.Schema(
 emergencySchema.index({ location: '2dsphere' });
 emergencySchema.index({ destination: '2dsphere' });
 emergencySchema.index({ assignedVehicle: 1, isDeleted: 1 });
-emergencySchema.index({ status: 1, isDeleted: 1 });
+emergencySchema.index({ isDeleted: 1, createdAt: -1 });
+emergencySchema.index({ status: 1, isDeleted: 1, createdAt: -1 });
 emergencySchema.index({ createdAt: -1 });
 
 

@@ -107,8 +107,22 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
+// Enable weak ETag generation for conditional GET responses
+app.set('etag', 'weak');
+
 // Compress JSON responses > 1KB (GeoJSON polylines, trajectories, lists)
 app.use(gzipCompression());
+
+// Lightweight short-lived private cache headers for read-heavy GET endpoints
+app.use((req, res, next) => {
+  if (
+    req.method === 'GET' &&
+    /^\/api\/(vehicles|emergencies|incidents|routes)(\/|$)/.test(req.path)
+  ) {
+    res.setHeader('Cache-Control', 'private, max-age=5, stale-while-revalidate=15');
+  }
+  next();
+});
 
 // Parse incoming JSON requests safely
 app.use(express.json());
@@ -124,6 +138,11 @@ const startedAt = new Date().toISOString();
 // Render, uptime monitors and browsers hit the bare backend URL; answer instead of logging a 404.
 app.get('/', (req, res) => {
   res.status(200).json({ success: true, message: 'GeoAgentic backend', health: '/api/health' });
+});
+
+// Fast zero-DB keep-alive / uptime probe for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: Math.floor(process.uptime()) });
 });
 
 /**

@@ -66,6 +66,13 @@ export default function RootLayout({
       className={`${inter.variable} ${jakarta.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <link rel="preconnect" href="https://geoagent-backend.onrender.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://geoagent-backend.onrender.com" />
+        <link rel="preconnect" href="https://mt0.google.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://mt1.google.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://router.project-osrm.org" />
+      </head>
       <body className="font-sans antialiased min-h-screen bg-background text-foreground">
         <ThemeProvider>
           <AuthProvider>

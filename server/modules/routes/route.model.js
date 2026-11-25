@@ -180,7 +180,8 @@ const routeSchema = new mongoose.Schema(
 
 // Indexes
 routeSchema.index({ emergency: 1, routeType: 1 });
-routeSchema.index({ vehicle: 1, status: 1 });
+routeSchema.index({ emergency: 1, status: 1, createdAt: -1 });
+routeSchema.index({ vehicle: 1, status: 1, createdAt: -1 });
 routeSchema.index({ geometry: '2dsphere' });
 routeSchema.index({ origin: '2dsphere' });
 routeSchema.index({ destination: '2dsphere' });

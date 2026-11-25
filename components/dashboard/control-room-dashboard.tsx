@@ -446,23 +446,37 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
     socket.on('connect', onConnect)
     socket.on('disconnect', onDisconnect)
 
+    const pendingLocationsRef = new Map<string, any>()
+    let locationFlushTimer: ReturnType<typeof setTimeout> | null = null
+
+    const flushLocationUpdates = () => {
+      locationFlushTimer = null
+      if (pendingLocationsRef.size === 0) return
+      const batch = new Map(pendingLocationsRef)
+      pendingLocationsRef.clear()
+      setVehicles((prev) =>
+        prev.map((v) => {
+          const payload = batch.get(v.vehicleId)
+          if (!payload) return v
+          return {
+            ...v,
+            speed: payload.speed ?? v.speed,
+            heading: payload.heading ?? v.heading,
+            location: payload.location
+              ? { type: 'Point', coordinates: payload.location.coordinates }
+              : v.location,
+          }
+        })
+      )
+    }
+
     const onLocationUpdated = (envelope: any) => {
       const payload = envelope?.data || envelope
       if (!payload?.vehicleId) return
-      setVehicles((prev) =>
-        prev.map((v) =>
-          v.vehicleId === payload.vehicleId
-            ? {
-                ...v,
-                speed: payload.speed ?? v.speed,
-                heading: payload.heading ?? v.heading,
-                location: payload.location
-                  ? { type: 'Point', coordinates: payload.location.coordinates }
-                  : v.location,
-              }
-            : v
-        )
-      )
+      pendingLocationsRef.set(payload.vehicleId, payload)
+      if (!locationFlushTimer) {
+        locationFlushTimer = setTimeout(flushLocationUpdates, 250)
+      }
     }
 
     const onStatusUpdated = (envelope: any) => {
@@ -491,8 +505,25 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
       })
     }
 
-    const onDecisionEvent = () => {
+    const onDecisionEvent = (envelope: any) => {
+      const payload = envelope?.data || envelope
+      if (payload && (payload.decisionId || payload._id || payload.id)) {
+        const activeEmgId = selectedEmergencyRef.current?.emergencyId
+        if (!activeEmgId || !payload.emergencyId || payload.emergencyId === activeEmgId) {
+          setDecision((prev) => (prev ? { ...prev, ...payload } : payload))
+        }
+        return
+      }
       fetchLiveData()
+    }
+
+    const onPredictionUpdated = (envelope: any) => {
+      const payload = envelope?.data || envelope
+      if (!payload) return
+      const activeEmgId = selectedEmergencyRef.current?.emergencyId
+      if (!activeEmgId || !payload.emergencyId || payload.emergencyId === activeEmgId) {
+        setPrediction(payload)
+      }
     }
 
     socket.on(REALTIME_EVENTS.VEHICLE_LOCATION_UPDATED, onLocationUpdated)
@@ -502,8 +533,11 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
     socket.on(REALTIME_EVENTS.DECISION_CREATED, onDecisionEvent)
     socket.on(REALTIME_EVENTS.DECISION_APPROVED, onDecisionEvent)
     socket.on(REALTIME_EVENTS.DECISION_EXECUTED, onDecisionEvent)
+    socket.on(REALTIME_EVENTS.PREDICTION_UPDATED, onPredictionUpdated)
 
     return () => {
+      if (locationFlushTimer) clearTimeout(locationFlushTimer)
+      pendingLocationsRef.clear()
       socket.off('connect', onConnect)
       socket.off('disconnect', onDisconnect)
       socket.off(REALTIME_EVENTS.VEHICLE_LOCATION_UPDATED, onLocationUpdated)
@@ -513,6 +547,7 @@ export function ControlRoomDashboard({ initialData }: { initialData?: DashboardD
       socket.off(REALTIME_EVENTS.DECISION_CREATED, onDecisionEvent)
       socket.off(REALTIME_EVENTS.DECISION_APPROVED, onDecisionEvent)
       socket.off(REALTIME_EVENTS.DECISION_EXECUTED, onDecisionEvent)
+      socket.off(REALTIME_EVENTS.PREDICTION_UPDATED, onPredictionUpdated)
       socket.emit('room:leave', { room: 'control-room' })
     }
   }, [fetchLiveData])

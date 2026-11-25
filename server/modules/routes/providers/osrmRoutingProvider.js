@@ -15,7 +15,9 @@ class OsrmRoutingProvider {
   constructor() {
     this.endpoint = process.env.OSRM_API_URL || 'https://router.project-osrm.org/route/v1/driving';
     this.cache = new Map();
-    this.cacheTtlMs = 60 * 1000; // 60-second TTL
+    this.inFlight = new Map();
+    this.cacheTtlMs = 5 * 60 * 1000; // 5-minute TTL for shared OSRM road queries
+    this.maxCacheEntries = 200;
   }
 
   /**
@@ -184,67 +186,84 @@ class OsrmRoutingProvider {
       return cached.data;
     }
 
+    // Single-flight deduplication: coalesce concurrent identical OSRM requests
+    const pending = this.inFlight.get(cacheKey);
+    if (pending) {
+      return pending;
+    }
+
     const [origLng, origLat] = origin.coordinates;
     const [destLng, destLat] = destination.coordinates;
 
     const computeAlternatives = options.computeAlternativeRoutes !== false;
     const url = `${this.endpoint}/${origLng},${origLat};${destLng},${destLat}?overview=full&geometries=geojson&steps=true&annotations=true&alternatives=${computeAlternatives ? 'true' : 'false'}`;
 
-    const controller = new AbortController();
-    const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 7000;
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const requestPromise = (async () => {
+      const controller = new AbortController();
+      const timeoutMs = typeof options.timeoutMs === 'number' ? options.timeoutMs : 4500;
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-    try {
-      const startTime = Date.now();
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
+      try {
+        const startTime = Date.now();
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { Accept: 'application/json' },
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
 
-      const latencyMs = Date.now() - startTime;
+        const latencyMs = Date.now() - startTime;
 
-      if (!response.ok) {
-        throw new Error(`OSRM road router returned HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      if (data.code !== 'Ok' || !Array.isArray(data.routes) || data.routes.length === 0) {
-        throw new Error(`OSRM routing failed: ${data.message || 'No drivable route found between points'}`);
-      }
-
-      let selectedIndex = 0;
-      if (options.preference === 'SHORTEST' && data.routes.length > 1) {
-        selectedIndex = 1;
-      }
-
-      const primaryRoute = this.normalizeRoute(data.routes[selectedIndex], selectedIndex);
-
-      // Alternatives (other routes)
-      const alternatives = [];
-      for (let i = 0; i < data.routes.length && alternatives.length < 2; i++) {
-        if (i !== selectedIndex) {
-          alternatives.push(this.normalizeRoute(data.routes[i], i));
+        if (!response.ok) {
+          throw new Error(`OSRM road router returned HTTP ${response.status}: ${response.statusText}`);
         }
+
+        const data = await response.json();
+        if (data.code !== 'Ok' || !Array.isArray(data.routes) || data.routes.length === 0) {
+          throw new Error(`OSRM routing failed: ${data.message || 'No drivable route found between points'}`);
+        }
+
+        let selectedIndex = 0;
+        if (options.preference === 'SHORTEST' && data.routes.length > 1) {
+          selectedIndex = 1;
+        }
+
+        const primaryRoute = this.normalizeRoute(data.routes[selectedIndex], selectedIndex);
+
+        // Alternatives (other routes)
+        const alternatives = [];
+        for (let i = 0; i < data.routes.length && alternatives.length < 2; i++) {
+          if (i !== selectedIndex) {
+            alternatives.push(this.normalizeRoute(data.routes[i], i));
+          }
+        }
+
+        primaryRoute.alternatives = alternatives;
+        primaryRoute.apiLatencyMs = latencyMs;
+
+        if (this.cache.size >= this.maxCacheEntries) {
+          const oldestKey = this.cache.keys().next().value;
+          if (oldestKey) this.cache.delete(oldestKey);
+        }
+        this.cache.set(cacheKey, {
+          data: primaryRoute,
+          cachedAt: Date.now()
+        });
+
+        return primaryRoute;
+      } catch (err) {
+        clearTimeout(timeout);
+        if (err.name === 'AbortError') {
+          throw new Error(`OSRM road router request timed out after ${timeoutMs}ms`);
+        }
+        throw err;
+      } finally {
+        this.inFlight.delete(cacheKey);
       }
+    })();
 
-      primaryRoute.alternatives = alternatives;
-      primaryRoute.apiLatencyMs = latencyMs;
-
-      this.cache.set(cacheKey, {
-        data: primaryRoute,
-        cachedAt: Date.now()
-      });
-
-      return primaryRoute;
-    } catch (err) {
-      clearTimeout(timeout);
-      if (err.name === 'AbortError') {
-        throw new Error('OSRM road router request timed out after 7 seconds');
-      }
-      throw err;
-    }
+    this.inFlight.set(cacheKey, requestPromise);
+    return requestPromise;
   }
 
   /**

@@ -7,12 +7,14 @@
  * AI_PROVIDER=auto tries OpenRouter, then OpenCode. If no free model works, chat() throws and the caller uses the deterministic fallback.
  */
 
-const REQUEST_TIMEOUT_MS = 60000;
+const REQUEST_TIMEOUT_MS = 4000;
+const CATALOG_TIMEOUT_MS = 3500;
 const CATALOG_TTL_MS = 10 * 60 * 1000;
-const COOLDOWN_MS = 60 * 1000; // a failed model is skipped for this long (no hammering)
-const AUTH_COOLDOWN_MS = 10 * 60 * 1000; // 401/403 (bad key, free tier not allowed server-side): whole provider
-const MAX_ATTEMPTS_PER_CALL = 4; // model attempts per chat() across all providers
-const MAX_MODELS_PER_PROVIDER = 3;
+const COOLDOWN_MS = 5 * 60 * 1000; // a failed/429 model is skipped for 5m (no hammering)
+const AUTH_COOLDOWN_MS = 15 * 60 * 1000; // 401/403/daily-429: whole provider cooldown
+const MAX_ATTEMPTS_PER_CALL = 2; // fast failover to deterministic advisory
+const MAX_MODELS_PER_PROVIDER = 2;
+const DEFAULT_MAX_TOKENS = 450;
 const MIN_CONTEXT_TOKENS = 16000;
 
 const parseArgs = (raw) => {
@@ -32,6 +34,17 @@ const isZeroPrice = (v) => v !== null && v !== undefined && v !== '' && Number(v
  * supportsTools returns null when the catalog does not say (verified at call time instead).
  */
 export const PROVIDERS = Object.freeze({
+  gemini: {
+    label: 'Gemini',
+    keyEnv: 'GEMINI_API_KEY',
+    modelEnv: 'GEMINI_MODEL',
+    baseUrlEnv: 'GEMINI_BASE_URL',
+    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    defaultModel: 'gemini-2.5-flash',
+    skipCatalog: true,
+    isFree: () => true,
+    supportsTools: () => true
+  },
   opencode: {
     label: 'OpenCode',
     keyEnv: 'OPENCODE_API_KEY',
@@ -69,7 +82,8 @@ export const createChatClient = ({
   baseUrl = PROVIDERS.opencode.defaultBaseUrl,
   extraBody,
   fetchImpl = globalThis.fetch,
-  timeoutMs = REQUEST_TIMEOUT_MS
+  timeoutMs = REQUEST_TIMEOUT_MS,
+  maxTokens = DEFAULT_MAX_TOKENS
 } = {}) => {
   if (!apiKey) return null;
   const url = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
@@ -81,7 +95,7 @@ export const createChatClient = ({
      * @returns {Promise<{text: string, toolCalls: Array<{id, name, args}>}>}
      */
     async chat({ model, messages, tools }) {
-      const body = { ...extraBody, model, messages, temperature: 0 };
+      const body = { ...extraBody, model, messages, temperature: 0, max_tokens: maxTokens };
       if (tools && tools.length) {
         body.tools = tools.map((fn) => ({ type: 'function', function: fn }));
         body.tool_choice = 'auto';
@@ -144,9 +158,9 @@ export const selectFreeModels = (def, catalog, preferred) => {
 
 const providerOrder = (setting) => {
   const s = String(setting || 'auto').toLowerCase();
-  if (s === 'opencode' || s === 'openrouter') return [s];
-  // OpenRouter first: OpenCode's free tier currently rejects server-side calls (403 FreeTierError).
-  return ['openrouter', 'opencode'];
+  if (s === 'gemini' || s === 'opencode' || s === 'openrouter') return [s];
+  // Prefer Gemini Flash (lowest latency) when GEMINI_API_KEY is configured, then OpenRouter, then OpenCode.
+  return ['gemini', 'openrouter', 'opencode'];
 };
 
 /**
@@ -189,10 +203,16 @@ export const createLlmProvider = ({
   };
 
   const loadCatalog = async (s) => {
+    if (s.def.skipCatalog) {
+      const modelId = env[s.def.modelEnv] || s.def.defaultModel;
+      s.catalog = [{ id: modelId }];
+      s.catalogAt = now();
+      return s.catalog;
+    }
     if (s.catalog && now() - s.catalogAt < CATALOG_TTL_MS) return s.catalog;
     const res = await fetchImpl(`${s.baseUrl.replace(/\/+$/, '')}/models`, {
       headers: { Authorization: `Bearer ${env[s.def.keyEnv]}` },
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(CATALOG_TIMEOUT_MS)
     });
     if (!res.ok) throw Object.assign(new Error(`model catalog HTTP ${res.status}`), { status: res.status });
     const data = await res.json();
