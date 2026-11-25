@@ -74,9 +74,10 @@ export const logout = (req, res) => {
  * Get current authenticated user
  */
 export const getMe = async (req, res) => {
-  // req.user is populated by the authMiddleware
+  // req.user may be a Mongoose doc or a lean cached object from authMiddleware
+  const user = typeof req.user?.toSafeObject === 'function' ? req.user.toSafeObject() : req.user;
   res.status(200).json({
     success: true,
-    user: req.user.toSafeObject()
+    user
   });
 };
