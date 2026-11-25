@@ -45,6 +45,9 @@ class ProviderHealthService {
     // The GeoAgent LLM is OpenRouter/OpenCode (geoagent.provider.js), not Gemini; report what the agent really uses.
     // Key kept as `gemini` in the payload for frontend compatibility.
     const aiLabels = Object.values(PROVIDERS).filter((d) => this.isConfigured(process.env[d.keyEnv])).map((d) => d.label);
+    if (this.isConfigured(process.env.GEMINI_API_KEY) && !aiLabels.includes('Gemini')) {
+      aiLabels.unshift('Gemini 2.5 Flash');
+    }
     const geminiConfigured = aiLabels.length > 0;
     const geminiModel = 'free models (auto-selected per request)';
 
@@ -113,12 +116,14 @@ class ProviderHealthService {
           status: googleRoutesStatus,
           configured: googleMapsConfigured,
           isActive: routingProvider === 'google',
+          mode: googleMapsConfigured ? (routingProvider === 'google' ? 'google-live' : `${routingProvider} (key ready)`) : routingProvider,
           message: googleRoutesMessage
         },
         googleRoads: {
           provider: 'google-roads',
           status: googleRoadsStatus,
           configured: googleMapsConfigured,
+          mode: googleMapsConfigured ? 'google-live' : 'turf-fallback',
           message: googleRoadsMessage
         },
         gemini: {

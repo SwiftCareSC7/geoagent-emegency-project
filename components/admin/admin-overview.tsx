@@ -23,7 +23,6 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { adminApi } from '@/lib/api/admin'
-import { decisionApi } from '@/lib/api/decisions'
 import type { AdminSystemStats, AdminDatabaseHealth, AdminSystemHealthSummary, Decision } from '@/lib/api/types'
 import { Button } from '@/components/ui/button'
 
@@ -91,7 +90,7 @@ export function AdminOverview() {
         adminApi.getStats(),
         adminApi.getHealth(),
         adminApi.getProviders(),
-        decisionApi.list().catch(() => ({ data: [] })),
+        adminApi.getDecisions({ limit: 5 }).catch(() => ({ data: [] })),
         adminApi.getPredictionAnalytics().catch(() => null),
       ])
       setStats(statsRes.data)

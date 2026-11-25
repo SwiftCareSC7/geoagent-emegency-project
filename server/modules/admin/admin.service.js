@@ -182,6 +182,7 @@ class AdminService {
       const report = await providerHealthService.getHealthStatus();
       const provMap = report?.providers || report || {};
       externalProviders = {
+        ...provMap,
         googleRoutes: provMap.googleRoutes || { status: 'NOT_CONFIGURED', provider: 'google', mode: 'mock' },
         googleRoads: provMap.googleRoads || { status: 'NOT_CONFIGURED', provider: 'google', mode: 'mock' },
         geminiAi: provMap.gemini || provMap.geminiAi || { status: 'NOT_CONFIGURED', provider: 'gemini', mode: 'mock' },
