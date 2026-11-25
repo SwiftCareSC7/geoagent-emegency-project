@@ -83,8 +83,9 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   'http://localhost:3000',
   'http://localhost:5173',
-  // Canonical production frontend (any other *.vercel.app app is not trusted)
-  'https://geoagent-emegency-project-livid.vercel.app'
+  // Canonical production frontend + this project's Vercel preview deployments
+  'https://geoagent-emegency-project-livid.vercel.app',
+  /^https:\/\/geoagent-emegency-project(-[a-z0-9-]+)?\.vercel\.app$/
 ].filter(Boolean);
 
 const corsOptions = {

@@ -23,15 +23,18 @@ class RealtimeService {
       clientUrl,
       'http://localhost:3000',
       'http://localhost:5173',
-      // Canonical production frontend (matches Express CORS config)
-      'https://geoagent-emegency-project-livid.vercel.app'
+      // Canonical production frontend + this project's Vercel preview deployments
+      'https://geoagent-emegency-project-livid.vercel.app',
+      /^https:\/\/geoagent-emegency-project(-[a-z0-9-]+)?\.vercel\.app$/
     ].filter(Boolean)));
 
     this.io = new SocketIOServer(httpServer, {
       cors: {
         origin: (origin, callback) => {
           if (!origin) return callback(null, true);
-          const isAllowed = allowedOrigins.includes(origin);
+          const isAllowed = allowedOrigins.some((allowed) =>
+            typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+          );
           return callback(isAllowed ? null : new Error('Not allowed by CORS'), isAllowed);
         },
         credentials: true,

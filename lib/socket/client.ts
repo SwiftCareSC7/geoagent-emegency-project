@@ -66,28 +66,38 @@ export function getSocket(): Socket {
 
   if (!socketInstance) {
     const targetUrl = getSocketUrl();
+    const isRenderHost = /\.onrender\.com$/i.test(targetUrl);
     socketInstance = io(targetUrl, {
       withCredentials: true,
       // Fetched on every (re)connect so a new login or logout is picked up.
       auth: (cb) => {
         fetch('/api/auth/socket-token', { credentials: 'same-origin', cache: 'no-store' })
-          .then((r) => r.json())
-          .then((d) => cb({ token: d?.token }))
-          .catch(() => cb({}))
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => cb({ token: d?.token || undefined }))
+          .catch(() => cb({}));
       },
-      transports: ['polling', 'websocket'],
+      // Render's free-tier proxy drops cross-origin wss:// upgrades unpredictably; HTTP long-polling
+      // delivers all real-time Socket.IO events reliably without repeating WebSocket errors.
+      transports: isRenderHost ? ['polling'] : ['polling', 'websocket'],
+      upgrade: !isRenderHost,
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000
+      reconnectionDelay: 1500,
+      reconnectionDelayMax: 8000
     });
 
     socketInstance.on('connect', () => {
-      console.log(`[Socket.IO] Connected to ${SOCKET_URL} (id: ${socketInstance?.id})`);
+      console.log(`[Socket.IO] Connected to ${targetUrl} (id: ${socketInstance?.id})`);
     });
 
-    socketInstance.on('connect_error', (err) => {
+    socketInstance.on('connect_error', (err: Error & { data?: { code?: string } }) => {
+      const code = err?.data?.code;
+      if (code === 'UNAUTHORIZED' || code === 'AUTH_FAILED' || code === 'INVALID_TOKEN') {
+        // Stop noisy reconnect loops when user is not authenticated yet
+        socketInstance?.disconnect();
+        return;
+      }
       console.warn(`[Socket.IO] Connection error: ${err.message}`);
     });
 

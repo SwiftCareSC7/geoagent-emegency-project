@@ -71,7 +71,7 @@ export async function GET(
       next: { revalidate: 0 },
     })
 
-    if (res.status === 404) {
+    if (res.status === 404 || res.status === 400) {
       return NextResponse.json({
         success: true,
         data: { emergencyId, status: 'NOT_SENT', provider: 'MSG91', canSend: true },
