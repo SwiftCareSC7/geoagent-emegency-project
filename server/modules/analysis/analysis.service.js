@@ -1,6 +1,6 @@
 import Vehicle from '../vehicles/vehicle.model.js';
 import Route from '../routes/route.model.js';
-import Trajectory from '../trajectories/trajectory.model.js';
+import Trajectory, { buildFallbackTrajectory } from '../trajectories/trajectory.model.js';
 import Incident from '../incidents/incident.model.js';
 import deviationService from '../deviation/deviation.service.js';
 import trafficService from '../traffic/traffic.service.js';
@@ -212,21 +212,19 @@ class AnalysisService {
       throw error;
     }
 
-    if (!recentTrajectories || recentTrajectories.length === 0) {
-      const error = new Error('No trajectory data available for this vehicle');
-      error.status = 404;
-      error.isOperational = true;
-      throw error;
-    }
+    const effectiveTrajectories =
+      recentTrajectories && recentTrajectories.length > 0
+        ? recentTrajectories
+        : [buildFallbackTrajectory(vehicle, route)];
 
-    const latestTrajectory = recentTrajectories[0];
+    const latestTrajectory = effectiveTrajectories[0];
     const vehicleHeading = latestTrajectory.speed > 3 ? latestTrajectory.heading : null;
 
     // 4. Calculate Route Deviation
     const deviation = deviationService.analyzeDeviation(
       latestTrajectory.location,
       route,
-      recentTrajectories,
+      effectiveTrajectories,
       vehicleHeading
     );
 

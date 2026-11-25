@@ -6,7 +6,7 @@ import {
 import { deviationConfig } from './deviation.config.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Route from '../routes/route.model.js';
-import Trajectory from '../trajectories/trajectory.model.js';
+import Trajectory, { buildFallbackTrajectory } from '../trajectories/trajectory.model.js';
 import routeService from '../routes/route.service.js';
 import realtimeService from '../realtime/realtime.service.js';
 
@@ -200,19 +200,17 @@ class DeviationService {
       .sort({ timestamp: -1 })
       .limit(deviationConfig.gpsStabilityWindow);
 
-    if (!recentTrajectories || recentTrajectories.length === 0) {
-      const error = new Error('No trajectory data available for this vehicle');
-      error.status = 404;
-      error.isOperational = true;
-      throw error;
-    }
+    const effectiveTrajectories =
+      recentTrajectories && recentTrajectories.length > 0
+        ? recentTrajectories
+        : [buildFallbackTrajectory(vehicle, route)];
 
-    const latestTrajectory = recentTrajectories[0];
+    const latestTrajectory = effectiveTrajectories[0];
 
     const deviation = this.analyzeDeviation(
       latestTrajectory.location,
       route,
-      recentTrajectories,
+      effectiveTrajectories,
       latestTrajectory.speed > 3 ? latestTrajectory.heading : null // only use heading if vehicle is moving
     );
 

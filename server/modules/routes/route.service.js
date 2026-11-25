@@ -6,7 +6,7 @@ import analysisService from '../analysis/analysis.service.js';
 import predictionService from '../analysis/prediction.service.js';
 import Emergency from '../emergencies/emergency.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
-import Trajectory from '../trajectories/trajectory.model.js';
+import Trajectory, { buildFallbackTrajectory } from '../trajectories/trajectory.model.js';
 import realtimeService from '../realtime/realtime.service.js';
 import Decision from '../decisions/decision.model.js';
 import { isRerouteCandidateUnchanged } from '../decisions/rerouteCandidate.js';
@@ -651,14 +651,10 @@ class RouteService {
       throw error;
     }
 
-    // 3. Get latest trajectory (current position)
-    const latestTrajectory = await Trajectory.findOne({ vehicle: vehicle._id }).sort({ timestamp: -1 });
-    if (!latestTrajectory) {
-      const error = new Error('No trajectory data available for this vehicle');
-      error.status = 404;
-      error.isOperational = true;
-      throw error;
-    }
+    // 3. Get latest trajectory (current position), falling back to active route origin if no GPS pings yet
+    const latestTrajectory =
+      (await Trajectory.findOne({ vehicle: vehicle._id }).sort({ timestamp: -1 })) ||
+      buildFallbackTrajectory(vehicle, route);
 
     // 4. Calculate new route from current position to destination
     const currentOrigin = latestTrajectory.location;

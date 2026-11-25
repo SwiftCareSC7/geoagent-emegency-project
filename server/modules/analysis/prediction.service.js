@@ -13,7 +13,7 @@
 import Prediction from './prediction.model.js';
 import Vehicle from '../vehicles/vehicle.model.js';
 import Route from '../routes/route.model.js';
-import Trajectory from '../trajectories/trajectory.model.js';
+import Trajectory, { buildFallbackTrajectory } from '../trajectories/trajectory.model.js';
 import deviationService from '../deviation/deviation.service.js';
 import trafficService from '../traffic/traffic.service.js';
 import analysisService from './analysis.service.js';
@@ -585,13 +585,11 @@ class PredictionService {
         .lean()
     ]);
 
-    const recentTrajectories = trajectoryWindow.slice(0, 10);
-    if (!recentTrajectories || recentTrajectories.length === 0) {
-      const error = new Error('No trajectory data available to compute prediction');
-      error.status = 404;
-      error.isOperational = true;
-      throw error;
-    }
+    const rawRecentTrajectories = trajectoryWindow.slice(0, 10);
+    const recentTrajectories =
+      rawRecentTrajectories && rawRecentTrajectories.length > 0
+        ? rawRecentTrajectories
+        : [buildFallbackTrajectory(vehicle, route)];
 
     const latestTrajectory = recentTrajectories[0];
 
