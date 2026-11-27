@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, Navigation } from 'lucide-react'
+import { ArrowRight, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 
 export function Hero() {
@@ -63,11 +63,11 @@ export function Hero() {
               <ArrowRight className="size-4" />
             </Link>
             <Link
-              href="/driver/dashboard"
+              href="/register"
               className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm px-6 py-3.5 text-sm sm:text-base font-semibold text-white transition-all hover:bg-white/15 hover:border-white/30 active:scale-[0.98]"
             >
-              <Navigation className="size-4 text-cyan-400" />
-              <span>View Driver Dashboard</span>
+              <UserPlus className="size-4 text-emerald-400" />
+              <span>Register as New User</span>
             </Link>
           </div>
         </div>

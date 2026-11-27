@@ -74,6 +74,13 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
             <span>Sign In</span>
           </Link>
 
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
+          >
+            <span>Register</span>
+          </Link>
+
           <ThemeToggleCompact />
 
         </div>
@@ -101,6 +108,13 @@ export function SiteHeader({ onHelp, onContact }: SiteHeaderProps) {
             className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary p-2.5 text-xs font-semibold text-primary-foreground text-center"
           >
             Sign In to Operational Portal
+          </Link>
+          <Link
+            href="/register"
+            onClick={() => setMobileMenuOpen(false)}
+            className="w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-card p-2.5 text-xs font-semibold text-foreground text-center hover:bg-muted"
+          >
+            Register as New User
           </Link>
           {onContact && (
             <button
